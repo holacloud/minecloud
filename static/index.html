@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MineCloud</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #1a1a2e; }
+        #game-container { width: 100vw; height: 100vh; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            text-shadow: 1px 1px 2px #000;
+            pointer-events: none;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+        }
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+        }
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 9px;
+        }
+        #connecting {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+        }
+        #inventory {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            pointer-events: auto;
+        }
+        .inv-slot {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #555;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .inv-slot:hover {
+            transform: scale(1.1);
+        }
+        .inv-slot.selected {
+            border-color: #fff;
+            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+        .inv-slot::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #fff;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .inv-slot:hover::after {
+            opacity: 1;
+        }
+        .slot-number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 10px;
+            color: #fff;
+            text-shadow: 1px 1px 1px #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div id="crosshair"></div>
+    <div id="ui">
+        <div id="fps">FPS: 0</div>
+        <div id="position">X: 0 Y: 0 Z: 0</div>
+        <div id="status">Connecting...</div>
+    </div>
+    <div id="inventory"></div>
+    <div id="connecting">Connecting to server...</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
