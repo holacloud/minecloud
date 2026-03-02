@@ -142,4 +142,42 @@ class WorldRenderer {
         
         return block;
     }
+    
+    loadBlocks(blocks) {
+        for (const key in blocks) {
+            const block = blocks[key];
+            this.addBlock({ x: block.x, y: block.y, z: block.z }, block.blockType);
+        }
+    }
+    
+    getBlockPosition(block) {
+        if (!block.parent) return null;
+        return {
+            x: Math.round(block.parent.position.x + block.position.x),
+            y: Math.round(block.parent.position.y + block.position.y),
+            z: Math.round(block.parent.position.z + block.position.z)
+        };
+    }
+    
+    removeBlockAt(x, y, z) {
+        const chunkX = Math.floor(x / this.chunkSize);
+        const chunkZ = Math.floor(z / this.chunkSize);
+        
+        const chunk = this.chunks.get(`${chunkX},${chunkZ}`);
+        if (!chunk) return;
+        
+        const localX = x - chunk.position.x;
+        const localY = y;
+        const localZ = z - chunk.position.z;
+        
+        for (const child of chunk.children) {
+            if (child instanceof THREE.Mesh &&
+                Math.round(child.position.x) === localX &&
+                Math.round(child.position.y) === localY &&
+                Math.round(child.position.z) === localZ) {
+                this.removeBlock(child);
+                return;
+            }
+        }
+    }
 }

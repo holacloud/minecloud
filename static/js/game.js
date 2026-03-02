@@ -21,6 +21,10 @@ class Game {
         this.inventory = ['grass', 'dirt', 'stone', 'wood', 'leaves', 'sand'];
         this.selectedSlot = 0;
         
+        this.otherPlayerMeshes = new Map();
+        this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.6, 8);
+        this.playerMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
+        
         this.init();
     }
     
@@ -79,9 +83,40 @@ class Game {
     }
     
     initNetwork() {
+        console.log('Initializing network, host:', window.location.host);
         this.network = new NetworkClient();
         const wsUrl = `ws://${window.location.host}/ws`;
+        console.log('Connecting to:', wsUrl);
         this.network.connect(wsUrl);
+        
+        this.network.on('worldInit', (blocks) => {
+            this.world.loadBlocks(blocks);
+        });
+        
+        this.network.on('blockPlace', (payload) => {
+            this.world.addBlock(payload, payload.blockType);
+        });
+        
+        this.network.on('blockBreak', (payload) => {
+            this.world.removeBlockAt(payload.x, payload.y, payload.z);
+        });
+        
+        this.network.on('otherPlayerMove', (player) => {
+            this.updateOtherPlayer(player);
+        });
+    }
+    
+    updateOtherPlayer(player) {
+        let mesh = this.otherPlayerMeshes.get(player.id);
+        
+        if (!mesh) {
+            mesh = new THREE.Mesh(this.playerGeometry, this.playerMaterial);
+            this.scene.add(mesh);
+            this.otherPlayerMeshes.set(player.id, mesh);
+        }
+        
+        mesh.position.set(player.x, player.y + 0.8, player.z);
+        mesh.rotation.y = player.yaw;
     }
     
     initInventory() {
@@ -144,15 +179,15 @@ class Game {
             const hit = intersects[0];
             if (hit.distance <= this.breakDistance) {
                 const block = hit.object;
+                const pos = this.world.getBlockPosition(block);
+                
                 this.world.removeBlock(block);
                 
                 if (this.network.connected) {
                     this.network.send('blockBreak', {
-                        position: {
-                            x: block.parent.position.x + block.position.x,
-                            y: block.parent.position.y + block.position.y,
-                            z: block.parent.position.z + block.position.z
-                        }
+                        x: pos.x,
+                        y: pos.y,
+                        z: pos.z
                     });
                 }
             }
@@ -183,7 +218,9 @@ class Game {
                     
                     if (this.network.connected) {
                         this.network.send('blockPlace', {
-                            position: newPos,
+                            x: newPos.x,
+                            y: newPos.y,
+                            z: newPos.z,
                             blockType: blockType
                         });
                     }

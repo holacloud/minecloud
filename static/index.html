@@ -17,6 +17,33 @@
             text-shadow: 1px 1px 2px #000;
             pointer-events: none;
         }
+        #player-list-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            min-width: 150px;
+        }
+        #player-list-container h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 6px;
+        }
+        #player-list {
+            list-style: none;
+            font-size: 13px;
+        }
+        #player-list li {
+            padding: 3px 0;
+        }
+        #player-list li.self {
+            color: #4ade80;
+        }
         #crosshair {
             position: absolute;
             top: 50%;
@@ -110,6 +137,12 @@
         <div id="fps">FPS: 0</div>
         <div id="position">X: 0 Y: 0 Z: 0</div>
         <div id="status">Connecting...</div>
+    </div>
+    <div id="player-list-container">
+        <h3>Players</h3>
+        <ul id="player-list">
+            <li>Loading...</li>
+        </ul>
     </div>
     <div id="inventory"></div>
     <div id="connecting">Connecting to server...</div>

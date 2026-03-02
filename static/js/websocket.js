@@ -5,6 +5,7 @@ class NetworkClient {
         this.reconnectInterval = 3000;
         this.playerId = this.generatePlayerId();
         this.messageHandlers = new Map();
+        this.otherPlayers = new Map();
     }
     
     generatePlayerId() {
@@ -12,22 +13,23 @@ class NetworkClient {
     }
     
     connect(url) {
+        console.log('WebSocket: Connecting to', url);
         this.ws = new WebSocket(url);
         
         this.ws.onopen = () => {
-            console.log('Connected to server');
+            console.log('WebSocket: Connected to server');
             this.connected = true;
             this.send('playerJoin', { playerId: this.playerId });
             this.updateStatus('Connected');
         };
         
-        this.ws.onclose = () => {
-            console.log('Disconnected from server');
+        this.ws.onclose = (e) => {
+            console.log('WebSocket: Disconnected', e.code, e.reason);
             this.connected = false;
             this.updateStatus('Disconnected - Reconnecting...');
             setTimeout(() => this.connect(url), this.reconnectInterval);
         };
-        
+
         this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
             this.updateStatus('Connection error');
@@ -56,16 +58,81 @@ class NetworkClient {
         }
         
         switch(message.type) {
-            case 'pong':
+            case 'init':
+                this.handleInit(message.payload);
+                break;
+            case 'playerList':
+                this.handlePlayerList(message.payload);
+                break;
+            case 'playerMove':
+                this.handlePlayerMove(message.payload);
+                break;
+            case 'blockBreak':
+                this.handleBlockBreak(message.payload);
+                break;
+            case 'blockPlace':
+                this.handleBlockPlace(message.payload);
                 break;
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;
-            case 'playerLeft':
-                console.log('Player left:', message.payload);
-                break;
-            case 'worldUpdate':
-                break;
+        }
+    }
+    
+    handleInit(payload) {
+        if (payload.players) {
+            for (const [id, player] of Object.entries(payload.players)) {
+                if (id !== this.playerId) {
+                    this.otherPlayers.set(id, player);
+                }
+            }
+        }
+        
+        if (payload.blocks) {
+            const handler = this.messageHandlers.get('worldInit');
+            if (handler) {
+                handler(payload.blocks);
+            }
+        }
+    }
+    
+    handlePlayerList(payload) {
+        const listEl = document.getElementById('player-list');
+        if (listEl) {
+            listEl.innerHTML = '';
+            payload.players.forEach(p => {
+                const li = document.createElement('li');
+                li.textContent = p.name;
+                if (p.id === this.playerId) {
+                    li.classList.add('self');
+                }
+                listEl.appendChild(li);
+            });
+        }
+    }
+    
+    handlePlayerMove(payload) {
+        if (payload.id === this.playerId) return;
+        
+        this.otherPlayers.set(payload.id, payload);
+        
+        const handler = this.messageHandlers.get('otherPlayerMove');
+        if (handler) {
+            handler(payload);
+        }
+    }
+    
+    handleBlockBreak(payload) {
+        const handler = this.messageHandlers.get('blockBreak');
+        if (handler) {
+            handler(payload);
+        }
+    }
+    
+    handleBlockPlace(payload) {
+        const handler = this.messageHandlers.get('blockPlace');
+        if (handler) {
+            handler(payload);
         }
     }
     
@@ -82,7 +149,7 @@ class NetworkClient {
     
     updatePosition(position) {
         this.send('playerMove', {
-            playerId: this.playerId,
+            id: this.playerId,
             x: position.x,
             y: position.y,
             z: position.z,
