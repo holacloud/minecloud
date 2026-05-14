@@ -6,145 +6,135 @@
     <title>MineCloud</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; background: #1a1a2e; }
+        body { overflow: hidden; background: #000; }
         #game-container { width: 100vw; height: 100vh; }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            text-shadow: 1px 1px 2px #000;
-            pointer-events: none;
-        }
-        #player-list-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 12px;
-            border-radius: 8px;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            min-width: 150px;
-        }
-        #player-list-container h3 {
-            font-size: 14px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #555;
-            padding-bottom: 6px;
-        }
-        #player-list {
-            list-style: none;
-            font-size: 13px;
-        }
-        #player-list li {
-            padding: 3px 0;
-        }
-        #player-list li.self {
-            color: #4ade80;
-        }
+        
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             pointer-events: none;
+            z-index: 100;
         }
         #crosshair::before, #crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.9);
         }
-        #crosshair::before {
-            width: 2px;
-            height: 20px;
-            left: 9px;
+        #crosshair::before { width: 2px; height: 16px; left: 7px; }
+        #crosshair::after { width: 16px; height: 2px; top: 7px; }
+        
+        #debug {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            text-shadow: 1px 1px 1px #000;
+            z-index: 100;
         }
-        #crosshair::after {
-            width: 20px;
-            height: 2px;
-            top: 9px;
+        
+        #player-list-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            z-index: 100;
         }
+        #player-list-container h3 {
+            font-size: 11px;
+            margin-bottom: 4px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        #player-list { list-style: none; }
+        #player-list li { padding: 2px 0; }
+        #player-list li.self { color: #55FF55; }
+        
+        #hotbar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #555;
+            border-radius: 4px;
+            z-index: 100;
+        }
+        .hotbar-slot {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #333;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+        .hotbar-slot.selected {
+            border-color: #fff;
+            box-shadow: 0 0 4px #fff;
+        }
+        .hotbar-slot .slot-num {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 10px;
+            color: #fff;
+            text-shadow: 1px 1px 1px #000;
+        }
+        
         #connecting {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             color: #fff;
-            font-family: 'Courier New', monospace;
-            font-size: 24px;
+            font-family: 'Consolas', monospace;
+            font-size: 18px;
+            z-index: 200;
         }
-        #inventory {
+        
+        #hit-indicator {
             position: absolute;
-            bottom: 20px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 4px;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            pointer-events: auto;
-        }
-        .inv-slot {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #555;
-            border-radius: 4px;
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .inv-slot:hover {
-            transform: scale(1.1);
-        }
-        .inv-slot.selected {
-            border-color: #fff;
-            box-shadow: 0 0 8px rgba(255,255,255,0.5);
-        }
-        .inv-slot::after {
-            content: attr(title);
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-            color: #fff;
-            white-space: nowrap;
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
             opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .inv-slot:hover::after {
-            opacity: 1;
-        }
-        .slot-number {
-            position: absolute;
-            top: 2px;
-            left: 4px;
-            font-size: 10px;
-            color: #fff;
-            text-shadow: 1px 1px 1px #000;
+            transition: opacity 0.1s;
+            z-index: 99;
         }
     </style>
 </head>
 <body>
     <div id="game-container"></div>
     <div id="crosshair"></div>
-    <div id="ui">
-        <div id="fps">FPS: 0</div>
-        <div id="position">X: 0 Y: 0 Z: 0</div>
-        <div id="status">Connecting...</div>
+    <div id="hit-indicator"></div>
+    <div id="debug">
+        <div>FPS: <span id="fps">0</span></div>
+        <div><span id="position">X: 0 Y: 0 Z: 0</span></div>
+        <div><span id="status">Connecting...</span></div>
     </div>
     <div id="player-list-container">
         <h3>Players</h3>
-        <ul id="player-list">
-            <li>Loading...</li>
-        </ul>
+        <ul id="player-list"><li>Loading...</li></ul>
     </div>
-    <div id="inventory"></div>
+    <div id="hotbar"></div>
     <div id="connecting">Connecting to server...</div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
