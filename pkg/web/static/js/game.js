@@ -3677,6 +3677,15 @@ class Game {
         let targetRotY = this.handBaseRotation.y;
         let targetRotZ = this.handBaseRotation.z;
 
+        const hasMoveInput = this.cameraController.keys.forward || this.cameraController.keys.backward ||
+            this.cameraController.keys.left || this.cameraController.keys.right ||
+            Math.abs(this.cameraController.moveInput.x) > 0.05 || Math.abs(this.cameraController.moveInput.y) > 0.05;
+        if (this.cameraController.onGround && hasMoveInput) {
+            const walkBob = Math.sin(this.cameraBobPhase * 2) * 0.035;
+            targetY += walkBob;
+            targetRotZ += Math.sin(this.cameraBobPhase) * 0.035;
+        }
+
         const isMining = this.isBreakInputActive && this.miningTargetKey !== null;
         if (isMining) {
             this.handSwingTime += delta * 16;
