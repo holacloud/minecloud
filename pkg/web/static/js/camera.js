@@ -13,7 +13,8 @@ class CameraController {
         this.crouchSpeedFactor = 0.45;
         this.standingEyeHeight = 1.62;
         this.crouchingEyeHeight = 1.32;
-        this.collisionRadius = 0.18;
+        this.bodyHeight = 1.8;
+        this.collisionRadius = 0.16;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false, crouch: false };
         this.moveInput = { x: 0, y: 0 };
@@ -106,22 +107,23 @@ class CameraController {
     }
 
     isBlockedAtPosition(x, z, feetY) {
+        const cornerRadius = this.collisionRadius * 0.7;
         const samples = [
             [0, 0],
             [this.collisionRadius, 0],
             [-this.collisionRadius, 0],
             [0, this.collisionRadius],
             [0, -this.collisionRadius],
-            [this.collisionRadius, this.collisionRadius],
-            [this.collisionRadius, -this.collisionRadius],
-            [-this.collisionRadius, this.collisionRadius],
-            [-this.collisionRadius, -this.collisionRadius]
+            [cornerRadius, cornerRadius],
+            [cornerRadius, -cornerRadius],
+            [-cornerRadius, cornerRadius],
+            [-cornerRadius, -cornerRadius]
         ];
 
         for (const [dx, dz] of samples) {
             const sx = Math.floor(x + dx);
             const sz = Math.floor(z + dz);
-            if (this.hasBlock(sx, Math.floor(feetY), sz) || this.hasBlock(sx, Math.floor(feetY + 1.8), sz)) {
+            if (this.hasBlock(sx, Math.floor(feetY), sz) || this.hasBlock(sx, Math.floor(feetY + this.bodyHeight), sz)) {
                 return true;
             }
         }
@@ -263,7 +265,7 @@ class CameraController {
             } else {
                 this.camera.position.y = newY;
             }
-        } else if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(newY + 1.8), Math.floor(this.camera.position.z))) {
+        } else if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(newFeetY + this.bodyHeight), Math.floor(this.camera.position.z))) {
             this.camera.position.y = newY;
         } else {
             this.velocityY = 0;
