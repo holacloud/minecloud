@@ -19,21 +19,21 @@ class WorldRenderer {
         this.lastPlayerChunkZ = null;
 
         this.blockTypes = {
-            air: { color: 0x000000, name: 'Air' },
-            grass: { color: 0x5B8C35, name: 'Grass Block', top: 0x5B8C35, side: 0x8B5A2B, bottom: 0x5B8C35 },
-            dirt: { color: 0x8B5A2B, name: 'Dirt' },
-            stone: { color: 0x808080, name: 'Stone' },
-            cobblestone: { color: 0x6E6E6E, name: 'Cobblestone' },
-            wood: { color: 0x8B6914, name: 'Oak Wood' },
-            leaves: { color: 0x4E8F36, name: 'Oak Leaves', transparent: true },
-            sand: { color: 0xE8D894, name: 'Sand' },
-            water: { color: 0x3D85C6, transparent: true, opacity: 0.7, fluid: true },
-            bedrock: { color: 0x1A1A1A, name: 'Bedrock' },
-            coal_ore: { color: 0x808080, ore: 0x2D2D2D, name: 'Coal Ore' },
-            iron_ore: { color: 0x808080, ore: 0xB87E56, name: 'Iron Ore' },
-            gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore' },
-            brick: { color: 0xA03020, name: 'Brick' },
-            planks: { color: 0xC8A675, name: 'Oak Planks' },
+            air: { color: 0x000000, name: 'Air', breakDuration: 0 },
+            grass: { color: 0x5B8C35, name: 'Grass Block', top: 0x5B8C35, side: 0x8B5A2B, bottom: 0x5B8C35, breakDuration: 0.35 },
+            dirt: { color: 0x8B5A2B, name: 'Dirt', breakDuration: 0.45 },
+            stone: { color: 0x808080, name: 'Stone', breakDuration: 0.9 },
+            cobblestone: { color: 0x6E6E6E, name: 'Cobblestone', breakDuration: 1 },
+            wood: { color: 0x8B6914, name: 'Oak Wood', breakDuration: 0.8 },
+            leaves: { color: 0x4E8F36, name: 'Oak Leaves', transparent: true, breakDuration: 0.2 },
+            sand: { color: 0xE8D894, name: 'Sand', breakDuration: 0.4 },
+            water: { color: 0x3D85C6, transparent: true, opacity: 0.7, fluid: true, breakDuration: 0.15 },
+            bedrock: { color: 0x1A1A1A, name: 'Bedrock', unbreakable: true },
+            coal_ore: { color: 0x808080, ore: 0x2D2D2D, name: 'Coal Ore', breakDuration: 1.05 },
+            iron_ore: { color: 0x808080, ore: 0xB87E56, name: 'Iron Ore', breakDuration: 1.1 },
+            gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
+            brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
+            planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
         };
 
         this.generateInitialChunks();
@@ -623,6 +623,23 @@ class WorldRenderer {
 
     hasSolidBlock(x, y, z) {
         return this.solidBlocks.has(this.blockKey(x, y, z));
+    }
+
+    getBlockTypeAt(x, y, z) {
+        return this.blockData.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || null;
+    }
+
+    getBreakDurationForType(type) {
+        if (!type) return null;
+
+        const def = this.blockTypes[type];
+        if (!def || def.unbreakable) return null;
+
+        return def.breakDuration ?? 0.5;
+    }
+
+    getBreakDurationAt(x, y, z) {
+        return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
 
     getInteractableObjects(position, reach) {
