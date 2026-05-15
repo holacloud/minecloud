@@ -1386,6 +1386,7 @@ class Game {
         group.userData.targetYaw = 0;
         group.userData.walkPhase = 0;
         group.userData.lastStepIndex = 0;
+        group.userData.stepDistance = 0;
         group.userData.nameSprite = this.createNameTagSprite('Player');
         group.userData.nameSprite.position.set(0, 2.15, 0);
         group.add(group.userData.nameSprite);
@@ -1697,11 +1698,10 @@ class Game {
             parts.leftLeg.rotation.x = -swing;
             parts.rightLeg.rotation.x = swing;
 
-            if (stride > 0.08) {
-                const cycle = ((avatar.userData.walkPhase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-                const stepIndex = Math.floor(cycle / Math.PI);
-                if (stepIndex !== avatar.userData.lastStepIndex) {
-                    avatar.userData.lastStepIndex = stepIndex;
+            if (deltaDistance > 0.002) {
+                avatar.userData.stepDistance += deltaDistance;
+                if (avatar.userData.stepDistance >= 0.55) {
+                    avatar.userData.stepDistance = 0;
                     const stepBlock = this.world.getBlockTypeAt(Math.round(avatar.position.x), Math.floor(avatar.position.y), Math.round(avatar.position.z)) || 'grass';
                     this.playPositionalFootstep(avatar.position, stepBlock);
                 }
