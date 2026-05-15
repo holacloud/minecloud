@@ -51,6 +51,10 @@ class Game {
         this.pickups = new Map();
         this.pickupIdCounter = 0;
         this.remotePlayerNames = new Map();
+        this.audioContext = null;
+        this.audioUnlocked = false;
+        this.noiseBuffer = null;
+        this.wasOnGround = false;
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -112,6 +116,102 @@ class Game {
         const resolved = (requested || 'Player').trim().slice(0, 20) || 'Player';
         window.localStorage.setItem('minecloud-player-name', resolved);
         return resolved;
+    }
+
+    ensureAudio() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+
+        if (!this.audioContext) {
+            this.audioContext = new AudioCtx();
+        }
+
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+
+        this.audioUnlocked = this.audioContext.state === 'running';
+        return this.audioContext;
+    }
+
+    getNoiseBuffer() {
+        const audio = this.ensureAudio();
+        if (!audio) return null;
+        if (this.noiseBuffer) return this.noiseBuffer;
+
+        const buffer = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        }
+
+        this.noiseBuffer = buffer;
+        return buffer;
+    }
+
+    playTone({ frequency, duration, type = 'sine', volume = 0.04, attack = 0.005, release = 0.08, detune = 0 }) {
+        const audio = this.ensureAudio();
+        if (!audio || audio.state !== 'running') return;
+
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
+        oscillator.detune.setValueAtTime(detune, audio.currentTime);
+
+        gain.gain.setValueAtTime(0.0001, audio.currentTime);
+        gain.gain.linearRampToValueAtTime(volume, audio.currentTime + attack);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration + release);
+
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.start();
+        oscillator.stop(audio.currentTime + duration + release + 0.02);
+    }
+
+    playNoiseBurst({ duration, volume = 0.03, highpass = 300, lowpass = 2400 }) {
+        const audio = this.ensureAudio();
+        const buffer = this.getNoiseBuffer();
+        if (!audio || !buffer || audio.state !== 'running') return;
+
+        const source = audio.createBufferSource();
+        source.buffer = buffer;
+
+        const gain = audio.createGain();
+        const hp = audio.createBiquadFilter();
+        const lp = audio.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(highpass, audio.currentTime);
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(lowpass, audio.currentTime);
+
+        gain.gain.setValueAtTime(volume, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration);
+
+        source.connect(hp).connect(lp).connect(gain).connect(audio.destination);
+        source.start();
+        source.stop(audio.currentTime + duration + 0.02);
+    }
+
+    playMiningSound(blockType) {
+        const isHard = ['stone', 'cobblestone', 'coal_ore', 'iron_ore', 'gold_ore', 'brick'].includes(blockType);
+        this.playNoiseBurst({ duration: isHard ? 0.07 : 0.05, volume: isHard ? 0.032 : 0.022, highpass: isHard ? 480 : 220, lowpass: isHard ? 1800 : 1400 });
+        this.playTone({ frequency: isHard ? 185 : 145, duration: 0.045, type: 'square', volume: isHard ? 0.028 : 0.02, release: 0.05, detune: (Math.random() - 0.5) * 50 });
+    }
+
+    playPlaceSound(blockType) {
+        const isHard = ['stone', 'cobblestone', 'coal_ore', 'iron_ore', 'gold_ore', 'brick'].includes(blockType);
+        this.playTone({ frequency: isHard ? 210 : 170, duration: 0.06, type: 'triangle', volume: 0.028, release: 0.07 });
+        this.playNoiseBurst({ duration: 0.04, volume: 0.016, highpass: 180, lowpass: isHard ? 2000 : 1200 });
+    }
+
+    playPickupSound() {
+        this.playTone({ frequency: 660, duration: 0.04, type: 'square', volume: 0.025, release: 0.04 });
+        this.playTone({ frequency: 880, duration: 0.05, type: 'triangle', volume: 0.02, attack: 0.01, release: 0.05 });
+    }
+
+    playJumpSound() {
+        this.playTone({ frequency: 240, duration: 0.05, type: 'triangle', volume: 0.03, release: 0.07 });
+        this.playNoiseBurst({ duration: 0.03, volume: 0.012, highpass: 140, lowpass: 900 });
     }
     
     initThreeJS() {
@@ -763,6 +863,7 @@ class Game {
         if (!pickup) return;
 
         this.addInventory(pickup.type, pickup.amount);
+        this.playPickupSound();
         this.scene.remove(pickup.mesh);
         if (pickup.mesh.material) pickup.mesh.material.dispose();
         this.pickups.delete(id);
@@ -839,6 +940,7 @@ class Game {
     }
     
     initInput() {
+        document.addEventListener('pointerdown', () => this.ensureAudio(), { passive: true });
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
         document.addEventListener('mouseup', (e) => this.onMouseUp(e));
         document.addEventListener('keydown', (e) => this.onKeyDown(e));
@@ -1289,6 +1391,7 @@ class Game {
 
         this.spawnMiningParticles(blockType, hit.point, hit.face.normal);
         this.kickMiningBlockVisual();
+        this.playMiningSound(blockType);
     }
     
     placeBlock() {
@@ -1310,6 +1413,7 @@ class Game {
             if (!blockType || this.getInventoryCount(blockType) <= 0) return;
             if (!this.world.addBlock(newPos, blockType)) return;
             this.consumeSelectedBlock();
+            this.playPlaceSound(blockType);
 
             this.showHitIndicator();
             this.lastSelectionUpdate = 0;
@@ -1493,6 +1597,10 @@ class Game {
         const now = performance.now();
         
         this.cameraController.update(delta);
+        if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {
+            this.playJumpSound();
+        }
+        this.wasOnGround = this.cameraController.onGround;
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);
         this.updatePickups(delta);
