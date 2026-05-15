@@ -47,7 +47,7 @@ Next tasks
 - [x] Permitir dormir en la cama para saltar la noche
 - [ ] Permitir comer para recuperar vida
 - [x] Mejorar la luz de las antorchas para que iluminen con un radio claro de al menos 5 bloques y caída cuadrática
-- [ ] Crear mobs interactuables: oveja, pato y cerdo
+- [x] Crear mobs interactuables: oveja, pato y cerdo
 - [ ] Al cerrar cualquier ventana interactiva, recapturar el mouse automáticamente sin necesidad de click
 - [ ] Mejorar la usabilidad general de la barra de inventario
 - [ ] Al picar un cubo situado arriba, hacer que caiga con la gravedad

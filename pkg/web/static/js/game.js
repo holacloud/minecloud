@@ -118,6 +118,7 @@ class Game {
         this.pickups = new Map();
         this.pickupIdCounter = 0;
         this.remotePlayerNames = new Map();
+        this.ambientMobs = [];
         this.voiceChat = null;
         this.audioContext = null;
         this.audioUnlocked = false;
@@ -191,6 +192,7 @@ class Game {
         this.initThreeJS();
         this.initCamera();
         this.initWorld();
+        this.initAmbientMobs();
         this.restoreLastSafePosition();
         this.applyRTXMode(this.rtxPreferred);
         this.initNetwork();
@@ -1409,6 +1411,148 @@ class Game {
         return face;
     }
 
+    createMob(species, position) {
+        const group = new THREE.Group();
+        group.userData.species = species;
+        group.userData.home = position.clone();
+        group.userData.direction = Math.random() * Math.PI * 2;
+        group.userData.moveTimer = 1 + Math.random() * 2;
+        group.userData.stepPhase = Math.random() * Math.PI * 2;
+        group.userData.bounceVelocity = 0;
+
+        const createPart = (geometry, color, x, y, z) => {
+            const material = this.rtxModeEnabled
+                ? new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.01 })
+                : new THREE.MeshLambertMaterial({ color });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = this.rtxModeEnabled;
+            mesh.receiveShadow = this.rtxModeEnabled;
+            mesh.userData.mobRoot = group;
+            group.add(mesh);
+            return mesh;
+        };
+
+        if (species === 'sheep') {
+            createPart(new THREE.BoxGeometry(0.8, 0.52, 0.5), 0xf1efe6, 0, 0.56, 0);
+            createPart(new THREE.BoxGeometry(0.32, 0.28, 0.24), 0x1b1b1b, 0.46, 0.62, 0);
+        } else if (species === 'duck') {
+            createPart(new THREE.BoxGeometry(0.5, 0.32, 0.34), 0xf4f0d8, 0, 0.4, 0);
+            createPart(new THREE.BoxGeometry(0.18, 0.18, 0.18), 0xf4f0d8, 0.32, 0.5, 0);
+            createPart(new THREE.BoxGeometry(0.16, 0.06, 0.12), 0xe1a53b, 0.42, 0.46, 0);
+        } else {
+            createPart(new THREE.BoxGeometry(0.72, 0.42, 0.4), 0xd89aa3, 0, 0.5, 0);
+            createPart(new THREE.BoxGeometry(0.28, 0.22, 0.24), 0xd89aa3, 0.4, 0.56, 0);
+        }
+
+        const legOffsets = [
+            [-0.22, 0.2, -0.12],
+            [-0.22, 0.2, 0.12],
+            [0.22, 0.2, -0.12],
+            [0.22, 0.2, 0.12]
+        ];
+        const legColor = species === 'duck' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : 0xb87683;
+        const legSize = species === 'duck' ? [0.06, 0.22, 0.06] : [0.1, 0.32, 0.1];
+        group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
+
+        group.position.copy(position);
+        this.scene.add(group);
+        return group;
+    }
+
+    initAmbientMobs() {
+        const mobSetups = [
+            ['sheep', new THREE.Vector3(8, 0, 6)],
+            ['duck', new THREE.Vector3(-6, 0, 10)],
+            ['pig', new THREE.Vector3(12, 0, -8)],
+            ['sheep', new THREE.Vector3(-10, 0, -6)],
+            ['duck', new THREE.Vector3(4, 0, -12)]
+        ];
+
+        for (const [species, pos] of mobSetups) {
+            const ground = this.cameraController.getFloorY(pos.x, pos.z, 20);
+            const worldPos = new THREE.Vector3(pos.x, ground, pos.z);
+            this.ambientMobs.push(this.createMob(species, worldPos));
+        }
+    }
+
+    raycastMob(maxDistance) {
+        this.raycaster.setFromCamera(this.screenCenter, this.camera);
+        const meshes = [];
+        this.ambientMobs.forEach((mob) => {
+            mob.traverse((node) => {
+                if (node instanceof THREE.Mesh) {
+                    meshes.push(node);
+                }
+            });
+        });
+        if (meshes.length === 0) return null;
+
+        const intersects = this.raycaster.intersectObjects(meshes, true);
+        if (intersects.length === 0 || intersects[0].distance > maxDistance) return null;
+
+        let current = intersects[0].object;
+        while (current && !current.userData.mobRoot) {
+            current = current.parent;
+        }
+        return current ? current.userData.mobRoot : null;
+    }
+
+    interactWithMob(mob) {
+        mob.userData.bounceVelocity = 2.4;
+        mob.userData.direction = Math.atan2(this.camera.position.z - mob.position.z, this.camera.position.x - mob.position.x);
+
+        const tones = {
+            sheep: 330,
+            duck: 520,
+            pig: 240
+        };
+        this.playTone({ frequency: tones[mob.userData.species] || 300, duration: 0.08, type: 'triangle', volume: 0.02, release: 0.07, detune: (Math.random() - 0.5) * 40 });
+        this.playNoiseBurst({ duration: 0.04, volume: 0.01, highpass: 120, lowpass: 900 });
+    }
+
+    updateAmbientMobs(delta) {
+        for (const mob of this.ambientMobs) {
+            mob.userData.moveTimer -= delta;
+            if (mob.userData.moveTimer <= 0) {
+                mob.userData.moveTimer = 1.2 + Math.random() * 2.8;
+                mob.userData.direction += (Math.random() - 0.5) * 1.8;
+            }
+
+            const moveSpeed = mob.userData.species === 'duck' ? 0.55 : 0.38;
+            const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * delta);
+            const candidate = mob.position.clone().add(move);
+            const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
+            if (floorY > -20 && candidate.distanceTo(mob.userData.home) < 18) {
+                mob.position.x = candidate.x;
+                mob.position.z = candidate.z;
+                mob.position.y = floorY;
+            } else {
+                mob.userData.direction += Math.PI * 0.75;
+            }
+
+            mob.userData.stepPhase += delta * 7;
+            mob.rotation.y = mob.userData.direction;
+
+            if (mob.userData.bounceVelocity !== 0) {
+                mob.userData.bounceVelocity -= 9 * delta;
+                mob.position.y += mob.userData.bounceVelocity * delta;
+                if (mob.position.y <= floorY) {
+                    mob.position.y = floorY;
+                    mob.userData.bounceVelocity = 0;
+                }
+            }
+
+            if (mob.userData.legs) {
+                const swing = Math.sin(mob.userData.stepPhase) * 0.25;
+                mob.userData.legs[0].rotation.x = swing;
+                mob.userData.legs[1].rotation.x = -swing;
+                mob.userData.legs[2].rotation.x = -swing;
+                mob.userData.legs[3].rotation.x = swing;
+            }
+        }
+    }
+
     createNameTagSprite(name) {
         const canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -2199,6 +2343,11 @@ class Game {
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
+            const mobHit = this.raycastMob(5);
+            if (mobHit) {
+                this.interactWithMob(mobHit);
+                return;
+            }
             const playerHit = this.raycastPlayer(7);
             if (playerHit) {
                 const targetName = this.remotePlayerNames.get(playerHit.playerId) || playerHit.playerId;
@@ -3156,6 +3305,7 @@ class Game {
         this.updateWeather(delta);
         this.updateUnderwaterEffect();
         this.world.update(this.camera.position.x, this.camera.position.z);
+        this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
         if (this.voiceChat) {
             this.voiceChat.updateProximity();
