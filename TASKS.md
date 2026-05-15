@@ -55,4 +55,4 @@ Next tasks
 - [x] Hacer que se oigan correctamente los pasos de otros jugadores cercanos
 - [x] Permitir comer para recuperar vida
 - [x] Añadir pantalla inicial con fondo desenfocado de la partida, título MineCloud y opciones de continuar o cambiar nombre
-- [ ] Corregir la orientación de los ojos de los avatares para que no parezcan estar en la nuca
+- [x] Corregir la orientación de los ojos de los avatares para que no parezcan estar en la nuca

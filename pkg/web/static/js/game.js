@@ -1936,12 +1936,12 @@ class Game {
             avatar.userData.lastPosition.copy(nextFeetPosition);
             avatar.userData.targetPosition.copy(nextFeetPosition);
             avatar.position.copy(nextFeetPosition);
-            avatar.rotation.y = player.yaw;
+            avatar.rotation.y = player.yaw + Math.PI;
             avatar.userData.initialized = true;
         }
 
         avatar.userData.targetPosition.copy(nextFeetPosition);
-        avatar.userData.targetYaw = player.yaw;
+        avatar.userData.targetYaw = player.yaw + Math.PI;
     }
     
     initHotbar() {
