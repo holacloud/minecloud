@@ -133,6 +133,9 @@ class Game {
         this.cameraBobPhase = 0;
         this.maxHealth = 20;
         this.health = this.maxHealth;
+        this.respawnPending = false;
+        this.respawnTimer = 0;
+        this.deathReason = 'Respawning soon...';
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
         this.respawnPoint = this.loadRespawnPoint() || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
@@ -191,6 +194,7 @@ class Game {
         this.refreshChatVisibility();
         this.renderCraftingPanel();
         this.updateHealthUI();
+        this.updateDeathScreen();
         
         this.animate();
     }
@@ -627,6 +631,17 @@ class Game {
         }
     }
 
+    updateDeathScreen() {
+        const screen = document.getElementById('death-screen');
+        const reason = document.getElementById('death-reason');
+        const timer = document.getElementById('death-timer');
+        if (!screen || !reason || !timer) return;
+
+        screen.classList.toggle('visible', this.respawnPending);
+        reason.textContent = this.deathReason;
+        timer.textContent = this.respawnPending ? `${Math.max(0, this.respawnTimer).toFixed(1)}s` : '';
+    }
+
     updateBlockInspector(worldPos) {
         const inspector = document.getElementById('block-inspector');
         if (!inspector) return;
@@ -670,16 +685,27 @@ class Game {
         }, 110);
     }
 
-    applyDamage(amount) {
-        if (amount <= 0 || this.health <= 0) return;
+    applyDamage(amount, reason = 'Respawning soon...') {
+        if (amount <= 0 || this.health <= 0 || this.respawnPending) return;
 
         this.health = Math.max(0, this.health - amount);
         this.updateHealthUI();
         this.flashDamageIndicator();
 
         if (this.health <= 0) {
-            this.respawnPlayer();
+            this.startRespawnCountdown(reason);
         }
+    }
+
+    startRespawnCountdown(reason) {
+        this.respawnPending = true;
+        this.respawnTimer = 3;
+        this.deathReason = reason;
+        this.stopMining();
+        this.resetMiningBlockVisual(true);
+        this.closeChatInput();
+        this.closeSignReader();
+        this.updateDeathScreen();
     }
 
     healToFull() {
@@ -693,8 +719,11 @@ class Game {
         this.closeChatInput();
         this.cameraController.setPosition(this.respawnPoint);
         this.healToFull();
+        this.respawnPending = false;
+        this.respawnTimer = 0;
         this.airbornePeakFeetY = null;
         this.wasOnGroundForDamage = false;
+        this.updateDeathScreen();
     }
 
     setRespawnPointFromBlock(position) {
@@ -727,13 +756,13 @@ class Game {
             const fallDistance = this.airbornePeakFeetY - feetY;
             if (fallDistance > 4.2) {
                 const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
-                this.applyDamage(damage);
+                this.applyDamage(damage, 'You died from fall damage');
             }
             this.airbornePeakFeetY = null;
         }
 
         if (this.camera.position.y < -35) {
-            this.applyDamage(this.maxHealth);
+            this.applyDamage(this.maxHealth, 'You fell into the void');
         }
 
         if (this.cameraController.onGround && this.health > 0 && this.lastSafePositionSaveTimer >= 1) {
@@ -1944,7 +1973,7 @@ class Game {
     }
     
     onMouseDown(event) {
-        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen) return;
+        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.respawnPending) return;
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
@@ -2810,6 +2839,17 @@ class Game {
         
         const delta = Math.min(this.clock.getDelta(), 0.1);
         const now = performance.now();
+
+        if (this.respawnPending) {
+            this.respawnTimer -= delta;
+            if (this.respawnTimer <= 0) {
+                this.respawnPlayer();
+            }
+            this.updateDeathScreen();
+            this.updateUI();
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
 
         if (this.pauseOpen) {
             this.updateUI();

@@ -412,6 +412,27 @@
             cursor: pointer;
         }
 
+        #death-screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            background: rgba(16, 6, 6, 0.82);
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            z-index: 320;
+            text-align: center;
+        }
+        #death-screen.visible {
+            display: flex;
+        }
+        #death-screen h2 {
+            font-size: 28px;
+        }
+
         #mobile-controls {
             position: absolute;
             inset: 0;
@@ -561,6 +582,11 @@
         <h3>Sign</h3>
         <div id="sign-reader-content"></div>
         <button id="sign-reader-close" type="button">Close</button>
+    </div>
+    <div id="death-screen">
+        <h2>You Died</h2>
+        <div id="death-reason">Respawning soon...</div>
+        <div id="death-timer">3.0</div>
     </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">
