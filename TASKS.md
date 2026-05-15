@@ -7,7 +7,7 @@ Next tasks
 - [x] Mostrar el objeto seleccionado del inventario en la mano del personaje
 - [x] Persistir el estado del mundo en disco para que los bloques colocados/rotos sobrevivan a reinicios del servidor
 - [x] Permitir elegir nombre de jugador y mostrarlo sobre la cabeza del avatar
-- [ ] Suavizar el movimiento de otros jugadores y eliminar correctamente los avatares al desconectarse
+- [x] Suavizar el movimiento de otros jugadores y eliminar correctamente los avatares al desconectarse
 - [ ] Añadir efectos de sonido procedurales para minar, colocar, saltar y recoger objetos
 - [ ] Añadir un ciclo de dia y noche con transiciones de luz y cielo
 - 

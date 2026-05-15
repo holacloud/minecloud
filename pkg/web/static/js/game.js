@@ -391,6 +391,8 @@ class Game {
 
         group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
         group.userData.lastPosition = new THREE.Vector3();
+        group.userData.targetPosition = new THREE.Vector3();
+        group.userData.targetYaw = 0;
         group.userData.walkPhase = 0;
         group.userData.nameSprite = this.createNameTagSprite('Player');
         group.userData.nameSprite.position.set(0, 2.15, 0);
@@ -449,14 +451,67 @@ class Game {
     }
 
     updateRemotePlayerNames(payload) {
+        const activeIds = new Set();
         this.remotePlayerNames.clear();
         payload.players.forEach((player) => {
+            activeIds.add(player.id);
             this.remotePlayerNames.set(player.id, player.name);
             const avatar = this.otherPlayerMeshes.get(player.id);
             if (avatar) {
                 this.updateAvatarNameTag(avatar, player.name);
             }
         });
+
+        for (const [id, avatar] of this.otherPlayerMeshes) {
+            if (id === this.network.playerId || activeIds.has(id)) continue;
+            this.disposeRemoteAvatar(avatar);
+            this.otherPlayerMeshes.delete(id);
+            this.remotePlayerNames.delete(id);
+        }
+    }
+
+    disposeRemoteAvatar(avatar) {
+        if (!avatar) return;
+
+        avatar.traverse((node) => {
+            if (node instanceof THREE.Mesh && node.material) {
+                node.material.dispose();
+            }
+            if (node instanceof THREE.Sprite && node.material) {
+                if (node.material.map) {
+                    node.material.map.dispose();
+                }
+                node.material.dispose();
+            }
+        });
+        this.scene.remove(avatar);
+    }
+
+    lerpAngle(current, target, alpha) {
+        const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+        return current + delta * alpha;
+    }
+
+    updateRemotePlayers(delta) {
+        const alpha = Math.min(1, delta * 10);
+        for (const avatar of this.otherPlayerMeshes.values()) {
+            const previousPosition = avatar.position.clone();
+            avatar.position.lerp(avatar.userData.targetPosition, alpha);
+            avatar.rotation.y = this.lerpAngle(avatar.rotation.y, avatar.userData.targetYaw, alpha);
+
+            const parts = avatar.userData.avatarParts;
+            const deltaDistance = previousPosition.distanceTo(avatar.position);
+            avatar.userData.walkPhase += Math.min(0.7, deltaDistance * 12);
+            avatar.userData.lastPosition.copy(avatar.position);
+
+            const stride = Math.min(0.9, deltaDistance * 30);
+            const swing = Math.sin(avatar.userData.walkPhase) * stride;
+
+            parts.leftArm.rotation.x = swing;
+            parts.rightArm.rotation.x = -swing;
+            parts.leftLeg.rotation.x = -swing;
+            parts.rightLeg.rotation.x = swing;
+        }
     }
 
     refreshOtherPlayerAvatarMaterials() {
@@ -568,29 +623,17 @@ class Game {
         }
 
         this.updateAvatarNameTag(avatar, player.username || this.remotePlayerNames.get(player.id) || player.id);
-
-        const parts = avatar.userData.avatarParts;
         const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);
         if (!avatar.userData.initialized) {
             avatar.userData.lastPosition.copy(nextFeetPosition);
+            avatar.userData.targetPosition.copy(nextFeetPosition);
+            avatar.position.copy(nextFeetPosition);
+            avatar.rotation.y = player.yaw;
             avatar.userData.initialized = true;
         }
 
-        const delta = avatar.userData.lastPosition.distanceTo(nextFeetPosition);
-
-        avatar.userData.walkPhase += Math.min(0.7, delta * 8);
-        avatar.userData.lastPosition.copy(nextFeetPosition);
-
-        const stride = Math.min(0.9, delta * 14);
-        const swing = Math.sin(avatar.userData.walkPhase) * stride;
-
-        parts.leftArm.rotation.x = swing;
-        parts.rightArm.rotation.x = -swing;
-        parts.leftLeg.rotation.x = -swing;
-        parts.rightLeg.rotation.x = swing;
-
-        avatar.position.copy(nextFeetPosition);
-        avatar.rotation.y = player.yaw;
+        avatar.userData.targetPosition.copy(nextFeetPosition);
+        avatar.userData.targetYaw = player.yaw;
     }
     
     initHotbar() {
@@ -1451,6 +1494,7 @@ class Game {
         
         this.cameraController.update(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
+        this.updateRemotePlayers(delta);
         this.updatePickups(delta);
         this.updateMining(delta);
         this.updateMiningParticles(delta);
