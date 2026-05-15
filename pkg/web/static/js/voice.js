@@ -137,7 +137,8 @@ class VoiceChatManager {
             source: null,
             gain: null,
             panner: null,
-            remoteStream: null
+            remoteStream: null,
+            remoteAudio: null
         };
 
         pc.onicecandidate = (event) => {
@@ -173,7 +174,15 @@ class VoiceChatManager {
             if (!audio || !event.streams[0]) return;
 
             peerEntry.remoteStream = event.streams[0];
-            peerEntry.source = audio.createMediaStreamSource(event.streams[0]);
+            peerEntry.remoteAudio = document.createElement('audio');
+            peerEntry.remoteAudio.autoplay = true;
+            peerEntry.remoteAudio.playsInline = true;
+            peerEntry.remoteAudio.volume = 1;
+            peerEntry.remoteAudio.srcObject = event.streams[0];
+            peerEntry.remoteAudio.style.display = 'none';
+            document.body.appendChild(peerEntry.remoteAudio);
+
+            peerEntry.source = audio.createMediaElementSource(peerEntry.remoteAudio);
             peerEntry.gain = audio.createGain();
             peerEntry.gain.gain.value = 0;
 
@@ -183,6 +192,8 @@ class VoiceChatManager {
             } else {
                 peerEntry.source.connect(peerEntry.gain).connect(audio.destination);
             }
+
+            peerEntry.remoteAudio.play().catch((error) => console.warn('Voice audio play failed', error));
         };
 
         if (this.localStream) {
@@ -324,6 +335,11 @@ class VoiceChatManager {
         }
         if (peer.panner) {
             try { peer.panner.disconnect(); } catch (_error) {}
+        }
+        if (peer.remoteAudio) {
+            peer.remoteAudio.pause();
+            peer.remoteAudio.srcObject = null;
+            peer.remoteAudio.remove();
         }
         if (peer.offerTimeout) {
             clearTimeout(peer.offerTimeout);
