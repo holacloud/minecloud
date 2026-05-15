@@ -771,6 +771,33 @@ class Game {
             Math.abs(this.respawnPoint.z - (position.z + 0.5)) < 0.001;
     }
 
+    isNightTime() {
+        const hour = ((this.timeOfDay * 24) + 6) % 24;
+        return hour >= 18 || hour < 6;
+    }
+
+    trySleepInBed() {
+        const hit = this.raycastBlock(this.breakDistance);
+        if (!hit) return false;
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos) return false;
+        if (this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z) !== 'bed') return false;
+
+        if (!this.isNightTime()) {
+            this.receiveSystemMessage({ text: 'You can only sleep at night' });
+            return true;
+        }
+
+        this.timeOfDay = 0;
+        this.weatherState = 'clear';
+        this.weatherTimer = 0;
+        this.nextWeatherChange = 55 + Math.random() * 70;
+        this.receiveSystemMessage({ text: 'You slept until dawn' });
+        this.playTone({ frequency: 520, duration: 0.08, type: 'triangle', volume: 0.03, release: 0.08 });
+        return true;
+    }
+
     updateSurvival(delta) {
         this.lastSafePositionSaveTimer += delta;
         const feetY = this.camera.position.y - this.cameraController.eyeHeight;
@@ -2060,6 +2087,9 @@ class Game {
 
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
+            if (this.trySleepInBed()) {
+                return;
+            }
             this.tryReadSign();
             return;
         }

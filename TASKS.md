@@ -44,4 +44,4 @@ Next tasks
 - [x] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`
 - [x] Añadir brújula y reloj visual en el HUD
 - [x] Añadir modo foto con `F2` para ocultar toda la interfaz
-- [ ] Permitir dormir en la cama para saltar la noche
+- [x] Permitir dormir en la cama para saltar la noche
