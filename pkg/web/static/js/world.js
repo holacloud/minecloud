@@ -35,6 +35,7 @@ class WorldRenderer {
             gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
+            cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
         };
@@ -252,6 +253,17 @@ class WorldRenderer {
                     ctx.fillRect(x, 0, 1, size);
                 }
                 break;
+            case 'cactus':
+                this.paintPaletteTexture(ctx, size, [0x2F6E29, 0x3A7E31, 0x3F8D37, 0x5AA34A], seed);
+                ctx.fillStyle = this.shadeColor(0x2A5D25, 0);
+                for (let x = 1; x < size; x += 4) {
+                    ctx.fillRect(x, 0, 1, size);
+                }
+                ctx.fillStyle = this.shadeColor(0x7DBD63, 0);
+                for (let y = 1; y < size; y += 5) {
+                    ctx.fillRect(0, y, size, 1);
+                }
+                break;
             case 'brick':
                 ctx.fillStyle = this.shadeColor(0x864030, 0);
                 ctx.fillRect(0, 0, size, size);
@@ -374,6 +386,7 @@ class WorldRenderer {
             case 'cobblestone': return { roughness: 0.84, metalness: 0.06, bumpScale: 0.15, envMapIntensity: 0.42 };
             case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
             case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
+            case 'cactus': return { roughness: 0.88, metalness: 0.01, bumpScale: 0.08, envMapIntensity: 0.22 };
             case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
             case 'glass': return { roughness: 0.14, metalness: 0.08, bumpScale: 0.01, envMapIntensity: 1.05 };
             case 'coal_ore': return { roughness: 0.7, metalness: 0.12, bumpScale: 0.14, envMapIntensity: 0.55 };
@@ -468,28 +481,58 @@ class WorldRenderer {
             return a * (1 - ux) * (1 - uz) + b * ux * (1 - uz) + c * (1 - ux) * uz + d * ux * uz;
         };
 
+        const getBiomeAt = (worldX, worldZ) => {
+            const biomeNoise = noise2D(worldX + 420, worldZ - 310, 0.018);
+            const forestNoise = noise2D(worldX - 180, worldZ + 250, 0.03);
+
+            if (biomeNoise < 0.3) return 'desert';
+            if (biomeNoise > 0.72) return 'rocky';
+            if (forestNoise > 0.58) return 'forest';
+            return 'plains';
+        };
+
         for (let x = 0; x < this.chunkSize; x++) {
             for (let z = 0; z < this.chunkSize; z++) {
                 const worldX = chunkX * this.chunkSize + x;
                 const worldZ = chunkZ * this.chunkSize + z;
+                const biome = getBiomeAt(worldX, worldZ);
 
-                const height = Math.floor(noise2D(worldX, worldZ) * 8) + 3;
+                let height;
+                if (biome === 'desert') {
+                    height = Math.floor(noise2D(worldX, worldZ) * 5) + 2;
+                } else if (biome === 'rocky') {
+                    height = Math.floor(noise2D(worldX, worldZ) * 10) + 4;
+                } else if (biome === 'forest') {
+                    height = Math.floor(noise2D(worldX, worldZ) * 7) + 3;
+                } else {
+                    height = Math.floor(noise2D(worldX, worldZ) * 8) + 3;
+                }
 
                 for (let y = -5; y <= height; y++) {
                     let blockType;
                     if (y === -5) {
                         blockType = 'bedrock';
-                    } else if (y < height - 3) {
+                    } else if (y < height - 3 || (biome === 'rocky' && y < height - 1)) {
                         const oreRand = rand(worldX, worldZ, y * 100);
                         if (oreRand < 0.02) blockType = 'coal_ore';
                         else if (oreRand < 0.025) blockType = 'iron_ore';
                         else if (oreRand < 0.026) blockType = 'gold_ore';
                         else blockType = 'stone';
+                    } else if (biome === 'desert' && y >= height - 2) {
+                        blockType = 'sand';
+                    } else if (biome === 'rocky' && y === height) {
+                        blockType = rand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
                     } else if (y < height) {
                         blockType = 'dirt';
                     } else {
-                        const sandHeight = Math.floor(noise2D(worldX + 100, worldZ + 100, 0.1) * 3);
-                        blockType = sandHeight <= 0 ? 'grass' : 'sand';
+                        if (biome === 'desert') {
+                            blockType = 'sand';
+                        } else if (biome === 'rocky') {
+                            blockType = rand(worldX, worldZ, 2200) < 0.2 ? 'cobblestone' : 'stone';
+                        } else {
+                            const sandHeight = Math.floor(noise2D(worldX + 100, worldZ + 100, 0.1) * 3);
+                            blockType = sandHeight <= 0 ? 'grass' : 'sand';
+                        }
                     }
 
                     this.setBlockData(worldX, y, worldZ, blockType, key);
@@ -502,8 +545,13 @@ class WorldRenderer {
                     }
                 }
 
-                if (rand(worldX, worldZ, 999) < 0.01 && height >= 3) {
+                const treeChance = biome === 'forest' ? 0.032 : biome === 'plains' ? 0.012 : biome === 'rocky' ? 0.0025 : 0;
+                const cactusChance = biome === 'desert' ? 0.022 : 0;
+
+                if (treeChance > 0 && rand(worldX, worldZ, 999) < treeChance && height >= 3) {
                     this.generateTree(worldX, height + 1, worldZ, rand);
+                } else if (cactusChance > 0 && rand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
+                    this.generateCactus(worldX, height + 1, worldZ, rand);
                 }
             }
         }
@@ -529,6 +577,13 @@ class WorldRenderer {
                     this.setBlockData(x + lx, leavesStart + ly, z + lz, 'leaves');
                 }
             }
+        }
+    }
+
+    generateCactus(x, y, z, rand) {
+        const cactusHeight = 2 + Math.floor(rand(x, z, 3030) * 3);
+        for (let cy = 0; cy < cactusHeight; cy++) {
+            this.setBlockData(x, y + cy, z, 'cactus');
         }
     }
 

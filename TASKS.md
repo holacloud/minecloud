@@ -17,7 +17,7 @@ Next tasks
 - [x] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
 - [x] Añadir sistema de vida con daño por caída, barra de vida y respawn
 - [x] Guardar y restaurar la última posición segura del jugador entre sesiones
-- [ ] Añadir biomas con variación visible de terreno y vegetación
+- [x] Añadir biomas con variación visible de terreno y vegetación
 - [ ] Añadir mensajes de sistema de entrada/salida en el chat y contador de jugadores conectado
 - [ ] Añadir un bloque de cama para fijar el punto de respawn del jugador
-- 
+- [ ] Escuchar los pasos de otros jugadores cuando están cerca
