@@ -44,6 +44,8 @@
         }
         .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
         .muted { color: #9aa9bd; }
+        #audio-list { display: grid; gap: 8px; margin: 12px 0; }
+        audio { width: 100%; }
     </style>
 </head>
 <body>
@@ -55,6 +57,7 @@
         <span id="status">Connecting...</span>
     </div>
     <p>Abre esta página en dos navegadores o dispositivos, pulsa el botón en ambos y habla.</p>
+    <div id="audio-list"></div>
     <pre id="log"></pre>
 </main>
 
@@ -64,6 +67,7 @@
     const username = 'VoiceTest-' + playerId.slice(-4);
     const peers = new Map();
     const voiceStates = new Map();
+    const remoteAudios = new Map();
     let ws = null;
     let enabled = false;
     let localStream = null;
@@ -72,6 +76,7 @@
     const button = document.getElementById('toggle');
     const statusEl = document.getElementById('status');
     const logEl = document.getElementById('log');
+    const audioList = document.getElementById('audio-list');
 
     function log(...parts) {
         const line = parts.map((part) => typeof part === 'string' ? part : JSON.stringify(part)).join(' ');
@@ -165,13 +170,21 @@
             makingOffer: false,
             awaitingAnswer: false,
             ignoreOffer: false,
-            queuedCandidates: []
+            queuedCandidates: [],
+            statsTimer: null
         };
 
         pc.onicecandidate = (event) => {
-            if (event.candidate) send('webrtcIceCandidate', { toPlayerId: peerId, candidate: event.candidate });
+            if (event.candidate) {
+                log('Local ICE candidate', peerId, event.candidate.type || 'candidate', event.candidate.protocol || '');
+                send('webrtcIceCandidate', { toPlayerId: peerId, candidate: event.candidate });
+            } else {
+                log('Local ICE gathering complete', peerId);
+            }
         };
+        pc.onicegatheringstatechange = () => log('ICE gathering', peerId, pc.iceGatheringState);
         pc.oniceconnectionstatechange = () => log('ICE', peerId, pc.iceConnectionState);
+        pc.onsignalingstatechange = () => log('Signaling', peerId, pc.signalingState);
         pc.onconnectionstatechange = () => {
             log('Connection', peerId, pc.connectionState);
             peer.connected = pc.connectionState === 'connected';
@@ -180,11 +193,16 @@
         pc.onnegotiationneeded = () => createOffer(peerId);
         pc.ontrack = (event) => {
             log('Remote track received', peerId);
-            const audio = new Audio();
+            const audio = document.createElement('audio');
             audio.autoplay = true;
+            audio.controls = true;
             audio.playsInline = true;
+            audio.volume = 1;
             audio.srcObject = event.streams[0];
+            audioList.appendChild(audio);
+            remoteAudios.set(peerId, audio);
             audio.play().catch((error) => log('Audio play failed', error.message));
+            startStats(peerId, peer);
         };
 
         localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
@@ -253,19 +271,48 @@
         try {
             if (!peer.pc.remoteDescription) {
                 peer.queuedCandidates.push(payload.candidate);
+                log('Queued remote ICE candidate', payload.fromPlayerId, payload.candidate.type || 'candidate', payload.candidate.protocol || '');
                 return;
             }
             await peer.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            log('Remote ICE candidate applied', payload.fromPlayerId, payload.candidate.type || 'candidate', payload.candidate.protocol || '');
         } catch (error) {
             if (!peer.ignoreOffer) log('ICE candidate failed', payload.fromPlayerId, error.message);
         }
     }
 
+    async function startStats(peerId, peer) {
+        if (peer.statsTimer) return;
+        peer.statsTimer = setInterval(async () => {
+            if (peer.pc.connectionState === 'closed') return;
+            const stats = await peer.pc.getStats();
+            let inboundAudio = null;
+            let selectedPair = null;
+            stats.forEach((stat) => {
+                if (stat.type === 'inbound-rtp' && stat.kind === 'audio') inboundAudio = stat;
+                if (stat.type === 'candidate-pair' && stat.selected) selectedPair = stat;
+            });
+            if (inboundAudio) {
+                log('Inbound audio', peerId, `packets=${inboundAudio.packetsReceived || 0}`, `bytes=${inboundAudio.bytesReceived || 0}`);
+            }
+            if (selectedPair) {
+                log('Selected candidate pair', peerId, selectedPair.state || 'unknown');
+            }
+        }, 3000);
+    }
+
     function removePeer(peerId) {
         const peer = peers.get(peerId);
         if (!peer) return;
+        if (peer.statsTimer) clearInterval(peer.statsTimer);
         peer.pc.close();
         peers.delete(peerId);
+        const audio = remoteAudios.get(peerId);
+        if (audio) {
+            audio.srcObject = null;
+            audio.remove();
+            remoteAudios.delete(peerId);
+        }
         log('Peer removed', peerId);
     }
 
