@@ -1671,6 +1671,8 @@ class Game {
         group.userData.moveTimer = 1 + Math.random() * 2;
         group.userData.stepPhase = Math.random() * Math.PI * 2;
         group.userData.bounceVelocity = 0;
+        group.userData.hostile = species === 'spider' || species === 'cave_monster';
+        group.userData.attackCooldown = 0;
 
         const createPart = (geometry, color, x, y, z) => {
             const material = this.rtxModeEnabled
@@ -1685,7 +1687,19 @@ class Game {
             return mesh;
         };
 
-        if (species === 'sheep') {
+        if (species === 'spider') {
+            createPart(new THREE.BoxGeometry(0.72, 0.28, 0.56), 0x17121d, 0, 0.34, 0);
+            createPart(new THREE.BoxGeometry(0.34, 0.22, 0.34), 0x24192c, 0.44, 0.38, 0);
+            createPart(new THREE.BoxGeometry(0.06, 0.04, 0.06), 0xe03b3b, 0.58, 0.43, -0.08);
+            createPart(new THREE.BoxGeometry(0.06, 0.04, 0.06), 0xe03b3b, 0.58, 0.43, 0.08);
+        } else if (species === 'cave_monster') {
+            createPart(new THREE.BoxGeometry(0.58, 0.8, 0.34), 0x24364a, 0, 0.86, 0);
+            createPart(new THREE.BoxGeometry(0.42, 0.42, 0.42), 0x314e66, 0, 1.46, 0);
+            createPart(new THREE.BoxGeometry(0.1, 0.08, 0.08), 0xa7f3d0, 0.18, 1.5, 0.22);
+            createPart(new THREE.BoxGeometry(0.1, 0.08, 0.08), 0xa7f3d0, -0.18, 1.5, 0.22);
+            createPart(new THREE.BoxGeometry(0.18, 0.64, 0.18), 0x1d2b3a, -0.42, 0.88, 0);
+            createPart(new THREE.BoxGeometry(0.18, 0.64, 0.18), 0x1d2b3a, 0.42, 0.88, 0);
+        } else if (species === 'sheep') {
             createPart(new THREE.BoxGeometry(0.8, 0.52, 0.5), 0xf1efe6, 0, 0.56, 0);
             createPart(new THREE.BoxGeometry(0.32, 0.28, 0.24), 0x1b1b1b, 0.46, 0.62, 0);
         } else if (species === 'duck') {
@@ -1703,8 +1717,8 @@ class Game {
             [0.22, 0.2, -0.12],
             [0.22, 0.2, 0.12]
         ];
-        const legColor = species === 'duck' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : 0xb87683;
-        const legSize = species === 'duck' ? [0.06, 0.22, 0.06] : [0.1, 0.32, 0.1];
+        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : 0xb87683;
+        const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : [0.1, 0.32, 0.1];
         group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
 
         group.position.copy(position);
@@ -1718,7 +1732,9 @@ class Game {
             ['duck', new THREE.Vector3(-6, 0, 10)],
             ['pig', new THREE.Vector3(12, 0, -8)],
             ['sheep', new THREE.Vector3(-10, 0, -6)],
-            ['duck', new THREE.Vector3(4, 0, -12)]
+            ['duck', new THREE.Vector3(4, 0, -12)],
+            ['spider', new THREE.Vector3(-14, 0, 14)],
+            ['cave_monster', new THREE.Vector3(18, 0, -18)]
         ];
 
         for (const [species, pos] of mobSetups) {
@@ -1757,21 +1773,32 @@ class Game {
         const tones = {
             sheep: 330,
             duck: 520,
-            pig: 240
+            pig: 240,
+            spider: 180,
+            cave_monster: 120
         };
         this.playTone({ frequency: tones[mob.userData.species] || 300, duration: 0.08, type: 'triangle', volume: 0.02, release: 0.07, detune: (Math.random() - 0.5) * 40 });
         this.playNoiseBurst({ duration: 0.04, volume: 0.01, highpass: 120, lowpass: 900 });
     }
 
     updateAmbientMobs(delta) {
+        const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
         for (const mob of this.ambientMobs) {
             mob.userData.moveTimer -= delta;
-            if (mob.userData.moveTimer <= 0) {
+            mob.userData.attackCooldown = Math.max(0, mob.userData.attackCooldown - delta);
+
+            const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
+            const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
+            const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < 16;
+
+            if (isChasing) {
+                mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
+            } else if (mob.userData.moveTimer <= 0) {
                 mob.userData.moveTimer = 1.2 + Math.random() * 2.8;
                 mob.userData.direction += (Math.random() - 0.5) * 1.8;
             }
 
-            const moveSpeed = mob.userData.species === 'duck' ? 0.55 : 0.38;
+            const moveSpeed = isChasing ? (mob.userData.species === 'spider' ? 1.25 : 0.9) : mob.userData.species === 'duck' ? 0.55 : 0.38;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * delta);
             const candidate = mob.position.clone().add(move);
             const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
@@ -1781,6 +1808,11 @@ class Game {
                 mob.position.y = floorY;
             } else {
                 mob.userData.direction += Math.PI * 0.75;
+            }
+
+            if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
+                this.applyDamage(mob.userData.species === 'spider' ? 2 : 4, `You were attacked by a ${mob.userData.species === 'spider' ? 'spider' : 'cave monster'}`);
+                mob.userData.attackCooldown = 1.2;
             }
 
             mob.userData.stepPhase += delta * 7;
