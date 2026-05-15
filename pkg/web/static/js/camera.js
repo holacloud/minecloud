@@ -10,8 +10,11 @@ class CameraController {
         this.jumpVelocity = 7.25;
         this.lookSpeed = 0.002;
         this.stepHeight = 1;
+        this.crouchSpeedFactor = 0.45;
+        this.standingEyeHeight = 1.62;
+        this.crouchingEyeHeight = 1.32;
         
-        this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false };
+        this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false, crouch: false };
         this.moveInput = { x: 0, y: 0 };
         this.lookInput = { deltaX: 0, deltaY: 0 };
         this.touchJump = false;
@@ -25,7 +28,8 @@ class CameraController {
         this.isInWater = false;
         
         this.blockChecker = null;
-        this.eyeHeight = 1.62;
+        this.eyeHeight = this.standingEyeHeight;
+        this.isCrouching = false;
         
         this.init();
     }
@@ -48,6 +52,7 @@ class CameraController {
             if (e.code === 'KeyD') this.keys.right = true;
             if (e.code === 'Space') this.keys.jump = true;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.sprint = true;
+            if (e.code === 'ControlLeft' || e.code === 'ControlRight') this.keys.crouch = true;
         });
         
         document.addEventListener('keyup', e => {
@@ -57,6 +62,7 @@ class CameraController {
             if (e.code === 'KeyD') this.keys.right = false;
             if (e.code === 'Space') this.keys.jump = false;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.sprint = false;
+            if (e.code === 'ControlLeft' || e.code === 'ControlRight') this.keys.crouch = false;
         });
         
         document.addEventListener('mousemove', e => {
@@ -94,6 +100,11 @@ class CameraController {
         this.velocityY = Math.max(0, this.velocityY);
         this.onGround = true;
     }
+
+    wouldStepOffLedge(targetX, targetZ, currentFloorY) {
+        const nextFloorY = this.getFloorY(targetX, targetZ, currentFloorY + 1);
+        return nextFloorY < currentFloorY - 0.1;
+    }
     
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
@@ -105,6 +116,16 @@ class CameraController {
     }
     
     update(delta) {
+        const wasCrouching = this.isCrouching;
+        this.isCrouching = this.keys.crouch;
+        if (wasCrouching !== this.isCrouching) {
+            const previousEyeHeight = this.eyeHeight;
+            this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
+            if (this.onGround) {
+                this.camera.position.y += this.eyeHeight - previousEyeHeight;
+            }
+        }
+
         this.yaw -= this.lookInput.deltaX * this.lookSpeed;
         this.pitch -= this.lookInput.deltaY * this.lookSpeed;
         this.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.pitch));
@@ -116,7 +137,7 @@ class CameraController {
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
         this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water';
 
-        const baseSpeed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+        const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
         
         const forward = new THREE.Vector3(0, 0, -1);
@@ -141,9 +162,12 @@ class CameraController {
             const px = this.camera.position.x;
             const pz = this.camera.position.z;
             const py = this.camera.position.y - this.eyeHeight;
+            const currentFloorY = this.getFloorY(px, pz, py);
             
             const newX = px + moveX;
-            if (!this.hasBlock(Math.floor(newX), Math.floor(py), Math.floor(pz)) &&
+            if (this.isCrouching && this.onGround && this.wouldStepOffLedge(newX, pz, currentFloorY)) {
+                // Sneak movement prevents falling off ledges.
+            } else if (!this.hasBlock(Math.floor(newX), Math.floor(py), Math.floor(pz)) &&
                 !this.hasBlock(Math.floor(newX), Math.floor(py + 1.8), Math.floor(pz))) {
                 this.camera.position.x = newX;
             } else if (this.canStepUp(newX, pz, py)) {
@@ -152,7 +176,9 @@ class CameraController {
             }
             
             const newZ = pz + moveZ;
-            if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py), Math.floor(newZ)) &&
+            if (this.isCrouching && this.onGround && this.wouldStepOffLedge(this.camera.position.x, newZ, currentFloorY)) {
+                // Sneak movement prevents falling off ledges.
+            } else if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py), Math.floor(newZ)) &&
                 !this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py + 1.8), Math.floor(newZ))) {
                 this.camera.position.z = newZ;
             } else if (this.canStepUp(this.camera.position.x, newZ, py)) {

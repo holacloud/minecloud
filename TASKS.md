@@ -33,5 +33,5 @@ Next tasks
 - [x] Permitir leer cómodamente el texto completo de un cartel al interactuar con él
 - [x] Añadir pasos locales del jugador y un ligero camera bob al caminar
 - [x] Añadir lluvia dinámica con efecto visual y de iluminación
-- [ ] Añadir modo agachado/sneak para moverse despacio y no caerse de los bordes
+- [x] Añadir modo agachado/sneak para moverse despacio y no caerse de los bordes
 - [ ] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado
