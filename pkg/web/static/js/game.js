@@ -32,6 +32,7 @@ class Game {
             leaves: 16
         };
         this.selectedSlot = 0;
+        this.playerName = this.loadPlayerName();
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
         this.rtxToggleWindowMs = 1200;
@@ -49,6 +50,7 @@ class Game {
         this.hotbarCountElements = [];
         this.pickups = new Map();
         this.pickupIdCounter = 0;
+        this.remotePlayerNames = new Map();
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -98,6 +100,18 @@ class Game {
         document.getElementById('connecting').style.display = 'none';
         
         this.animate();
+    }
+
+    loadPlayerName() {
+        const savedName = window.localStorage.getItem('minecloud-player-name');
+        if (savedName && savedName.trim()) {
+            return savedName.trim().slice(0, 20);
+        }
+
+        const requested = window.prompt('Choose your player name', 'Player');
+        const resolved = (requested || 'Player').trim().slice(0, 20) || 'Player';
+        window.localStorage.setItem('minecloud-player-name', resolved);
+        return resolved;
     }
     
     initThreeJS() {
@@ -378,7 +392,71 @@ class Game {
         group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
         group.userData.lastPosition = new THREE.Vector3();
         group.userData.walkPhase = 0;
+        group.userData.nameSprite = this.createNameTagSprite('Player');
+        group.userData.nameSprite.position.set(0, 2.15, 0);
+        group.add(group.userData.nameSprite);
         return group;
+    }
+
+    createNameTagSprite(name) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(10, 10, 236, 44);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.strokeRect(10, 10, 236, 44);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(name.slice(0, 20), 128, 33);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        if (THREE.sRGBEncoding) {
+            texture.encoding = THREE.sRGBEncoding;
+        }
+
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.9, 0.48, 1);
+        sprite.renderOrder = 2000;
+        return sprite;
+    }
+
+    updateAvatarNameTag(avatar, name) {
+        if (!avatar) return;
+
+        const safeName = (name || 'Player').slice(0, 20);
+        const currentSprite = avatar.userData.nameSprite;
+        if (currentSprite && currentSprite.userData.name === safeName) return;
+
+        if (currentSprite) {
+            avatar.remove(currentSprite);
+            currentSprite.material.map.dispose();
+            currentSprite.material.dispose();
+        }
+
+        const sprite = this.createNameTagSprite(safeName);
+        sprite.position.set(0, 2.15, 0);
+        sprite.userData.name = safeName;
+        avatar.userData.nameSprite = sprite;
+        avatar.add(sprite);
+    }
+
+    updateRemotePlayerNames(payload) {
+        this.remotePlayerNames.clear();
+        payload.players.forEach((player) => {
+            this.remotePlayerNames.set(player.id, player.name);
+            const avatar = this.otherPlayerMeshes.get(player.id);
+            if (avatar) {
+                this.updateAvatarNameTag(avatar, player.name);
+            }
+        });
     }
 
     refreshOtherPlayerAvatarMaterials() {
@@ -469,10 +547,12 @@ class Game {
     
     initNetwork() {
         this.network = new NetworkClient();
+        this.network.setUsername(this.playerName);
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload, payload.blockType));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
+        this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
@@ -486,6 +566,8 @@ class Game {
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
         }
+
+        this.updateAvatarNameTag(avatar, player.username || this.remotePlayerNames.get(player.id) || player.id);
 
         const parts = avatar.userData.avatarParts;
         const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);

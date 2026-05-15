@@ -4,6 +4,7 @@ class NetworkClient {
         this.connected = false;
         this.reconnectInterval = 3000;
         this.playerId = this.generatePlayerId();
+        this.username = null;
         this.messageHandlers = new Map();
         this.otherPlayers = new Map();
     }
@@ -19,7 +20,7 @@ class NetworkClient {
         this.ws.onopen = () => {
             console.log('WebSocket: Connected to server');
             this.connected = true;
-            this.send('playerJoin', { playerId: this.playerId });
+            this.send('playerJoin', { playerId: this.playerId, username: this.username });
             this.updateStatus('Connected');
         };
         
@@ -89,6 +90,7 @@ class NetworkClient {
             for (const [id, player] of Object.entries(payload.players)) {
                 if (id !== this.playerId) {
                     this.otherPlayers.set(id, player);
+                    this.emit('otherPlayerMove', player);
                 }
             }
         }
@@ -111,6 +113,8 @@ class NetworkClient {
                 listEl.appendChild(li);
             });
         }
+
+        this.emit('playerList', payload);
     }
     
     handlePlayerMove(payload) {
@@ -131,6 +135,10 @@ class NetworkClient {
     
     on(type, handler) {
         this.messageHandlers.set(type, handler);
+    }
+
+    setUsername(username) {
+        this.username = username;
     }
     
     updateStatus(text) {

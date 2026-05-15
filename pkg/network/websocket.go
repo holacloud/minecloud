@@ -37,6 +37,7 @@ type Block struct {
 
 type Player struct {
 	ID      string  `json:"id"`
+	Username string `json:"username,omitempty"`
 	X       float64 `json:"x"`
 	Y       float64 `json:"y"`
 	Z       float64 `json:"z"`
@@ -224,8 +225,9 @@ func handleMessage(client *Client, msg Message) {
 		
 		stateMu.Lock()
 		gameState.Players[client.ID] = Player{
-			ID: client.ID,
-			X:  0, Y: 4, Z: 0,
+			ID:       client.ID,
+			Username: client.username,
+			X:        0, Y: 4, Z: 0,
 		}
 		stateMu.Unlock()
 		
@@ -239,7 +241,8 @@ func handleMessage(client *Client, msg Message) {
 		json.Unmarshal(msg.Payload, &payload)
 		
 		stateMu.Lock()
-		if _, ok := gameState.Players[payload.ID]; ok {
+		if existing, ok := gameState.Players[payload.ID]; ok {
+			payload.Username = existing.Username
 			gameState.Players[payload.ID] = payload
 		}
 		stateMu.Unlock()
@@ -303,7 +306,11 @@ func broadcastPlayerList() {
 	stateMu.RLock()
 	players := make([]map[string]string, 0)
 	for id, p := range gameState.Players {
-		players = append(players, map[string]string{"id": id, "name": p.ID})
+		name := p.Username
+		if name == "" {
+			name = p.ID
+		}
+		players = append(players, map[string]string{"id": id, "name": name})
 	}
 	stateMu.RUnlock()
 	
