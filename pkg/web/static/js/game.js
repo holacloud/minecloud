@@ -817,21 +817,23 @@ class Game {
         return this.cameraController.getPosition();
     }
 
-    updateThirdPersonCamera(anchor) {
+    updateThirdPersonCamera(anchor, delta) {
         this.thirdPersonAnchor = anchor.clone();
-        this.updateLocalPlayerAvatar(anchor);
+        this.updateLocalPlayerAvatar(anchor, delta);
         const behind = new THREE.Vector3(0, 1.5, 3.6);
         behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + Math.PI);
         this.camera.position.copy(anchor).add(behind);
         this.camera.lookAt(anchor.x, anchor.y + 0.6, anchor.z);
     }
 
-    updateLocalPlayerAvatar(anchor) {
+    updateLocalPlayerAvatar(anchor, delta) {
         if (!this.localPlayerAvatar) return;
 
+        const previousPosition = this.localPlayerAvatar.position.clone();
         this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
         this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
+        this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
     }
 
     togglePhotoMode() {
@@ -1971,34 +1973,39 @@ class Game {
         return current + delta * alpha;
     }
 
+    animatePlayerAvatar(avatar, previousPosition, delta, playFootsteps = true) {
+        const parts = avatar.userData.avatarParts;
+        if (!parts) return;
+
+        const deltaDistance = previousPosition.distanceTo(avatar.position);
+        avatar.userData.walkPhase += Math.min(0.7, deltaDistance * 12);
+        avatar.userData.lastPosition.copy(avatar.position);
+
+        const stride = Math.min(0.9, deltaDistance * 30);
+        const swing = Math.sin(avatar.userData.walkPhase) * stride;
+
+        parts.leftArm.rotation.x = swing;
+        parts.rightArm.rotation.x = -swing;
+        parts.leftLeg.rotation.x = -swing;
+        parts.rightLeg.rotation.x = swing;
+
+        if (playFootsteps && deltaDistance > 0.002) {
+            avatar.userData.stepDistance += deltaDistance;
+            if (avatar.userData.stepDistance >= 0.55) {
+                avatar.userData.stepDistance = 0;
+                const stepBlock = this.world.getBlockTypeAt(Math.round(avatar.position.x), Math.floor(avatar.position.y), Math.round(avatar.position.z)) || 'grass';
+                this.playPositionalFootstep(avatar.position, stepBlock);
+            }
+        }
+    }
+
     updateRemotePlayers(delta) {
         const alpha = Math.min(1, delta * 10);
         for (const avatar of this.otherPlayerMeshes.values()) {
             const previousPosition = avatar.position.clone();
             avatar.position.lerp(avatar.userData.targetPosition, alpha);
             avatar.rotation.y = this.lerpAngle(avatar.rotation.y, avatar.userData.targetYaw, alpha);
-
-            const parts = avatar.userData.avatarParts;
-            const deltaDistance = previousPosition.distanceTo(avatar.position);
-            avatar.userData.walkPhase += Math.min(0.7, deltaDistance * 12);
-            avatar.userData.lastPosition.copy(avatar.position);
-
-            const stride = Math.min(0.9, deltaDistance * 30);
-            const swing = Math.sin(avatar.userData.walkPhase) * stride;
-
-            parts.leftArm.rotation.x = swing;
-            parts.rightArm.rotation.x = -swing;
-            parts.leftLeg.rotation.x = -swing;
-            parts.rightLeg.rotation.x = swing;
-
-            if (deltaDistance > 0.002) {
-                avatar.userData.stepDistance += deltaDistance;
-                if (avatar.userData.stepDistance >= 0.55) {
-                    avatar.userData.stepDistance = 0;
-                    const stepBlock = this.world.getBlockTypeAt(Math.round(avatar.position.x), Math.floor(avatar.position.y), Math.round(avatar.position.z)) || 'grass';
-                    this.playPositionalFootstep(avatar.position, stepBlock);
-                }
-            }
+            this.animatePlayerAvatar(avatar, previousPosition, delta, true);
         }
     }
 
@@ -3800,7 +3807,7 @@ class Game {
         this.updateFirstPersonHand(delta);
 
         if (this.cameraViewMode === 'third') {
-            this.updateThirdPersonCamera(playerAnchor);
+            this.updateThirdPersonCamera(playerAnchor, delta);
         }
         
         if (now - this.lastSelectionUpdate >= this.selectionUpdateInterval) {
