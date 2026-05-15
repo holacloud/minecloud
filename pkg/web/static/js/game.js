@@ -59,6 +59,7 @@ class Game {
         this.dayNightCycleEnabled = true;
         this.dayNightCycleDuration = 240;
         this.timeOfDay = 0.22;
+        this.worldDay = 0;
         this.weatherState = 'clear';
         this.weatherTimer = 0;
         this.nextWeatherChange = 70;
@@ -134,6 +135,8 @@ class Game {
         this.lastLocalGroundPosition = null;
         this.cameraBobPhase = 0;
         this.photoMode = false;
+        this.inventoryOpen = false;
+        this.hotbarSize = 8;
         this.maxHealth = 20;
         this.health = this.maxHealth;
         this.respawnPending = false;
@@ -146,6 +149,9 @@ class Game {
         this.lastSafePositionSaveTimer = 0;
         
         this.otherPlayerMeshes = new Map();
+        this.sunCube = null;
+        this.moonCube = null;
+        this.currentMoonPhase = -1;
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
         this.playerMaterial = new THREE.MeshLambertMaterial({ color: 0xFFCC00 });
 
@@ -882,6 +888,7 @@ class Game {
         this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 20, 0);
         this.scene.add(this.camera);
+        this.initCelestialBodies();
         
         this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -924,6 +931,50 @@ class Game {
         this.initViewModel();
 
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    createMoonPhaseTexture(phase) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#07111f';
+        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = '#f4f1da';
+        ctx.beginPath();
+        ctx.arc(64, 64, 36, 0, Math.PI * 2);
+        ctx.fill();
+
+        const shadowOffset = (phase / 7 - 0.5) * 72;
+        ctx.fillStyle = '#07111f';
+        ctx.beginPath();
+        ctx.arc(64 + shadowOffset, 64, 36, 0, Math.PI * 2);
+        ctx.fill();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        if (THREE.sRGBEncoding) {
+            texture.encoding = THREE.sRGBEncoding;
+        }
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    initCelestialBodies() {
+        this.sunCube = new THREE.Mesh(
+            new THREE.BoxGeometry(10, 10, 10),
+            new THREE.MeshBasicMaterial({ color: 0xffdd88 })
+        );
+        this.sunCube.renderOrder = 10;
+        this.scene.add(this.sunCube);
+
+        const moonMaterials = [];
+        for (let i = 0; i < 8; i++) {
+            moonMaterials.push(new THREE.MeshBasicMaterial({ map: this.createMoonPhaseTexture(i) }));
+        }
+        this.moonCube = new THREE.Mesh(new THREE.BoxGeometry(9, 9, 9), moonMaterials);
+        this.moonCube.renderOrder = 10;
+        this.scene.add(this.moonCube);
     }
 
     initWeatherEffects() {
@@ -1213,6 +1264,25 @@ class Game {
             Math.max(18, sunHeight * orbitRadius + 24),
             Math.sin(angle) * orbitRadius * 0.65
         );
+        if (this.sunCube) {
+            this.sunCube.position.copy(this.sunLight.position.clone().multiplyScalar(0.92));
+            this.sunCube.visible = sunHeight > -0.18;
+        }
+        if (this.moonCube) {
+            this.moonCube.position.set(-this.sunLight.position.x * 0.92, Math.max(18, -sunHeight * orbitRadius + 24), -this.sunLight.position.z * 0.92);
+            const phase = ((this.worldDay % 8) + 8) % 8;
+            if (phase !== this.currentMoonPhase) {
+                this.currentMoonPhase = phase;
+                this.moonCube.material.forEach((material) => {
+                    if (material.map) {
+                        material.map.dispose();
+                    }
+                    material.map = this.createMoonPhaseTexture(phase);
+                    material.needsUpdate = true;
+                });
+            }
+            this.moonCube.visible = sunHeight < 0.22;
+        }
 
         this.sunLight.intensity = THREE.MathUtils.lerp(0.08, this.rtxModeEnabled ? 1.7 : 1.0, daylight) + sunset * 0.16;
         this.sunLight.color.copy(this.blendColors(new THREE.Color(0x8AA6D8), new THREE.Color(0xFFD7A8), sunset + daylight * 0.2));
@@ -1583,6 +1653,9 @@ class Game {
             if (typeof payload.timeOfDay === 'number') {
                 this.timeOfDay = payload.timeOfDay;
             }
+            if (typeof payload.worldDay === 'number') {
+                this.worldDay = payload.worldDay;
+            }
         });
         this.network.on('voiceState', (payload) => {
             if (this.voiceChat) {
@@ -1644,20 +1717,22 @@ class Game {
         this.hotbarSlotElements = [];
         this.hotbarCountElements = [];
 
-        this.inventory.forEach((blockType, index) => {
+        for (let visibleIndex = 0; visibleIndex < this.hotbarSize; visibleIndex++) {
             const slot = document.createElement('div');
-            slot.className = 'hotbar-slot' + (index === 0 ? ' selected' : '');
-            slot.dataset.index = index;
-            slot.style.backgroundColor = '#' + this.world.blockTypes[blockType].color.toString(16).padStart(6, '0');
+            slot.className = 'hotbar-slot';
+            slot.dataset.index = visibleIndex;
             slot.addEventListener('pointerdown', (event) => {
                 if (!this.touchControlsEnabled) return;
                 event.preventDefault();
-                this.selectSlot(index);
+                const inventoryIndex = this.getHotbarWindowStart() + visibleIndex;
+                if (inventoryIndex < this.inventory.length) {
+                    this.selectSlot(inventoryIndex);
+                }
             });
             
             const num = document.createElement('span');
             num.className = 'slot-num';
-            num.textContent = index + 1;
+            num.textContent = visibleIndex + 1;
             slot.appendChild(num);
 
             const count = document.createElement('span');
@@ -1665,25 +1740,105 @@ class Game {
             slot.appendChild(count);
             
             hotbar.appendChild(slot);
-            this.hotbarSlotElements[index] = slot;
-            this.hotbarCountElements[index] = count;
-        });
+            this.hotbarSlotElements[visibleIndex] = slot;
+            this.hotbarCountElements[visibleIndex] = count;
+        }
 
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
+        this.renderInventoryPanel();
         this.saveInventoryState();
     }
 
+    getHotbarWindowStart() {
+        const maxStart = Math.max(0, this.inventory.length - this.hotbarSize);
+        const centeredStart = this.selectedSlot - Math.floor(this.hotbarSize / 2);
+        return Math.max(0, Math.min(maxStart, centeredStart));
+    }
+
     updateHotbarCounts() {
-        for (let i = 0; i < this.inventory.length; i++) {
-            const type = this.inventory[i];
+        const start = this.getHotbarWindowStart();
+        for (let i = 0; i < this.hotbarSize; i++) {
+            const inventoryIndex = start + i;
+            const type = this.inventory[inventoryIndex];
             const count = this.getInventoryCount(type);
             const slotEl = this.hotbarSlotElements[i];
             const countEl = this.hotbarCountElements[i];
             if (!slotEl || !countEl) continue;
 
+            if (!type) {
+                slotEl.style.backgroundImage = '';
+                slotEl.style.backgroundColor = 'rgba(0,0,0,0.2)';
+                slotEl.classList.remove('selected');
+                slotEl.classList.add('empty');
+                countEl.textContent = '';
+                continue;
+            }
+
+            slotEl.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            slotEl.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
             countEl.textContent = count > 0 ? count : '0';
             slotEl.classList.toggle('empty', count <= 0);
+            slotEl.classList.toggle('selected', inventoryIndex === this.selectedSlot);
+        }
+    }
+
+    renderInventoryPanel() {
+        const panel = document.getElementById('inventory-panel');
+        const grid = document.getElementById('inventory-grid');
+        if (!panel || !grid) return;
+
+        panel.classList.toggle('visible', this.inventoryOpen);
+        grid.innerHTML = '';
+
+        this.inventory.forEach((type, index) => {
+            const item = document.createElement('div');
+            item.className = 'inventory-item' + (this.selectedSlot === index ? ' selected' : '') + (this.getInventoryCount(type) <= 0 ? ' empty' : '');
+            item.addEventListener('click', () => {
+                this.selectSlot(index);
+                this.closeInventoryPanel();
+            });
+
+            const icon = document.createElement('div');
+            icon.className = 'inventory-item-icon';
+            icon.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            icon.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
+
+            const name = document.createElement('div');
+            name.className = 'inventory-item-name';
+            name.textContent = this.getBlockDisplayName(type);
+
+            const count = document.createElement('div');
+            count.className = 'inventory-item-count';
+            count.textContent = `x${this.getInventoryCount(type)}`;
+
+            item.appendChild(icon);
+            item.appendChild(name);
+            item.appendChild(count);
+            grid.appendChild(item);
+        });
+    }
+
+    openInventoryPanel() {
+        this.inventoryOpen = true;
+        this.stopMining();
+        this.closeChatInput();
+        if (document.pointerLockElement === this.renderer.domElement) {
+            document.exitPointerLock();
+        }
+        this.renderInventoryPanel();
+    }
+
+    closeInventoryPanel() {
+        this.inventoryOpen = false;
+        this.renderInventoryPanel();
+    }
+
+    toggleInventoryPanel() {
+        if (this.inventoryOpen) {
+            this.closeInventoryPanel();
+        } else {
+            this.openInventoryPanel();
         }
     }
 
@@ -1711,6 +1866,7 @@ class Game {
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
         this.renderCraftingPanel();
+        this.renderInventoryPanel();
         this.saveInventoryState();
     }
 
@@ -1725,6 +1881,7 @@ class Game {
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
         this.renderCraftingPanel();
+        this.renderInventoryPanel();
         this.saveInventoryState();
         return true;
     }
@@ -2038,7 +2195,7 @@ class Game {
     }
     
     onMouseDown(event) {
-        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.respawnPending) return;
+        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) return;
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
@@ -2067,6 +2224,8 @@ class Game {
                 this.closeChatInput();
             } else if (this.signReaderOpen) {
                 this.closeSignReader();
+            } else if (this.inventoryOpen) {
+                this.closeInventoryPanel();
             } else if (this.craftingOpen) {
                 this.toggleCraftingPanel();
             } else {
@@ -2088,6 +2247,14 @@ class Game {
             if (event.code === 'KeyC' && !event.repeat) {
                 event.preventDefault();
                 this.toggleCraftingPanel();
+            }
+            return;
+        }
+
+        if (this.inventoryOpen) {
+            if (event.code === 'KeyE' && !event.repeat) {
+                event.preventDefault();
+                this.closeInventoryPanel();
             }
             return;
         }
@@ -2117,6 +2284,12 @@ class Game {
             return;
         }
 
+        if (event.code === 'KeyE' && !event.repeat) {
+            event.preventDefault();
+            this.toggleInventoryPanel();
+            return;
+        }
+
         if (event.code === 'KeyC' && !event.repeat) {
             event.preventDefault();
             this.toggleCraftingPanel();
@@ -2135,8 +2308,11 @@ class Game {
         }
 
         const slot = parseInt(event.key) - 1;
-        if (slot >= 0 && slot < this.inventory.length) {
-            this.selectSlot(slot);
+        if (slot >= 0 && slot < this.hotbarSize) {
+            const inventoryIndex = this.getHotbarWindowStart() + slot;
+            if (inventoryIndex < this.inventory.length) {
+                this.selectSlot(inventoryIndex);
+            }
         }
     }
 
@@ -2147,17 +2323,11 @@ class Game {
         event.preventDefault();
 
         const now = performance.now();
-        if (now - this.lastWheelStepAt > 150) {
-            this.wheelSlotAccumulator = 0;
-        }
-
-        this.wheelSlotAccumulator += event.deltaY;
-        if (Math.abs(this.wheelSlotAccumulator) < 60) {
+        if (now - this.lastWheelStepAt < 110) {
             return;
         }
 
-        const direction = this.wheelSlotAccumulator > 0 ? 1 : -1;
-        this.wheelSlotAccumulator = 0;
+        const direction = event.deltaY > 0 ? 1 : -1;
         this.lastWheelStepAt = now;
 
         const totalSlots = this.inventory.length;
@@ -2166,10 +2336,9 @@ class Game {
     }
     
     selectSlot(index) {
-        this.selectedSlot = index;
-        document.querySelectorAll('.hotbar-slot').forEach((el, i) => {
-            el.classList.toggle('selected', i === index);
-        });
+        this.selectedSlot = Math.max(0, Math.min(index, this.inventory.length - 1));
+        this.updateHotbarCounts();
+        this.renderInventoryPanel();
         this.refreshHeldItemMesh();
         this.saveInventoryState();
     }

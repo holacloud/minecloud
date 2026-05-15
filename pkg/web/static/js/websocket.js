@@ -123,7 +123,7 @@ class NetworkClient {
         }
 
         if (typeof payload.timeOfDay === 'number') {
-            this.emit('timeSync', { timeOfDay: payload.timeOfDay });
+            this.emit('timeSync', { timeOfDay: payload.timeOfDay, worldDay: payload.worldDay });
         }
     }
     

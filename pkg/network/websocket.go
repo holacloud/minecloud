@@ -60,6 +60,7 @@ type GameState struct {
 	Players map[string]Player    `json:"players"`
 	Blocks  map[string]Block     `json:"blocks"`
 	WorldTime float64            `json:"worldTime"`
+	WorldDay int                 `json:"worldDay"`
 }
 
 type persistedWorldState struct {
@@ -75,6 +76,7 @@ var (
 		Players: make(map[string]Player),
 		Blocks:  make(map[string]Block),
 		WorldTime: 0.22,
+		WorldDay: 0,
 	}
 	stateMu   sync.RWMutex
 )
@@ -96,11 +98,16 @@ func runWorldClock() {
 
 	for range ticker.C {
 		stateMu.Lock()
-		gameState.WorldTime = math.Mod(gameState.WorldTime+1.0/240.0, 1)
+		gameState.WorldTime += 1.0 / 240.0
+		if gameState.WorldTime >= 1 {
+			gameState.WorldTime = math.Mod(gameState.WorldTime, 1)
+			gameState.WorldDay++
+		}
 		currentTime := gameState.WorldTime
+		currentDay := gameState.WorldDay
 		stateMu.Unlock()
 
-		broadcastToAll(createMessage("timeSync", map[string]float64{"timeOfDay": currentTime}))
+		broadcastToAll(createMessage("timeSync", map[string]interface{}{"timeOfDay": currentTime, "worldDay": currentDay}))
 	}
 }
 
@@ -376,8 +383,10 @@ func handleMessage(client *Client, msg Message) {
 	case "sleepInBed":
 		stateMu.Lock()
 		gameState.WorldTime = 0
+		gameState.WorldDay++
+		currentDay := gameState.WorldDay
 		stateMu.Unlock()
-		broadcastToAll(createMessage("timeSync", map[string]float64{"timeOfDay": 0}))
+		broadcastToAll(createMessage("timeSync", map[string]interface{}{"timeOfDay": 0, "worldDay": currentDay}))
 		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s slept until dawn", client.username)}))
 
 	case "webrtcOffer":
@@ -440,6 +449,7 @@ func sendInitialState(client *Client) {
 		"players": gameState.Players,
 		"blocks":  gameState.Blocks,
 		"timeOfDay": gameState.WorldTime,
+		"worldDay": gameState.WorldDay,
 	}
 	
 	data, _ := json.Marshal(initMsg)

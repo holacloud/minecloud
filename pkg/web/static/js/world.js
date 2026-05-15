@@ -15,6 +15,7 @@ class WorldRenderer {
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.materials = new Map();
         this.textures = new Map();
+        this.iconCache = new Map();
         this.textureLoader = new THREE.TextureLoader();
         this.rtxAssetTextures = new Set(['grass', 'dirt', 'stone', 'sand', 'wood', 'planks', 'brick', 'glass', 'water', 'leaves']);
         this.tempMatrix = new THREE.Matrix4();
@@ -98,6 +99,7 @@ class WorldRenderer {
         this.rtxModeEnabled = enabled;
         this.disposeCache(this.materials);
         this.disposeCache(this.textures);
+        this.iconCache.clear();
 
         for (const key of this.activeChunks) {
             const [chunkX, chunkZ] = key.split(',').map(Number);
@@ -134,6 +136,27 @@ class WorldRenderer {
         }
         this.textures.set(cacheKey, texture);
         return texture;
+    }
+
+    getInventoryIconUrl(type) {
+        const cacheKey = `${this.rtxModeEnabled ? 'rtx' : 'base'}:icon:${type}`;
+        let icon = this.iconCache.get(cacheKey);
+        if (icon) return icon;
+
+        if (this.rtxModeEnabled && this.rtxAssetTextures.has(type)) {
+            icon = `textures/rtx/${type}.svg`;
+            this.iconCache.set(cacheKey, icon);
+            return icon;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 48;
+        const ctx = canvas.getContext('2d');
+        this.paintTexture(ctx, type, canvas.width);
+        icon = canvas.toDataURL();
+        this.iconCache.set(cacheKey, icon);
+        return icon;
     }
 
     wrapSignText(text, maxLineLength = 24, maxLines = 6) {

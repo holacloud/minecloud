@@ -137,6 +137,8 @@
             border-radius: 2px;
             position: relative;
             cursor: pointer;
+            background-size: cover;
+            background-position: center;
         }
         .hotbar-slot.selected {
             border-color: #fff;
@@ -355,6 +357,69 @@
         .craft-recipe button:disabled {
             opacity: 0.35;
             cursor: default;
+        }
+
+        #inventory-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(620px, calc(100vw - 28px));
+            max-height: 72vh;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(10, 14, 22, 0.94);
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            z-index: 270;
+        }
+        #inventory-panel.visible {
+            display: flex;
+        }
+        #inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+            gap: 10px;
+            max-height: 56vh;
+            overflow: auto;
+        }
+        .inventory-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+            padding: 8px 6px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+        }
+        .inventory-item.selected {
+            border-color: rgba(151, 212, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(151, 212, 255, 0.25);
+        }
+        .inventory-item.empty {
+            opacity: 0.5;
+        }
+        .inventory-item-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background-size: cover;
+            background-position: center;
+        }
+        .inventory-item-name {
+            font-size: 11px;
+            text-align: center;
+        }
+        .inventory-item-count {
+            font-size: 12px;
+            color: #bcd0e9;
         }
 
         #pause-menu {
@@ -588,6 +653,10 @@
     <div id="chat-container">
         <div id="chat-log"></div>
         <input id="chat-input" type="text" maxlength="140" placeholder="Type a message and press Enter">
+    </div>
+    <div id="inventory-panel">
+        <h3>Inventory</h3>
+        <div id="inventory-grid"></div>
     </div>
     <div id="health-hud">
         <div>Health: <span id="health-value">20/20</span></div>

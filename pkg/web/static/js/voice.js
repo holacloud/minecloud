@@ -91,7 +91,7 @@ class VoiceChatManager {
             }
 
             const peer = this.ensurePeer(playerId);
-            if (this.network.playerId < playerId && !peer.connected && !peer.makingOffer) {
+            if (this.network.playerId < playerId && !peer.connected && !peer.makingOffer && !peer.awaitingAnswer && peer.pc.signalingState === 'stable') {
                 this.createOffer(playerId);
             }
         }
@@ -109,6 +109,7 @@ class VoiceChatManager {
             pc: pc,
             connected: false,
             makingOffer: false,
+            awaitingAnswer: false,
             source: null,
             gain: null,
             panner: null,
@@ -130,6 +131,7 @@ class VoiceChatManager {
                 peerEntry.connected = false;
             } else if (pc.connectionState === 'connected') {
                 peerEntry.connected = true;
+                peerEntry.awaitingAnswer = false;
             }
         };
 
@@ -160,6 +162,7 @@ class VoiceChatManager {
         try {
             const offer = await peer.pc.createOffer();
             await peer.pc.setLocalDescription(offer);
+            peer.awaitingAnswer = true;
             this.network.sendWebRTCOffer(playerId, offer);
         } catch (error) {
             console.error('Failed to create voice offer', error);
@@ -174,6 +177,9 @@ class VoiceChatManager {
         const playerId = payload.fromPlayerId;
         const peer = this.ensurePeer(playerId);
         try {
+            if (peer.pc.signalingState !== 'stable') {
+                return;
+            }
             await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
             const answer = await peer.pc.createAnswer();
             await peer.pc.setLocalDescription(answer);
@@ -187,7 +193,11 @@ class VoiceChatManager {
         const peer = this.peers.get(payload.fromPlayerId);
         if (!peer) return;
         try {
+            if (peer.pc.signalingState !== 'have-local-offer') {
+                return;
+            }
             await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            peer.awaitingAnswer = false;
         } catch (error) {
             console.error('Failed to handle voice answer', error);
         }
