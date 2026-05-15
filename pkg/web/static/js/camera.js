@@ -13,6 +13,7 @@ class CameraController {
         this.crouchSpeedFactor = 0.45;
         this.standingEyeHeight = 1.62;
         this.crouchingEyeHeight = 1.32;
+        this.collisionRadius = 0.24;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false, crouch: false };
         this.moveInput = { x: 0, y: 0 };
@@ -94,6 +95,26 @@ class CameraController {
         return this.blockTypeGetter ? this.blockTypeGetter(x, y, z) : null;
     }
 
+    isBlockedAtPosition(x, z, feetY) {
+        const samples = [
+            [0, 0],
+            [this.collisionRadius, 0],
+            [-this.collisionRadius, 0],
+            [0, this.collisionRadius],
+            [0, -this.collisionRadius]
+        ];
+
+        for (const [dx, dz] of samples) {
+            const sx = Math.floor(x + dx);
+            const sz = Math.floor(z + dz);
+            if (this.hasBlock(sx, Math.floor(feetY), sz) || this.hasBlock(sx, Math.floor(feetY + 1.8), sz)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     canStepUp(targetX, targetZ, feetY) {
         const stepBaseY = Math.floor(feetY);
         return this.hasBlock(Math.floor(targetX), stepBaseY, Math.floor(targetZ)) &&
@@ -173,8 +194,7 @@ class CameraController {
             const newX = px + moveX;
             if (this.isCrouching && this.onGround && this.wouldStepOffLedge(newX, pz, currentFloorY)) {
                 // Sneak movement prevents falling off ledges.
-            } else if (!this.hasBlock(Math.floor(newX), Math.floor(py), Math.floor(pz)) &&
-                !this.hasBlock(Math.floor(newX), Math.floor(py + 1.8), Math.floor(pz))) {
+            } else if (!this.isBlockedAtPosition(newX, pz, py)) {
                 this.camera.position.x = newX;
             } else if (this.canStepUp(newX, pz, py)) {
                 this.applyStepUp(Math.floor(py));
@@ -184,8 +204,7 @@ class CameraController {
             const newZ = pz + moveZ;
             if (this.isCrouching && this.onGround && this.wouldStepOffLedge(this.camera.position.x, newZ, currentFloorY)) {
                 // Sneak movement prevents falling off ledges.
-            } else if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py), Math.floor(newZ)) &&
-                !this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py + 1.8), Math.floor(newZ))) {
+            } else if (!this.isBlockedAtPosition(this.camera.position.x, newZ, py)) {
                 this.camera.position.z = newZ;
             } else if (this.canStepUp(this.camera.position.x, newZ, py)) {
                 this.applyStepUp(Math.floor(py));
