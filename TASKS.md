@@ -12,7 +12,7 @@ Next tasks
 - [x] Añadir un ciclo de dia y noche con transiciones de luz y cielo
 - [x] Añadir chat multijugador en tiempo real con historial y entrada al pulsar Enter
 - [x] Implementar un sistema de crafteo simple con recetas y panel accesible con C
-- [ ] Permitir subir automáticamente bloques de 1 de altura al caminar
+- [x] Permitir subir automáticamente bloques de 1 de altura al caminar
 - [ ] Guardar y restaurar el inventario local del jugador entre sesiones
 - [ ] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
 - 

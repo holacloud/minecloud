@@ -9,6 +9,7 @@ class CameraController {
         this.sprintSpeed = 6;
         this.jumpVelocity = 7.25;
         this.lookSpeed = 0.002;
+        this.stepHeight = 1;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false };
         this.moveInput = { x: 0, y: 0 };
@@ -72,6 +73,19 @@ class CameraController {
     hasBlock(x, y, z) {
         return this.blockChecker ? this.blockChecker(x, y, z) : false;
     }
+
+    canStepUp(targetX, targetZ, feetY) {
+        const stepBaseY = Math.floor(feetY);
+        return this.hasBlock(Math.floor(targetX), stepBaseY, Math.floor(targetZ)) &&
+            !this.hasBlock(Math.floor(targetX), stepBaseY + 1, Math.floor(targetZ)) &&
+            !this.hasBlock(Math.floor(targetX), stepBaseY + 2, Math.floor(targetZ));
+    }
+
+    applyStepUp(stepBaseY) {
+        this.camera.position.y = Math.max(this.camera.position.y, stepBaseY + this.stepHeight + this.eyeHeight);
+        this.velocityY = Math.max(0, this.velocityY);
+        this.onGround = true;
+    }
     
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
@@ -119,11 +133,17 @@ class CameraController {
             if (!this.hasBlock(Math.floor(newX), Math.floor(py), Math.floor(pz)) &&
                 !this.hasBlock(Math.floor(newX), Math.floor(py + 1.8), Math.floor(pz))) {
                 this.camera.position.x = newX;
+            } else if (this.canStepUp(newX, pz, py)) {
+                this.applyStepUp(Math.floor(py));
+                this.camera.position.x = newX;
             }
             
             const newZ = pz + moveZ;
             if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py), Math.floor(newZ)) &&
                 !this.hasBlock(Math.floor(this.camera.position.x), Math.floor(py + 1.8), Math.floor(newZ))) {
+                this.camera.position.z = newZ;
+            } else if (this.canStepUp(this.camera.position.x, newZ, py)) {
+                this.applyStepUp(Math.floor(py));
                 this.camera.position.z = newZ;
             }
         }
