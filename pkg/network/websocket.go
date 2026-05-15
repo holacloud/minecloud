@@ -56,11 +56,11 @@ type ICEConfig struct {
 }
 
 type Block struct {
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Z         int    `json:"z"`
-	BlockType string `json:"blockType"`
-	Text      string `json:"text,omitempty"`
+	X         int            `json:"x"`
+	Y         int            `json:"y"`
+	Z         int            `json:"z"`
+	BlockType string         `json:"blockType"`
+	Text      string         `json:"text,omitempty"`
 	Votes     map[string]int `json:"votes,omitempty"`
 }
 
@@ -501,6 +501,11 @@ func handleMessage(client *Client, msg Message) {
 			Emoji string `json:"emoji"`
 		}
 		json.Unmarshal(msg.Payload, &payload)
+		emojiLabels := map[string]string{"thumbup": "👍", "thumbdown": "👎", "heart": "❤️", "happy": "😊", "star": "⭐"}
+		emojiLabel, validEmoji := emojiLabels[payload.Emoji]
+		if !validEmoji {
+			return
+		}
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
 		block, ok := gameState.Blocks[key]
@@ -510,11 +515,14 @@ func handleMessage(client *Client, msg Message) {
 			}
 			block.Votes[payload.Emoji] = block.Votes[payload.Emoji] + 1
 			gameState.Blocks[key] = block
+		} else {
+			ok = false
 		}
 		stateMu.Unlock()
 		if ok {
 			saveWorldState()
 			broadcastToAll(createMessage("signVoteUpdate", block))
+			broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("El usuario %s ha votado %s", client.username, emojiLabel)}))
 		}
 
 	case "sleepInBed":

@@ -1321,17 +1321,18 @@ class WorldRenderer {
         const y = Math.round(payload.y);
         const z = Math.round(payload.z);
         const changed = this.setBlockData(x, y, z, payload.blockType);
-
-        if (!changed) return false;
-
         const key = this.blockKey(x, y, z);
-        if (payload.blockType === 'sign' && payload.text) {
-            this.signTextByKey.set(key, payload.text);
+        if (payload.blockType === 'sign' && Object.prototype.hasOwnProperty.call(payload, 'text')) {
+            this.signTextByKey.set(key, payload.text || '');
             this.signVotesByKey.set(key, payload.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
+        } else if (payload.blockType === 'sign' && payload.votes) {
+            this.signVotesByKey.set(key, payload.votes);
         } else {
             this.signTextByKey.delete(key);
             this.signVotesByKey.delete(key);
         }
+
+        if (!changed) return false;
 
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
         const centerKey = this.chunkKey(chunkX, chunkZ);

@@ -13,7 +13,7 @@ class CameraController {
         this.crouchSpeedFactor = 0.45;
         this.standingEyeHeight = 1.62;
         this.crouchingEyeHeight = 1.32;
-        this.collisionRadius = 0.24;
+        this.collisionRadius = 0.18;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false, crouch: false };
         this.moveInput = { x: 0, y: 0 };
@@ -111,7 +111,11 @@ class CameraController {
             [this.collisionRadius, 0],
             [-this.collisionRadius, 0],
             [0, this.collisionRadius],
-            [0, -this.collisionRadius]
+            [0, -this.collisionRadius],
+            [this.collisionRadius, this.collisionRadius],
+            [this.collisionRadius, -this.collisionRadius],
+            [-this.collisionRadius, this.collisionRadius],
+            [-this.collisionRadius, -this.collisionRadius]
         ];
 
         for (const [dx, dz] of samples) {
@@ -170,10 +174,10 @@ class CameraController {
         this.lookInput.deltaY = 0;
 
         const isSprinting = this.keys.sprint || this.touchSprint || (this.sprintLatch && this.keys.forward && !this.keys.backward);
-        const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
-        this.isInWater = eyeBlockType === 'water';
+        const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
+        this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water' || eyeBlockType === 'water';
 
         const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
@@ -236,16 +240,16 @@ class CameraController {
         
         if (this.isInWater) {
             if (this.keys.jump || this.touchJump) {
-                this.velocityY = Math.min(3.2, this.velocityY + 0.42);
+                this.velocityY = Math.min(4.8, this.velocityY + 0.85);
             } else {
-                this.velocityY = Math.max(-1.4, this.velocityY - 0.06);
+                this.velocityY = Math.max(-1.0, this.velocityY - 0.04);
             }
         } else if ((this.keys.jump || this.touchJump) && this.onGround) {
             this.velocityY = this.jumpVelocity;
             this.onGround = false;
         }
         
-        this.velocityY -= (this.isInWater ? 5.5 : 20) * delta;
+        this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
         
         const newY = this.camera.position.y + this.velocityY * delta;
         const newFeetY = newY - this.eyeHeight;

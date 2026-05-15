@@ -126,6 +126,7 @@ class Game {
         this.fallingBlockDrops = [];
         this.remotePlayerNames = new Map();
         this.followTargetPlayerId = null;
+        this.followReturnPosition = null;
         this.followCameraAngle = 0;
         this.ambientMobs = [];
         this.voiceChat = null;
@@ -155,11 +156,12 @@ class Game {
         this.deathReason = 'Respawning soon...';
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
-        this.respawnPoint = this.loadRespawnPoint() || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
+        this.respawnPoint = this.loadRespawnPoint();
         this.lastSafePosition = null;
         this.lastSafePositionSaveTimer = 0;
         
         this.otherPlayerMeshes = new Map();
+        this.localPlayerAvatar = null;
         this.sunCube = null;
         this.moonCube = null;
         this.currentMoonPhase = -1;
@@ -785,6 +787,9 @@ class Game {
         if (this.firstPersonHand) {
             this.firstPersonHand.visible = this.cameraViewMode === 'first';
         }
+        if (this.localPlayerAvatar) {
+            this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
+        }
         if (this.cameraViewMode === 'first') {
             this.thirdPersonAnchor = null;
         }
@@ -792,10 +797,19 @@ class Game {
 
     updateThirdPersonCamera(anchor) {
         this.thirdPersonAnchor = anchor.clone();
+        this.updateLocalPlayerAvatar(anchor);
         const behind = new THREE.Vector3(0, 1.5, 3.6);
         behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + Math.PI);
         this.camera.position.copy(anchor).add(behind);
         this.camera.lookAt(anchor.x, anchor.y + 0.6, anchor.z);
+    }
+
+    updateLocalPlayerAvatar(anchor) {
+        if (!this.localPlayerAvatar) return;
+
+        this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
+        this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
+        this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
     }
 
     togglePhotoMode() {
@@ -893,7 +907,10 @@ class Game {
         this.stopMining();
         this.resetMiningBlockVisual(true);
         this.closeChatInput();
-        this.cameraController.setPosition(this.respawnPoint);
+        const spawnPosition = this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
+        this.cameraController.setPosition(spawnPosition);
+        this.lastSafePosition = this.cameraController.getPosition();
+        this.saveLastSafePosition();
         this.healToFull();
         this.respawnPending = false;
         this.respawnTimer = 0;
@@ -915,6 +932,7 @@ class Game {
     }
 
     isRespawnBoundToBlock(position) {
+        if (!this.respawnPoint) return false;
         return Math.abs(this.respawnPoint.x - (position.x + 0.5)) < 0.001 &&
             Math.abs(this.respawnPoint.y - (position.y + 1 + this.cameraController.eyeHeight)) < 0.001 &&
             Math.abs(this.respawnPoint.z - (position.z + 0.5)) < 0.001;
@@ -1225,8 +1243,8 @@ class Game {
         };
 
         const handGroup = new THREE.Group();
-        const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.72, 0.28), createMaterial(appearance.shirt));
-        const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), createMaterial(appearance.hat));
+        const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.72, 0.26), createMaterial(appearance.skin));
+        const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), createMaterial(appearance.shirt));
         const hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), createMaterial(appearance.skin));
 
         sleeve.position.set(0, -0.04, 0);
@@ -1236,16 +1254,27 @@ class Game {
         [sleeve, cuff, hand].forEach((mesh) => {
             mesh.renderOrder = 10000;
             mesh.frustumCulled = false;
+            mesh.onBeforeRender = (renderer) => renderer.clearDepth();
         });
 
         handGroup.add(sleeve);
         handGroup.add(cuff);
         handGroup.add(hand);
+        handGroup.renderOrder = 10000;
+        handGroup.onBeforeRender = (renderer) => renderer.clearDepth();
         handGroup.position.copy(this.handBasePosition);
         handGroup.rotation.copy(this.handBaseRotation);
 
         this.camera.add(handGroup);
         this.firstPersonHand = handGroup;
+        this.initLocalPlayerAvatar();
+    }
+
+    initLocalPlayerAvatar() {
+        this.localPlayerAvatar = this.createOtherPlayerAvatar('local', this.playerName);
+        this.updateAvatarNameTag(this.localPlayerAvatar, this.playerName);
+        this.localPlayerAvatar.visible = false;
+        this.scene.add(this.localPlayerAvatar);
     }
 
     createViewModelTexture(textureType) {
@@ -1840,7 +1869,18 @@ class Game {
 
     toggleFollowPlayer(playerId) {
         if (!playerId || playerId === this.network.playerId) return;
-        this.followTargetPlayerId = this.followTargetPlayerId === playerId ? null : playerId;
+        if (this.followTargetPlayerId === playerId) {
+            this.followTargetPlayerId = null;
+            if (this.followReturnPosition) {
+                this.cameraController.setPosition(this.followReturnPosition);
+                this.followReturnPosition = null;
+            }
+        } else {
+            if (!this.followTargetPlayerId) {
+                this.followReturnPosition = this.cameraController.getPosition();
+            }
+            this.followTargetPlayerId = playerId;
+        }
         this.decoratePlayerListInteractions();
     }
 
@@ -1850,6 +1890,10 @@ class Game {
         const avatar = this.otherPlayerMeshes.get(this.followTargetPlayerId);
         if (!avatar) {
             this.followTargetPlayerId = null;
+            if (this.followReturnPosition) {
+                this.cameraController.setPosition(this.followReturnPosition);
+                this.followReturnPosition = null;
+            }
             this.decoratePlayerListInteractions();
             return false;
         }
@@ -2465,12 +2509,18 @@ class Game {
         }
 
         const heldItem = this.world.createDisplayMesh(selectedType, 0.23);
-        heldItem.position.set(0.2, -0.16, -0.18);
-        heldItem.rotation.set(0.22, 0.62, 0.08);
+        heldItem.position.set(0.04, -0.58, -0.04);
+        heldItem.rotation.set(0.32, 0.72, 0.08);
         heldItem.renderOrder = 10001;
         heldItem.frustumCulled = false;
-        heldItem.material.depthTest = false;
-        heldItem.material.depthWrite = false;
+        heldItem.traverse((node) => {
+            if (node.material) {
+                node.renderOrder = 10001;
+                node.frustumCulled = false;
+                node.material.depthTest = false;
+                node.material.depthWrite = false;
+            }
+        });
 
         this.firstPersonHand.add(heldItem);
         this.heldItemMesh = heldItem;
@@ -2985,6 +3035,9 @@ class Game {
 
     voteOnActiveSign(emoji) {
         if (!this.activeSignPosition) return;
+        const votes = { ...this.world.getSignVotesAt(this.activeSignPosition.x, this.activeSignPosition.y, this.activeSignPosition.z) };
+        votes[emoji] = (votes[emoji] || 0) + 1;
+        this.updateSignVoteButtons(votes);
         if (this.network && this.network.connected) {
             this.network.send('signVote', { x: this.activeSignPosition.x, y: this.activeSignPosition.y, z: this.activeSignPosition.z, emoji });
         }
@@ -3084,7 +3137,7 @@ class Game {
                 this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /rtx, /time' });
                 break;
             case 'spawn':
-                this.cameraController.setPosition(this.respawnPoint);
+                this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
                 this.receiveSystemMessage({ text: 'Teleported to your current spawn point' });
                 break;
             case 'rtx':
@@ -3289,8 +3342,8 @@ class Game {
         if (!this.world.removeBlockAt(position.x, position.y, position.z)) return false;
 
         if (blockType === 'bed' && this.isRespawnBoundToBlock(position)) {
-            this.respawnPoint = { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
-            this.saveRespawnPoint();
+            this.respawnPoint = null;
+            window.localStorage.removeItem('minecloud-respawn-point');
             this.receiveSystemMessage({ text: 'Respawn point reset because your bed was removed' });
         }
 
