@@ -110,6 +110,8 @@ class VoiceChatManager {
             connected: false,
             makingOffer: false,
             awaitingAnswer: false,
+            offerTimeout: null,
+            queuedCandidates: [],
             source: null,
             gain: null,
             panner: null,
@@ -132,6 +134,10 @@ class VoiceChatManager {
             } else if (pc.connectionState === 'connected') {
                 peerEntry.connected = true;
                 peerEntry.awaitingAnswer = false;
+                if (peerEntry.offerTimeout) {
+                    clearTimeout(peerEntry.offerTimeout);
+                    peerEntry.offerTimeout = null;
+                }
             }
         };
 
@@ -163,6 +169,15 @@ class VoiceChatManager {
             const offer = await peer.pc.createOffer();
             await peer.pc.setLocalDescription(offer);
             peer.awaitingAnswer = true;
+            if (peer.offerTimeout) {
+                clearTimeout(peer.offerTimeout);
+            }
+            peer.offerTimeout = setTimeout(() => {
+                if (peer.awaitingAnswer) {
+                    this.removePeer(playerId);
+                    this.syncPeers();
+                }
+            }, 6000);
             this.network.sendWebRTCOffer(playerId, offer);
         } catch (error) {
             console.error('Failed to create voice offer', error);
@@ -175,12 +190,16 @@ class VoiceChatManager {
         if (!this.enabled || !this.localStream) return;
 
         const playerId = payload.fromPlayerId;
-        const peer = this.ensurePeer(playerId);
+        let peer = this.ensurePeer(playerId);
         try {
             if (peer.pc.signalingState !== 'stable') {
-                return;
+                this.removePeer(playerId);
+                peer = this.ensurePeer(playerId);
             }
             await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            while (peer.queuedCandidates.length > 0) {
+                await peer.pc.addIceCandidate(new RTCIceCandidate(peer.queuedCandidates.shift()));
+            }
             const answer = await peer.pc.createAnswer();
             await peer.pc.setLocalDescription(answer);
             this.network.sendWebRTCAnswer(playerId, answer);
@@ -194,19 +213,31 @@ class VoiceChatManager {
         if (!peer) return;
         try {
             if (peer.pc.signalingState !== 'have-local-offer') {
+                peer.awaitingAnswer = false;
                 return;
             }
             await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            while (peer.queuedCandidates.length > 0) {
+                await peer.pc.addIceCandidate(new RTCIceCandidate(peer.queuedCandidates.shift()));
+            }
             peer.awaitingAnswer = false;
+            if (peer.offerTimeout) {
+                clearTimeout(peer.offerTimeout);
+                peer.offerTimeout = null;
+            }
         } catch (error) {
             console.error('Failed to handle voice answer', error);
         }
     }
 
     async handleIceCandidate(payload) {
-        const peer = this.peers.get(payload.fromPlayerId);
-        if (!peer || !payload.candidate) return;
+        if (!payload.candidate) return;
+        const peer = this.ensurePeer(payload.fromPlayerId);
         try {
+            if (!peer.pc.remoteDescription) {
+                peer.queuedCandidates.push(payload.candidate);
+                return;
+            }
             await peer.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
         } catch (error) {
             console.error('Failed to apply voice ICE candidate', error);
@@ -250,6 +281,9 @@ class VoiceChatManager {
         }
         if (peer.panner) {
             try { peer.panner.disconnect(); } catch (_error) {}
+        }
+        if (peer.offerTimeout) {
+            clearTimeout(peer.offerTimeout);
         }
         peer.pc.close();
         this.peers.delete(playerId);

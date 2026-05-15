@@ -51,7 +51,7 @@ Next tasks
 - [x] Al cerrar cualquier ventana interactiva, recapturar el mouse automáticamente sin necesidad de click
 - [x] Mejorar la usabilidad general de la barra de inventario
 - [x] Al picar un cubo situado arriba, hacer que caiga con la gravedad
-- [ ] Corregir el chat de voz del micrófono y hacerlo funcional
+- [x] Corregir el chat de voz del micrófono y hacerlo funcional
 - [ ] Hacer que se oigan correctamente los pasos de otros jugadores cercanos
 - [ ] Permitir comer para recuperar vida
 - [ ] Añadir pantalla inicial con fondo desenfocado de la partida, título MineCloud y opciones de continuar o cambiar nombre
