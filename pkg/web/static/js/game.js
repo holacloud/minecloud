@@ -1445,6 +1445,41 @@ class Game {
         this.scene.fog.color.copy(this.blendColors(this.scene.fog.color, new THREE.Color(0x8ca0af), 0.35));
     }
 
+    updateCaveLighting() {
+        const cameraX = Math.floor(this.camera.position.x);
+        const cameraY = Math.floor(this.camera.position.y);
+        const cameraZ = Math.floor(this.camera.position.z);
+
+        let overheadBlocks = 0;
+        for (let y = cameraY; y < cameraY + 10; y++) {
+            if (this.world.hasSolidBlock(cameraX, y, cameraZ)) {
+                overheadBlocks++;
+            }
+        }
+
+        let sideCover = 0;
+        const samples = [
+            [2, 0], [-2, 0], [0, 2], [0, -2],
+            [1, 1], [-1, 1], [1, -1], [-1, -1]
+        ];
+        for (const [dx, dz] of samples) {
+            if (this.world.hasSolidBlock(cameraX + dx, cameraY, cameraZ + dz) || this.world.hasSolidBlock(cameraX + dx, cameraY + 1, cameraZ + dz)) {
+                sideCover++;
+            }
+        }
+
+        const darkness = THREE.MathUtils.clamp((overheadBlocks / 10) * 0.75 + (sideCover / samples.length) * 0.35, 0, 0.78);
+        const factor = 1 - darkness;
+
+        this.ambientLight.intensity *= THREE.MathUtils.lerp(0.22, 1, factor);
+        this.hemiLight.intensity *= THREE.MathUtils.lerp(0.18, 1, factor);
+        this.scene.fog.color.copy(this.blendColors(this.scene.fog.color, new THREE.Color(0x0d1320), darkness * 0.5));
+
+        if (this.rtxModeEnabled) {
+            this.renderer.toneMappingExposure *= THREE.MathUtils.lerp(0.48, 1, factor);
+        }
+    }
+
     createPlayerAvatarMaterial(color) {
         return this.rtxModeEnabled
             ? new THREE.MeshStandardMaterial({ color: color, roughness: 0.72, metalness: 0.03 })
@@ -3528,6 +3563,7 @@ class Game {
         this.updateDayNightCycle(delta);
         this.updateWeather(delta);
         this.updateUnderwaterEffect();
+        this.updateCaveLighting();
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);

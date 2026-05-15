@@ -63,7 +63,7 @@ Next tasks
 - [x] Añadir ajuste de FOV en la configuración
 - [x] Reducir glitches o ralentizaciones al saltar entre niveles distintos
 - [ ] Añadir vista en tercera persona
-- [ ] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
+- [x] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
 - [ ] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
 - [ ] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
 - [x] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
