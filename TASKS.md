@@ -28,7 +28,7 @@ Next tasks
 - [x] Ponerle cara a los avatares de los jugadores
 - [x] Usar assets de texturas más reales en el modo RTX
 - [x] Hacer que el agua se pueda nadar y añadir efecto visual bajo el agua
-- [ ] Añadir más elementos naturales decorativos al mundo como flores, hierba alta y setas
+- [x] Añadir más elementos naturales decorativos al mundo como flores, hierba alta y setas
 - [ ] Crear un visor de elementos que describa las propiedades del bloque al que apuntas
 - [ ] Permitir leer cómodamente el texto completo de un cartel al interactuar con él
 - [ ] Añadir pasos locales del jugador y un ligero camera bob al caminar

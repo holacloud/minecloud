@@ -30,6 +30,11 @@ class WorldRenderer {
             cobblestone: { color: 0x6E6E6E, name: 'Cobblestone', breakDuration: 1 },
             wood: { color: 0x8B6914, name: 'Oak Wood', breakDuration: 0.8 },
             leaves: { color: 0x4E8F36, name: 'Oak Leaves', transparent: true, breakDuration: 0.2 },
+            tall_grass: { color: 0x76B54E, name: 'Tall Grass', transparent: true, breakDuration: 0.12, solid: false },
+            flower_red: { color: 0xC94040, name: 'Red Flower', transparent: true, breakDuration: 0.1, solid: false },
+            flower_yellow: { color: 0xD8C245, name: 'Yellow Flower', transparent: true, breakDuration: 0.1, solid: false },
+            mushroom_red: { color: 0xB74B43, name: 'Red Mushroom', transparent: true, breakDuration: 0.08, solid: false },
+            mushroom_brown: { color: 0x8A6541, name: 'Brown Mushroom', transparent: true, breakDuration: 0.08, solid: false },
             sand: { color: 0xE8D894, name: 'Sand', breakDuration: 0.4 },
             water: { color: 0x3D85C6, transparent: true, opacity: 0.7, fluid: true, breakDuration: 0.15 },
             bedrock: { color: 0x1A1A1A, name: 'Bedrock', unbreakable: true },
@@ -196,7 +201,7 @@ class WorldRenderer {
 
     isSolidType(type) {
         const def = this.blockTypes[type];
-        return def ? !def.fluid : false;
+        return def ? !def.fluid && def.solid !== false : false;
     }
 
     textureNoise(x, y, seed) {
@@ -346,6 +351,53 @@ class WorldRenderer {
         switch (type) {
             case 'grass':
                 this.paintPaletteTexture(ctx, size, [0x3E6B24, 0x4C7E2C, 0x5B8C35, 0x6C9D3F], seed);
+                break;
+            case 'tall_grass':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#74b64b';
+                for (let i = 0; i < 7; i++) {
+                    const px = 2 + i * 2;
+                    const height = 6 + (i % 3) * 3;
+                    ctx.fillRect(px, size - height, 2, height);
+                }
+                break;
+            case 'flower_red':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#4d8f37';
+                ctx.fillRect(size * 0.45, size * 0.35, size * 0.1, size * 0.65);
+                ctx.fillStyle = '#cc4747';
+                ctx.fillRect(size * 0.2, size * 0.08, size * 0.6, size * 0.24);
+                ctx.fillRect(size * 0.36, 0, size * 0.28, size * 0.44);
+                break;
+            case 'flower_yellow':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#4d8f37';
+                ctx.fillRect(size * 0.45, size * 0.35, size * 0.1, size * 0.65);
+                ctx.fillStyle = '#e3cf5b';
+                ctx.fillRect(size * 0.2, size * 0.08, size * 0.6, size * 0.24);
+                ctx.fillRect(size * 0.36, 0, size * 0.28, size * 0.44);
+                break;
+            case 'mushroom_red':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#f4e7cf';
+                ctx.fillRect(size * 0.43, size * 0.4, size * 0.14, size * 0.6);
+                ctx.fillStyle = '#bf4a42';
+                ctx.fillRect(size * 0.18, size * 0.08, size * 0.64, size * 0.34);
+                ctx.fillStyle = '#f4e7cf';
+                ctx.fillRect(size * 0.3, size * 0.18, size * 0.12, size * 0.08);
+                ctx.fillRect(size * 0.58, size * 0.16, size * 0.1, size * 0.08);
+                break;
+            case 'mushroom_brown':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#f4e7cf';
+                ctx.fillRect(size * 0.43, size * 0.4, size * 0.14, size * 0.6);
+                ctx.fillStyle = '#8b6540';
+                ctx.fillRect(size * 0.18, size * 0.08, size * 0.64, size * 0.34);
                 break;
             case 'dirt':
                 this.paintPaletteTexture(ctx, size, [0x6E431D, 0x7A4A22, 0x8B5A2B, 0x9D6832], seed);
@@ -556,6 +608,12 @@ class WorldRenderer {
     getRTXMaterialProps(type) {
         switch (type) {
             case 'grass': return { roughness: 0.92, metalness: 0.02, bumpScale: 0.08, envMapIntensity: 0.35 };
+            case 'tall_grass': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.03, envMapIntensity: 0.18 };
+            case 'flower_red':
+            case 'flower_yellow':
+            case 'mushroom_red':
+            case 'mushroom_brown':
+                return { roughness: 0.9, metalness: 0.01, bumpScale: 0.02, envMapIntensity: 0.16 };
             case 'dirt': return { roughness: 0.97, metalness: 0.01, bumpScale: 0.1, envMapIntensity: 0.2 };
             case 'sand': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.28 };
             case 'stone': return { roughness: 0.82, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.45 };
@@ -582,6 +640,7 @@ class WorldRenderer {
         if (material) return material;
 
         const def = this.blockTypes[type];
+        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown']);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
             material = new THREE.MeshStandardMaterial({
@@ -595,8 +654,8 @@ class WorldRenderer {
                 emissive: props.emissive || 0x000000,
                 transparent: def.transparent || false,
                 opacity: def.opacity || 1,
-                alphaTest: type === 'leaves' ? 0.28 : 0,
-                depthWrite: !def.transparent || type === 'leaves'
+                alphaTest: alphaCutoutTypes.has(type) ? 0.28 : 0,
+                depthWrite: !def.transparent || alphaCutoutTypes.has(type)
             });
         } else {
             material = new THREE.MeshLambertMaterial({
@@ -604,8 +663,8 @@ class WorldRenderer {
                 map: this.getTexture(type, 'albedo'),
                 transparent: def.transparent || false,
                 opacity: def.opacity || 1,
-                alphaTest: type === 'leaves' ? 0.35 : 0,
-                depthWrite: !def.transparent || type === 'leaves'
+                alphaTest: alphaCutoutTypes.has(type) ? 0.35 : 0,
+                depthWrite: !def.transparent || alphaCutoutTypes.has(type)
             });
         }
 
@@ -726,11 +785,20 @@ class WorldRenderer {
 
                 const treeChance = biome === 'forest' ? 0.032 : biome === 'plains' ? 0.012 : biome === 'rocky' ? 0.0025 : 0;
                 const cactusChance = biome === 'desert' ? 0.022 : 0;
+                const decorRoll = rand(worldX, worldZ, 2048);
 
                 if (treeChance > 0 && rand(worldX, worldZ, 999) < treeChance && height >= 3) {
                     this.generateTree(worldX, height + 1, worldZ, rand);
                 } else if (cactusChance > 0 && rand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
                     this.generateCactus(worldX, height + 1, worldZ, rand);
+                } else if (biome === 'forest' && decorRoll < 0.06) {
+                    const plantType = decorRoll < 0.02 ? 'mushroom_red' : decorRoll < 0.035 ? 'mushroom_brown' : decorRoll < 0.048 ? 'flower_red' : decorRoll < 0.055 ? 'flower_yellow' : 'tall_grass';
+                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
+                } else if (biome === 'plains' && decorRoll < 0.08) {
+                    const plantType = decorRoll < 0.02 ? 'flower_red' : decorRoll < 0.038 ? 'flower_yellow' : 'tall_grass';
+                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
+                } else if (biome === 'rocky' && decorRoll < 0.018) {
+                    this.generateDecorPlant(worldX, height + 1, worldZ, rand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass');
                 }
             }
         }
@@ -764,6 +832,10 @@ class WorldRenderer {
         for (let cy = 0; cy < cactusHeight; cy++) {
             this.setBlockData(x, y + cy, z, 'cactus');
         }
+    }
+
+    generateDecorPlant(x, y, z, type) {
+        this.setBlockData(x, y, z, type);
     }
 
     setBlockData(x, y, z, type, chunkKey = null) {
