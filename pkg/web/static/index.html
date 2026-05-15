@@ -59,6 +59,28 @@
         #player-list { list-style: none; }
         #player-list li { padding: 2px 0; }
         #player-list li.self { color: #55FF55; }
+
+        #block-inspector {
+            position: absolute;
+            right: 10px;
+            top: 86px;
+            width: min(280px, calc(100vw - 20px));
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.46);
+            color: #fff;
+            font: 12px/1.35 'Consolas', monospace;
+            z-index: 110;
+            opacity: 0;
+            transition: opacity 0.12s ease;
+            pointer-events: none;
+        }
+        #block-inspector.visible {
+            opacity: 1;
+        }
+        #block-inspector .label {
+            color: #9ec7ef;
+        }
         
         #hotbar {
             position: absolute;
@@ -458,6 +480,7 @@
         <h3>Players</h3>
         <ul id="player-list"><li>Loading...</li></ul>
     </div>
+    <div id="block-inspector"></div>
     <div id="hotbar"></div>
     <div id="connecting">Connecting to server...</div>
     <div id="chat-container">

@@ -557,6 +557,41 @@ class Game {
         }
     }
 
+    updateBlockInspector(worldPos) {
+        const inspector = document.getElementById('block-inspector');
+        if (!inspector) return;
+
+        if (!worldPos) {
+            inspector.classList.remove('visible');
+            inspector.innerHTML = '';
+            return;
+        }
+
+        const type = this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z);
+        if (!type) {
+            inspector.classList.remove('visible');
+            inspector.innerHTML = '';
+            return;
+        }
+
+        const name = this.getBlockDisplayName(type);
+        const breakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
+        const signText = type === 'sign' ? this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z) : '';
+        const lines = [
+            `<span class="label">Block:</span> ${name}`,
+            `<span class="label">Coords:</span> ${worldPos.x}, ${worldPos.y}, ${worldPos.z}`,
+            `<span class="label">Break time:</span> ${breakDuration ? `${breakDuration.toFixed(2)}s` : 'Unbreakable'}`
+        ];
+
+        if (signText) {
+            const preview = signText.length > 72 ? `${signText.slice(0, 72)}...` : signText;
+            lines.push(`<span class="label">Sign:</span> ${preview}`);
+        }
+
+        inspector.innerHTML = lines.join('<br>');
+        inspector.classList.add('visible');
+    }
+
     flashDamageIndicator() {
         this.hitIndicator.style.background = 'rgba(255, 80, 80, 0.9)';
         this.showHitIndicator();
@@ -2447,6 +2482,7 @@ class Game {
         if (!this.cameraController.canInteract()) {
             this.selectionBox.visible = false;
             this.selectionBox.rotation.set(0, 0, 0);
+            this.updateBlockInspector(null);
             return;
         }
 
@@ -2454,6 +2490,7 @@ class Game {
         if (!hit) {
             this.selectionBox.visible = false;
             this.selectionBox.rotation.set(0, 0, 0);
+            this.updateBlockInspector(null);
             return;
         }
 
@@ -2461,6 +2498,7 @@ class Game {
         if (!worldPos) {
             this.selectionBox.visible = false;
             this.selectionBox.rotation.set(0, 0, 0);
+            this.updateBlockInspector(null);
             return;
         }
         
@@ -2482,6 +2520,7 @@ class Game {
             this.selectionBox.rotation.set(0, 0, 0);
         }
         this.selectionBox.visible = true;
+        this.updateBlockInspector(worldPos);
     }
 
     updateFirstPersonHand(delta) {
