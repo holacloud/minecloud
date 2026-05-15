@@ -42,6 +42,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	http.HandleFunc("/voice-test", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/voice-test.html", http.StatusFound)
+	})
 	http.Handle("/", http.FileServer(http.FS(web.MustStaticFS())))
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)

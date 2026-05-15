@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MineCloud Voice Test</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #10141f;
+            color: #edf4ff;
+            font: 14px/1.45 system-ui, sans-serif;
+        }
+        main {
+            width: min(720px, calc(100vw - 32px));
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        h1 { margin: 0 0 8px; }
+        button {
+            height: 42px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: 10px;
+            background: #64d28b;
+            color: #07110b;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        button.active { background: #ffce6a; }
+        pre {
+            max-height: 320px;
+            overflow: auto;
+            padding: 12px;
+            border-radius: 10px;
+            background: #070a10;
+            color: #b7d6ff;
+            white-space: pre-wrap;
+        }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+        .muted { color: #9aa9bd; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>MineCloud Voice Test</h1>
+    <p class="muted">Prueba WebRTC aislada: sin juego, sin distancia y sin volumen por proximidad.</p>
+    <div class="row">
+        <button id="toggle" type="button">Start Voice Test</button>
+        <span id="status">Connecting...</span>
+    </div>
+    <p>Abre esta página en dos navegadores o dispositivos, pulsa el botón en ambos y habla.</p>
+    <pre id="log"></pre>
+</main>
+
+<script>
+(() => {
+    const playerId = 'voice_test_' + Math.random().toString(36).slice(2, 11);
+    const username = 'VoiceTest-' + playerId.slice(-4);
+    const peers = new Map();
+    const voiceStates = new Map();
+    let ws = null;
+    let enabled = false;
+    let localStream = null;
+    let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+    const button = document.getElementById('toggle');
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    function log(...parts) {
+        const line = parts.map((part) => typeof part === 'string' ? part : JSON.stringify(part)).join(' ');
+        logEl.textContent += `[${new Date().toLocaleTimeString()}] ${line}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log('[voice-test]', ...parts);
+    }
+
+    function send(type, payload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        ws.send(JSON.stringify({ type, payload }));
+    }
+
+    async function loadIceServers() {
+        const response = await fetch('/ice-servers', { cache: 'no-store' });
+        const config = await response.json();
+        if (Array.isArray(config.iceServers) && config.iceServers.length > 0) {
+            iceServers = config.iceServers;
+        }
+        log('ICE servers loaded', iceServers.map((server) => server.urls));
+    }
+
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+        ws.addEventListener('open', () => {
+            statusEl.textContent = `Connected as ${username}`;
+            send('playerJoin', { playerId, username });
+            log('WebSocket connected', playerId);
+        });
+
+        ws.addEventListener('close', () => {
+            statusEl.textContent = 'Disconnected, reconnecting...';
+            setTimeout(connectWebSocket, 1500);
+        });
+
+        ws.addEventListener('message', (event) => {
+            const message = JSON.parse(event.data);
+            const payload = message.payload || message;
+            if (message.type === 'playerList') handlePlayerList(payload.players || []);
+            if (message.type === 'voiceState') handleVoiceState(message.payload);
+            if (message.type === 'webrtcOffer') handleOffer(message.payload);
+            if (message.type === 'webrtcAnswer') handleAnswer(message.payload);
+            if (message.type === 'webrtcIceCandidate') handleIceCandidate(message.payload);
+        });
+    }
+
+    function handlePlayerList(players) {
+        const activeIds = new Set();
+        for (const player of players) {
+            if (!player.id || player.id === playerId) continue;
+            activeIds.add(player.id);
+            voiceStates.set(player.id, !!player.voiceEnabled);
+        }
+        for (const peerId of peers.keys()) {
+            if (!activeIds.has(peerId)) removePeer(peerId);
+        }
+        syncPeers();
+    }
+
+    function handleVoiceState(payload) {
+        if (!payload || payload.playerId === playerId) return;
+        voiceStates.set(payload.playerId, !!payload.enabled);
+        syncPeers();
+    }
+
+    function syncPeers() {
+        if (!enabled || !localStream) return;
+        for (const [peerId, peerEnabled] of voiceStates) {
+            if (!peerEnabled) {
+                removePeer(peerId);
+                continue;
+            }
+            const peer = ensurePeer(peerId);
+            if (!peer.connected && !peer.makingOffer && !peer.awaitingAnswer && peer.pc.signalingState === 'stable') {
+                createOffer(peerId);
+            }
+        }
+    }
+
+    function ensurePeer(peerId) {
+        const current = peers.get(peerId);
+        if (current) return current;
+
+        const pc = new RTCPeerConnection({ iceServers });
+        const peer = {
+            pc,
+            polite: playerId > peerId,
+            connected: false,
+            makingOffer: false,
+            awaitingAnswer: false,
+            ignoreOffer: false,
+            queuedCandidates: []
+        };
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) send('webrtcIceCandidate', { toPlayerId: peerId, candidate: event.candidate });
+        };
+        pc.oniceconnectionstatechange = () => log('ICE', peerId, pc.iceConnectionState);
+        pc.onconnectionstatechange = () => {
+            log('Connection', peerId, pc.connectionState);
+            peer.connected = pc.connectionState === 'connected';
+            if (peer.connected) peer.awaitingAnswer = false;
+        };
+        pc.onnegotiationneeded = () => createOffer(peerId);
+        pc.ontrack = (event) => {
+            log('Remote track received', peerId);
+            const audio = new Audio();
+            audio.autoplay = true;
+            audio.playsInline = true;
+            audio.srcObject = event.streams[0];
+            audio.play().catch((error) => log('Audio play failed', error.message));
+        };
+
+        localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+        peers.set(peerId, peer);
+        log('Peer created', peerId);
+        return peer;
+    }
+
+    async function createOffer(peerId) {
+        const peer = ensurePeer(peerId);
+        if (peer.makingOffer || peer.pc.signalingState !== 'stable') return;
+        try {
+            peer.makingOffer = true;
+            const offer = await peer.pc.createOffer();
+            await peer.pc.setLocalDescription(offer);
+            peer.awaitingAnswer = true;
+            send('webrtcOffer', { toPlayerId: peerId, sdp: offer });
+            log('Offer sent', peerId);
+        } catch (error) {
+            log('Offer failed', peerId, error.message);
+        } finally {
+            peer.makingOffer = false;
+        }
+    }
+
+    async function handleOffer(payload) {
+        if (!enabled || !localStream || !payload) return;
+        const peerId = payload.fromPlayerId;
+        const peer = ensurePeer(peerId);
+        try {
+            const offerCollision = peer.makingOffer || peer.pc.signalingState !== 'stable';
+            peer.ignoreOffer = !peer.polite && offerCollision;
+            if (peer.ignoreOffer) {
+                log('Offer ignored after collision', peerId);
+                return;
+            }
+            if (peer.pc.signalingState !== 'stable') await peer.pc.setLocalDescription({ type: 'rollback' });
+            await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            while (peer.queuedCandidates.length > 0) await peer.pc.addIceCandidate(new RTCIceCandidate(peer.queuedCandidates.shift()));
+            const answer = await peer.pc.createAnswer();
+            await peer.pc.setLocalDescription(answer);
+            send('webrtcAnswer', { toPlayerId: peerId, sdp: answer });
+            log('Answer sent', peerId);
+        } catch (error) {
+            log('Offer handling failed', peerId, error.message);
+        }
+    }
+
+    async function handleAnswer(payload) {
+        const peer = payload && peers.get(payload.fromPlayerId);
+        if (!peer) return;
+        try {
+            if (peer.pc.signalingState !== 'have-local-offer') return;
+            await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            while (peer.queuedCandidates.length > 0) await peer.pc.addIceCandidate(new RTCIceCandidate(peer.queuedCandidates.shift()));
+            peer.awaitingAnswer = false;
+            log('Answer applied', payload.fromPlayerId);
+        } catch (error) {
+            log('Answer failed', payload.fromPlayerId, error.message);
+        }
+    }
+
+    async function handleIceCandidate(payload) {
+        if (!payload || !payload.candidate) return;
+        const peer = ensurePeer(payload.fromPlayerId);
+        try {
+            if (!peer.pc.remoteDescription) {
+                peer.queuedCandidates.push(payload.candidate);
+                return;
+            }
+            await peer.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        } catch (error) {
+            if (!peer.ignoreOffer) log('ICE candidate failed', payload.fromPlayerId, error.message);
+        }
+    }
+
+    function removePeer(peerId) {
+        const peer = peers.get(peerId);
+        if (!peer) return;
+        peer.pc.close();
+        peers.delete(peerId);
+        log('Peer removed', peerId);
+    }
+
+    async function start() {
+        await loadIceServers();
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        enabled = true;
+        button.textContent = 'Stop Voice Test';
+        button.classList.add('active');
+        send('voiceState', { enabled: true });
+        syncPeers();
+        log('Voice enabled');
+    }
+
+    function stop() {
+        enabled = false;
+        send('voiceState', { enabled: false });
+        for (const peerId of Array.from(peers.keys())) removePeer(peerId);
+        if (localStream) localStream.getTracks().forEach((track) => track.stop());
+        localStream = null;
+        button.textContent = 'Start Voice Test';
+        button.classList.remove('active');
+        log('Voice disabled');
+    }
+
+    button.addEventListener('click', async () => {
+        try {
+            if (enabled) stop();
+            else await start();
+        } catch (error) {
+            log('Start failed', error.message);
+        }
+    });
+
+    connectWebSocket();
+})();
+</script>
+</body>
+</html>
