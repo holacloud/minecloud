@@ -631,6 +631,23 @@ class Game {
         }
     }
 
+    updateNavigationHUD() {
+        const compass = document.getElementById('compass-value');
+        const clock = document.getElementById('clock-value');
+        if (compass) {
+            const yaw = ((this.cameraController.yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+            const directions = ['N', 'E', 'S', 'W'];
+            const index = Math.round(yaw / (Math.PI / 2)) % 4;
+            compass.textContent = directions[index];
+        }
+        if (clock) {
+            const dayHour = ((this.timeOfDay * 24) + 6) % 24;
+            const hours = Math.floor(dayHour).toString().padStart(2, '0');
+            const minutes = Math.floor((dayHour % 1) * 60).toString().padStart(2, '0');
+            clock.textContent = `${hours}:${minutes}`;
+        }
+    }
+
     updateDeathScreen() {
         const screen = document.getElementById('death-screen');
         const reason = document.getElementById('death-reason');
@@ -2789,6 +2806,7 @@ class Game {
         
         const pos = this.cameraController.getPosition();
         document.getElementById('position').textContent = `X: ${pos.x.toFixed(1)} Y: ${pos.y.toFixed(1)} Z: ${pos.z.toFixed(1)}`;
+        this.updateNavigationHUD();
     }
     
     updateSelectionBox() {

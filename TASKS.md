@@ -42,6 +42,6 @@ Next tasks
 - [x] Añadir pantalla de muerte con cuenta atrás de respawn
 - [x] Mostrar mensajes de muerte en el chat multijugador
 - [x] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`
-- [ ] Añadir brújula y reloj visual en el HUD
+- [x] Añadir brújula y reloj visual en el HUD
 - [ ] Añadir modo foto con `F2` para ocultar toda la interfaz
 - [ ] Permitir dormir en la cama para saltar la noche
