@@ -120,6 +120,7 @@ class Game {
         this.ambientLight = null;
         this.sunLight = null;
         this.hemiLight = null;
+        this.heldTorchLight = null;
         this.hotbarSlotElements = [];
         this.hotbarCountElements = [];
         this.pickups = new Map();
@@ -1132,8 +1133,15 @@ class Game {
         
         this.hitIndicator = document.getElementById('hit-indicator');
         this.initViewModel();
+        this.initHeldTorchLight();
 
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    initHeldTorchLight() {
+        this.heldTorchLight = new THREE.PointLight(0xffb65a, 0, 8, 1.8);
+        this.heldTorchLight.position.set(0.45, -0.35, -0.55);
+        this.camera.add(this.heldTorchLight);
     }
 
     createMoonPhaseTexture(phase) {
@@ -3769,6 +3777,13 @@ class Game {
         this.firstPersonHand.rotation.y = THREE.MathUtils.lerp(this.firstPersonHand.rotation.y, targetRotY, t);
         this.firstPersonHand.rotation.z = THREE.MathUtils.lerp(this.firstPersonHand.rotation.z, targetRotZ, t);
     }
+
+    updateHeldTorchLight() {
+        if (!this.heldTorchLight) return;
+
+        const hasTorchInHand = this.getSelectedBlockType() === 'torch' && this.getInventoryCount('torch') > 0;
+        this.heldTorchLight.intensity = hasTorchInHand ? 1.45 : 0;
+    }
     
     animate() {
         requestAnimationFrame(() => this.animate());
@@ -3859,6 +3874,7 @@ class Game {
         this.updateMiningParticles(delta);
         this.updateMiningBlockVisual(delta);
         this.updateFirstPersonHand(delta);
+        this.updateHeldTorchLight();
 
         if (this.cameraViewMode === 'third') {
             this.updateThirdPersonCamera(playerAnchor, delta);
