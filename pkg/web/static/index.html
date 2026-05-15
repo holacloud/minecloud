@@ -119,6 +119,98 @@
             transition: opacity 0.1s;
             z-index: 99;
         }
+
+        #mobile-controls {
+            position: absolute;
+            inset: 0;
+            display: none;
+            pointer-events: none;
+            z-index: 160;
+            touch-action: none;
+        }
+        #mobile-controls.enabled {
+            display: block;
+        }
+        .mobile-zone {
+            position: absolute;
+            bottom: 0;
+            width: 50vw;
+            height: 48vh;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        #mobile-move-zone {
+            left: 0;
+        }
+        #mobile-look-zone {
+            right: 0;
+        }
+        #mobile-joystick {
+            position: absolute;
+            left: 26px;
+            bottom: 34px;
+            width: 132px;
+            height: 132px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.24);
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.06);
+        }
+        #mobile-joystick-knob {
+            position: absolute;
+            left: 40px;
+            top: 40px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.55);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        #mobile-buttons {
+            position: absolute;
+            right: 18px;
+            bottom: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-end;
+            pointer-events: none;
+        }
+        .mobile-button-row {
+            display: flex;
+            gap: 12px;
+        }
+        .mobile-button {
+            min-width: 74px;
+            height: 56px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 16px;
+            background: rgba(18, 24, 36, 0.5);
+            color: #fff;
+            font: 600 14px/1 'Consolas', monospace;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(8px);
+            pointer-events: auto;
+            touch-action: none;
+        }
+        .mobile-button:active,
+        .mobile-button.active {
+            background: rgba(95, 135, 220, 0.7);
+        }
+
+        @media (pointer: coarse) {
+            #hotbar {
+                bottom: 88px;
+                gap: 6px;
+                padding: 6px;
+                z-index: 220;
+            }
+            .hotbar-slot {
+                width: 44px;
+                height: 44px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -137,6 +229,23 @@
     </div>
     <div id="hotbar"></div>
     <div id="connecting">Connecting to server...</div>
+    <div id="mobile-controls">
+        <div id="mobile-move-zone" class="mobile-zone">
+            <div id="mobile-joystick">
+                <div id="mobile-joystick-knob"></div>
+            </div>
+        </div>
+        <div id="mobile-look-zone" class="mobile-zone"></div>
+        <div id="mobile-buttons">
+            <div class="mobile-button-row">
+                <button id="mobile-break" class="mobile-button" type="button">Mine</button>
+                <button id="mobile-place" class="mobile-button" type="button">Place</button>
+            </div>
+            <div class="mobile-button-row">
+                <button id="mobile-jump" class="mobile-button" type="button">Jump</button>
+            </div>
+        </div>
+    </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/camera.js"></script>

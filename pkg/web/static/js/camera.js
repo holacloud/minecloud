@@ -11,6 +11,11 @@ class CameraController {
         this.lookSpeed = 0.002;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false };
+        this.moveInput = { x: 0, y: 0 };
+        this.lookInput = { deltaX: 0, deltaY: 0 };
+        this.touchJump = false;
+        this.touchSprint = false;
+        this.touchControlsEnabled = false;
         
         this.velocityY = 0;
         this.isLocked = false;
@@ -23,6 +28,12 @@ class CameraController {
     }
     
     setBlockChecker(fn) { this.blockChecker = fn; }
+    setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
+    setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
+    addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
+    setTouchJump(active) { this.touchJump = active; }
+    setTouchSprint(active) { this.touchSprint = active; }
+    canInteract() { return this.isLocked || this.touchControlsEnabled; }
     
     init() {
         document.addEventListener('keydown', e => {
@@ -50,7 +61,11 @@ class CameraController {
             this.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.pitch));
         });
         
-        this.domElement.addEventListener('click', () => this.domElement.requestPointerLock());
+        this.domElement.addEventListener('click', () => {
+            if (!this.touchControlsEnabled) {
+                this.domElement.requestPointerLock();
+            }
+        });
         document.addEventListener('pointerlockchange', () => this.isLocked = document.pointerLockElement === this.domElement);
     }
     
@@ -68,7 +83,14 @@ class CameraController {
     }
     
     update(delta) {
-        const speed = this.keys.sprint ? this.sprintSpeed : this.moveSpeed;
+        this.yaw -= this.lookInput.deltaX * this.lookSpeed;
+        this.pitch -= this.lookInput.deltaY * this.lookSpeed;
+        this.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.pitch));
+        this.lookInput.deltaX = 0;
+        this.lookInput.deltaY = 0;
+
+        const isSprinting = this.keys.sprint || this.touchSprint;
+        const speed = isSprinting ? this.sprintSpeed : this.moveSpeed;
         
         const forward = new THREE.Vector3(0, 0, -1);
         forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -81,6 +103,8 @@ class CameraController {
         if (this.keys.backward) { moveX -= forward.x; moveZ -= forward.z; }
         if (this.keys.left) { moveX -= right.x; moveZ -= right.z; }
         if (this.keys.right) { moveX += right.x; moveZ += right.z; }
+        if (this.moveInput.y !== 0) { moveX += forward.x * this.moveInput.y; moveZ += forward.z * this.moveInput.y; }
+        if (this.moveInput.x !== 0) { moveX += right.x * this.moveInput.x; moveZ += right.z * this.moveInput.x; }
         
         if (moveX !== 0 || moveZ !== 0) {
             const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
@@ -115,7 +139,7 @@ class CameraController {
             this.onGround = false;
         }
         
-        if (this.keys.jump && this.onGround) {
+        if ((this.keys.jump || this.touchJump) && this.onGround) {
             this.velocityY = this.jumpVelocity;
             this.onGround = false;
         }
