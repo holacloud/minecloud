@@ -15,6 +15,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Extra decorative flora, including tall grass, flowers, and mushrooms.
 - Ambient interactive mobs: sheep, ducks, and pigs.
 - First-person movement with auto-step over 1-block ledges.
+- Optional third-person camera view.
 - Sneak/crouch movement for careful building and edge safety.
 - Health system with fall damage, respawn, and a persistent safe-position restore.
 - Death screen with respawn countdown.
@@ -27,11 +28,12 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Beds that set your respawn point when placed.
 - Sleeping in a bed can skip the night.
 - Placeable sign blocks with persistent shared text.
+- Sign blocks support emoji voting reactions.
 - Full sign reading panel for longer sign messages.
 - Craftable torches with placed dynamic light.
 - Block inspector overlay that shows information about the block you are aiming at.
 - Humanoid remote player avatars with nametags and smoothed movement.
-- Facial details on player avatars.
+- Facial details on player avatars, with player-specific clothing colors derived from identity.
 - Local footsteps, nearby remote footsteps, and light camera bob while walking.
 - Nearby remote footsteps with distance-based audio.
 - Crafting system with recipes for blocks like `glass` and `stone_bricks`.
@@ -42,6 +44,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Dynamic rain with visual and lighting changes.
 - Procedural sound effects for mining, placing, jumping, and pickups.
 - Multiplayer chat, player mentions by clicking avatars, system join/leave messages, and death messages.
+- Player roster supports click-to-follow camera mode.
 - Chat slash commands such as `/help`, `/spawn`, `/rtx`, and `/time`.
 - Proximity voice chat with WebRTC signaling.
 - Compass and world clock in the HUD.
@@ -55,6 +58,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 
 - `WASD`: move.
 - `Shift`: sprint.
+- Double tap `W`: sprint.
 - `Ctrl`: crouch / sneak.
 - `Space`: jump.
 - Hold left click: mine block.
@@ -69,6 +73,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - `E`: open/close the full inventory panel.
 - `F`: read the full text of the sign you are aiming at.
 - `F` while aiming at a bed at night: sleep until dawn.
+- `V`: toggle third-person camera.
 - `F2`: toggle photo mode.
 - `Esc`: open pause/settings menu.
 - Press `R` 3 times quickly: toggle RTX mode.
@@ -104,6 +109,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
   - enter up to `288` characters.
 - Result: the sign text is visible to every player and is saved with the world.
 - To read a placed sign comfortably later, aim at it and press `F`.
+- Signs support emoji voting: `👍`, `👎`, `❤️`, `😊`, and `⭐`.
 
 ### Other crafted blocks
 
@@ -130,6 +136,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 
 - Player names are chosen on first launch and shown above remote avatars.
 - Clicking a player opens the chat with an `@name` mention prefilled.
+- Clicking a player in the roster can switch the camera to follow them.
 - The chat shows normal player messages and system messages when players join or leave.
 - Death events are also announced in chat.
 - Voice chat is proximity-based: enable it with the `Voice` button and players become louder as they get closer.
