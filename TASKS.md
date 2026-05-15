@@ -31,7 +31,7 @@ Next tasks
 - [x] Añadir más elementos naturales decorativos al mundo como flores, hierba alta y setas
 - [x] Crear un visor de elementos que describa las propiedades del bloque al que apuntas
 - [x] Permitir leer cómodamente el texto completo de un cartel al interactuar con él
-- [ ] Añadir pasos locales del jugador y un ligero camera bob al caminar
+- [x] Añadir pasos locales del jugador y un ligero camera bob al caminar
 - [ ] Añadir lluvia dinámica con efecto visual y de iluminación
 - [ ] Añadir modo agachado/sneak para moverse despacio y no caerse de los bordes
 - [ ] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado

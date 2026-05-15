@@ -113,6 +113,10 @@ class Game {
         this.chatHideTimeout = null;
         this.signReaderOpen = false;
         this.remoteFootstepRange = 9;
+        this.localFootstepDistance = 0;
+        this.localFootstepStepLength = 1.1;
+        this.lastLocalGroundPosition = null;
+        this.cameraBobPhase = 0;
         this.maxHealth = 20;
         this.health = this.maxHealth;
         this.wasOnGroundForDamage = false;
@@ -541,6 +545,26 @@ class Game {
         });
     }
 
+    playLocalFootstepSound(blockType) {
+        const hardSurface = ['stone', 'cobblestone', 'stone_bricks', 'brick', 'glass'].includes(blockType);
+        const softSurface = ['sand', 'dirt', 'grass', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'leaves', 'cactus'].includes(blockType);
+
+        this.playNoiseBurst({
+            duration: hardSurface ? 0.065 : 0.05,
+            volume: hardSurface ? 0.022 : softSurface ? 0.016 : 0.018,
+            highpass: hardSurface ? 420 : 170,
+            lowpass: hardSurface ? 1750 : 1200
+        });
+        this.playTone({
+            frequency: hardSurface ? 155 : softSurface ? 108 : 128,
+            duration: 0.03,
+            type: 'triangle',
+            volume: hardSurface ? 0.012 : 0.009,
+            release: 0.025,
+            detune: (Math.random() - 0.5) * 32
+        });
+    }
+
     updateHealthUI() {
         const healthValue = document.getElementById('health-value');
         const healthFill = document.getElementById('health-fill');
@@ -681,6 +705,37 @@ class Game {
         }
 
         this.wasOnGroundForDamage = this.cameraController.onGround;
+    }
+
+    updateLocalMovementFeedback(delta) {
+        const horizontalPosition = new THREE.Vector2(this.camera.position.x, this.camera.position.z);
+        if (!this.lastLocalGroundPosition) {
+            this.lastLocalGroundPosition = horizontalPosition.clone();
+        }
+
+        const distanceMoved = horizontalPosition.distanceTo(this.lastLocalGroundPosition);
+        this.lastLocalGroundPosition.copy(horizontalPosition);
+
+        const isWalkingOnGround = this.cameraController.onGround && distanceMoved > 0.0008;
+        if (isWalkingOnGround) {
+            this.localFootstepDistance += distanceMoved;
+            this.cameraBobPhase += distanceMoved * 11;
+
+            while (this.localFootstepDistance >= this.localFootstepStepLength) {
+                this.localFootstepDistance -= this.localFootstepStepLength;
+                const blockType = this.world.getBlockTypeAt(Math.round(this.camera.position.x), Math.floor(this.camera.position.y - this.cameraController.eyeHeight), Math.round(this.camera.position.z)) || 'grass';
+                this.playLocalFootstepSound(blockType);
+            }
+        } else {
+            this.localFootstepDistance = 0;
+            this.cameraBobPhase = THREE.MathUtils.lerp(this.cameraBobPhase, 0, Math.min(1, delta * 6));
+        }
+
+        const bobStrength = isWalkingOnGround ? 1 : 0;
+        const bobPitch = Math.sin(this.cameraBobPhase) * 0.012 * bobStrength;
+        const bobRoll = Math.cos(this.cameraBobPhase * 0.5) * 0.01 * bobStrength;
+        this.camera.rotation.x += bobPitch;
+        this.camera.rotation.z = bobRoll;
     }
     
     initThreeJS() {
@@ -2625,6 +2680,7 @@ class Game {
         }
         this.wasOnGround = this.cameraController.onGround;
         this.updateSurvival(delta);
+        this.updateLocalMovementFeedback(delta);
         this.updateDayNightCycle(delta);
         this.updateUnderwaterEffect();
         this.world.update(this.camera.position.x, this.camera.position.z);
