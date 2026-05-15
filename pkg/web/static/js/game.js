@@ -22,6 +22,13 @@ class Game {
         
         this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'leaves'];
         this.selectedSlot = 0;
+        this.rtxModeEnabled = false;
+        this.rtxTogglePresses = [];
+        this.rtxToggleWindowMs = 1200;
+
+        this.ambientLight = null;
+        this.sunLight = null;
+        this.hemiLight = null;
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -61,6 +68,7 @@ class Game {
         this.initThreeJS();
         this.initCamera();
         this.initWorld();
+        this.applyRTXMode(false);
         this.initNetwork();
         this.initHotbar();
         this.initInput();
@@ -87,15 +95,24 @@ class Game {
         
         document.getElementById('game-container').appendChild(this.renderer.domElement);
         
-        const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.6);
-        this.scene.add(ambientLight);
+        this.ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.6);
+        this.scene.add(this.ambientLight);
         
-        const dirLight = new THREE.DirectionalLight(0xFFFFA0, 0.8);
-        dirLight.position.set(100, 150, 50);
-        this.scene.add(dirLight);
+        this.sunLight = new THREE.DirectionalLight(0xFFFFA0, 0.8);
+        this.sunLight.position.set(100, 150, 50);
+        this.sunLight.shadow.mapSize.set(1536, 1536);
+        this.sunLight.shadow.bias = -0.0008;
+        this.sunLight.shadow.normalBias = 0.02;
+        this.sunLight.shadow.camera.near = 1;
+        this.sunLight.shadow.camera.far = 360;
+        this.sunLight.shadow.camera.left = -70;
+        this.sunLight.shadow.camera.right = 70;
+        this.sunLight.shadow.camera.top = 70;
+        this.sunLight.shadow.camera.bottom = -70;
+        this.scene.add(this.sunLight);
         
-        const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D5C3D, 0.4);
-        this.scene.add(hemiLight);
+        this.hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D5C3D, 0.4);
+        this.scene.add(this.hemiLight);
         
         const selectionGeom = new THREE.BoxGeometry(1.002, 1.002, 1.002);
         const selectionEdges = new THREE.EdgesGeometry(selectionGeom);
@@ -301,6 +318,83 @@ class Game {
     initWorld() {
         this.world = new WorldRenderer(this.scene);
     }
+
+    updateRTXStatus() {
+        const statusEl = document.getElementById('rtx-status');
+        if (!statusEl) return;
+
+        statusEl.textContent = this.rtxModeEnabled ? 'On' : 'Off';
+        statusEl.style.color = this.rtxModeEnabled ? '#7CE7FF' : '#FFFFFF';
+    }
+
+    syncOtherPlayerShadows() {
+        for (const mesh of this.otherPlayerMeshes.values()) {
+            mesh.castShadow = this.rtxModeEnabled;
+            mesh.receiveShadow = this.rtxModeEnabled;
+        }
+    }
+
+    applyRTXMode(enabled) {
+        this.rtxModeEnabled = enabled;
+
+        const skyColor = new THREE.Color(enabled ? 0x9BB7D1 : 0x87CEEB);
+        this.scene.background = skyColor;
+        this.scene.fog = new THREE.Fog(skyColor.getHex(), enabled ? 18 : 20, enabled ? 190 : 150);
+
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, enabled ? 2 : 1.25));
+        this.renderer.shadowMap.enabled = enabled;
+        this.renderer.shadowMap.type = enabled ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
+        this.renderer.toneMapping = enabled ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+        this.renderer.toneMappingExposure = enabled ? 1.15 : 1;
+        if ('physicallyCorrectLights' in this.renderer) {
+            this.renderer.physicallyCorrectLights = enabled;
+        }
+        if (THREE.sRGBEncoding && this.renderer.outputEncoding !== undefined) {
+            this.renderer.outputEncoding = THREE.sRGBEncoding;
+        }
+
+        this.ambientLight.intensity = enabled ? 0.18 : 0.6;
+        this.ambientLight.color.setHex(enabled ? 0xC8D6E5 : 0xFFFFFF);
+
+        this.hemiLight.intensity = enabled ? 0.9 : 0.4;
+        this.hemiLight.color.setHex(enabled ? 0xBFD7FF : 0x87CEEB);
+        this.hemiLight.groundColor.setHex(enabled ? 0x4C4336 : 0x3D5C3D);
+
+        this.sunLight.intensity = enabled ? 1.6 : 0.8;
+        this.sunLight.color.setHex(enabled ? 0xFFF3D6 : 0xFFFFA0);
+        this.sunLight.position.set(enabled ? 120 : 100, enabled ? 180 : 150, enabled ? 70 : 50);
+        this.sunLight.castShadow = enabled;
+
+        this.playerMaterial.dispose();
+        this.playerMaterial = enabled
+            ? new THREE.MeshStandardMaterial({ color: 0xFFCC00, roughness: 0.45, metalness: 0.05 })
+            : new THREE.MeshLambertMaterial({ color: 0xFFCC00 });
+        for (const mesh of this.otherPlayerMeshes.values()) {
+            mesh.material = this.playerMaterial;
+        }
+
+        this.world.setRTXMode(enabled);
+        this.syncOtherPlayerShadows();
+        this.updateRTXStatus();
+        this.lastSelectionUpdate = 0;
+    }
+
+    toggleRTXMode() {
+        this.stopMining();
+        this.resetMiningBlockVisual(true);
+        this.applyRTXMode(!this.rtxModeEnabled);
+    }
+
+    handleRTXShortcut() {
+        const now = performance.now();
+        this.rtxTogglePresses.push(now);
+        this.rtxTogglePresses = this.rtxTogglePresses.filter((time) => now - time <= this.rtxToggleWindowMs);
+
+        if (this.rtxTogglePresses.length >= 3) {
+            this.rtxTogglePresses = [];
+            this.toggleRTXMode();
+        }
+    }
     
     initNetwork() {
         this.network = new NetworkClient();
@@ -318,6 +412,8 @@ class Game {
         let mesh = this.otherPlayerMeshes.get(player.id);
         if (!mesh) {
             mesh = new THREE.Mesh(this.playerGeometry, this.playerMaterial);
+            mesh.castShadow = this.rtxModeEnabled;
+            mesh.receiveShadow = this.rtxModeEnabled;
             this.scene.add(mesh);
             this.otherPlayerMeshes.set(player.id, mesh);
         }
@@ -372,6 +468,11 @@ class Game {
     }
     
     onKeyDown(event) {
+        if (event.code === 'KeyR' && !event.repeat) {
+            this.handleRTXShortcut();
+            return;
+        }
+
         const slot = parseInt(event.key) - 1;
         if (slot >= 0 && slot < this.inventory.length) {
             this.selectSlot(slot);
@@ -744,6 +845,7 @@ class Game {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.rtxModeEnabled ? 2 : 1.25));
     }
     
     updateUI() {

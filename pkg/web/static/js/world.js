@@ -9,6 +9,7 @@ class WorldRenderer {
         this.solidBlocks = new Set();
         this.chunkSize = 16;
         this.renderDistance = 4;
+        this.rtxModeEnabled = false;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.materials = new Map();
@@ -68,6 +69,28 @@ class WorldRenderer {
         return blockKeys;
     }
 
+    disposeCache(cache) {
+        for (const value of cache.values()) {
+            if (value && typeof value.dispose === 'function') {
+                value.dispose();
+            }
+        }
+        cache.clear();
+    }
+
+    setRTXMode(enabled) {
+        if (this.rtxModeEnabled === enabled) return;
+
+        this.rtxModeEnabled = enabled;
+        this.disposeCache(this.materials);
+        this.disposeCache(this.textures);
+
+        for (const key of this.activeChunks) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            this.rebuildChunk(chunkX, chunkZ);
+        }
+    }
+
     isSolidType(type) {
         const def = this.blockTypes[type];
         return def ? !def.fluid : false;
@@ -101,6 +124,62 @@ class WorldRenderer {
                 ctx.fillStyle = alpha === 1 ? this.shadeColor(color, 0) : this.shadeColor(color, 0).replace('rgb', 'rgba').replace(')', `, ${alpha})`);
                 ctx.fillRect(x, y, 1, 1);
             }
+        }
+    }
+
+    paintHeightTexture(ctx, type, size) {
+        const def = this.blockTypes[type];
+        const seed = type.length * 23;
+
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                let noise = this.textureNoise(x, y, seed);
+
+                if (type === 'wood' || type === 'planks') {
+                    noise = (noise * 0.55) + ((x % 8) / 8) * 0.45;
+                } else if (type === 'stone' || type === 'cobblestone' || type.endsWith('_ore')) {
+                    noise = (noise * 0.75) + this.textureNoise(x * 0.7, y * 0.7, seed + 7) * 0.25;
+                } else if (type === 'grass' || type === 'leaves') {
+                    noise = (noise * 0.65) + this.textureNoise(x * 1.2, y * 1.2, seed + 13) * 0.35;
+                } else if (type === 'water') {
+                    noise = 0.2 + this.textureNoise(x * 0.4, y * 0.4, seed + 19) * 0.12;
+                }
+
+                const value = Math.max(0, Math.min(255, Math.round(noise * 255)));
+                ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    }
+
+    applyRTXSurfaceDetail(ctx, type, size, seed) {
+        const overlay = (strength, colorFn) => {
+            ctx.globalAlpha = strength;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const noise = this.textureNoise(x * 1.7, y * 1.7, seed + 101);
+                    if (noise < 0.58) continue;
+                    ctx.fillStyle = colorFn(noise, x, y);
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+            ctx.globalAlpha = 1;
+        };
+
+        if (type === 'grass') {
+            overlay(0.28, (noise) => noise > 0.82 ? '#78a843' : '#487122');
+        } else if (type === 'dirt' || type === 'sand') {
+            overlay(0.24, (noise) => noise > 0.82 ? '#d8c087' : '#6d421d');
+        } else if (type === 'stone' || type === 'cobblestone') {
+            overlay(0.22, (noise) => noise > 0.84 ? '#b7b7b7' : '#4c4c4c');
+        } else if (type === 'wood' || type === 'planks') {
+            overlay(0.26, (noise, x) => (x % 11) < 2 || noise > 0.85 ? '#a87a34' : '#5c3d12');
+        } else if (type === 'water') {
+            overlay(0.16, (_noise, x, y) => ((x + y) % 9) < 3 ? '#b9ddff' : '#2d6ca2');
+        } else if (type === 'leaves') {
+            overlay(0.22, (noise) => noise > 0.8 ? '#77b24f' : '#365f22');
+        } else {
+            overlay(0.18, (noise) => noise > 0.82 ? '#f0e6d2' : '#2d2d2d');
         }
     }
 
@@ -218,30 +297,60 @@ class WorldRenderer {
                 this.paintPaletteTexture(ctx, size, [def.color - 0x111111, def.color, def.color + 0x111111], seed);
                 break;
         }
+
+        if (this.rtxModeEnabled) {
+            this.applyRTXSurfaceDetail(ctx, type, size, seed);
+        }
     }
 
-    getTexture(type) {
-        let texture = this.textures.get(type);
+    getTexture(type, kind = 'albedo') {
+        const cacheKey = `${this.rtxModeEnabled ? 'rtx' : 'base'}:${kind}:${type}`;
+        let texture = this.textures.get(cacheKey);
         if (texture) return texture;
 
         const canvas = document.createElement('canvas');
-        canvas.width = 16;
-        canvas.height = 16;
+        const textureSize = this.rtxModeEnabled ? 64 : 16;
+        canvas.width = textureSize;
+        canvas.height = textureSize;
 
         const ctx = canvas.getContext('2d');
-        this.paintTexture(ctx, type, canvas.width);
+        if (kind === 'height') {
+            this.paintHeightTexture(ctx, type, canvas.width);
+        } else {
+            this.paintTexture(ctx, type, canvas.width);
+        }
 
         texture = new THREE.CanvasTexture(canvas);
-        texture.magFilter = THREE.NearestFilter;
-        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = this.rtxModeEnabled ? THREE.LinearFilter : THREE.NearestFilter;
+        texture.minFilter = this.rtxModeEnabled ? THREE.LinearMipmapLinearFilter : THREE.NearestFilter;
+        texture.generateMipmaps = this.rtxModeEnabled;
 
-        if (THREE.sRGBEncoding) {
+        if (kind === 'albedo' && THREE.sRGBEncoding) {
             texture.encoding = THREE.sRGBEncoding;
         }
 
         texture.needsUpdate = true;
-        this.textures.set(type, texture);
+        this.textures.set(cacheKey, texture);
         return texture;
+    }
+
+    getRTXMaterialProps(type) {
+        switch (type) {
+            case 'grass': return { roughness: 0.92, metalness: 0.02, bumpScale: 0.08, envMapIntensity: 0.35 };
+            case 'dirt': return { roughness: 0.97, metalness: 0.01, bumpScale: 0.1, envMapIntensity: 0.2 };
+            case 'sand': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.28 };
+            case 'stone': return { roughness: 0.82, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.45 };
+            case 'cobblestone': return { roughness: 0.84, metalness: 0.06, bumpScale: 0.15, envMapIntensity: 0.42 };
+            case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
+            case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
+            case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
+            case 'coal_ore': return { roughness: 0.7, metalness: 0.12, bumpScale: 0.14, envMapIntensity: 0.55 };
+            case 'iron_ore': return { roughness: 0.64, metalness: 0.16, bumpScale: 0.14, envMapIntensity: 0.62 };
+            case 'gold_ore': return { roughness: 0.5, metalness: 0.32, bumpScale: 0.14, envMapIntensity: 0.8 };
+            case 'leaves': return { roughness: 0.94, metalness: 0.01, bumpScale: 0.04, envMapIntensity: 0.18 };
+            case 'water': return { roughness: 0.08, metalness: 0.12, bumpScale: 0.02, envMapIntensity: 1.15, emissive: 0x103050 };
+            default: return { roughness: 0.86, metalness: 0.03, bumpScale: 0.07, envMapIntensity: 0.28 };
+        }
     }
 
     getMaterial(type) {
@@ -249,14 +358,32 @@ class WorldRenderer {
         if (material) return material;
 
         const def = this.blockTypes[type];
-        material = new THREE.MeshLambertMaterial({
-            color: 0xFFFFFF,
-            map: this.getTexture(type),
-            transparent: def.transparent || false,
-            opacity: def.opacity || 1,
-            alphaTest: type === 'leaves' ? 0.35 : 0,
-            depthWrite: !def.transparent || type === 'leaves'
-        });
+        if (this.rtxModeEnabled) {
+            const props = this.getRTXMaterialProps(type);
+            material = new THREE.MeshStandardMaterial({
+                color: 0xFFFFFF,
+                map: this.getTexture(type, 'albedo'),
+                bumpMap: this.getTexture(type, 'height'),
+                bumpScale: props.bumpScale,
+                roughness: props.roughness,
+                metalness: props.metalness,
+                envMapIntensity: props.envMapIntensity,
+                emissive: props.emissive || 0x000000,
+                transparent: def.transparent || false,
+                opacity: def.opacity || 1,
+                alphaTest: type === 'leaves' ? 0.28 : 0,
+                depthWrite: !def.transparent || type === 'leaves'
+            });
+        } else {
+            material = new THREE.MeshLambertMaterial({
+                color: 0xFFFFFF,
+                map: this.getTexture(type, 'albedo'),
+                transparent: def.transparent || false,
+                opacity: def.opacity || 1,
+                alphaTest: type === 'leaves' ? 0.35 : 0,
+                depthWrite: !def.transparent || type === 'leaves'
+            });
+        }
 
         this.materials.set(type, material);
         return material;
@@ -502,6 +629,8 @@ class WorldRenderer {
             mesh.userData.chunkBaseX = baseX;
             mesh.userData.chunkBaseZ = baseZ;
             mesh.matrixAutoUpdate = false;
+            mesh.castShadow = this.rtxModeEnabled && type !== 'water';
+            mesh.receiveShadow = this.rtxModeEnabled;
 
             if (THREE.StaticDrawUsage) {
                 mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
