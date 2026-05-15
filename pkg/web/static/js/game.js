@@ -77,6 +77,8 @@ class Game {
         this.instanceTempScale = new THREE.Vector3(1, 1, 1);
 
         this.firstPersonHand = null;
+        this.heldItemMesh = null;
+        this.heldItemType = null;
         this.handBasePosition = new THREE.Vector3(0.62, -0.72, -1.05);
         this.handBaseRotation = new THREE.Euler(-0.55, 0.2, 0.18);
         this.handSwingTime = 0;
@@ -442,6 +444,7 @@ class Game {
 
         this.world.setRTXMode(enabled);
         this.rebuildPickupMeshes();
+        this.refreshHeldItemMesh(true);
         this.syncOtherPlayerShadows();
         this.updateRTXStatus();
         this.lastSelectionUpdate = 0;
@@ -540,6 +543,7 @@ class Game {
         });
 
         this.updateHotbarCounts();
+        this.refreshHeldItemMesh();
     }
 
     updateHotbarCounts() {
@@ -576,6 +580,7 @@ class Game {
         this.ensureInventorySlot(type);
         this.inventoryCounts[type] = this.getInventoryCount(type) + amount;
         this.updateHotbarCounts();
+        this.refreshHeldItemMesh();
     }
 
     consumeSelectedBlock() {
@@ -587,6 +592,7 @@ class Game {
 
         this.inventoryCounts[type] = count - 1;
         this.updateHotbarCounts();
+        this.refreshHeldItemMesh();
         return true;
     }
 
@@ -667,6 +673,44 @@ class Game {
                 this.collectPickup(id);
             }
         }
+    }
+
+    refreshHeldItemMesh(forceRebuild = false) {
+        if (!this.firstPersonHand || !this.world) return;
+
+        const selectedType = this.getSelectedBlockType();
+        const hasSelectedItem = selectedType && this.getInventoryCount(selectedType) > 0;
+
+        if (!hasSelectedItem) {
+            if (this.heldItemMesh) {
+                this.firstPersonHand.remove(this.heldItemMesh);
+                if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
+                this.heldItemMesh = null;
+                this.heldItemType = null;
+            }
+            return;
+        }
+
+        if (!forceRebuild && this.heldItemMesh && this.heldItemType === selectedType) {
+            return;
+        }
+
+        if (this.heldItemMesh) {
+            this.firstPersonHand.remove(this.heldItemMesh);
+            if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
+        }
+
+        const heldItem = this.world.createDisplayMesh(selectedType, 0.23);
+        heldItem.position.set(0.2, -0.16, -0.18);
+        heldItem.rotation.set(0.22, 0.62, 0.08);
+        heldItem.renderOrder = 10001;
+        heldItem.frustumCulled = false;
+        heldItem.material.depthTest = false;
+        heldItem.material.depthWrite = false;
+
+        this.firstPersonHand.add(heldItem);
+        this.heldItemMesh = heldItem;
+        this.heldItemType = selectedType;
     }
     
     initInput() {
@@ -859,6 +903,7 @@ class Game {
         document.querySelectorAll('.hotbar-slot').forEach((el, i) => {
             el.classList.toggle('selected', i === index);
         });
+        this.refreshHeldItemMesh();
     }
 
     resetMiningTarget() {
