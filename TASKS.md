@@ -60,7 +60,7 @@ Next tasks
 - [ ] Permitir correr con doble pulsación sobre W
 - [x] Hacer que el brazo en primera persona tenga el mismo aspecto que el avatar
 - [x] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
-- [ ] Añadir ajuste de FOV en la configuración
+- [x] Añadir ajuste de FOV en la configuración
 - [ ] Reducir glitches o ralentizaciones al saltar entre niveles distintos
 - [ ] Añadir vista en tercera persona
 - [ ] Hacer que los agujeros o cuevas se vean más oscuros que el exterior

@@ -45,6 +45,7 @@ class Game {
         this.mouseSensitivity = this.settings.mouseSensitivity;
         this.rtxPreferred = this.settings.rtxModeEnabled;
         this.renderDistanceSetting = this.settings.renderDistance;
+        this.fovSetting = this.settings.fov;
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
         this.rtxToggleWindowMs = 1200;
@@ -232,7 +233,8 @@ class Game {
             masterVolume: 0.8,
             mouseSensitivity: 1,
             rtxModeEnabled: false,
-            renderDistance: 4
+            renderDistance: 4,
+            fov: 70
         };
 
         const saved = window.localStorage.getItem('minecloud-settings');
@@ -244,7 +246,8 @@ class Game {
                 masterVolume: typeof parsed.masterVolume === 'number' ? parsed.masterVolume : defaults.masterVolume,
                 mouseSensitivity: typeof parsed.mouseSensitivity === 'number' ? parsed.mouseSensitivity : defaults.mouseSensitivity,
                 rtxModeEnabled: typeof parsed.rtxModeEnabled === 'boolean' ? parsed.rtxModeEnabled : defaults.rtxModeEnabled,
-                renderDistance: typeof parsed.renderDistance === 'number' ? parsed.renderDistance : defaults.renderDistance
+                renderDistance: typeof parsed.renderDistance === 'number' ? parsed.renderDistance : defaults.renderDistance,
+                fov: typeof parsed.fov === 'number' ? parsed.fov : defaults.fov
             };
         } catch (_error) {
             return defaults;
@@ -256,7 +259,8 @@ class Game {
             masterVolume: this.masterVolume,
             mouseSensitivity: this.mouseSensitivity,
             rtxModeEnabled: this.rtxPreferred,
-            renderDistance: this.renderDistanceSetting
+            renderDistance: this.renderDistanceSetting,
+            fov: this.fovSetting
         }));
     }
 
@@ -393,15 +397,17 @@ class Game {
         const sensitivityInput = document.getElementById('settings-sensitivity');
         const volumeInput = document.getElementById('settings-volume');
         const renderDistanceInput = document.getElementById('settings-render-distance');
+        const fovInput = document.getElementById('settings-fov');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
         const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
         const resumeButton = document.getElementById('settings-resume');
 
-        if (!sensitivityInput || !volumeInput || !renderDistanceInput || !rtxToggle || !fullscreenToggle || !resumeButton) return;
+        if (!sensitivityInput || !volumeInput || !renderDistanceInput || !fovInput || !rtxToggle || !fullscreenToggle || !resumeButton) return;
 
         sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         volumeInput.value = this.masterVolume.toFixed(2);
         renderDistanceInput.value = String(this.renderDistanceSetting);
+        fovInput.value = String(this.fovSetting);
 
         sensitivityInput.addEventListener('input', () => {
             this.mouseSensitivity = parseFloat(sensitivityInput.value);
@@ -423,6 +429,13 @@ class Game {
             this.saveSettings();
         });
 
+        fovInput.addEventListener('input', () => {
+            this.fovSetting = parseInt(fovInput.value, 10);
+            this.applyFovSetting();
+            this.updateSettingsUI();
+            this.saveSettings();
+        });
+
         document.addEventListener('fullscreenchange', () => this.updateSettingsUI());
 
         rtxToggle.addEventListener('click', () => this.toggleRTXMode());
@@ -436,20 +449,30 @@ class Game {
         const sensitivityValue = document.getElementById('settings-sensitivity-value');
         const volumeValue = document.getElementById('settings-volume-value');
         const renderDistanceValue = document.getElementById('settings-render-distance-value');
+        const fovValue = document.getElementById('settings-fov-value');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
         const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
         const sensitivityInput = document.getElementById('settings-sensitivity');
         const volumeInput = document.getElementById('settings-volume');
         const renderDistanceInput = document.getElementById('settings-render-distance');
+        const fovInput = document.getElementById('settings-fov');
 
         if (sensitivityValue) sensitivityValue.textContent = this.mouseSensitivity.toFixed(2);
         if (volumeValue) volumeValue.textContent = `${Math.round(this.masterVolume * 100)}%`;
         if (renderDistanceValue) renderDistanceValue.textContent = String(this.renderDistanceSetting);
+        if (fovValue) fovValue.textContent = String(this.fovSetting);
         if (rtxToggle) rtxToggle.textContent = this.rtxModeEnabled ? 'Disable RTX' : 'Enable RTX';
         if (fullscreenToggle) fullscreenToggle.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen';
         if (sensitivityInput) sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         if (volumeInput) volumeInput.value = this.masterVolume.toFixed(2);
         if (renderDistanceInput) renderDistanceInput.value = String(this.renderDistanceSetting);
+        if (fovInput) fovInput.value = String(this.fovSetting);
+    }
+
+    applyFovSetting() {
+        if (!this.camera) return;
+        this.camera.fov = this.fovSetting;
+        this.camera.updateProjectionMatrix();
     }
 
     async toggleFullscreen() {
@@ -979,7 +1002,7 @@ class Game {
         this.scene.background = skyColor;
         this.scene.fog = new THREE.Fog(0x87CEEB, 20, this.world ? 150 : 150);
 
-        this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(this.fovSetting, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 20, 0);
         this.scene.add(this.camera);
         this.initCelestialBodies();
