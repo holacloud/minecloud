@@ -747,6 +747,8 @@ class WorldRenderer {
                 const worldX = chunkX * this.chunkSize + x;
                 const worldZ = chunkZ * this.chunkSize + z;
                 const biome = getBiomeAt(worldX, worldZ);
+                const waterLevel = 5;
+                const lakeNoise = noise2D(worldX - 620, worldZ + 910, 0.022);
 
                 let height;
                 if (biome === 'desert') {
@@ -757,6 +759,11 @@ class WorldRenderer {
                     height = Math.floor(noise2D(worldX, worldZ) * 7) + 3;
                 } else {
                     height = Math.floor(noise2D(worldX, worldZ) * 8) + 3;
+                }
+
+                if (biome !== 'rocky' && lakeNoise > 0.68) {
+                    const lakeDepth = 1 + Math.floor((lakeNoise - 0.68) * 18);
+                    height = Math.min(height, waterLevel - lakeDepth);
                 }
 
                 for (let y = -5; y <= height; y++) {
@@ -789,7 +796,6 @@ class WorldRenderer {
                     this.setBlockData(worldX, y, worldZ, blockType, key);
                 }
 
-                const waterLevel = 2;
                 if (height < waterLevel) {
                     for (let y = height + 1; y <= waterLevel; y++) {
                         this.setBlockData(worldX, y, worldZ, 'water', key);

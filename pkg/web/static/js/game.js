@@ -20,7 +20,7 @@ class Game {
         this.placeDistance = 4.5;
         this.selectionUpdateInterval = 50;
         
-        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'leaves'];
+        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves'];
         this.inventoryCounts = {
             grass: 24,
             dirt: 24,
@@ -29,6 +29,7 @@ class Game {
             planks: 20,
             brick: 16,
             sand: 20,
+            water: 12,
             leaves: 16,
             bed: 0,
             sign: 0,
@@ -756,7 +757,7 @@ class Game {
         const isWalkingOnGround = this.cameraController.onGround && distanceMoved > 0.0008;
         if (isWalkingOnGround) {
             this.localFootstepDistance += distanceMoved;
-            this.cameraBobPhase += distanceMoved * 11;
+            this.cameraBobPhase += distanceMoved * 6.2;
 
             while (this.localFootstepDistance >= this.localFootstepStepLength) {
                 this.localFootstepDistance -= this.localFootstepStepLength;
@@ -769,8 +770,8 @@ class Game {
         }
 
         const bobStrength = isWalkingOnGround ? 1 : 0;
-        const bobPitch = Math.sin(this.cameraBobPhase) * 0.012 * bobStrength;
-        const bobRoll = Math.cos(this.cameraBobPhase * 0.5) * 0.01 * bobStrength;
+        const bobPitch = Math.sin(this.cameraBobPhase) * 0.0035 * bobStrength;
+        const bobRoll = Math.cos(this.cameraBobPhase * 0.5) * 0.0022 * bobStrength;
         this.camera.rotation.x += bobPitch;
         this.camera.rotation.z = bobRoll;
     }
