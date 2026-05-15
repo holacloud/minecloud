@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"minecloud/pkg/network"
+	"minecloud/pkg/web"
 )
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	http.Handle("/", http.FileServer(http.FS(web.MustStaticFS())))
 	http.HandleFunc("/ws", network.HandleWebSocket)
 
 	log.Println("Server started on http://localhost:8080")

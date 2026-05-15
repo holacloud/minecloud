@@ -50,4 +50,4 @@ Then open `http://localhost:8080` in your browser.
 
 - `cmd/server`: server entrypoint.
 - `pkg/network`: WebSocket logic and shared state.
-- `static`: web client, assets, and game scripts.
+- `pkg/web/static`: embedded web client, assets, and game scripts.
