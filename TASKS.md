@@ -62,7 +62,7 @@ Next tasks
 - [x] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
 - [x] Añadir ajuste de FOV en la configuración
 - [x] Reducir glitches o ralentizaciones al saltar entre niveles distintos
-- [ ] Añadir vista en tercera persona
+- [x] Añadir vista en tercera persona
 - [x] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
 - [x] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
 - [x] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta

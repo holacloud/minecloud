@@ -68,6 +68,9 @@ class Game {
         this.pauseOpen = false;
         this.titleScreenOpen = true;
         this.titleCameraAngle = 0;
+        this.cameraViewMode = 'first';
+        this.thirdPersonAnchor = null;
+        this.playerAnchorPosition = null;
         this.craftingRecipes = [
             {
                 id: 'planks',
@@ -775,6 +778,24 @@ class Game {
             const minutes = Math.floor((dayHour % 1) * 60).toString().padStart(2, '0');
             clock.textContent = `${hours}:${minutes}`;
         }
+    }
+
+    toggleCameraView() {
+        this.cameraViewMode = this.cameraViewMode === 'first' ? 'third' : 'first';
+        if (this.firstPersonHand) {
+            this.firstPersonHand.visible = this.cameraViewMode === 'first';
+        }
+        if (this.cameraViewMode === 'first') {
+            this.thirdPersonAnchor = null;
+        }
+    }
+
+    updateThirdPersonCamera(anchor) {
+        this.thirdPersonAnchor = anchor.clone();
+        const behind = new THREE.Vector3(0, 1.5, 3.6);
+        behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + Math.PI);
+        this.camera.position.copy(anchor).add(behind);
+        this.camera.lookAt(anchor.x, anchor.y + 0.6, anchor.z);
     }
 
     togglePhotoMode() {
@@ -2706,6 +2727,12 @@ class Game {
             return;
         }
 
+        if (event.code === 'KeyV' && !event.repeat) {
+            event.preventDefault();
+            this.toggleCameraView();
+            return;
+        }
+
         if (event.code === 'Enter' && !event.repeat) {
             event.preventDefault();
             this.openChatInput();
@@ -3509,7 +3536,7 @@ class Game {
             this.lastFpsUpdate = now;
         }
         
-        const pos = this.cameraController.getPosition();
+        const pos = this.playerAnchorPosition || this.cameraController.getPosition();
         document.getElementById('position').textContent = `X: ${pos.x.toFixed(1)} Y: ${pos.y.toFixed(1)} Z: ${pos.z.toFixed(1)}`;
         this.updateNavigationHUD();
     }
@@ -3598,6 +3625,14 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.1);
         const now = performance.now();
 
+        if (this.cameraViewMode === 'third' && this.thirdPersonAnchor) {
+            this.camera.position.copy(this.thirdPersonAnchor);
+            this.camera.rotation.order = 'YXZ';
+            this.camera.rotation.y = this.cameraController.yaw;
+            this.camera.rotation.x = this.cameraController.pitch;
+            this.camera.rotation.z = 0;
+        }
+
         if (this.titleScreenOpen) {
             this.updateTitleScreenCamera(delta);
             this.updateDayNightCycle(delta);
@@ -3659,6 +3694,8 @@ class Game {
         this.updateWeather(delta);
         this.updateUnderwaterEffect();
         this.updateCaveLighting();
+        const playerAnchor = this.camera.position.clone();
+        this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
@@ -3671,6 +3708,10 @@ class Game {
         this.updateMiningParticles(delta);
         this.updateMiningBlockVisual(delta);
         this.updateFirstPersonHand(delta);
+
+        if (this.cameraViewMode === 'third') {
+            this.updateThirdPersonCamera(playerAnchor);
+        }
         
         if (now - this.lastSelectionUpdate >= this.selectionUpdateInterval) {
             this.updateSelectionBox();
@@ -3678,7 +3719,7 @@ class Game {
         }
         
         if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
-            this.network.updatePosition(this.cameraController.getPosition());
+            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition());
             this.lastNetworkUpdate = now;
         }
         
