@@ -957,14 +957,16 @@ class Game {
             : new THREE.MeshLambertMaterial({ color: color });
     }
 
-    createOtherPlayerAvatar() {
+    createOtherPlayerAvatar(playerId) {
         const group = new THREE.Group();
+        group.userData.playerId = playerId;
         const createPart = (geometry, color, x, y, z) => {
             const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
             mesh.position.set(x, y, z);
             mesh.castShadow = this.rtxModeEnabled;
             mesh.receiveShadow = this.rtxModeEnabled;
             mesh.userData.baseColor = color;
+            mesh.userData.avatarRoot = group;
             group.add(mesh);
             return mesh;
         };
@@ -1231,7 +1233,7 @@ class Game {
     updateOtherPlayer(player) {
         let avatar = this.otherPlayerMeshes.get(player.id);
         if (!avatar) {
-            avatar = this.createOtherPlayerAvatar();
+            avatar = this.createOtherPlayerAvatar(player.id);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
         }
@@ -1617,6 +1619,12 @@ class Game {
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
+            const playerHit = this.raycastPlayer(7);
+            if (playerHit) {
+                const targetName = this.remotePlayerNames.get(playerHit.playerId) || playerHit.playerId;
+                this.openChatInput(`@${targetName} `);
+                return;
+            }
             this.isBreakInputActive = true;
         } else if (event.button === 2) {
             this.placeBlock();
@@ -1869,18 +1877,19 @@ class Game {
         }
     }
 
-    openChatInput() {
+    openChatInput(prefill = '') {
         const input = document.getElementById('chat-input');
         if (!input) return;
 
         this.chatOpen = true;
         input.classList.add('visible');
-        input.value = '';
+        input.value = prefill;
         this.stopMining();
         if (document.pointerLockElement === this.renderer.domElement) {
             document.exitPointerLock();
         }
         input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
         this.refreshChatVisibility();
     }
 
@@ -1915,6 +1924,38 @@ class Game {
             event.preventDefault();
             this.closeChatInput();
         }
+    }
+
+    raycastPlayer(maxDistance) {
+        this.raycaster.setFromCamera(this.screenCenter, this.camera);
+
+        const objects = [];
+        for (const avatar of this.otherPlayerMeshes.values()) {
+            avatar.traverse((node) => {
+                if (node instanceof THREE.Mesh) {
+                    objects.push(node);
+                }
+            });
+        }
+
+        if (objects.length === 0) return null;
+
+        const intersects = this.raycaster.intersectObjects(objects, true);
+        if (intersects.length === 0 || intersects[0].distance > maxDistance) {
+            return null;
+        }
+
+        let current = intersects[0].object;
+        while (current && !current.userData.playerId) {
+            current = current.parent;
+        }
+
+        if (!current || !current.userData.playerId) return null;
+
+        return {
+            playerId: current.userData.playerId,
+            intersection: intersects[0]
+        };
     }
 
     resetTouchTransientInput() {
