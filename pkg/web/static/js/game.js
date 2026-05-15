@@ -658,6 +658,32 @@ class Game {
         }
     }
 
+    getFoodHealAmount(type) {
+        switch (type) {
+            case 'mushroom_red': return 3;
+            case 'mushroom_brown': return 4;
+            case 'flower_yellow': return 1;
+            default: return 0;
+        }
+    }
+
+    eatSelectedItem() {
+        const type = this.getSelectedBlockType();
+        const healAmount = this.getFoodHealAmount(type);
+        if (!type || healAmount <= 0) return false;
+        if (this.health >= this.maxHealth) {
+            this.receiveSystemMessage({ text: 'You are already at full health' });
+            return true;
+        }
+
+        if (!this.consumeSelectedBlock()) return false;
+        this.health = Math.min(this.maxHealth, this.health + healAmount);
+        this.updateHealthUI();
+        this.playTone({ frequency: 600, duration: 0.05, type: 'triangle', volume: 0.025, release: 0.05 });
+        this.receiveSystemMessage({ text: `You ate ${this.getBlockDisplayName(type)} and recovered ${healAmount} health` });
+        return true;
+    }
+
     updateNavigationHUD() {
         const compass = document.getElementById('compass-value');
         const clock = document.getElementById('clock-value');
@@ -2515,6 +2541,12 @@ class Game {
         if (event.code === 'KeyQ' && !event.repeat) {
             event.preventDefault();
             this.dropSelectedBlock();
+            return;
+        }
+
+        if (event.code === 'KeyG' && !event.repeat) {
+            event.preventDefault();
+            this.eatSelectedItem();
             return;
         }
 
