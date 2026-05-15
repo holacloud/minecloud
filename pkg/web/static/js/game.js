@@ -988,6 +988,10 @@ class Game {
         const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), 0x28334D, 0.14, 0.34, 0);
         createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), 0x5B3A29, 0, 1.83, 0);
 
+        const face = this.createAvatarFaceMesh();
+        face.position.set(0, 0.02, 0.245);
+        head.add(face);
+
         group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
         group.userData.lastPosition = new THREE.Vector3();
         group.userData.targetPosition = new THREE.Vector3();
@@ -998,6 +1002,41 @@ class Game {
         group.userData.nameSprite.position.set(0, 2.15, 0);
         group.add(group.userData.nameSprite);
         return group;
+    }
+
+    createAvatarFaceMesh() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        ctx.fillRect(0, 0, 64, 64);
+
+        ctx.fillStyle = '#2b1b11';
+        ctx.fillRect(14, 18, 10, 10);
+        ctx.fillRect(40, 18, 10, 10);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(16, 20, 4, 4);
+        ctx.fillRect(42, 20, 4, 4);
+
+        ctx.fillStyle = '#804830';
+        ctx.fillRect(22, 40, 20, 4);
+        ctx.fillRect(26, 44, 12, 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        if (THREE.sRGBEncoding) {
+            texture.encoding = THREE.sRGBEncoding;
+        }
+        texture.needsUpdate = true;
+
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), material);
+        face.renderOrder = 1200;
+        face.frustumCulled = false;
+        return face;
     }
 
     createNameTagSprite(name) {
