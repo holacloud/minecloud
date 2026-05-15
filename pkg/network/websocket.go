@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -47,6 +49,10 @@ type GameState struct {
 	Blocks  map[string]Block     `json:"blocks"`
 }
 
+type persistedWorldState struct {
+	Blocks map[string]Block `json:"blocks"`
+}
+
 var (
 	clients   = make(map[*Client]bool)
 	clientsMu sync.RWMutex
@@ -58,6 +64,70 @@ var (
 	}
 	stateMu   sync.RWMutex
 )
+
+const worldStatePath = "data/world.json"
+
+func Initialize() error {
+	return loadWorldState()
+}
+
+func loadWorldState() error {
+	data, err := os.ReadFile(worldStatePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	var persisted persistedWorldState
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		return err
+	}
+
+	stateMu.Lock()
+	if persisted.Blocks != nil {
+		gameState.Blocks = persisted.Blocks
+	} else {
+		gameState.Blocks = make(map[string]Block)
+	}
+	stateMu.Unlock()
+
+	log.Printf("Loaded %d persisted blocks", len(gameState.Blocks))
+	return nil
+}
+
+func saveWorldState() {
+	stateMu.RLock()
+	persisted := persistedWorldState{
+		Blocks: make(map[string]Block, len(gameState.Blocks)),
+	}
+	for key, block := range gameState.Blocks {
+		persisted.Blocks[key] = block
+	}
+	stateMu.RUnlock()
+
+	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
+		log.Printf("Failed to create world state directory: %v", err)
+		return
+	}
+
+	data, err := json.MarshalIndent(persisted, "", "  ")
+	if err != nil {
+		log.Printf("Failed to marshal world state: %v", err)
+		return
+	}
+
+	tmpPath := worldStatePath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+		log.Printf("Failed to write world state temp file: %v", err)
+		return
+	}
+
+	if err := os.Rename(tmpPath, worldStatePath); err != nil {
+		log.Printf("Failed to replace world state file: %v", err)
+	}
+}
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Println("WebSocket connection request from:", r.RemoteAddr)
@@ -188,6 +258,7 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Lock()
 		delete(gameState.Blocks, key)
 		stateMu.Unlock()
+		saveWorldState()
 		
 		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
 		broadcastToAll(createMessage("blockBreak", payload))
@@ -200,6 +271,7 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Lock()
 		gameState.Blocks[key] = payload
 		stateMu.Unlock()
+		saveWorldState()
 		
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
 		broadcastToAll(createMessage("blockPlace", payload))

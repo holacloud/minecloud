@@ -9,6 +9,10 @@ import (
 )
 
 func main() {
+	if err := network.Initialize(); err != nil {
+		log.Fatal(err)
+	}
+
 	http.Handle("/", http.FileServer(http.FS(web.MustStaticFS())))
 	http.HandleFunc("/ws", network.HandleWebSocket)
 
