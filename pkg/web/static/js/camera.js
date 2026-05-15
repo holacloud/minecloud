@@ -185,14 +185,17 @@ class CameraController {
             this.velocityY = 0;
         }
         
-        if (this.camera.position.y < -30) {
-            this.camera.position.set(0, 20, 0);
-            this.velocityY = 0;
-        }
-        
         this.camera.rotation.order = 'YXZ';
         this.camera.rotation.y = this.yaw;
         this.camera.rotation.x = this.pitch;
+    }
+
+    setPosition(position) {
+        this.camera.position.set(position.x, position.y, position.z);
+        this.yaw = position.yaw ?? this.yaw;
+        this.pitch = position.pitch ?? this.pitch;
+        this.velocityY = 0;
+        this.onGround = false;
     }
     
     getPosition() {

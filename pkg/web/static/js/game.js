@@ -96,6 +96,11 @@ class Game {
         this.chatMessages = [];
         this.chatOpen = false;
         this.chatHideTimeout = null;
+        this.maxHealth = 20;
+        this.health = this.maxHealth;
+        this.wasOnGroundForDamage = false;
+        this.airbornePeakFeetY = null;
+        this.respawnPoint = { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -146,6 +151,7 @@ class Game {
         document.getElementById('connecting').style.display = 'none';
         this.refreshChatVisibility();
         this.renderCraftingPanel();
+        this.updateHealthUI();
         
         this.animate();
     }
@@ -404,6 +410,82 @@ class Game {
     playJumpSound() {
         this.playTone({ frequency: 240, duration: 0.05, type: 'triangle', volume: 0.03, release: 0.07 });
         this.playNoiseBurst({ duration: 0.03, volume: 0.012, highpass: 140, lowpass: 900 });
+    }
+
+    updateHealthUI() {
+        const healthValue = document.getElementById('health-value');
+        const healthFill = document.getElementById('health-fill');
+        if (healthValue) {
+            healthValue.textContent = `${Math.max(0, Math.ceil(this.health))}/${this.maxHealth}`;
+        }
+        if (healthFill) {
+            const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
+            healthFill.style.transform = `scaleX(${ratio})`;
+            healthFill.style.background = ratio > 0.5
+                ? 'linear-gradient(90deg, #d74646 0%, #ff8080 100%)'
+                : ratio > 0.25
+                    ? 'linear-gradient(90deg, #d77c32 0%, #ffd16c 100%)'
+                    : 'linear-gradient(90deg, #9a1c1c 0%, #ff5353 100%)';
+        }
+    }
+
+    flashDamageIndicator() {
+        this.hitIndicator.style.background = 'rgba(255, 80, 80, 0.9)';
+        this.showHitIndicator();
+        setTimeout(() => {
+            this.hitIndicator.style.background = 'rgba(255,255,255,0.8)';
+        }, 110);
+    }
+
+    applyDamage(amount) {
+        if (amount <= 0 || this.health <= 0) return;
+
+        this.health = Math.max(0, this.health - amount);
+        this.updateHealthUI();
+        this.flashDamageIndicator();
+
+        if (this.health <= 0) {
+            this.respawnPlayer();
+        }
+    }
+
+    healToFull() {
+        this.health = this.maxHealth;
+        this.updateHealthUI();
+    }
+
+    respawnPlayer() {
+        this.stopMining();
+        this.resetMiningBlockVisual(true);
+        this.closeChatInput();
+        this.cameraController.setPosition(this.respawnPoint);
+        this.healToFull();
+        this.airbornePeakFeetY = null;
+        this.wasOnGroundForDamage = false;
+    }
+
+    updateSurvival(delta) {
+        void delta;
+        const feetY = this.camera.position.y - this.cameraController.eyeHeight;
+
+        if (!this.cameraController.onGround) {
+            this.airbornePeakFeetY = this.airbornePeakFeetY === null ? feetY : Math.max(this.airbornePeakFeetY, feetY);
+        }
+
+        if (!this.wasOnGroundForDamage && this.cameraController.onGround && this.airbornePeakFeetY !== null) {
+            const fallDistance = this.airbornePeakFeetY - feetY;
+            if (fallDistance > 4.2) {
+                const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
+                this.applyDamage(damage);
+            }
+            this.airbornePeakFeetY = null;
+        }
+
+        if (this.camera.position.y < -35) {
+            this.applyDamage(this.maxHealth);
+        }
+
+        this.wasOnGroundForDamage = this.cameraController.onGround;
     }
     
     initThreeJS() {
@@ -2093,6 +2175,7 @@ class Game {
             this.playJumpSound();
         }
         this.wasOnGround = this.cameraController.onGround;
+        this.updateSurvival(delta);
         this.updateDayNightCycle(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);

@@ -15,4 +15,9 @@ Next tasks
 - [x] Permitir subir automáticamente bloques de 1 de altura al caminar
 - [x] Guardar y restaurar el inventario local del jugador entre sesiones
 - [x] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
+- [x] Añadir sistema de vida con daño por caída, barra de vida y respawn
+- [ ] Guardar y restaurar la última posición segura del jugador entre sesiones
+- [ ] Añadir biomas con variación visible de terreno y vegetación
+- [ ] Añadir mensajes de sistema de entrada/salida en el chat y contador de jugadores conectado
+- [ ] Añadir un bloque de cama para fijar el punto de respawn del jugador
 - 
