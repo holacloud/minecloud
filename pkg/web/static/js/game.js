@@ -1166,13 +1166,11 @@ class Game {
     }
 
     initViewModel() {
-        const createMaterial = (color, textureType) => {
-            const material = new THREE.MeshLambertMaterial({
-                color: color,
-                map: this.createViewModelTexture(textureType),
-                transparent: true,
-                opacity: 1
-            });
+        const appearance = this.getPlayerAppearance(this.playerName);
+        const createMaterial = (color) => {
+            const material = this.rtxModeEnabled
+                ? new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.01 })
+                : new THREE.MeshLambertMaterial({ color });
             material.depthTest = false;
             material.depthWrite = false;
             material.toneMapped = false;
@@ -1180,9 +1178,9 @@ class Game {
         };
 
         const handGroup = new THREE.Group();
-        const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.72, 0.28), createMaterial(0xFFFFFF, 'sleeve'));
-        const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), createMaterial(0xFFFFFF, 'cuff'));
-        const hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), createMaterial(0xFFFFFF, 'skin'));
+        const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.72, 0.28), createMaterial(appearance.shirt));
+        const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), createMaterial(appearance.hat));
+        const hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), createMaterial(appearance.skin));
 
         sleeve.position.set(0, -0.04, 0);
         cuff.position.set(0, -0.34, 0);
