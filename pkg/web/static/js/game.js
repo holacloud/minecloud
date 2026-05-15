@@ -443,6 +443,7 @@ class Game {
         this.pauseOpen = false;
         menu.classList.remove('visible');
         this.updateSettingsUI();
+        this.recapturePointerLock();
     }
 
     togglePauseMenu() {
@@ -451,6 +452,20 @@ class Game {
         } else {
             this.openPauseMenu();
         }
+    }
+
+    recapturePointerLock() {
+        if (this.touchControlsEnabled) return;
+        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) {
+            return;
+        }
+        if (document.pointerLockElement === this.renderer.domElement) return;
+
+        setTimeout(() => {
+            if (!this.touchControlsEnabled && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
+                this.renderer.domElement.requestPointerLock();
+            }
+        }, 0);
     }
 
     ensureAudio() {
@@ -1976,6 +1991,7 @@ class Game {
     closeInventoryPanel() {
         this.inventoryOpen = false;
         this.renderInventoryPanel();
+        this.recapturePointerLock();
     }
 
     toggleInventoryPanel() {
@@ -2601,6 +2617,9 @@ class Game {
         }
 
         this.renderCraftingPanel();
+        if (!this.craftingOpen) {
+            this.recapturePointerLock();
+        }
     }
 
     craftRecipe(recipeId) {
@@ -2674,6 +2693,7 @@ class Game {
 
         this.signReaderOpen = false;
         panel.classList.remove('visible');
+        this.recapturePointerLock();
     }
 
     tryReadSign() {
@@ -2715,6 +2735,7 @@ class Game {
         input.classList.remove('visible');
         input.blur();
         this.refreshChatVisibility();
+        this.recapturePointerLock();
     }
 
     submitChatMessage() {
