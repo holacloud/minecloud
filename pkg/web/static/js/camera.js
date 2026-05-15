@@ -162,7 +162,8 @@ class CameraController {
         const isSprinting = this.keys.sprint || this.touchSprint;
         const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
-        this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water';
+        const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
+        this.isInWater = eyeBlockType === 'water';
 
         const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
