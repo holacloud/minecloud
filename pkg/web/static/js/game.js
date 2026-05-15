@@ -111,6 +111,7 @@ class Game {
         this.chatMessages = [];
         this.chatOpen = false;
         this.chatHideTimeout = null;
+        this.signReaderOpen = false;
         this.remoteFootstepRange = 9;
         this.maxHealth = 20;
         this.health = this.maxHealth;
@@ -1597,6 +1598,10 @@ class Game {
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
         document.addEventListener('mouseup', (e) => this.onMouseUp(e));
         document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        const signCloseButton = document.getElementById('sign-reader-close');
+        if (signCloseButton) {
+            signCloseButton.addEventListener('click', () => this.closeSignReader());
+        }
         document.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement !== this.renderer.domElement) {
@@ -1607,6 +1612,7 @@ class Game {
             this.stopMining();
             this.resetTouchTransientInput();
             this.closeChatInput();
+            this.closeSignReader();
             if (this.craftingOpen) {
                 this.toggleCraftingPanel();
             }
@@ -1746,7 +1752,7 @@ class Game {
     }
     
     onMouseDown(event) {
-        if (this.chatOpen || this.craftingOpen || this.pauseOpen) return;
+        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen) return;
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
@@ -1773,6 +1779,8 @@ class Game {
             event.preventDefault();
             if (this.chatOpen) {
                 this.closeChatInput();
+            } else if (this.signReaderOpen) {
+                this.closeSignReader();
             } else if (this.craftingOpen) {
                 this.toggleCraftingPanel();
             } else {
@@ -1799,6 +1807,12 @@ class Game {
         }
 
         if (this.pauseOpen) {
+            return;
+        }
+
+        if (event.code === 'KeyF' && !event.repeat) {
+            event.preventDefault();
+            this.tryReadSign();
             return;
         }
 
@@ -2006,6 +2020,43 @@ class Game {
             }
             this.chatHideTimeout = setTimeout(() => this.refreshChatVisibility(), 5000);
         }
+    }
+
+    openSignReader(text) {
+        const panel = document.getElementById('sign-reader');
+        const content = document.getElementById('sign-reader-content');
+        if (!panel || !content) return;
+
+        this.signReaderOpen = true;
+        this.stopMining();
+        content.textContent = text;
+        panel.classList.add('visible');
+        if (document.pointerLockElement === this.renderer.domElement) {
+            document.exitPointerLock();
+        }
+    }
+
+    closeSignReader() {
+        const panel = document.getElementById('sign-reader');
+        if (!panel) return;
+
+        this.signReaderOpen = false;
+        panel.classList.remove('visible');
+    }
+
+    tryReadSign() {
+        const hit = this.raycastBlock(this.breakDistance);
+        if (!hit) return false;
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos) return false;
+        if (this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z) !== 'sign') return false;
+
+        const text = this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z);
+        if (!text) return false;
+
+        this.openSignReader(text);
+        return true;
     }
 
     openChatInput(prefill = '') {

@@ -370,6 +370,48 @@
             cursor: pointer;
         }
 
+        #sign-reader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(520px, calc(100vw - 28px));
+            max-height: 70vh;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(18, 12, 6, 0.92);
+            color: #f6e5c1;
+            font-family: 'Consolas', monospace;
+            z-index: 290;
+        }
+        #sign-reader.visible {
+            display: flex;
+        }
+        #sign-reader-content {
+            white-space: pre-wrap;
+            line-height: 1.45;
+            max-height: 52vh;
+            overflow: auto;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(255, 245, 220, 0.06);
+        }
+        #sign-reader button {
+            align-self: flex-end;
+            min-width: 120px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(100, 73, 38, 0.9);
+            color: #fff;
+            font: 700 13px/1 'Consolas', monospace;
+            cursor: pointer;
+        }
+
         #mobile-controls {
             position: absolute;
             inset: 0;
@@ -509,6 +551,11 @@
             <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
             <button id="settings-resume" type="button">Resume</button>
         </div>
+    </div>
+    <div id="sign-reader">
+        <h3>Sign</h3>
+        <div id="sign-reader-content"></div>
+        <button id="sign-reader-close" type="button">Close</button>
     </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">
