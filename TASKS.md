@@ -40,7 +40,7 @@ Next tasks
 - [x] Permitir soltar el bloque seleccionado del inventario con Q
 - [x] Añadir efecto imán para recoger pickups cercanos
 - [x] Añadir pantalla de muerte con cuenta atrás de respawn
-- [ ] Mostrar mensajes de muerte en el chat multijugador
+- [x] Mostrar mensajes de muerte en el chat multijugador
 - [ ] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`
 - [ ] Añadir brújula y reloj visual en el HUD
 - [ ] Añadir modo foto con `F2` para ocultar toda la interfaz

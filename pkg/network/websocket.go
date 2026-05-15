@@ -340,6 +340,17 @@ func handleMessage(client *Client, msg Message) {
 		}))
 		broadcastPlayerList()
 
+	case "playerDeath":
+		var payload struct {
+			Reason string `json:"reason"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		reason := payload.Reason
+		if reason == "" {
+			reason = "died"
+		}
+		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
+
 	case "webrtcOffer":
 		forwardSignalMessage(client.ID, "webrtcOffer", msg.Payload)
 

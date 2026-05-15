@@ -705,6 +705,10 @@ class Game {
         this.resetMiningBlockVisual(true);
         this.closeChatInput();
         this.closeSignReader();
+        if (this.network && this.network.connected) {
+            const broadcastReason = reason.startsWith('You ') ? reason.slice(4) : reason;
+            this.network.send('playerDeath', { reason: broadcastReason.toLowerCase() });
+        }
         this.updateDeathScreen();
     }
 
