@@ -59,7 +59,7 @@ Next tasks
 - [x] Dar ropa y colores diferenciados a cada jugador asociados a su usuario
 - [ ] Permitir correr con doble pulsación sobre W
 - [x] Hacer que el brazo en primera persona tenga el mismo aspecto que el avatar
-- [ ] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
+- [x] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
 - [ ] Añadir ajuste de FOV en la configuración
 - [ ] Reducir glitches o ralentizaciones al saltar entre niveles distintos
 - [ ] Añadir vista en tercera persona
