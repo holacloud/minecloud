@@ -783,7 +783,8 @@ class Game {
     }
 
     toggleCameraView() {
-        this.cameraViewMode = this.cameraViewMode === 'first' ? 'third' : 'first';
+        const wasThirdPerson = this.cameraViewMode === 'third';
+        this.cameraViewMode = wasThirdPerson ? 'first' : 'third';
         if (this.firstPersonHand) {
             this.firstPersonHand.visible = this.cameraViewMode === 'first';
         }
@@ -791,8 +792,29 @@ class Game {
             this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         }
         if (this.cameraViewMode === 'first') {
+            if (wasThirdPerson && this.thirdPersonAnchor) {
+                this.camera.position.copy(this.thirdPersonAnchor);
+                this.camera.rotation.order = 'YXZ';
+                this.camera.rotation.y = this.cameraController.yaw;
+                this.camera.rotation.x = this.cameraController.pitch;
+                this.camera.rotation.z = 0;
+            }
             this.thirdPersonAnchor = null;
         }
+    }
+
+    getLocalPlayerPosition() {
+        if (this.cameraViewMode === 'third' && this.thirdPersonAnchor) {
+            return {
+                x: this.thirdPersonAnchor.x,
+                y: this.thirdPersonAnchor.y,
+                z: this.thirdPersonAnchor.z,
+                yaw: this.cameraController.yaw,
+                pitch: this.cameraController.pitch
+            };
+        }
+
+        return this.cameraController.getPosition();
     }
 
     updateThirdPersonCamera(anchor) {
@@ -1234,8 +1256,8 @@ class Game {
         const appearance = this.getPlayerAppearance(this.playerName);
         const createMaterial = (color) => {
             const material = this.rtxModeEnabled
-                ? new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.01 })
-                : new THREE.MeshLambertMaterial({ color });
+                ? new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.01, transparent: true, opacity: 1 })
+                : new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 1 });
             material.depthTest = false;
             material.depthWrite = false;
             material.toneMapped = false;
@@ -1254,14 +1276,12 @@ class Game {
         [sleeve, cuff, hand].forEach((mesh) => {
             mesh.renderOrder = 10000;
             mesh.frustumCulled = false;
-            mesh.onBeforeRender = (renderer) => renderer.clearDepth();
         });
 
         handGroup.add(sleeve);
         handGroup.add(cuff);
         handGroup.add(hand);
         handGroup.renderOrder = 10000;
-        handGroup.onBeforeRender = (renderer) => renderer.clearDepth();
         handGroup.position.copy(this.handBasePosition);
         handGroup.rotation.copy(this.handBaseRotation);
 
@@ -1873,11 +1893,14 @@ class Game {
             this.followTargetPlayerId = null;
             if (this.followReturnPosition) {
                 this.cameraController.setPosition(this.followReturnPosition);
+                if (this.cameraViewMode === 'third') {
+                    this.thirdPersonAnchor = this.camera.position.clone();
+                }
                 this.followReturnPosition = null;
             }
         } else {
             if (!this.followTargetPlayerId) {
-                this.followReturnPosition = this.cameraController.getPosition();
+                this.followReturnPosition = this.getLocalPlayerPosition();
             }
             this.followTargetPlayerId = playerId;
         }
@@ -1892,6 +1915,9 @@ class Game {
             this.followTargetPlayerId = null;
             if (this.followReturnPosition) {
                 this.cameraController.setPosition(this.followReturnPosition);
+                if (this.cameraViewMode === 'third') {
+                    this.thirdPersonAnchor = this.camera.position.clone();
+                }
                 this.followReturnPosition = null;
             }
             this.decoratePlayerListInteractions();
@@ -2509,7 +2535,7 @@ class Game {
         }
 
         const heldItem = this.world.createDisplayMesh(selectedType, 0.23);
-        heldItem.position.set(0.04, -0.58, -0.04);
+        heldItem.position.set(0.02, -0.72, 0.1);
         heldItem.rotation.set(0.32, 0.72, 0.08);
         heldItem.renderOrder = 10001;
         heldItem.frustumCulled = false;
@@ -2517,6 +2543,8 @@ class Game {
             if (node.material) {
                 node.renderOrder = 10001;
                 node.frustumCulled = false;
+                node.material.transparent = true;
+                node.material.opacity = 1;
                 node.material.depthTest = false;
                 node.material.depthWrite = false;
             }
