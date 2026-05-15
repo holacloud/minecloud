@@ -196,7 +196,7 @@ class CameraController {
                 // Sneak movement prevents falling off ledges.
             } else if (!this.isBlockedAtPosition(newX, pz, py)) {
                 this.camera.position.x = newX;
-            } else if (this.canStepUp(newX, pz, py)) {
+            } else if ((this.onGround || this.velocityY <= 0.2) && this.canStepUp(newX, pz, py)) {
                 this.applyStepUp(Math.floor(py));
                 this.camera.position.x = newX;
             }
@@ -206,7 +206,7 @@ class CameraController {
                 // Sneak movement prevents falling off ledges.
             } else if (!this.isBlockedAtPosition(this.camera.position.x, newZ, py)) {
                 this.camera.position.z = newZ;
-            } else if (this.canStepUp(this.camera.position.x, newZ, py)) {
+            } else if ((this.onGround || this.velocityY <= 0.2) && this.canStepUp(this.camera.position.x, newZ, py)) {
                 this.applyStepUp(Math.floor(py));
                 this.camera.position.z = newZ;
             }

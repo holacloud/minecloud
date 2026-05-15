@@ -61,7 +61,7 @@ Next tasks
 - [x] Hacer que el brazo en primera persona tenga el mismo aspecto que el avatar
 - [x] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
 - [x] Añadir ajuste de FOV en la configuración
-- [ ] Reducir glitches o ralentizaciones al saltar entre niveles distintos
+- [x] Reducir glitches o ralentizaciones al saltar entre niveles distintos
 - [ ] Añadir vista en tercera persona
 - [ ] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
 - [ ] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
