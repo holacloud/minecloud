@@ -34,4 +34,4 @@ Next tasks
 - [x] Añadir pasos locales del jugador y un ligero camera bob al caminar
 - [x] Añadir lluvia dinámica con efecto visual y de iluminación
 - [x] Añadir modo agachado/sneak para moverse despacio y no caerse de los bordes
-- [ ] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado
+- [x] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado

@@ -42,6 +42,7 @@ class Game {
         this.masterVolume = this.settings.masterVolume;
         this.mouseSensitivity = this.settings.mouseSensitivity;
         this.rtxPreferred = this.settings.rtxModeEnabled;
+        this.renderDistanceSetting = this.settings.renderDistance;
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
         this.rtxToggleWindowMs = 1200;
@@ -202,7 +203,8 @@ class Game {
         const defaults = {
             masterVolume: 0.8,
             mouseSensitivity: 1,
-            rtxModeEnabled: false
+            rtxModeEnabled: false,
+            renderDistance: 4
         };
 
         const saved = window.localStorage.getItem('minecloud-settings');
@@ -213,7 +215,8 @@ class Game {
             return {
                 masterVolume: typeof parsed.masterVolume === 'number' ? parsed.masterVolume : defaults.masterVolume,
                 mouseSensitivity: typeof parsed.mouseSensitivity === 'number' ? parsed.mouseSensitivity : defaults.mouseSensitivity,
-                rtxModeEnabled: typeof parsed.rtxModeEnabled === 'boolean' ? parsed.rtxModeEnabled : defaults.rtxModeEnabled
+                rtxModeEnabled: typeof parsed.rtxModeEnabled === 'boolean' ? parsed.rtxModeEnabled : defaults.rtxModeEnabled,
+                renderDistance: typeof parsed.renderDistance === 'number' ? parsed.renderDistance : defaults.renderDistance
             };
         } catch (_error) {
             return defaults;
@@ -224,7 +227,8 @@ class Game {
         window.localStorage.setItem('minecloud-settings', JSON.stringify({
             masterVolume: this.masterVolume,
             mouseSensitivity: this.mouseSensitivity,
-            rtxModeEnabled: this.rtxPreferred
+            rtxModeEnabled: this.rtxPreferred,
+            renderDistance: this.renderDistanceSetting
         }));
     }
 
@@ -317,13 +321,16 @@ class Game {
     initPauseMenu() {
         const sensitivityInput = document.getElementById('settings-sensitivity');
         const volumeInput = document.getElementById('settings-volume');
+        const renderDistanceInput = document.getElementById('settings-render-distance');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
+        const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
         const resumeButton = document.getElementById('settings-resume');
 
-        if (!sensitivityInput || !volumeInput || !rtxToggle || !resumeButton) return;
+        if (!sensitivityInput || !volumeInput || !renderDistanceInput || !rtxToggle || !fullscreenToggle || !resumeButton) return;
 
         sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         volumeInput.value = this.masterVolume.toFixed(2);
+        renderDistanceInput.value = String(this.renderDistanceSetting);
 
         sensitivityInput.addEventListener('input', () => {
             this.mouseSensitivity = parseFloat(sensitivityInput.value);
@@ -338,7 +345,17 @@ class Game {
             this.saveSettings();
         });
 
+        renderDistanceInput.addEventListener('input', () => {
+            this.renderDistanceSetting = parseInt(renderDistanceInput.value, 10);
+            this.world.setRenderDistance(this.renderDistanceSetting, this.camera.position);
+            this.updateSettingsUI();
+            this.saveSettings();
+        });
+
+        document.addEventListener('fullscreenchange', () => this.updateSettingsUI());
+
         rtxToggle.addEventListener('click', () => this.toggleRTXMode());
+        fullscreenToggle.addEventListener('click', () => this.toggleFullscreen());
         resumeButton.addEventListener('click', () => this.closePauseMenu());
 
         this.updateSettingsUI();
@@ -347,15 +364,30 @@ class Game {
     updateSettingsUI() {
         const sensitivityValue = document.getElementById('settings-sensitivity-value');
         const volumeValue = document.getElementById('settings-volume-value');
+        const renderDistanceValue = document.getElementById('settings-render-distance-value');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
+        const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
         const sensitivityInput = document.getElementById('settings-sensitivity');
         const volumeInput = document.getElementById('settings-volume');
+        const renderDistanceInput = document.getElementById('settings-render-distance');
 
         if (sensitivityValue) sensitivityValue.textContent = this.mouseSensitivity.toFixed(2);
         if (volumeValue) volumeValue.textContent = `${Math.round(this.masterVolume * 100)}%`;
+        if (renderDistanceValue) renderDistanceValue.textContent = String(this.renderDistanceSetting);
         if (rtxToggle) rtxToggle.textContent = this.rtxModeEnabled ? 'Disable RTX' : 'Enable RTX';
+        if (fullscreenToggle) fullscreenToggle.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen';
         if (sensitivityInput) sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         if (volumeInput) volumeInput.value = this.masterVolume.toFixed(2);
+        if (renderDistanceInput) renderDistanceInput.value = String(this.renderDistanceSetting);
+    }
+
+    async toggleFullscreen() {
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else {
+            await document.documentElement.requestFullscreen();
+        }
+        this.updateSettingsUI();
     }
 
     applyLookSensitivity() {
@@ -1010,6 +1042,7 @@ class Game {
     
     initWorld() {
         this.world = new WorldRenderer(this.scene);
+        this.world.setRenderDistance(this.renderDistanceSetting);
     }
 
     updateRTXStatus() {

@@ -104,6 +104,19 @@ class WorldRenderer {
         }
     }
 
+    setRenderDistance(distance, playerPosition = null) {
+        const nextDistance = Math.max(2, Math.min(7, Math.round(distance)));
+        if (this.renderDistance === nextDistance) return;
+
+        this.renderDistance = nextDistance;
+        this.lastPlayerChunkX = null;
+        this.lastPlayerChunkZ = null;
+
+        if (playerPosition) {
+            this.update(playerPosition.x, playerPosition.z);
+        }
+    }
+
     getAssetTexture(type) {
         const cacheKey = `asset:${type}`;
         let texture = this.textures.get(cacheKey);
