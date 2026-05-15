@@ -46,6 +46,9 @@ class CameraController {
     
     init() {
         document.addEventListener('keydown', e => {
+            if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ControlLeft' || e.code === 'ControlRight')) {
+                e.preventDefault();
+            }
             if (e.code === 'KeyW') this.keys.forward = true;
             if (e.code === 'KeyS') this.keys.backward = true;
             if (e.code === 'KeyA') this.keys.left = true;

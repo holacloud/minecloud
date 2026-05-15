@@ -55,3 +55,16 @@ Next tasks
 - [x] Hacer que se oigan correctamente los pasos de otros jugadores cercanos
 - [x] Añadir pantalla inicial con fondo desenfocado de la partida, título MineCloud y opciones de continuar o cambiar nombre
 - [x] Corregir la orientación de los ojos de los avatares para que no parezcan estar en la nuca
+- [x] Inhibir el atajo del navegador Ctrl+W al usar agacharse y avanzar
+- [ ] Dar ropa y colores diferenciados a cada jugador asociados a su usuario
+- [ ] Permitir correr con doble pulsación sobre W
+- [ ] Hacer que el brazo en primera persona tenga el mismo aspecto que el avatar
+- [ ] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
+- [ ] Añadir ajuste de FOV en la configuración
+- [ ] Reducir glitches o ralentizaciones al saltar entre niveles distintos
+- [ ] Añadir vista en tercera persona
+- [ ] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
+- [ ] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
+- [ ] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
+- [ ] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
+- [ ] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star
