@@ -64,7 +64,7 @@ Next tasks
 - [x] Reducir glitches o ralentizaciones al saltar entre niveles distintos
 - [ ] Añadir vista en tercera persona
 - [x] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
-- [ ] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
+- [x] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
 - [ ] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
 - [x] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
 - [ ] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star

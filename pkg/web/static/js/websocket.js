@@ -135,6 +135,7 @@ class NetworkClient {
             listEl.innerHTML = '';
             payload.players.forEach(p => {
                 const li = document.createElement('li');
+                li.dataset.playerId = p.id;
                 li.textContent = p.name;
                 if (p.id === this.playerId) {
                     li.classList.add('self');

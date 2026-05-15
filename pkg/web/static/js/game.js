@@ -122,6 +122,8 @@ class Game {
         this.pickupIdCounter = 0;
         this.fallingBlockDrops = [];
         this.remotePlayerNames = new Map();
+        this.followTargetPlayerId = null;
+        this.followCameraAngle = 0;
         this.ambientMobs = [];
         this.voiceChat = null;
         this.audioContext = null;
@@ -1803,6 +1805,45 @@ class Game {
             this.otherPlayerMeshes.delete(id);
             this.remotePlayerNames.delete(id);
         }
+
+        this.decoratePlayerListInteractions();
+    }
+
+    decoratePlayerListInteractions() {
+        document.querySelectorAll('#player-list li[data-player-id]').forEach((item) => {
+            item.classList.toggle('following', item.dataset.playerId === this.followTargetPlayerId);
+            item.onclick = () => this.toggleFollowPlayer(item.dataset.playerId);
+        });
+    }
+
+    toggleFollowPlayer(playerId) {
+        if (!playerId || playerId === this.network.playerId) return;
+        this.followTargetPlayerId = this.followTargetPlayerId === playerId ? null : playerId;
+        this.decoratePlayerListInteractions();
+    }
+
+    updateFollowCamera(delta) {
+        if (!this.followTargetPlayerId) return false;
+
+        const avatar = this.otherPlayerMeshes.get(this.followTargetPlayerId);
+        if (!avatar) {
+            this.followTargetPlayerId = null;
+            this.decoratePlayerListInteractions();
+            return false;
+        }
+
+        this.followCameraAngle += delta * 0.3;
+        const distance = 4.5;
+        const height = 2.2;
+        const targetPos = avatar.position.clone();
+        const cameraTarget = new THREE.Vector3(
+            targetPos.x - Math.sin(avatar.rotation.y) * distance,
+            targetPos.y + height,
+            targetPos.z - Math.cos(avatar.rotation.y) * distance
+        );
+        this.camera.position.lerp(cameraTarget, Math.min(1, delta * 6));
+        this.camera.lookAt(targetPos.x, targetPos.y + 1.3, targetPos.z);
+        return true;
     }
 
     updatePlayerCount(count) {
@@ -2605,6 +2646,9 @@ class Game {
                 this.closeInventoryPanel();
             } else if (this.craftingOpen) {
                 this.toggleCraftingPanel();
+            } else if (this.followTargetPlayerId) {
+                this.followTargetPlayerId = null;
+                this.decoratePlayerListInteractions();
             } else {
                 this.togglePauseMenu();
             }
@@ -3552,7 +3596,24 @@ class Game {
             this.renderer.render(this.scene, this.camera);
             return;
         }
-        
+
+        if (this.followTargetPlayerId) {
+            this.updateDayNightCycle(delta);
+            this.updateWeather(delta);
+            this.updateUnderwaterEffect();
+            this.updateCaveLighting();
+            this.world.update(this.camera.position.x, this.camera.position.z);
+            this.updateAmbientMobs(delta);
+            this.updateRemotePlayers(delta);
+            this.updateFollowCamera(delta);
+            if (this.voiceChat) {
+                this.voiceChat.updateProximity();
+            }
+            this.updateUI();
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
+
         this.cameraController.update(delta);
         if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {
             this.playJumpSound();
