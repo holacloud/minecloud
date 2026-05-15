@@ -61,6 +61,7 @@ type Block struct {
 	Z         int    `json:"z"`
 	BlockType string `json:"blockType"`
 	Text      string `json:"text,omitempty"`
+	Votes     map[string]int `json:"votes,omitempty"`
 }
 
 type Player struct {
@@ -429,8 +430,12 @@ func handleMessage(client *Client, msg Message) {
 			if len(payload.Text) > 288 {
 				payload.Text = payload.Text[:288]
 			}
+			if payload.Votes == nil {
+				payload.Votes = map[string]int{"thumbup": 0, "thumbdown": 0, "heart": 0, "happy": 0, "star": 0}
+			}
 		} else {
 			payload.Text = ""
+			payload.Votes = nil
 		}
 
 		key := blockKey(payload.X, payload.Y, payload.Z)
@@ -487,6 +492,30 @@ func handleMessage(client *Client, msg Message) {
 			reason = "died"
 		}
 		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
+
+	case "signVote":
+		var payload struct {
+			X     int    `json:"x"`
+			Y     int    `json:"y"`
+			Z     int    `json:"z"`
+			Emoji string `json:"emoji"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		key := blockKey(payload.X, payload.Y, payload.Z)
+		stateMu.Lock()
+		block, ok := gameState.Blocks[key]
+		if ok && block.BlockType == "sign" {
+			if block.Votes == nil {
+				block.Votes = map[string]int{}
+			}
+			block.Votes[payload.Emoji] = block.Votes[payload.Emoji] + 1
+			gameState.Blocks[key] = block
+		}
+		stateMu.Unlock()
+		if ok {
+			saveWorldState()
+			broadcastToAll(createMessage("signVoteUpdate", block))
+		}
 
 	case "sleepInBed":
 		stateMu.Lock()

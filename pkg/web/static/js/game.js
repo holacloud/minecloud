@@ -136,6 +136,7 @@ class Game {
         this.chatOpen = false;
         this.chatHideTimeout = null;
         this.signReaderOpen = false;
+        this.activeSignPosition = null;
         this.remoteFootstepRange = 9;
         this.localFootstepDistance = 0;
         this.localFootstepStepLength = 1.1;
@@ -2006,6 +2007,12 @@ class Game {
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
+        this.network.on('signVoteUpdate', (payload) => {
+            this.world.addBlock(payload);
+            if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
+                this.updateSignVoteButtons(this.world.getSignVotesAt(payload.x, payload.y, payload.z));
+            }
+        });
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
         this.network.on('chat', (payload) => this.receiveChatMessage(payload));
@@ -2935,15 +2942,41 @@ class Game {
         }
     }
 
-    openSignReader(text) {
+    updateSignVoteButtons(votes) {
+        const labels = {
+            thumbup: '👍',
+            thumbdown: '👎',
+            heart: '❤️',
+            happy: '😊',
+            star: '⭐'
+        };
+        document.querySelectorAll('#sign-votes .sign-vote-button').forEach((button) => {
+            const emoji = button.dataset.emoji;
+            button.textContent = `${labels[emoji]} ${votes[emoji] || 0}`;
+        });
+    }
+
+    voteOnActiveSign(emoji) {
+        if (!this.activeSignPosition) return;
+        if (this.network && this.network.connected) {
+            this.network.send('signVote', { x: this.activeSignPosition.x, y: this.activeSignPosition.y, z: this.activeSignPosition.z, emoji });
+        }
+    }
+
+    openSignReader(text, position) {
         const panel = document.getElementById('sign-reader');
         const content = document.getElementById('sign-reader-content');
         if (!panel || !content) return;
 
         this.signReaderOpen = true;
+        this.activeSignPosition = position;
         this.stopMining();
         content.textContent = text;
         panel.classList.add('visible');
+        this.updateSignVoteButtons(this.world.getSignVotesAt(position.x, position.y, position.z));
+        document.querySelectorAll('#sign-votes .sign-vote-button').forEach((button) => {
+            button.onclick = () => this.voteOnActiveSign(button.dataset.emoji);
+        });
         if (document.pointerLockElement === this.renderer.domElement) {
             document.exitPointerLock();
         }
@@ -2954,6 +2987,7 @@ class Game {
         if (!panel) return;
 
         this.signReaderOpen = false;
+        this.activeSignPosition = null;
         panel.classList.remove('visible');
         this.recapturePointerLock();
     }
@@ -2969,7 +3003,7 @@ class Game {
         const text = this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z);
         if (!text) return false;
 
-        this.openSignReader(text);
+        this.openSignReader(text, worldPos);
         return true;
     }
 

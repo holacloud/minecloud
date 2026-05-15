@@ -67,4 +67,4 @@ Next tasks
 - [x] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
 - [x] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
 - [x] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
-- [ ] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star
+- [x] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star

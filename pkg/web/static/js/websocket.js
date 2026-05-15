@@ -88,6 +88,9 @@ class NetworkClient {
             case 'voiceState':
                 this.emit('voiceState', message.payload);
                 break;
+            case 'signVoteUpdate':
+                this.emit('signVoteUpdate', message.payload);
+                break;
             case 'webrtcOffer':
                 this.emit('webrtcOffer', message.payload);
                 break;

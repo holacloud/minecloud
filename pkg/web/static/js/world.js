@@ -7,6 +7,7 @@ class WorldRenderer {
         this.activeChunks = new Set();
         this.blockData = new Map();
         this.signTextByKey = new Map();
+        this.signVotesByKey = new Map();
         this.solidBlocks = new Set();
         this.chunkSize = 16;
         this.renderDistance = 4;
@@ -1250,6 +1251,10 @@ class WorldRenderer {
         return this.signTextByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || '';
     }
 
+    getSignVotesAt(x, y, z) {
+        return this.signVotesByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 };
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
@@ -1322,8 +1327,10 @@ class WorldRenderer {
         const key = this.blockKey(x, y, z);
         if (payload.blockType === 'sign' && payload.text) {
             this.signTextByKey.set(key, payload.text);
+            this.signVotesByKey.set(key, payload.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
         } else {
             this.signTextByKey.delete(key);
+            this.signVotesByKey.delete(key);
         }
 
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
@@ -1346,8 +1353,10 @@ class WorldRenderer {
             const blockKey = this.blockKey(x, y, z);
             if (block.blockType === 'sign' && block.text) {
                 this.signTextByKey.set(blockKey, block.text);
+                this.signVotesByKey.set(blockKey, block.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
             } else {
                 this.signTextByKey.delete(blockKey);
+                this.signVotesByKey.delete(blockKey);
             }
 
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
@@ -1382,6 +1391,7 @@ class WorldRenderer {
 
         this.blockData.delete(key);
         this.signTextByKey.delete(key);
+        this.signVotesByKey.delete(key);
         this.solidBlocks.delete(key);
 
         const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));

@@ -579,6 +579,17 @@
             font: 700 13px/1 'Consolas', monospace;
             cursor: pointer;
         }
+        #sign-votes {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .sign-vote-button {
+            min-width: 56px !important;
+            height: 34px !important;
+            padding: 0 8px;
+            align-self: auto !important;
+        }
 
         #death-screen {
             position: absolute;
@@ -761,6 +772,13 @@
     <div id="sign-reader">
         <h3>Sign</h3>
         <div id="sign-reader-content"></div>
+        <div id="sign-votes">
+            <button class="sign-vote-button" data-emoji="thumbup" type="button">👍 0</button>
+            <button class="sign-vote-button" data-emoji="thumbdown" type="button">👎 0</button>
+            <button class="sign-vote-button" data-emoji="heart" type="button">❤️ 0</button>
+            <button class="sign-vote-button" data-emoji="happy" type="button">😊 0</button>
+            <button class="sign-vote-button" data-emoji="star" type="button">⭐ 0</button>
+        </div>
         <button id="sign-reader-close" type="button">Close</button>
     </div>
     <div id="death-screen">
