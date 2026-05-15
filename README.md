@@ -13,27 +13,40 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural terrain.
 - Visible biome variety, including plains, forests, rocky zones, and deserts with cactus.
 - Extra decorative flora, including tall grass, flowers, and mushrooms.
+- Ambient interactive mobs: sheep, ducks, and pigs.
 - First-person movement with auto-step over 1-block ledges.
 - Sneak/crouch movement for careful building and edge safety.
 - Health system with fall damage, respawn, and a persistent safe-position restore.
+- Death screen with respawn countdown.
+- Basic food consumption to recover health.
 - Swimmable water with underwater visual feedback.
 - Hold-to-mine blocks with impact particles, crack overlay, and first-person hand animation.
+- Mined blocks above the player can visibly fall before becoming pickups.
 - Place blocks from a real hotbar inventory with floating collectible drops.
+- Pickup magnet effect for nearby drops.
 - Beds that set your respawn point when placed.
+- Sleeping in a bed can skip the night.
 - Placeable sign blocks with persistent shared text.
 - Full sign reading panel for longer sign messages.
+- Craftable torches with placed dynamic light.
 - Block inspector overlay that shows information about the block you are aiming at.
 - Humanoid remote player avatars with nametags and smoothed movement.
 - Facial details on player avatars.
 - Local footsteps, nearby remote footsteps, and light camera bob while walking.
 - Nearby remote footsteps with distance-based audio.
 - Crafting system with recipes for blocks like `glass` and `stone_bricks`.
+- Expandable inventory panel with visual icons and stable hotbar controls.
 - Toggleable RTX-style visual mode with upgraded lighting, materials, and real texture assets for key blocks.
+- Visible cube sun and moon in the sky, including moon phases.
 - Dynamic day/night cycle.
 - Dynamic rain with visual and lighting changes.
 - Procedural sound effects for mining, placing, jumping, and pickups.
-- Multiplayer chat, player mentions by clicking avatars, and system join/leave messages.
+- Multiplayer chat, player mentions by clicking avatars, system join/leave messages, and death messages.
+- Chat slash commands such as `/help`, `/spawn`, `/rtx`, and `/time`.
 - Proximity voice chat with WebRTC signaling.
+- Compass and world clock in the HUD.
+- Photo mode for clean screenshots.
+- Animated title screen with a blurred in-world background and continue/rename options.
 - Server-side world persistence and local inventory persistence.
 
 ## Controls
@@ -49,9 +62,14 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Left click on another player: open chat with a prefilled mention.
 - Mouse wheel: select previous/next block.
 - Keys `1` to `8`: select a hotbar block.
+- `Q`: drop one unit of the selected block.
+- `G`: eat the selected edible item.
 - `Enter`: open chat / send message.
 - `C`: open crafting panel.
+- `E`: open/close the full inventory panel.
 - `F`: read the full text of the sign you are aiming at.
+- `F` while aiming at a bed at night: sleep until dawn.
+- `F2`: toggle photo mode.
 - `Esc`: open pause/settings menu.
 - Press `R` 3 times quickly: toggle RTX mode.
 - `Voice` button in the HUD: enable/disable proximity voice chat.
@@ -73,6 +91,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Recipe: `3 planks + 2 leaves + 1 wood`.
 - How it works: place the bed like any other block. When placed, it becomes your new respawn point.
 - If the bed is broken later, your respawn point is reset to the default spawn.
+- At night, aim at the bed and press `F` to sleep until dawn.
 
 ### Sign
 
@@ -92,12 +111,27 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - `Smelt Sand into Glass`: `3 sand -> 2 glass`
 - `Pack Clay Bricks`: `2 dirt + 1 sand -> 2 brick`
 - `Cut Stone Bricks`: `2 cobblestone + 1 brick -> 2 stone_bricks`
+- `Build Torch`: `1 wood + 1 coal_ore -> 4 torch`
+
+### Torch
+
+- Torches are light-emitting blocks.
+- Place them like normal blocks to illuminate dark areas.
+- They are intended to cast a visible local glow with quadratic falloff.
+
+## Survival
+
+- Falling from high places causes damage.
+- If health reaches zero, a respawn countdown appears.
+- Red and brown mushrooms can be eaten to recover health.
+- Dropped items nearby are pulled toward the player by a small pickup magnet effect.
 
 ## Multiplayer
 
 - Player names are chosen on first launch and shown above remote avatars.
 - Clicking a player opens the chat with an `@name` mention prefilled.
 - The chat shows normal player messages and system messages when players join or leave.
+- Death events are also announced in chat.
 - Voice chat is proximity-based: enable it with the `Voice` button and players become louder as they get closer.
 - Other players now have humanoid avatars with simple faces and smoother movement.
 
@@ -127,6 +161,7 @@ Then open `http://localhost:8080` in your browser.
 
 - Proximity voice chat needs microphone permission.
 - It works best on `localhost` or over HTTPS-capable environments because browsers restrict microphone and WebRTC features on insecure contexts.
+- Peer-to-peer voice also depends on browser WebRTC support and network conditions.
 
 ## Persistence
 
