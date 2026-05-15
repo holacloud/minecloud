@@ -2321,11 +2321,42 @@ class Game {
         if (!input) return;
 
         const text = input.value.trim();
-        if (text) {
+        if (text.startsWith('/')) {
+            this.runChatCommand(text);
+        } else if (text) {
             this.network.send('chat', { text: text });
         }
 
         this.closeChatInput();
+    }
+
+    runChatCommand(commandLine) {
+        const [command] = commandLine.slice(1).split(/\s+/);
+        const normalized = command.toLowerCase();
+
+        switch (normalized) {
+            case 'help':
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /rtx, /time' });
+                break;
+            case 'spawn':
+                this.cameraController.setPosition(this.respawnPoint);
+                this.receiveSystemMessage({ text: 'Teleported to your current spawn point' });
+                break;
+            case 'rtx':
+                this.toggleRTXMode();
+                this.receiveSystemMessage({ text: `RTX mode ${this.rtxModeEnabled ? 'enabled' : 'disabled'}` });
+                break;
+            case 'time': {
+                const dayHour = ((this.timeOfDay * 24) + 6) % 24;
+                const hours = Math.floor(dayHour).toString().padStart(2, '0');
+                const minutes = Math.floor((dayHour % 1) * 60).toString().padStart(2, '0');
+                this.receiveSystemMessage({ text: `Current world time: ${hours}:${minutes}` });
+                break;
+            }
+            default:
+                this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
+                break;
+        }
     }
 
     promptSignText() {
