@@ -113,40 +113,83 @@ class CameraController {
         return this.blockTypeGetter ? this.blockTypeGetter(x, y, z) : null;
     }
 
-    isBlockedAtPosition(x, z, feetY) {
-        const cornerRadius = this.collisionRadius * 0.7;
-        const samples = [
-            [0, 0],
-            [this.collisionRadius, 0],
-            [-this.collisionRadius, 0],
-            [0, this.collisionRadius],
-            [0, -this.collisionRadius],
-            [cornerRadius, cornerRadius],
-            [cornerRadius, -cornerRadius],
-            [-cornerRadius, cornerRadius],
-            [-cornerRadius, -cornerRadius]
-        ];
+    getCollisionBlocks(x, z, feetY) {
+        const blocks = [];
+        const minX = Math.floor(x - this.collisionRadius);
+        const maxX = Math.floor(x + this.collisionRadius);
+        const minZ = Math.floor(z - this.collisionRadius);
+        const maxZ = Math.floor(z + this.collisionRadius);
+        const minY = Math.floor(feetY + 0.02);
+        const maxY = Math.floor(feetY + this.bodyHeight - 0.02);
 
-        for (const [dx, dz] of samples) {
-            const sx = Math.floor(x + dx);
-            const sz = Math.floor(z + dz);
-            if (this.hasBlock(sx, Math.floor(feetY), sz) || this.hasBlock(sx, Math.floor(feetY + this.bodyHeight), sz)) {
-                return true;
+        for (let by = minY; by <= maxY; by++) {
+            for (let bx = minX; bx <= maxX; bx++) {
+                for (let bz = minZ; bz <= maxZ; bz++) {
+                    if (this.hasBlock(bx, by, bz)) {
+                        blocks.push({ x: bx, z: bz });
+                    }
+                }
             }
         }
 
-        return false;
+        return blocks;
     }
 
-    canStepUp(targetX, targetZ, feetY) {
-        const stepBaseY = Math.floor(feetY);
-        return this.hasBlock(Math.floor(targetX), stepBaseY, Math.floor(targetZ)) &&
-            !this.hasBlock(Math.floor(targetX), stepBaseY + 1, Math.floor(targetZ)) &&
-            !this.hasBlock(Math.floor(targetX), stepBaseY + 2, Math.floor(targetZ));
+    resolveHorizontalPosition(x, z, feetY) {
+        let resolvedX = x;
+        let resolvedZ = z;
+        let collided = false;
+
+        for (let pass = 0; pass < 3; pass++) {
+            let moved = false;
+            const blocks = this.getCollisionBlocks(resolvedX, resolvedZ, feetY);
+            for (const block of blocks) {
+                const minX = block.x;
+                const maxX = block.x + 1;
+                const minZ = block.z;
+                const maxZ = block.z + 1;
+                const closestX = Math.max(minX, Math.min(resolvedX, maxX));
+                const closestZ = Math.max(minZ, Math.min(resolvedZ, maxZ));
+                let dx = resolvedX - closestX;
+                let dz = resolvedZ - closestZ;
+                let distanceSq = dx * dx + dz * dz;
+
+                if (distanceSq === 0) {
+                    const pushLeft = Math.abs(resolvedX - minX);
+                    const pushRight = Math.abs(maxX - resolvedX);
+                    const pushBack = Math.abs(resolvedZ - minZ);
+                    const pushForward = Math.abs(maxZ - resolvedZ);
+                    const minPush = Math.min(pushLeft, pushRight, pushBack, pushForward);
+
+                    if (minPush === pushLeft) dx = -1;
+                    else if (minPush === pushRight) dx = 1;
+                    else if (minPush === pushBack) dz = -1;
+                    else dz = 1;
+                    distanceSq = 1;
+                }
+
+                if (distanceSq < this.collisionRadius * this.collisionRadius) {
+                    const distance = Math.sqrt(distanceSq);
+                    const push = this.collisionRadius - distance + 0.001;
+                    resolvedX += (dx / distance) * push;
+                    resolvedZ += (dz / distance) * push;
+                    collided = true;
+                    moved = true;
+                }
+            }
+
+            if (!moved) break;
+        }
+
+        return { x: resolvedX, z: resolvedZ, collided };
     }
 
-    applyStepUp(stepBaseY) {
-        this.camera.position.y = Math.max(this.camera.position.y, stepBaseY + this.stepHeight + this.eyeHeight);
+    canStandAt(x, z, feetY) {
+        return this.getCollisionBlocks(x, z, feetY).length === 0;
+    }
+
+    applyStepUp(feetY) {
+        this.camera.position.y = Math.max(this.camera.position.y, feetY + this.stepHeight + this.eyeHeight);
         this.velocityY = Math.max(0, this.velocityY);
         this.onGround = true;
     }
@@ -214,25 +257,28 @@ class CameraController {
             const pz = this.camera.position.z;
             const py = this.camera.position.y - this.eyeHeight;
             const currentFloorY = this.getFloorY(px, pz, py);
-            
-            const newX = px + moveX;
-            if (this.isCrouching && this.onGround && this.wouldStepOffLedge(newX, pz, currentFloorY)) {
+
+            const targetX = px + moveX;
+            const targetZ = pz + moveZ;
+            if (this.isCrouching && this.onGround && this.wouldStepOffLedge(targetX, targetZ, currentFloorY)) {
                 // Sneak movement prevents falling off ledges.
-            } else if (!this.isBlockedAtPosition(newX, pz, py)) {
-                this.camera.position.x = newX;
-            } else if ((this.onGround || this.velocityY <= 0.2) && this.canStepUp(newX, pz, py)) {
-                this.applyStepUp(Math.floor(py));
-                this.camera.position.x = newX;
-            }
-            
-            const newZ = pz + moveZ;
-            if (this.isCrouching && this.onGround && this.wouldStepOffLedge(this.camera.position.x, newZ, currentFloorY)) {
-                // Sneak movement prevents falling off ledges.
-            } else if (!this.isBlockedAtPosition(this.camera.position.x, newZ, py)) {
-                this.camera.position.z = newZ;
-            } else if ((this.onGround || this.velocityY <= 0.2) && this.canStepUp(this.camera.position.x, newZ, py)) {
-                this.applyStepUp(Math.floor(py));
-                this.camera.position.z = newZ;
+            } else {
+                const resolved = this.resolveHorizontalPosition(targetX, targetZ, py);
+                if (resolved.collided && (this.onGround || this.velocityY <= 0.2)) {
+                    const stepFeetY = py + this.stepHeight;
+                    const stepped = this.resolveHorizontalPosition(targetX, targetZ, stepFeetY);
+                    if (this.canStandAt(stepped.x, stepped.z, stepFeetY)) {
+                        this.applyStepUp(py);
+                        this.camera.position.x = stepped.x;
+                        this.camera.position.z = stepped.z;
+                    } else {
+                        this.camera.position.x = resolved.x;
+                        this.camera.position.z = resolved.z;
+                    }
+                } else {
+                    this.camera.position.x = resolved.x;
+                    this.camera.position.z = resolved.z;
+                }
             }
         }
         
@@ -272,7 +318,7 @@ class CameraController {
             } else {
                 this.camera.position.y = newY;
             }
-        } else if (!this.hasBlock(Math.floor(this.camera.position.x), Math.floor(newFeetY + this.bodyHeight), Math.floor(this.camera.position.z))) {
+        } else if (this.canStandAt(this.camera.position.x, this.camera.position.z, newFeetY)) {
             this.camera.position.y = newY;
         } else {
             this.velocityY = 0;
