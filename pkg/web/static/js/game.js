@@ -193,10 +193,13 @@ class Game {
         this.instanceTempScale = new THREE.Vector3(1, 1, 1);
 
         this.firstPersonHand = null;
+        this.firstPersonLeftHand = null;
         this.heldItemMesh = null;
         this.heldItemType = null;
         this.handBasePosition = new THREE.Vector3(0.62, -0.72, -1.05);
         this.handBaseRotation = new THREE.Euler(-0.55, 0.2, 0.18);
+        this.leftHandBasePosition = new THREE.Vector3(-0.62, -0.74, -1.02);
+        this.leftHandBaseRotation = new THREE.Euler(-0.55, -0.2, -0.18);
         this.handSwingTime = 0;
 
         this.init();
@@ -809,6 +812,9 @@ class Game {
         if (this.firstPersonHand) {
             this.firstPersonHand.visible = this.cameraViewMode === 'first';
         }
+        if (this.firstPersonLeftHand) {
+            this.firstPersonLeftHand.visible = this.cameraViewMode === 'first';
+        }
         if (this.localPlayerAvatar) {
             this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         }
@@ -1349,6 +1355,27 @@ class Game {
 
         this.camera.add(handGroup);
         this.firstPersonHand = handGroup;
+
+        const leftHandGroup = new THREE.Group();
+        const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.72, 0.26), createMaterial(appearance.skin));
+        const leftCuff = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), createMaterial(appearance.shirt));
+        const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), createMaterial(appearance.skin));
+
+        leftSleeve.position.set(0, -0.04, 0);
+        leftCuff.position.set(0, -0.34, 0);
+        leftHand.position.set(0, -0.52, 0);
+        [leftSleeve, leftCuff, leftHand].forEach((mesh) => {
+            mesh.renderOrder = 10000;
+            mesh.frustumCulled = false;
+        });
+        leftHandGroup.add(leftSleeve);
+        leftHandGroup.add(leftCuff);
+        leftHandGroup.add(leftHand);
+        leftHandGroup.renderOrder = 10000;
+        leftHandGroup.position.copy(this.leftHandBasePosition);
+        leftHandGroup.rotation.copy(this.leftHandBaseRotation);
+        this.camera.add(leftHandGroup);
+        this.firstPersonLeftHand = leftHandGroup;
         this.initLocalPlayerAvatar();
     }
 
@@ -3780,6 +3807,12 @@ class Game {
         let targetRotX = this.handBaseRotation.x;
         let targetRotY = this.handBaseRotation.y;
         let targetRotZ = this.handBaseRotation.z;
+        let leftTargetX = this.leftHandBasePosition.x;
+        let leftTargetY = this.leftHandBasePosition.y;
+        let leftTargetZ = this.leftHandBasePosition.z;
+        let leftTargetRotX = this.leftHandBaseRotation.x;
+        let leftTargetRotY = this.leftHandBaseRotation.y;
+        let leftTargetRotZ = this.leftHandBaseRotation.z;
 
         const hasMoveInput = this.cameraController.keys.forward || this.cameraController.keys.backward ||
             this.cameraController.keys.left || this.cameraController.keys.right ||
@@ -3788,6 +3821,8 @@ class Game {
             const walkBob = Math.sin(this.cameraBobPhase * 2) * 0.035;
             targetY += walkBob;
             targetRotZ += Math.sin(this.cameraBobPhase) * 0.035;
+            leftTargetY -= walkBob;
+            leftTargetRotZ -= Math.sin(this.cameraBobPhase) * 0.035;
         }
 
         const isMining = this.isBreakInputActive && this.miningTargetKey !== null;
@@ -3800,6 +3835,8 @@ class Game {
             targetZ += strike * 0.08;
             targetRotX += 0.12 + strike * 0.3;
             targetRotZ += swing * 0.14;
+            leftTargetY -= swing * 0.025;
+            leftTargetRotZ -= swing * 0.06;
         } else {
             this.handSwingTime = 0;
         }
@@ -3811,6 +3848,15 @@ class Game {
         this.firstPersonHand.rotation.x = THREE.MathUtils.lerp(this.firstPersonHand.rotation.x, targetRotX, t);
         this.firstPersonHand.rotation.y = THREE.MathUtils.lerp(this.firstPersonHand.rotation.y, targetRotY, t);
         this.firstPersonHand.rotation.z = THREE.MathUtils.lerp(this.firstPersonHand.rotation.z, targetRotZ, t);
+
+        if (this.firstPersonLeftHand) {
+            this.firstPersonLeftHand.position.x = THREE.MathUtils.lerp(this.firstPersonLeftHand.position.x, leftTargetX, t);
+            this.firstPersonLeftHand.position.y = THREE.MathUtils.lerp(this.firstPersonLeftHand.position.y, leftTargetY, t);
+            this.firstPersonLeftHand.position.z = THREE.MathUtils.lerp(this.firstPersonLeftHand.position.z, leftTargetZ, t);
+            this.firstPersonLeftHand.rotation.x = THREE.MathUtils.lerp(this.firstPersonLeftHand.rotation.x, leftTargetRotX, t);
+            this.firstPersonLeftHand.rotation.y = THREE.MathUtils.lerp(this.firstPersonLeftHand.rotation.y, leftTargetRotY, t);
+            this.firstPersonLeftHand.rotation.z = THREE.MathUtils.lerp(this.firstPersonLeftHand.rotation.z, leftTargetRotZ, t);
+        }
     }
 
     updateHeldTorchLight() {
