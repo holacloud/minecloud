@@ -5,6 +5,7 @@ class NetworkClient {
         this.reconnectInterval = 3000;
         this.playerId = this.generatePlayerId();
         this.username = null;
+        this.shirtColor = '#2f63c8';
         this.messageHandlers = new Map();
         this.otherPlayers = new Map();
     }
@@ -20,7 +21,7 @@ class NetworkClient {
         this.ws.onopen = () => {
             console.log('WebSocket: Connected to server');
             this.connected = true;
-            this.send('playerJoin', { playerId: this.playerId, username: this.username });
+            this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor });
             this.updateStatus('Connected');
         };
         
@@ -174,6 +175,10 @@ class NetworkClient {
         this.username = username;
     }
 
+    setShirtColor(color) {
+        this.shirtColor = color;
+    }
+
     setVoiceEnabled(enabled) {
         this.send('voiceState', { enabled: enabled });
     }
@@ -208,7 +213,8 @@ class NetworkClient {
             y: position.y,
             z: position.z,
             yaw: position.yaw,
-            pitch: position.pitch
+            pitch: position.pitch,
+            shirtColor: this.shirtColor
         });
     }
 }

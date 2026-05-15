@@ -65,13 +65,14 @@ type Block struct {
 }
 
 type Player struct {
-	ID       string  `json:"id"`
-	Username string  `json:"username,omitempty"`
-	X        float64 `json:"x"`
-	Y        float64 `json:"y"`
-	Z        float64 `json:"z"`
-	Yaw      float64 `json:"yaw"`
-	Pitch    float64 `json:"pitch"`
+	ID         string  `json:"id"`
+	Username   string  `json:"username,omitempty"`
+	ShirtColor string  `json:"shirtColor,omitempty"`
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Z          float64 `json:"z"`
+	Yaw        float64 `json:"yaw"`
+	Pitch      float64 `json:"pitch"`
 }
 
 type GameState struct {
@@ -367,8 +368,9 @@ func handleMessage(client *Client, msg Message) {
 
 	case "playerJoin":
 		var payload struct {
-			PlayerID string `json:"playerId"`
-			Username string `json:"username,omitempty"`
+			PlayerID   string `json:"playerId"`
+			Username   string `json:"username,omitempty"`
+			ShirtColor string `json:"shirtColor,omitempty"`
 		}
 		json.Unmarshal(msg.Payload, &payload)
 
@@ -381,9 +383,10 @@ func handleMessage(client *Client, msg Message) {
 
 		stateMu.Lock()
 		gameState.Players[client.ID] = Player{
-			ID:       client.ID,
-			Username: client.username,
-			X:        0, Y: 4, Z: 0,
+			ID:         client.ID,
+			Username:   client.username,
+			ShirtColor: payload.ShirtColor,
+			X:          0, Y: 4, Z: 0,
 		}
 		stateMu.Unlock()
 
@@ -400,6 +403,9 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Lock()
 		if existing, ok := gameState.Players[payload.ID]; ok {
 			payload.Username = existing.Username
+			if payload.ShirtColor == "" {
+				payload.ShirtColor = existing.ShirtColor
+			}
 			gameState.Players[payload.ID] = payload
 		}
 		stateMu.Unlock()
@@ -620,7 +626,7 @@ func broadcastPlayerList() {
 		}
 		clientsMu.RUnlock()
 
-		players = append(players, map[string]interface{}{"id": id, "name": name, "voiceEnabled": voiceEnabled})
+		players = append(players, map[string]interface{}{"id": id, "name": name, "shirtColor": p.ShirtColor, "voiceEnabled": voiceEnabled})
 	}
 	stateMu.RUnlock()
 

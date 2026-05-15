@@ -40,6 +40,7 @@ class Game {
         this.selectedSlot = 0;
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
+        this.playerShirtColor = this.loadPlayerShirtColor();
         this.settings = this.loadSettings();
         this.masterVolume = this.settings.masterVolume;
         this.mouseSensitivity = this.settings.mouseSensitivity;
@@ -236,6 +237,15 @@ class Game {
         return resolved;
     }
 
+    loadPlayerShirtColor() {
+        const saved = window.localStorage.getItem('minecloud-shirt-color');
+        return /^#[0-9a-f]{6}$/i.test(saved || '') ? saved : '#2f63c8';
+    }
+
+    parseColorHex(color, fallback = 0x2F63C8) {
+        return /^#[0-9a-f]{6}$/i.test(color || '') ? parseInt(color.slice(1), 16) : fallback;
+    }
+
     loadSettings() {
         const defaults = {
             masterVolume: 0.8,
@@ -275,6 +285,7 @@ class Game {
     initTitleScreen() {
         const continueButton = document.getElementById('title-continue');
         const renameButton = document.getElementById('title-rename');
+        const shirtColorButton = document.getElementById('title-shirt-color');
         if (continueButton) {
             continueButton.addEventListener('click', () => {
                 this.titleScreenOpen = false;
@@ -289,6 +300,15 @@ class Game {
                 const resolved = requested.trim().slice(0, 20);
                 if (!resolved) return;
                 window.localStorage.setItem('minecloud-player-name', resolved);
+                window.location.reload();
+            });
+        }
+        if (shirtColorButton) {
+            shirtColorButton.style.background = this.playerShirtColor;
+            shirtColorButton.addEventListener('click', () => {
+                const requested = window.prompt('Choose shirt color as #RRGGBB', this.playerShirtColor);
+                if (!/^#[0-9a-f]{6}$/i.test(requested || '')) return;
+                window.localStorage.setItem('minecloud-shirt-color', requested);
                 window.location.reload();
             });
         }
@@ -1255,7 +1275,7 @@ class Game {
     }
 
     initViewModel() {
-        const appearance = this.getPlayerAppearance(this.playerName);
+        const appearance = this.getPlayerAppearance(this.playerName, this.playerShirtColor);
         const createMaterial = (color) => {
             const material = this.rtxModeEnabled
                 ? new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.01, transparent: true, opacity: 1 })
@@ -1293,7 +1313,7 @@ class Game {
     }
 
     initLocalPlayerAvatar() {
-        this.localPlayerAvatar = this.createOtherPlayerAvatar('local', this.playerName);
+        this.localPlayerAvatar = this.createOtherPlayerAvatar('local', this.playerName, this.playerShirtColor);
         this.updateAvatarNameTag(this.localPlayerAvatar, this.playerName);
         this.localPlayerAvatar.visible = false;
         this.scene.add(this.localPlayerAvatar);
@@ -1570,7 +1590,7 @@ class Game {
         return Math.abs(hash);
     }
 
-    getPlayerAppearance(name) {
+    getPlayerAppearance(name, shirtColor = null) {
         const key = name || 'Player';
         const hash = this.hashString(key);
         const shirts = [0x2F63C8, 0x7C3AED, 0x0F8A6B, 0xB45309, 0xC2414C, 0x475569];
@@ -1579,18 +1599,18 @@ class Game {
         const skins = [0xE2B48D, 0xD9A07A, 0xC98B6C, 0xF1C49B, 0xAD6E54];
 
         return {
-            shirt: shirts[hash % shirts.length],
+            shirt: shirtColor ? this.parseColorHex(shirtColor, shirts[hash % shirts.length]) : shirts[hash % shirts.length],
             pants: pants[Math.floor(hash / 7) % pants.length],
             hat: hats[Math.floor(hash / 13) % hats.length],
             skin: skins[Math.floor(hash / 17) % skins.length],
-            key
+            key: `${key}:${shirtColor || ''}`
         };
     }
 
-    createOtherPlayerAvatar(playerId, playerName = 'Player') {
+    createOtherPlayerAvatar(playerId, playerName = 'Player', shirtColor = null) {
         const group = new THREE.Group();
         group.userData.playerId = playerId;
-        const appearance = this.getPlayerAppearance(playerName);
+        const appearance = this.getPlayerAppearance(playerName, shirtColor);
         group.userData.appearanceKey = appearance.key;
         const createPart = (geometry, color, x, y, z) => {
             const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
@@ -2134,6 +2154,7 @@ class Game {
     initNetwork() {
         this.network = new NetworkClient();
         this.network.setUsername(this.playerName);
+        this.network.setShirtColor(this.playerShirtColor);
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
@@ -2189,14 +2210,15 @@ class Game {
     
     updateOtherPlayer(player) {
         const displayName = player.username || this.remotePlayerNames.get(player.id) || player.id;
+        const shirtColor = player.shirtColor || null;
         let avatar = this.otherPlayerMeshes.get(player.id);
         if (!avatar) {
-            avatar = this.createOtherPlayerAvatar(player.id, displayName);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
-        } else if (avatar.userData.appearanceKey !== displayName) {
+        } else if (avatar.userData.appearanceKey !== this.getPlayerAppearance(displayName, shirtColor).key) {
             this.disposeRemoteAvatar(avatar);
-            avatar = this.createOtherPlayerAvatar(player.id, displayName);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
         }
