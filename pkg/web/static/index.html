@@ -46,6 +46,72 @@
             display: none !important;
         }
 
+        body.title-screen-active #crosshair,
+        body.title-screen-active #debug,
+        body.title-screen-active #player-list-container,
+        body.title-screen-active #block-inspector,
+        body.title-screen-active #chat-container,
+        body.title-screen-active #hotbar,
+        body.title-screen-active #health-hud,
+        body.title-screen-active #mobile-controls,
+        body.title-screen-active #pause-menu,
+        body.title-screen-active #crafting-panel,
+        body.title-screen-active #sign-reader,
+        body.title-screen-active #death-screen,
+        body.title-screen-active #voice-toggle {
+            display: none !important;
+        }
+
+        body.title-screen-active #game-container canvas {
+            filter: blur(8px) brightness(0.68) saturate(0.9);
+            transform: scale(1.03);
+        }
+
+        #title-screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+            z-index: 340;
+            text-align: center;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            pointer-events: auto;
+        }
+        #title-screen.visible {
+            display: flex;
+        }
+        #title-screen h1 {
+            font-size: clamp(42px, 9vw, 88px);
+            letter-spacing: 0.08em;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+        }
+        #title-screen .subtitle {
+            font-size: 14px;
+            color: #d6e8ff;
+            max-width: 520px;
+        }
+        #title-screen .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #title-screen button {
+            min-width: 190px;
+            height: 46px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(40, 65, 112, 0.82);
+            color: #fff;
+            font: 700 14px/1 'Consolas', monospace;
+            cursor: pointer;
+        }
+
         #nav-hud {
             position: absolute;
             top: 10px;
@@ -695,6 +761,14 @@
         <h2>You Died</h2>
         <div id="death-reason">Respawning soon...</div>
         <div id="death-timer">3.0</div>
+    </div>
+    <div id="title-screen">
+        <h1>MineCloud</h1>
+        <div class="subtitle">A browser multiplayer voxel world with building, mining, chat, crafting, weather, RTX mode and proximity voice.</div>
+        <div class="actions">
+            <button id="title-continue" type="button">Continue Game</button>
+            <button id="title-rename" type="button">Change Player Name</button>
+        </div>
     </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">

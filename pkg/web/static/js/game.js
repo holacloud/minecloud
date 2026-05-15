@@ -65,6 +65,8 @@ class Game {
         this.nextWeatherChange = 70;
         this.craftingOpen = false;
         this.pauseOpen = false;
+        this.titleScreenOpen = true;
+        this.titleCameraAngle = 0;
         this.craftingRecipes = [
             {
                 id: 'planks',
@@ -201,12 +203,14 @@ class Game {
         this.initInput();
         this.initPauseMenu();
         this.initVoiceChat();
+        this.initTitleScreen();
         
         document.getElementById('connecting').style.display = 'none';
         this.refreshChatVisibility();
         this.renderCraftingPanel();
         this.updateHealthUI();
         this.updateDeathScreen();
+        this.updateTitleScreen();
         
         this.animate();
     }
@@ -254,6 +258,49 @@ class Game {
             rtxModeEnabled: this.rtxPreferred,
             renderDistance: this.renderDistanceSetting
         }));
+    }
+
+    initTitleScreen() {
+        const continueButton = document.getElementById('title-continue');
+        const renameButton = document.getElementById('title-rename');
+        if (continueButton) {
+            continueButton.addEventListener('click', () => {
+                this.titleScreenOpen = false;
+                this.updateTitleScreen();
+                this.recapturePointerLock();
+            });
+        }
+        if (renameButton) {
+            renameButton.addEventListener('click', () => {
+                const requested = window.prompt('Choose your player name', this.playerName);
+                if (!requested) return;
+                const resolved = requested.trim().slice(0, 20);
+                if (!resolved) return;
+                window.localStorage.setItem('minecloud-player-name', resolved);
+                window.location.reload();
+            });
+        }
+    }
+
+    updateTitleScreen() {
+        const titleScreen = document.getElementById('title-screen');
+        if (!titleScreen) return;
+
+        titleScreen.classList.toggle('visible', this.titleScreenOpen);
+        document.body.classList.toggle('title-screen-active', this.titleScreenOpen);
+    }
+
+    updateTitleScreenCamera(delta) {
+        this.titleCameraAngle += delta * 0.12;
+        const radius = 14;
+        const focus = this.lastSafePosition || this.respawnPoint || { x: 0, y: 20, z: 0 };
+        const focusY = Math.max(5, focus.y);
+        this.camera.position.set(
+            focus.x + Math.cos(this.titleCameraAngle) * radius,
+            focusY + 5 + Math.sin(this.titleCameraAngle * 0.45) * 1.8,
+            focus.z + Math.sin(this.titleCameraAngle) * radius
+        );
+        this.camera.lookAt(focus.x, focusY + 1.5, focus.z);
     }
 
     loadRespawnPoint() {
@@ -3379,6 +3426,22 @@ class Game {
         
         const delta = Math.min(this.clock.getDelta(), 0.1);
         const now = performance.now();
+
+        if (this.titleScreenOpen) {
+            this.updateTitleScreenCamera(delta);
+            this.updateDayNightCycle(delta);
+            this.updateWeather(delta);
+            this.updateUnderwaterEffect();
+            this.world.update(this.camera.position.x, this.camera.position.z);
+            this.updateAmbientMobs(delta);
+            this.updateRemotePlayers(delta);
+            if (this.voiceChat) {
+                this.voiceChat.updateProximity();
+            }
+            this.updateUI();
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
 
         if (this.respawnPending) {
             this.respawnTimer -= delta;
