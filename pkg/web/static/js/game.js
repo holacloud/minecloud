@@ -31,6 +31,7 @@ class Game {
             sand: 20,
             leaves: 16,
             bed: 0,
+            sign: 0,
             glass: 0,
             stone_bricks: 0
         };
@@ -85,6 +86,12 @@ class Game {
                 name: 'Build Bed',
                 output: { type: 'bed', amount: 1 },
                 inputs: [{ type: 'planks', amount: 3 }, { type: 'leaves', amount: 2 }, { type: 'wood', amount: 1 }]
+            },
+            {
+                id: 'sign',
+                name: 'Carve Sign',
+                output: { type: 'sign', amount: 1 },
+                inputs: [{ type: 'planks', amount: 2 }, { type: 'wood', amount: 1 }]
             }
         ];
 
@@ -1218,7 +1225,7 @@ class Game {
         this.network = new NetworkClient();
         this.network.setUsername(this.playerName);
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
-        this.network.on('blockPlace', (payload) => this.world.addBlock(payload, payload.blockType));
+        this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
@@ -1915,6 +1922,15 @@ class Game {
         this.closeChatInput();
     }
 
+    promptSignText() {
+        const requested = window.prompt('Write the sign message (up to 288 characters)', '');
+        if (requested === null) return null;
+
+        const normalized = requested.replace(/\r/g, '').trim();
+        if (!normalized) return null;
+        return normalized.slice(0, 288);
+    }
+
     onChatKeyDown(event) {
         event.stopPropagation();
         if (event.code === 'Enter') {
@@ -2222,7 +2238,15 @@ class Game {
         if (newPos.y >= 0) {
             const blockType = this.getSelectedBlockType();
             if (!blockType || this.getInventoryCount(blockType) <= 0) return;
-            if (!this.world.addBlock(newPos, blockType)) return;
+
+            const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
+            if (blockType === 'sign') {
+                const text = this.promptSignText();
+                if (!text) return;
+                payload.text = text;
+            }
+
+            if (!this.world.addBlock(payload)) return;
             this.consumeSelectedBlock();
             if (blockType === 'bed') {
                 this.setRespawnPointFromBlock(newPos);
@@ -2233,7 +2257,7 @@ class Game {
             this.lastSelectionUpdate = 0;
 
             if (this.network.connected) {
-                this.network.send('blockPlace', { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType });
+                this.network.send('blockPlace', payload);
             }
         }
     }

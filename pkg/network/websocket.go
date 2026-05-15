@@ -41,6 +41,7 @@ type Block struct {
 	Y        int    `json:"y"`
 	Z        int    `json:"z"`
 	BlockType string `json:"blockType"`
+	Text     string `json:"text,omitempty"`
 }
 
 type Player struct {
@@ -285,6 +286,13 @@ func handleMessage(client *Client, msg Message) {
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
+		if payload.BlockType == "sign" {
+			if len(payload.Text) > 288 {
+				payload.Text = payload.Text[:288]
+			}
+		} else {
+			payload.Text = ""
+		}
 		
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()

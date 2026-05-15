@@ -6,6 +6,7 @@ class WorldRenderer {
         this.generatedChunks = new Set();
         this.activeChunks = new Set();
         this.blockData = new Map();
+        this.signTextByKey = new Map();
         this.solidBlocks = new Set();
         this.chunkSize = 16;
         this.renderDistance = 4;
@@ -36,6 +37,7 @@ class WorldRenderer {
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
             bed: { color: 0xC05050, name: 'Bed', breakDuration: 0.55 },
+            sign: { color: 0xB78A55, name: 'Sign', breakDuration: 0.35 },
             cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
@@ -93,6 +95,83 @@ class WorldRenderer {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             this.rebuildChunk(chunkX, chunkZ);
         }
+    }
+
+    wrapSignText(text, maxLineLength = 24, maxLines = 6) {
+        const words = text.replace(/\r/g, '').split(/\s+/).filter(Boolean);
+        const lines = [];
+        let current = '';
+
+        for (const word of words) {
+            const candidate = current ? `${current} ${word}` : word;
+            if (candidate.length <= maxLineLength) {
+                current = candidate;
+                continue;
+            }
+
+            if (current) {
+                lines.push(current);
+            }
+
+            if (word.length <= maxLineLength) {
+                current = word;
+            } else {
+                for (let i = 0; i < word.length; i += maxLineLength) {
+                    lines.push(word.slice(i, i + maxLineLength));
+                    if (lines.length >= maxLines) {
+                        return lines.slice(0, maxLines);
+                    }
+                }
+                current = '';
+            }
+
+            if (lines.length >= maxLines) {
+                return lines.slice(0, maxLines);
+            }
+        }
+
+        if (current && lines.length < maxLines) {
+            lines.push(current);
+        }
+
+        return lines.slice(0, maxLines);
+    }
+
+    createSignLabel(text) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(28, 18, 10, 0.88)';
+        ctx.fillRect(22, 26, 468, 204);
+        ctx.strokeStyle = 'rgba(238, 215, 171, 0.55)';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(22, 26, 468, 204);
+        ctx.fillStyle = '#f6e4bd';
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const lines = this.wrapSignText(text, 26, 6);
+        const startY = 64;
+        lines.forEach((line, index) => {
+            ctx.fillText(line, 256, startY + index * 30);
+        });
+
+        const texture = new THREE.CanvasTexture(canvas);
+        if (THREE.sRGBEncoding) {
+            texture.encoding = THREE.sRGBEncoding;
+        }
+        texture.needsUpdate = true;
+
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.6, 0.8, 1);
+        sprite.renderOrder = 120;
+        sprite.userData.isSignLabel = true;
+        return sprite;
     }
 
     isSolidType(type) {
@@ -328,6 +407,18 @@ class WorldRenderer {
                 ctx.fillStyle = this.shadeColor(0xFFF6E0, 0);
                 ctx.fillRect(size * 0.1, size * 0.08, size * 0.3, size * 0.18);
                 break;
+            case 'sign':
+                ctx.fillStyle = this.shadeColor(0xC79A62, 0);
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = this.shadeColor(0x8A5E2F, 0);
+                for (let y = 0; y < size; y += 5) {
+                    ctx.fillRect(0, y, size, 1);
+                }
+                ctx.fillStyle = this.shadeColor(0x6D4820, 0);
+                ctx.fillRect(size * 0.45, size * 0.65, size * 0.1, size * 0.35);
+                ctx.fillStyle = this.shadeColor(0xEAD4AF, 0);
+                ctx.fillRect(size * 0.14, size * 0.16, size * 0.72, size * 0.28);
+                break;
             case 'brick':
                 ctx.fillStyle = this.shadeColor(0x864030, 0);
                 ctx.fillRect(0, 0, size, size);
@@ -451,6 +542,7 @@ class WorldRenderer {
             case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
             case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
             case 'bed': return { roughness: 0.78, metalness: 0.01, bumpScale: 0.04, envMapIntensity: 0.25 };
+            case 'sign': return { roughness: 0.8, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.2 };
             case 'cactus': return { roughness: 0.88, metalness: 0.01, bumpScale: 0.08, envMapIntensity: 0.22 };
             case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
             case 'glass': return { roughness: 0.14, metalness: 0.08, bumpScale: 0.01, envMapIntensity: 1.05 };
@@ -733,6 +825,14 @@ class WorldRenderer {
             if (typeof child.dispose === 'function') {
                 child.dispose();
             }
+            if (child.material) {
+                if (child.material.map) {
+                    child.material.map.dispose();
+                }
+                if (typeof child.material.dispose === 'function') {
+                    child.material.dispose();
+                }
+            }
         }
 
         this.chunks.delete(chunkKey);
@@ -796,6 +896,19 @@ class WorldRenderer {
 
             mesh.instanceMatrix.needsUpdate = true;
             chunk.add(mesh);
+        }
+
+        for (const blockKey of blockKeys) {
+            const type = this.blockData.get(blockKey);
+            if (type !== 'sign') continue;
+
+            const text = this.signTextByKey.get(blockKey);
+            if (!text) continue;
+
+            const { x, y, z } = this.parseBlockKey(blockKey);
+            const sprite = this.createSignLabel(text);
+            sprite.position.set(x - baseX + 0.5, y + 1.15, z - baseZ + 0.5);
+            chunk.add(sprite);
         }
 
         this.scene.add(chunk);
@@ -946,6 +1059,10 @@ class WorldRenderer {
         return mesh;
     }
 
+    getSignTextAt(x, y, z) {
+        return this.signTextByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || '';
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
@@ -961,7 +1078,10 @@ class WorldRenderer {
                 if (!chunk) continue;
 
                 for (let i = 0; i < chunk.children.length; i++) {
-                    objects.push(chunk.children[i]);
+                    const child = chunk.children[i];
+                    if (child.isInstancedMesh) {
+                        objects.push(child);
+                    }
                 }
             }
         }
@@ -1004,12 +1124,20 @@ class WorldRenderer {
     }
 
     addBlock(position, type) {
-        const x = Math.round(position.x);
-        const y = Math.round(position.y);
-        const z = Math.round(position.z);
-        const changed = this.setBlockData(x, y, z, type);
+        const payload = type === undefined && position.blockType ? position : { ...position, blockType: type };
+        const x = Math.round(payload.x);
+        const y = Math.round(payload.y);
+        const z = Math.round(payload.z);
+        const changed = this.setBlockData(x, y, z, payload.blockType);
 
         if (!changed) return false;
+
+        const key = this.blockKey(x, y, z);
+        if (payload.blockType === 'sign' && payload.text) {
+            this.signTextByKey.set(key, payload.text);
+        } else {
+            this.signTextByKey.delete(key);
+        }
 
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
         const centerKey = this.chunkKey(chunkX, chunkZ);
@@ -1027,6 +1155,13 @@ class WorldRenderer {
             const y = Math.round(block.y);
             const z = Math.round(block.z);
             if (!this.setBlockData(x, y, z, block.blockType)) continue;
+
+            const blockKey = this.blockKey(x, y, z);
+            if (block.blockType === 'sign' && block.text) {
+                this.signTextByKey.set(blockKey, block.text);
+            } else {
+                this.signTextByKey.delete(blockKey);
+            }
 
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
             dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
@@ -1059,6 +1194,7 @@ class WorldRenderer {
         if (!this.blockData.has(key)) return false;
 
         this.blockData.delete(key);
+        this.signTextByKey.delete(key);
         this.solidBlocks.delete(key);
 
         const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
