@@ -36,6 +36,10 @@ class Game {
         this.selectedSlot = 0;
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
+        this.settings = this.loadSettings();
+        this.masterVolume = this.settings.masterVolume;
+        this.mouseSensitivity = this.settings.mouseSensitivity;
+        this.rtxPreferred = this.settings.rtxModeEnabled;
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
         this.rtxToggleWindowMs = 1200;
@@ -49,6 +53,7 @@ class Game {
         this.dayNightCycleDuration = 240;
         this.timeOfDay = 0.22;
         this.craftingOpen = false;
+        this.pauseOpen = false;
         this.craftingRecipes = [
             {
                 id: 'planks',
@@ -132,10 +137,11 @@ class Game {
         this.initThreeJS();
         this.initCamera();
         this.initWorld();
-        this.applyRTXMode(false);
+        this.applyRTXMode(this.rtxPreferred);
         this.initNetwork();
         this.initHotbar();
         this.initInput();
+        this.initPauseMenu();
         
         document.getElementById('connecting').style.display = 'none';
         this.refreshChatVisibility();
@@ -154,6 +160,36 @@ class Game {
         const resolved = (requested || 'Player').trim().slice(0, 20) || 'Player';
         window.localStorage.setItem('minecloud-player-name', resolved);
         return resolved;
+    }
+
+    loadSettings() {
+        const defaults = {
+            masterVolume: 0.8,
+            mouseSensitivity: 1,
+            rtxModeEnabled: false
+        };
+
+        const saved = window.localStorage.getItem('minecloud-settings');
+        if (!saved) return defaults;
+
+        try {
+            const parsed = JSON.parse(saved);
+            return {
+                masterVolume: typeof parsed.masterVolume === 'number' ? parsed.masterVolume : defaults.masterVolume,
+                mouseSensitivity: typeof parsed.mouseSensitivity === 'number' ? parsed.mouseSensitivity : defaults.mouseSensitivity,
+                rtxModeEnabled: typeof parsed.rtxModeEnabled === 'boolean' ? parsed.rtxModeEnabled : defaults.rtxModeEnabled
+            };
+        } catch (_error) {
+            return defaults;
+        }
+    }
+
+    saveSettings() {
+        window.localStorage.setItem('minecloud-settings', JSON.stringify({
+            masterVolume: this.masterVolume,
+            mouseSensitivity: this.mouseSensitivity,
+            rtxModeEnabled: this.rtxPreferred
+        }));
     }
 
     restoreInventoryState() {
@@ -187,6 +223,90 @@ class Game {
     getBlockDisplayName(type) {
         const def = this.world && this.world.blockTypes[type];
         return def ? def.name : type;
+    }
+
+    initPauseMenu() {
+        const sensitivityInput = document.getElementById('settings-sensitivity');
+        const volumeInput = document.getElementById('settings-volume');
+        const rtxToggle = document.getElementById('settings-rtx-toggle');
+        const resumeButton = document.getElementById('settings-resume');
+
+        if (!sensitivityInput || !volumeInput || !rtxToggle || !resumeButton) return;
+
+        sensitivityInput.value = this.mouseSensitivity.toFixed(2);
+        volumeInput.value = this.masterVolume.toFixed(2);
+
+        sensitivityInput.addEventListener('input', () => {
+            this.mouseSensitivity = parseFloat(sensitivityInput.value);
+            this.applyLookSensitivity();
+            this.updateSettingsUI();
+            this.saveSettings();
+        });
+
+        volumeInput.addEventListener('input', () => {
+            this.masterVolume = parseFloat(volumeInput.value);
+            this.updateSettingsUI();
+            this.saveSettings();
+        });
+
+        rtxToggle.addEventListener('click', () => this.toggleRTXMode());
+        resumeButton.addEventListener('click', () => this.closePauseMenu());
+
+        this.updateSettingsUI();
+    }
+
+    updateSettingsUI() {
+        const sensitivityValue = document.getElementById('settings-sensitivity-value');
+        const volumeValue = document.getElementById('settings-volume-value');
+        const rtxToggle = document.getElementById('settings-rtx-toggle');
+        const sensitivityInput = document.getElementById('settings-sensitivity');
+        const volumeInput = document.getElementById('settings-volume');
+
+        if (sensitivityValue) sensitivityValue.textContent = this.mouseSensitivity.toFixed(2);
+        if (volumeValue) volumeValue.textContent = `${Math.round(this.masterVolume * 100)}%`;
+        if (rtxToggle) rtxToggle.textContent = this.rtxModeEnabled ? 'Disable RTX' : 'Enable RTX';
+        if (sensitivityInput) sensitivityInput.value = this.mouseSensitivity.toFixed(2);
+        if (volumeInput) volumeInput.value = this.masterVolume.toFixed(2);
+    }
+
+    applyLookSensitivity() {
+        if (this.cameraController) {
+            this.cameraController.setLookSpeed(0.002 * this.mouseSensitivity);
+        }
+    }
+
+    openPauseMenu() {
+        const menu = document.getElementById('pause-menu');
+        if (!menu) return;
+
+        this.pauseOpen = true;
+        this.stopMining();
+        this.closeChatInput();
+        if (this.craftingOpen) {
+            this.toggleCraftingPanel();
+        }
+        if (document.pointerLockElement === this.renderer.domElement) {
+            document.exitPointerLock();
+        }
+        menu.classList.add('visible');
+        this.updateSettingsUI();
+    }
+
+    closePauseMenu() {
+        const menu = document.getElementById('pause-menu');
+        if (!menu) return;
+
+        this.pauseOpen = false;
+        menu.classList.remove('visible');
+        this.updateSettingsUI();
+    }
+
+    togglePauseMenu() {
+        if (this.pauseOpen) {
+            this.closePauseMenu();
+        } else {
+            this.openPauseMenu();
+        }
     }
 
     ensureAudio() {
@@ -230,8 +350,9 @@ class Game {
         oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
         oscillator.detune.setValueAtTime(detune, audio.currentTime);
 
+        const scaledVolume = volume * this.masterVolume;
         gain.gain.setValueAtTime(0.0001, audio.currentTime);
-        gain.gain.linearRampToValueAtTime(volume, audio.currentTime + attack);
+        gain.gain.linearRampToValueAtTime(scaledVolume, audio.currentTime + attack);
         gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration + release);
 
         oscillator.connect(gain).connect(audio.destination);
@@ -255,7 +376,7 @@ class Game {
         lp.type = 'lowpass';
         lp.frequency.setValueAtTime(lowpass, audio.currentTime);
 
-        gain.gain.setValueAtTime(volume, audio.currentTime);
+        gain.gain.setValueAtTime(volume * this.masterVolume, audio.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration);
 
         source.connect(hp).connect(lp).connect(gain).connect(audio.destination);
@@ -520,6 +641,7 @@ class Game {
     initCamera() {
         this.cameraController = new CameraController(this.camera, this.renderer.domElement);
         this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
+        this.applyLookSensitivity();
     }
     
     initWorld() {
@@ -814,6 +936,9 @@ class Game {
         this.refreshHeldItemMesh(true);
         this.syncOtherPlayerShadows();
         this.updateRTXStatus();
+        this.rtxPreferred = enabled;
+        this.saveSettings();
+        this.updateSettingsUI();
         this.lastSelectionUpdate = 0;
         this.updateDayNightCycle(0);
     }
@@ -1235,7 +1360,7 @@ class Game {
     }
     
     onMouseDown(event) {
-        if (this.chatOpen || this.craftingOpen) return;
+        if (this.chatOpen || this.craftingOpen || this.pauseOpen) return;
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
@@ -1252,24 +1377,36 @@ class Game {
     }
     
     onKeyDown(event) {
+        if (event.code === 'Escape' && !event.repeat) {
+            event.preventDefault();
+            if (this.chatOpen) {
+                this.closeChatInput();
+            } else if (this.craftingOpen) {
+                this.toggleCraftingPanel();
+            } else {
+                this.togglePauseMenu();
+            }
+            return;
+        }
+
         if (this.chatOpen) {
             if (event.code === 'Enter') {
                 event.preventDefault();
                 this.submitChatMessage();
                 return;
             }
-            if (event.code === 'Escape') {
-                event.preventDefault();
-                this.closeChatInput();
-            }
             return;
         }
 
         if (this.craftingOpen) {
-            if ((event.code === 'Escape' || event.code === 'KeyC') && !event.repeat) {
+            if (event.code === 'KeyC' && !event.repeat) {
                 event.preventDefault();
                 this.toggleCraftingPanel();
             }
+            return;
+        }
+
+        if (this.pauseOpen) {
             return;
         }
 
@@ -1944,6 +2081,12 @@ class Game {
         
         const delta = Math.min(this.clock.getDelta(), 0.1);
         const now = performance.now();
+
+        if (this.pauseOpen) {
+            this.updateUI();
+            this.renderer.render(this.scene, this.camera);
+            return;
+        }
         
         this.cameraController.update(delta);
         if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {

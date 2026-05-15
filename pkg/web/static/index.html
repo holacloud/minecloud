@@ -244,6 +244,54 @@
             cursor: default;
         }
 
+        #pause-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(360px, calc(100vw - 28px));
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(8, 12, 20, 0.92);
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            z-index: 280;
+        }
+        #pause-menu.visible {
+            display: flex;
+        }
+        .pause-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .pause-row label {
+            font-size: 13px;
+            color: #d9e6f7;
+        }
+        .pause-row input[type="range"] {
+            width: 100%;
+        }
+        .pause-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .pause-actions button {
+            min-width: 120px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(61, 99, 177, 0.82);
+            color: #fff;
+            font: 700 13px/1 'Consolas', monospace;
+            cursor: pointer;
+        }
+
         #mobile-controls {
             position: absolute;
             inset: 0;
@@ -360,6 +408,21 @@
     <div id="crafting-panel">
         <h3>Crafting</h3>
         <div id="crafting-recipes"></div>
+    </div>
+    <div id="pause-menu">
+        <h3>Paused</h3>
+        <div class="pause-row">
+            <label for="settings-sensitivity">Look Sensitivity: <span id="settings-sensitivity-value">1.00</span></label>
+            <input id="settings-sensitivity" type="range" min="0.5" max="2.5" step="0.05" value="1">
+        </div>
+        <div class="pause-row">
+            <label for="settings-volume">Master Volume: <span id="settings-volume-value">80%</span></label>
+            <input id="settings-volume" type="range" min="0" max="1" step="0.05" value="0.8">
+        </div>
+        <div class="pause-actions">
+            <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
+            <button id="settings-resume" type="button">Resume</button>
+        </div>
     </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">

@@ -14,5 +14,5 @@ Next tasks
 - [x] Implementar un sistema de crafteo simple con recetas y panel accesible con C
 - [x] Permitir subir automáticamente bloques de 1 de altura al caminar
 - [x] Guardar y restaurar el inventario local del jugador entre sesiones
-- [ ] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
+- [x] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
 - 

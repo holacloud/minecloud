@@ -34,6 +34,7 @@ class CameraController {
     addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
     setTouchJump(active) { this.touchJump = active; }
     setTouchSprint(active) { this.touchSprint = active; }
+    setLookSpeed(speed) { this.lookSpeed = speed; }
     canInteract() { return this.isLocked || this.touchControlsEnabled; }
     
     init() {
