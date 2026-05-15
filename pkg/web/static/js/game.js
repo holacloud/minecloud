@@ -117,6 +117,7 @@ class Game {
         this.hotbarCountElements = [];
         this.pickups = new Map();
         this.pickupIdCounter = 0;
+        this.fallingBlockDrops = [];
         this.remotePlayerNames = new Map();
         this.ambientMobs = [];
         this.voiceChat = null;
@@ -2059,6 +2060,51 @@ class Game {
         }
     }
 
+    getDropLandingY(x, z, startY) {
+        const ix = Math.floor(x);
+        const iz = Math.floor(z);
+        for (let y = Math.floor(startY); y >= -5; y--) {
+            if (this.world.hasSolidBlock(ix, y, iz)) {
+                return y + 1;
+            }
+        }
+        return -4;
+    }
+
+    spawnFallingBlockDrop(type, position) {
+        const mesh = this.world.createDisplayMesh(type, 0.92);
+        const blockPos = new THREE.Vector3(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+        mesh.position.copy(blockPos);
+        this.scene.add(mesh);
+
+        this.fallingBlockDrops.push({
+            type,
+            position: blockPos,
+            velocity: new THREE.Vector3(0, 0, 0),
+            landingY: this.getDropLandingY(blockPos.x, blockPos.z, position.y - 1),
+            mesh
+        });
+    }
+
+    updateFallingBlockDrops(delta) {
+        for (let i = this.fallingBlockDrops.length - 1; i >= 0; i--) {
+            const falling = this.fallingBlockDrops[i];
+            falling.velocity.y -= 12 * delta;
+            falling.position.addScaledVector(falling.velocity, delta);
+            falling.mesh.position.copy(falling.position);
+            falling.mesh.rotation.y += delta * 1.2;
+
+            if (falling.position.y <= falling.landingY + 0.18) {
+                this.scene.remove(falling.mesh);
+                if (falling.mesh.material) falling.mesh.material.dispose();
+                this.fallingBlockDrops.splice(i, 1);
+                this.spawnPickup(falling.type, { x: falling.position.x - 0.5, y: falling.landingY, z: falling.position.z - 0.5 }, 1, {
+                    velocity: new THREE.Vector3(0, 0.4, 0)
+                });
+            }
+        }
+    }
+
     spawnPickup(type, position, amount = 1, options = {}) {
         if (!type) return;
 
@@ -2972,7 +3018,11 @@ class Game {
         }
 
         if (dropType) {
-            this.spawnPickup(dropType, position, 1);
+            if (position.y + 0.5 > this.camera.position.y) {
+                this.spawnFallingBlockDrop(dropType, position);
+            } else {
+                this.spawnPickup(dropType, position, 1);
+            }
         }
 
         this.showHitIndicator();
@@ -3328,6 +3378,7 @@ class Game {
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
+        this.updateFallingBlockDrops(delta);
         if (this.voiceChat) {
             this.voiceChat.updateProximity();
         }
