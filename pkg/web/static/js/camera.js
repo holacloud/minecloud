@@ -21,6 +21,8 @@ class CameraController {
         this.touchJump = false;
         this.touchSprint = false;
         this.touchControlsEnabled = false;
+        this.sprintLatch = false;
+        this.lastForwardTapAt = 0;
         
         this.velocityY = 0;
         this.isLocked = false;
@@ -50,6 +52,13 @@ class CameraController {
             if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ControlLeft' || e.code === 'ControlRight')) {
                 e.preventDefault();
             }
+            if (e.code === 'KeyW' && !this.keys.forward) {
+                const now = performance.now();
+                if (now - this.lastForwardTapAt < 250) {
+                    this.sprintLatch = true;
+                }
+                this.lastForwardTapAt = now;
+            }
             if (e.code === 'KeyW') this.keys.forward = true;
             if (e.code === 'KeyS') this.keys.backward = true;
             if (e.code === 'KeyA') this.keys.left = true;
@@ -67,6 +76,7 @@ class CameraController {
             if (e.code === 'Space') this.keys.jump = false;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.sprint = false;
             if (e.code === 'ControlLeft' || e.code === 'ControlRight') this.keys.crouch = false;
+            if (e.code === 'KeyW') this.sprintLatch = false;
         });
         
         document.addEventListener('mousemove', e => {
@@ -159,7 +169,7 @@ class CameraController {
         this.lookInput.deltaX = 0;
         this.lookInput.deltaY = 0;
 
-        const isSprinting = this.keys.sprint || this.touchSprint;
+        const isSprinting = this.keys.sprint || this.touchSprint || (this.sprintLatch && this.keys.forward && !this.keys.backward);
         const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));

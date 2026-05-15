@@ -57,7 +57,7 @@ Next tasks
 - [x] Corregir la orientación de los ojos de los avatares para que no parezcan estar en la nuca
 - [x] Inhibir el atajo del navegador Ctrl+W al usar agacharse y avanzar
 - [x] Dar ropa y colores diferenciados a cada jugador asociados a su usuario
-- [ ] Permitir correr con doble pulsación sobre W
+- [x] Permitir correr con doble pulsación sobre W
 - [x] Hacer que el brazo en primera persona tenga el mismo aspecto que el avatar
 - [x] Evitar que la cámara atraviese paredes al acercarse demasiado a bloques
 - [x] Añadir ajuste de FOV en la configuración
