@@ -79,6 +79,9 @@ class NetworkClient {
             case 'chat':
                 this.emit('chat', message.payload);
                 break;
+            case 'system':
+                this.emit('system', message.payload);
+                break;
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;

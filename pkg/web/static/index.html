@@ -188,6 +188,10 @@
             opacity: 0.92;
             word-break: break-word;
         }
+        .chat-message.system {
+            color: #f2df9f;
+            font-style: italic;
+        }
         .chat-message .chat-name {
             color: #9ed2ff;
             font-weight: 700;
@@ -421,6 +425,7 @@
         <div>FPS: <span id="fps">0</span></div>
         <div><span id="position">X: 0 Y: 0 Z: 0</span></div>
         <div><span id="status">Connecting...</span></div>
+        <div>Players: <span id="player-count">0</span></div>
         <div>RTX: <span id="rtx-status">Off</span></div>
     </div>
     <div id="player-list-container">

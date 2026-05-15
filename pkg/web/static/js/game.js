@@ -944,11 +944,20 @@ class Game {
             }
         });
 
+        this.updatePlayerCount(activeIds.size);
+
         for (const [id, avatar] of this.otherPlayerMeshes) {
             if (id === this.network.playerId || activeIds.has(id)) continue;
             this.disposeRemoteAvatar(avatar);
             this.otherPlayerMeshes.delete(id);
             this.remotePlayerNames.delete(id);
+        }
+    }
+
+    updatePlayerCount(count) {
+        const countEl = document.getElementById('player-count');
+        if (countEl) {
+            countEl.textContent = String(count);
         }
     }
 
@@ -1095,6 +1104,7 @@ class Game {
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
         this.network.on('chat', (payload) => this.receiveChatMessage(payload));
+        this.network.on('system', (payload) => this.receiveSystemMessage(payload));
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
@@ -1614,7 +1624,13 @@ class Game {
         chatLog.innerHTML = '';
         this.chatMessages.slice(-10).forEach((message) => {
             const row = document.createElement('div');
-            row.className = 'chat-message';
+            row.className = 'chat-message' + (message.system ? ' system' : '');
+
+            if (message.system) {
+                row.textContent = message.text;
+                chatLog.appendChild(row);
+                return;
+            }
 
             const name = document.createElement('span');
             name.className = 'chat-name';
@@ -1702,6 +1718,25 @@ class Game {
         this.chatMessages.push({
             username: payload.username || payload.playerId || 'Player',
             text: payload.text || ''
+        });
+        if (this.chatMessages.length > 30) {
+            this.chatMessages.shift();
+        }
+
+        this.renderChatMessages();
+
+        if (!this.chatOpen) {
+            if (this.chatHideTimeout) {
+                clearTimeout(this.chatHideTimeout);
+            }
+            this.chatHideTimeout = setTimeout(() => this.refreshChatVisibility(), 5000);
+        }
+    }
+
+    receiveSystemMessage(payload) {
+        this.chatMessages.push({
+            text: payload.text || '',
+            system: true
         });
         if (this.chatMessages.length > 30) {
             this.chatMessages.shift();

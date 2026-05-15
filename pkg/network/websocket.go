@@ -162,6 +162,10 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 func (c *Client) readPump() {
 	defer func() {
 		log.Println("Client disconnected:", c.ID)
+		leftName := c.username
+		if leftName == "" {
+			leftName = c.ID
+		}
 		clientsMu.Lock()
 		delete(clients, c)
 		clientsMu.Unlock()
@@ -170,6 +174,9 @@ func (c *Client) readPump() {
 		delete(gameState.Players, c.ID)
 		stateMu.Unlock()
 		
+		if c.ID != "" {
+			broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s left the world", leftName)}))
+		}
 		broadcastPlayerList()
 		c.conn.Close()
 	}()
@@ -240,6 +247,7 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Unlock()
 		
 		log.Printf("Player joined: %s (%s)", client.username, client.ID)
+		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s joined the world", client.username)}))
 		
 		sendInitialState(client)
 		broadcastPlayerList()
