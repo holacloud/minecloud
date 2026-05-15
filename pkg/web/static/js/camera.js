@@ -21,6 +21,8 @@ class CameraController {
         this.velocityY = 0;
         this.isLocked = false;
         this.onGround = false;
+        this.blockTypeGetter = null;
+        this.isInWater = false;
         
         this.blockChecker = null;
         this.eyeHeight = 1.62;
@@ -29,6 +31,7 @@ class CameraController {
     }
     
     setBlockChecker(fn) { this.blockChecker = fn; }
+    setBlockTypeGetter(fn) { this.blockTypeGetter = fn; }
     setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
     setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
     addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
@@ -75,6 +78,10 @@ class CameraController {
         return this.blockChecker ? this.blockChecker(x, y, z) : false;
     }
 
+    getBlockType(x, y, z) {
+        return this.blockTypeGetter ? this.blockTypeGetter(x, y, z) : null;
+    }
+
     canStepUp(targetX, targetZ, feetY) {
         const stepBaseY = Math.floor(feetY);
         return this.hasBlock(Math.floor(targetX), stepBaseY, Math.floor(targetZ)) &&
@@ -105,7 +112,12 @@ class CameraController {
         this.lookInput.deltaY = 0;
 
         const isSprinting = this.keys.sprint || this.touchSprint;
-        const speed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+        const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
+        const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
+        this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water';
+
+        const baseSpeed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+        const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
         
         const forward = new THREE.Vector3(0, 0, -1);
         forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -160,12 +172,18 @@ class CameraController {
             this.onGround = false;
         }
         
-        if ((this.keys.jump || this.touchJump) && this.onGround) {
+        if (this.isInWater) {
+            if (this.keys.jump || this.touchJump) {
+                this.velocityY = Math.min(3.2, this.velocityY + 0.42);
+            } else {
+                this.velocityY = Math.max(-1.4, this.velocityY - 0.06);
+            }
+        } else if ((this.keys.jump || this.touchJump) && this.onGround) {
             this.velocityY = this.jumpVelocity;
             this.onGround = false;
         }
         
-        this.velocityY -= 20 * delta;
+        this.velocityY -= (this.isInWater ? 5.5 : 20) * delta;
         
         const newY = this.camera.position.y + this.velocityY * delta;
         const newFeetY = newY - this.eyeHeight;

@@ -882,6 +882,7 @@ class Game {
     initCamera() {
         this.cameraController = new CameraController(this.camera, this.renderer.domElement);
         this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
+        this.cameraController.setBlockTypeGetter((x, y, z) => this.world.getBlockTypeAt(x, y, z));
         this.applyLookSensitivity();
     }
     
@@ -919,6 +920,20 @@ class Game {
 
     blendColors(colorA, colorB, alpha) {
         return colorA.clone().lerp(colorB, alpha);
+    }
+
+    updateUnderwaterEffect() {
+        const overlay = document.getElementById('underwater-overlay');
+        if (overlay) {
+            overlay.style.opacity = this.cameraController.isInWater ? '1' : '0';
+        }
+
+        if (!this.scene.fog) return;
+        if (this.cameraController.isInWater) {
+            this.scene.fog.near = 3;
+            this.scene.fog.far = this.rtxModeEnabled ? 24 : 18;
+            this.scene.fog.color.copy(this.blendColors(this.scene.fog.color, new THREE.Color(0x356f9c), 0.6));
+        }
     }
 
     updateDayNightCycle(delta) {
@@ -2521,6 +2536,7 @@ class Game {
         this.wasOnGround = this.cameraController.onGround;
         this.updateSurvival(delta);
         this.updateDayNightCycle(delta);
+        this.updateUnderwaterEffect();
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);
         if (this.voiceChat) {

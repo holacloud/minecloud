@@ -131,6 +131,15 @@
             transition: opacity 0.1s;
             z-index: 99;
         }
+        #underwater-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 35%, rgba(170, 220, 255, 0.08), rgba(24, 92, 132, 0.42));
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease;
+            z-index: 80;
+        }
 
         #health-hud {
             position: absolute;
@@ -434,6 +443,7 @@
 </head>
 <body>
     <div id="game-container"></div>
+    <div id="underwater-overlay"></div>
     <div id="crosshair"></div>
     <div id="hit-indicator"></div>
     <div id="debug">
