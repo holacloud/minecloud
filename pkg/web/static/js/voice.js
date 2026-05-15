@@ -8,6 +8,8 @@ class VoiceChatManager {
         this.voiceStates = new Map();
         this.maxDistance = 18;
         this.button = null;
+        this.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+        this.iceServersLoaded = false;
     }
 
     init() {
@@ -33,6 +35,7 @@ class VoiceChatManager {
     async enable() {
         try {
             this.game.ensureAudio();
+            await this.loadIceServers();
             this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             this.enabled = true;
             this.network.setVoiceEnabled(true);
@@ -42,6 +45,24 @@ class VoiceChatManager {
             console.error('Voice chat unavailable', error);
             this.enabled = false;
             this.renderButton();
+        }
+    }
+
+    async loadIceServers() {
+        if (this.iceServersLoaded) return;
+
+        try {
+            const response = await fetch('/ice-servers', { cache: 'no-store' });
+            if (!response.ok) throw new Error(`ICE config request failed: ${response.status}`);
+
+            const config = await response.json();
+            if (config && Array.isArray(config.iceServers) && config.iceServers.length > 0) {
+                this.iceServers = config.iceServers;
+            }
+        } catch (error) {
+            console.warn('Using default voice ICE servers', error);
+        } finally {
+            this.iceServersLoaded = true;
         }
     }
 
@@ -101,9 +122,7 @@ class VoiceChatManager {
         let peer = this.peers.get(playerId);
         if (peer) return peer;
 
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+        const pc = new RTCPeerConnection({ iceServers: this.iceServers });
 
         const peerEntry = {
             pc: pc,

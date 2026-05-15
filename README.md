@@ -162,6 +162,7 @@ Then open `http://localhost:8080` in your browser.
 - Proximity voice chat needs microphone permission.
 - It works best on `localhost` or over HTTPS-capable environments because browsers restrict microphone and WebRTC features on insecure contexts.
 - Peer-to-peer voice also depends on browser WebRTC support and network conditions.
+- For reliable internet voice across NAT/firewalls, configure TURN in the server `Config`. For Metered, set `MeteredAPIKey` and keep it server-side only; `/ice-servers` will fetch the Metered ICE server list for the browser. You can also use static `TURNURLs`, `TURNUsername`, and `TURNCredential` when the provider gives fixed credentials.
 
 ## Persistence
 
