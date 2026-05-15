@@ -333,10 +333,59 @@ class Game {
         statusEl.style.color = this.rtxModeEnabled ? '#7CE7FF' : '#FFFFFF';
     }
 
-    syncOtherPlayerShadows() {
-        for (const mesh of this.otherPlayerMeshes.values()) {
+    createPlayerAvatarMaterial(color) {
+        return this.rtxModeEnabled
+            ? new THREE.MeshStandardMaterial({ color: color, roughness: 0.72, metalness: 0.03 })
+            : new THREE.MeshLambertMaterial({ color: color });
+    }
+
+    createOtherPlayerAvatar() {
+        const group = new THREE.Group();
+        const createPart = (geometry, color, x, y, z) => {
+            const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
+            mesh.position.set(x, y, z);
             mesh.castShadow = this.rtxModeEnabled;
             mesh.receiveShadow = this.rtxModeEnabled;
+            mesh.userData.baseColor = color;
+            group.add(mesh);
+            return mesh;
+        };
+
+        const head = createPart(new THREE.BoxGeometry(0.48, 0.48, 0.48), 0xE2B48D, 0, 1.55, 0);
+        const torso = createPart(new THREE.BoxGeometry(0.56, 0.72, 0.28), 0x2F63C8, 0, 1.03, 0);
+        const leftArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), 0xE2B48D, -0.38, 1.03, 0);
+        const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), 0xE2B48D, 0.38, 1.03, 0);
+        const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), 0x28334D, -0.14, 0.34, 0);
+        const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), 0x28334D, 0.14, 0.34, 0);
+        createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), 0x5B3A29, 0, 1.83, 0);
+
+        group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
+        group.userData.lastPosition = new THREE.Vector3();
+        group.userData.walkPhase = 0;
+        return group;
+    }
+
+    refreshOtherPlayerAvatarMaterials() {
+        for (const avatar of this.otherPlayerMeshes.values()) {
+            avatar.traverse((node) => {
+                if (!(node instanceof THREE.Mesh)) return;
+                const baseColor = node.userData.baseColor;
+                if (baseColor === undefined) return;
+                node.material.dispose();
+                node.material = this.createPlayerAvatarMaterial(baseColor);
+                node.castShadow = this.rtxModeEnabled;
+                node.receiveShadow = this.rtxModeEnabled;
+            });
+        }
+    }
+
+    syncOtherPlayerShadows() {
+        for (const mesh of this.otherPlayerMeshes.values()) {
+            mesh.traverse((node) => {
+                if (!(node instanceof THREE.Mesh)) return;
+                node.castShadow = this.rtxModeEnabled;
+                node.receiveShadow = this.rtxModeEnabled;
+            });
         }
     }
 
@@ -375,9 +424,7 @@ class Game {
         this.playerMaterial = enabled
             ? new THREE.MeshStandardMaterial({ color: 0xFFCC00, roughness: 0.45, metalness: 0.05 })
             : new THREE.MeshLambertMaterial({ color: 0xFFCC00 });
-        for (const mesh of this.otherPlayerMeshes.values()) {
-            mesh.material = this.playerMaterial;
-        }
+        this.refreshOtherPlayerAvatarMaterials();
 
         this.world.setRTXMode(enabled);
         this.syncOtherPlayerShadows();
@@ -415,16 +462,35 @@ class Game {
     }
     
     updateOtherPlayer(player) {
-        let mesh = this.otherPlayerMeshes.get(player.id);
-        if (!mesh) {
-            mesh = new THREE.Mesh(this.playerGeometry, this.playerMaterial);
-            mesh.castShadow = this.rtxModeEnabled;
-            mesh.receiveShadow = this.rtxModeEnabled;
-            this.scene.add(mesh);
-            this.otherPlayerMeshes.set(player.id, mesh);
+        let avatar = this.otherPlayerMeshes.get(player.id);
+        if (!avatar) {
+            avatar = this.createOtherPlayerAvatar();
+            this.scene.add(avatar);
+            this.otherPlayerMeshes.set(player.id, avatar);
         }
-        mesh.position.set(player.x, player.y, player.z);
-        mesh.rotation.y = player.yaw;
+
+        const parts = avatar.userData.avatarParts;
+        const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);
+        if (!avatar.userData.initialized) {
+            avatar.userData.lastPosition.copy(nextFeetPosition);
+            avatar.userData.initialized = true;
+        }
+
+        const delta = avatar.userData.lastPosition.distanceTo(nextFeetPosition);
+
+        avatar.userData.walkPhase += Math.min(0.7, delta * 8);
+        avatar.userData.lastPosition.copy(nextFeetPosition);
+
+        const stride = Math.min(0.9, delta * 14);
+        const swing = Math.sin(avatar.userData.walkPhase) * stride;
+
+        parts.leftArm.rotation.x = swing;
+        parts.rightArm.rotation.x = -swing;
+        parts.leftLeg.rotation.x = -swing;
+        parts.rightLeg.rotation.x = swing;
+
+        avatar.position.copy(nextFeetPosition);
+        avatar.rotation.y = player.yaw;
     }
     
     initHotbar() {
