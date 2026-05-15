@@ -35,3 +35,13 @@ Next tasks
 - [x] Añadir lluvia dinámica con efecto visual y de iluminación
 - [x] Añadir modo agachado/sneak para moverse despacio y no caerse de los bordes
 - [x] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado
+- [x] Crear el bloque antorcha y su receta de crafteo
+- [ ] Hacer que las antorchas emitan luz dinámica al colocarse
+- [ ] Permitir soltar el bloque seleccionado del inventario con Q
+- [ ] Añadir efecto imán para recoger pickups cercanos
+- [ ] Añadir pantalla de muerte con cuenta atrás de respawn
+- [ ] Mostrar mensajes de muerte en el chat multijugador
+- [ ] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`
+- [ ] Añadir brújula y reloj visual en el HUD
+- [ ] Añadir modo foto con `F2` para ocultar toda la interfaz
+- [ ] Permitir dormir en la cama para saltar la noche

@@ -48,6 +48,7 @@ class WorldRenderer {
             cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
+            torch: { color: 0xE7B94B, name: 'Torch', transparent: true, breakDuration: 0.1, solid: false },
         };
 
         this.generateInitialChunks();
@@ -412,6 +413,16 @@ class WorldRenderer {
                 ctx.fillStyle = '#8b6540';
                 ctx.fillRect(size * 0.18, size * 0.08, size * 0.64, size * 0.34);
                 break;
+            case 'torch':
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#6b4a2b';
+                ctx.fillRect(size * 0.44, size * 0.28, size * 0.12, size * 0.7);
+                ctx.fillStyle = '#f4c54d';
+                ctx.fillRect(size * 0.34, size * 0.06, size * 0.32, size * 0.28);
+                ctx.fillStyle = '#fff0a6';
+                ctx.fillRect(size * 0.4, 0, size * 0.2, size * 0.12);
+                break;
             case 'dirt':
                 this.paintPaletteTexture(ctx, size, [0x6E431D, 0x7A4A22, 0x8B5A2B, 0x9D6832], seed);
                 break;
@@ -626,6 +637,7 @@ class WorldRenderer {
             case 'flower_yellow':
             case 'mushroom_red':
             case 'mushroom_brown':
+            case 'torch':
                 return { roughness: 0.9, metalness: 0.01, bumpScale: 0.02, envMapIntensity: 0.16 };
             case 'dirt': return { roughness: 0.97, metalness: 0.01, bumpScale: 0.1, envMapIntensity: 0.2 };
             case 'sand': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.28 };
@@ -653,7 +665,7 @@ class WorldRenderer {
         if (material) return material;
 
         const def = this.blockTypes[type];
-        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown']);
+        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch']);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
             material = new THREE.MeshStandardMaterial({

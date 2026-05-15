@@ -20,7 +20,7 @@ class Game {
         this.placeDistance = 4.5;
         this.selectionUpdateInterval = 50;
         
-        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves'];
+        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch'];
         this.inventoryCounts = {
             grass: 24,
             dirt: 24,
@@ -34,7 +34,8 @@ class Game {
             bed: 0,
             sign: 0,
             glass: 0,
-            stone_bricks: 0
+            stone_bricks: 0,
+            torch: 0
         };
         this.selectedSlot = 0;
         this.restoreInventoryState();
@@ -97,6 +98,12 @@ class Game {
                 name: 'Carve Sign',
                 output: { type: 'sign', amount: 1 },
                 inputs: [{ type: 'planks', amount: 2 }, { type: 'wood', amount: 1 }]
+            },
+            {
+                id: 'torch',
+                name: 'Build Torch',
+                output: { type: 'torch', amount: 4 },
+                inputs: [{ type: 'wood', amount: 1 }, { type: 'coal_ore', amount: 1 }]
             }
         ];
 
