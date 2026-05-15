@@ -132,7 +132,6 @@ class WorldRenderer {
     }
 
     paintHeightTexture(ctx, type, size) {
-        const def = this.blockTypes[type];
         const seed = type.length * 23;
 
         for (let y = 0; y < size; y++) {
@@ -140,13 +139,23 @@ class WorldRenderer {
                 let noise = this.textureNoise(x, y, seed);
 
                 if (type === 'wood' || type === 'planks') {
-                    noise = (noise * 0.55) + ((x % 8) / 8) * 0.45;
+                    noise = (noise * 0.38) + ((Math.sin((x / size) * Math.PI * 8) * 0.5 + 0.5) * 0.48) + ((y % 6) / 6) * 0.08;
                 } else if (type === 'stone' || type === 'cobblestone' || type.endsWith('_ore')) {
-                    noise = (noise * 0.75) + this.textureNoise(x * 0.7, y * 0.7, seed + 7) * 0.25;
+                    noise = (noise * 0.55) + this.textureNoise(x * 0.7, y * 0.7, seed + 7) * 0.25 + this.textureNoise(x * 0.18, y * 0.18, seed + 17) * 0.2;
                 } else if (type === 'grass' || type === 'leaves') {
-                    noise = (noise * 0.65) + this.textureNoise(x * 1.2, y * 1.2, seed + 13) * 0.35;
+                    noise = (noise * 0.46) + this.textureNoise(x * 1.2, y * 1.2, seed + 13) * 0.3 + ((1 - y / size) * 0.24);
+                } else if (type === 'sand') {
+                    noise = (noise * 0.5) + ((Math.sin((x / size) * Math.PI * 10 + y * 0.15) * 0.5 + 0.5) * 0.22) + this.textureNoise(x * 0.9, y * 0.9, seed + 31) * 0.28;
+                } else if (type === 'brick' || type === 'stone_bricks') {
+                    noise = (noise * 0.42) + ((x % 8) / 8) * 0.12 + ((y % 5) / 5) * 0.16 + this.textureNoise(x * 0.4, y * 0.4, seed + 21) * 0.3;
+                } else if (type === 'glass') {
+                    noise = 0.18 + this.textureNoise(x * 0.2, y * 0.2, seed + 11) * 0.08 + ((x + y) % 13) / 13 * 0.04;
                 } else if (type === 'water') {
-                    noise = 0.2 + this.textureNoise(x * 0.4, y * 0.4, seed + 19) * 0.12;
+                    noise = 0.15 + this.textureNoise(x * 0.4, y * 0.4, seed + 19) * 0.1 + ((Math.sin((x + y) * 0.25) * 0.5 + 0.5) * 0.07);
+                } else if (type === 'bed') {
+                    noise = (y < size * 0.48 ? 0.45 : 0.72) + this.textureNoise(x * 0.6, y * 0.6, seed + 15) * 0.12;
+                } else if (type === 'cactus') {
+                    noise = (noise * 0.38) + ((x % 5) / 5) * 0.42 + ((y % 7) / 7) * 0.08;
                 }
 
                 const value = Math.max(0, Math.min(255, Math.round(noise * 255)));
@@ -157,12 +166,12 @@ class WorldRenderer {
     }
 
     applyRTXSurfaceDetail(ctx, type, size, seed) {
-        const overlay = (strength, colorFn) => {
+        const overlay = (strength, colorFn, threshold = 0.58, scale = 1.7) => {
             ctx.globalAlpha = strength;
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
-                    const noise = this.textureNoise(x * 1.7, y * 1.7, seed + 101);
-                    if (noise < 0.58) continue;
+                    const noise = this.textureNoise(x * scale, y * scale, seed + 101);
+                    if (noise < threshold) continue;
                     ctx.fillStyle = colorFn(noise, x, y);
                     ctx.fillRect(x, y, 1, 1);
                 }
@@ -170,20 +179,62 @@ class WorldRenderer {
             ctx.globalAlpha = 1;
         };
 
+        const linePass = (strength, spacing, colorFn, vertical = true, wave = 0) => {
+            ctx.globalAlpha = strength;
+            if (vertical) {
+                for (let x = 0; x < size; x += spacing) {
+                    for (let y = 0; y < size; y++) {
+                        const xx = Math.max(0, Math.min(size - 1, Math.round(x + Math.sin(y * 0.18 + x * 0.07) * wave)));
+                        ctx.fillStyle = colorFn(xx, y);
+                        ctx.fillRect(xx, y, 1, 1);
+                    }
+                }
+            } else {
+                for (let y = 0; y < size; y += spacing) {
+                    for (let x = 0; x < size; x++) {
+                        const yy = Math.max(0, Math.min(size - 1, Math.round(y + Math.sin(x * 0.18 + y * 0.09) * wave)));
+                        ctx.fillStyle = colorFn(x, yy);
+                        ctx.fillRect(x, yy, 1, 1);
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+        };
+
         if (type === 'grass') {
-            overlay(0.28, (noise) => noise > 0.82 ? '#78a843' : '#487122');
+            overlay(0.18, (_noise, _x, y) => y < size * 0.45 ? '#8fbe52' : '#4f7627', 0.48, 1.35);
+            linePass(0.12, Math.max(2, Math.floor(size / 20)), (_x, _y) => '#5f8f30', false, 1);
         } else if (type === 'dirt' || type === 'sand') {
-            overlay(0.24, (noise) => noise > 0.82 ? '#d8c087' : '#6d421d');
+            if (type === 'sand') {
+                overlay(0.16, (noise) => noise > 0.8 ? '#f3e6b0' : '#cdb46e', 0.5, 0.95);
+                linePass(0.1, Math.max(3, Math.floor(size / 16)), (_x, _y) => '#dec98a', false, 1.4);
+            } else {
+                overlay(0.18, (noise) => noise > 0.8 ? '#a46d38' : '#5d3417', 0.54, 1.1);
+            }
         } else if (type === 'stone' || type === 'cobblestone') {
-            overlay(0.22, (noise) => noise > 0.84 ? '#b7b7b7' : '#4c4c4c');
+            overlay(0.16, (noise) => noise > 0.82 ? '#bdbdbd' : '#4f4f4f', 0.52, 1);
+            overlay(0.1, (noise, x, y) => (x + y) % 17 < 3 ? '#8d8d8d' : '#595959', 0.62, 0.55);
         } else if (type === 'wood' || type === 'planks') {
-            overlay(0.26, (noise, x) => (x % 11) < 2 || noise > 0.85 ? '#a87a34' : '#5c3d12');
+            overlay(0.14, (noise) => noise > 0.84 ? '#b8874d' : '#5f3d12', 0.55, 0.9);
+            linePass(0.16, Math.max(3, Math.floor(size / 18)), (x, _y) => x % 14 < 2 ? '#4a2e12' : '#a06d34', true, 0.9);
         } else if (type === 'water') {
-            overlay(0.16, (_noise, x, y) => ((x + y) % 9) < 3 ? '#b9ddff' : '#2d6ca2');
+            overlay(0.1, (_noise, x, y) => ((x + y) % 13) < 4 ? '#cbe6ff' : '#275d93', 0.5, 0.7);
+            linePass(0.07, Math.max(4, Math.floor(size / 14)), (_x, _y) => '#d8efff', false, 1.8);
         } else if (type === 'leaves') {
-            overlay(0.22, (noise) => noise > 0.8 ? '#77b24f' : '#365f22');
+            overlay(0.18, (noise) => noise > 0.8 ? '#7fb656' : '#355c24', 0.5, 1.25);
+        } else if (type === 'brick' || type === 'stone_bricks') {
+            overlay(0.12, (noise) => noise > 0.82 ? '#d9cdb5' : '#5e5e5e', 0.58, 0.8);
+            linePass(0.08, type === 'brick' ? Math.max(4, Math.floor(size / 12)) : Math.max(5, Math.floor(size / 11)), (_x, _y) => type === 'brick' ? '#5e2f27' : '#5d5d5d', false, 0);
+        } else if (type === 'glass') {
+            overlay(0.08, (_noise, x, y) => (x + y) % 21 < 2 ? '#ffffff' : '#9dd7f4', 0.64, 0.45);
+            linePass(0.06, Math.max(7, Math.floor(size / 10)), (_x, _y) => '#dff7ff', true, 0);
+        } else if (type === 'bed') {
+            overlay(0.1, (_noise, _x, y) => y < size * 0.5 ? '#8a3030' : '#f4eee1', 0.56, 1);
+        } else if (type === 'cactus') {
+            linePass(0.18, Math.max(3, Math.floor(size / 16)), (_x, _y) => '#275f25', true, 0.2);
+            overlay(0.08, (_noise) => '#82c469', 0.74, 0.8);
         } else {
-            overlay(0.18, (noise) => noise > 0.82 ? '#f0e6d2' : '#2d2d2d');
+            overlay(0.14, (noise) => noise > 0.82 ? '#f0e6d2' : '#2d2d2d', 0.58, 1);
         }
     }
 
@@ -364,7 +415,7 @@ class WorldRenderer {
         if (texture) return texture;
 
         const canvas = document.createElement('canvas');
-        const textureSize = this.rtxModeEnabled ? 64 : 16;
+        const textureSize = this.rtxModeEnabled ? 96 : 16;
         canvas.width = textureSize;
         canvas.height = textureSize;
 
