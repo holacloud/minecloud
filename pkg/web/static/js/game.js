@@ -29,11 +29,25 @@ class Game {
 
         this.selectionBox = null;
         this.hitIndicator = null;
+        this.miningOverlay = null;
+        this.miningOverlayTextures = [];
+        this.breakParticleGeometry = null;
+        this.breakParticleMaterials = new Map();
+        this.breakParticles = [];
 
         this.isBreakInputActive = false;
         this.miningTargetKey = null;
         this.miningTargetDuration = 0;
         this.miningProgress = 0;
+        this.miningTargetType = null;
+        this.miningStrikeTimer = 0;
+        this.miningStrikeInterval = 0.14;
+
+        this.miningBlockVisual = null;
+        this.miningBlockVisualZero = new THREE.Vector3(0, 0, 0);
+        this.instanceTempQuaternion = new THREE.Quaternion();
+        this.instanceTempMatrix = new THREE.Matrix4();
+        this.instanceTempScale = new THREE.Vector3(1, 1, 1);
 
         this.firstPersonHand = null;
         this.handBasePosition = new THREE.Vector3(0.62, -0.72, -1.05);
@@ -91,11 +105,82 @@ class Game {
         );
         this.selectionBox.visible = false;
         this.scene.add(this.selectionBox);
+
+        this.initMiningEffects();
         
         this.hitIndicator = document.getElementById('hit-indicator');
         this.initViewModel();
 
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    initMiningEffects() {
+        this.breakParticleGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+
+        this.miningOverlayTextures = this.createMiningOverlayTextures();
+        this.miningOverlay = new THREE.Mesh(
+            new THREE.BoxGeometry(1.018, 1.018, 1.018),
+            new THREE.MeshBasicMaterial({
+                map: this.miningOverlayTextures[0],
+                transparent: true,
+                opacity: 0.95,
+                depthWrite: false
+            })
+        );
+        this.miningOverlay.visible = false;
+        this.miningOverlay.renderOrder = 20;
+        this.scene.add(this.miningOverlay);
+    }
+
+    createMiningOverlayTextures() {
+        const crackPaths = [
+            [[8, 1], [8, 4], [7, 7], [8, 10], [7, 15]],
+            [[2, 4], [5, 5], [8, 7], [10, 11], [14, 13]],
+            [[13, 2], [11, 5], [9, 8], [8, 12], [10, 15]],
+            [[1, 11], [4, 10], [7, 9], [10, 8], [15, 7]],
+            [[4, 1], [5, 4], [4, 7], [5, 10], [4, 14]],
+            [[12, 4], [10, 6], [8, 9], [6, 11], [4, 12]],
+            [[1, 2], [4, 4], [6, 6], [9, 7], [13, 8]],
+            [[15, 3], [12, 5], [10, 7], [7, 10], [5, 14]]
+        ];
+        const textures = [];
+
+        for (let stage = 0; stage < 8; stage++) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 16, 16);
+            ctx.strokeStyle = `rgba(20, 20, 20, ${0.12 + stage * 0.045})`;
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            const pathCount = Math.max(1, Math.ceil(((stage + 1) / 10) * crackPaths.length));
+            for (let i = 0; i < pathCount; i++) {
+                const path = crackPaths[i];
+                const segmentCount = Math.max(2, Math.ceil(((stage + 1) / 11) * path.length));
+
+                ctx.beginPath();
+                ctx.moveTo(path[0][0], path[0][1]);
+                for (let j = 1; j < Math.min(segmentCount, path.length); j++) {
+                    ctx.lineTo(path[j][0], path[j][1]);
+                }
+                ctx.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            if (THREE.sRGBEncoding) {
+                texture.encoding = THREE.sRGBEncoding;
+            }
+            texture.needsUpdate = true;
+            textures.push(texture);
+        }
+
+        return textures;
     }
 
     initViewModel() {
@@ -195,6 +280,17 @@ class Game {
         }
         texture.needsUpdate = true;
         return texture;
+    }
+
+    getBreakParticleMaterial(type) {
+        let material = this.breakParticleMaterials.get(type);
+        if (material) return material;
+
+        material = new THREE.MeshLambertMaterial({
+            color: this.world.getBlockColorForType(type)
+        });
+        this.breakParticleMaterials.set(type, material);
+        return material;
     }
     
     initCamera() {
@@ -305,11 +401,124 @@ class Game {
         this.miningTargetKey = null;
         this.miningTargetDuration = 0;
         this.miningProgress = 0;
+        this.miningTargetType = null;
+        this.miningStrikeTimer = 0;
+        if (this.miningOverlay) {
+            this.miningOverlay.visible = false;
+            this.miningOverlay.rotation.set(0, 0, 0);
+        }
     }
 
     stopMining() {
         this.isBreakInputActive = false;
         this.resetMiningTarget();
+        if (this.miningBlockVisual) {
+            this.miningBlockVisual.returning = true;
+        }
+    }
+
+    bindMiningBlockVisual(hit, targetKey) {
+        if (!hit || !hit.object || !hit.object.isInstancedMesh || hit.instanceId == null) {
+            if (this.miningBlockVisual && this.miningBlockVisual.key !== targetKey) {
+                this.resetMiningBlockVisual(true);
+            }
+            return;
+        }
+
+        if (this.miningBlockVisual && this.miningBlockVisual.key === targetKey && this.miningBlockVisual.mesh === hit.object && this.miningBlockVisual.instanceId === hit.instanceId) {
+            this.miningBlockVisual.returning = false;
+            return;
+        }
+
+        if (this.miningBlockVisual) {
+            this.resetMiningBlockVisual(true);
+        }
+
+        const position = hit.object.userData.instancePositions[hit.instanceId];
+        if (!position) return;
+
+        this.miningBlockVisual = {
+            key: targetKey,
+            mesh: hit.object,
+            instanceId: hit.instanceId,
+            position: { x: position.x, y: position.y, z: position.z },
+            currentRotation: new THREE.Vector3(0, 0, 0),
+            targetRotation: new THREE.Vector3(0, 0, 0),
+            returning: false
+        };
+        this.applyMiningBlockVisual();
+    }
+
+    resetMiningBlockVisual(immediate = false) {
+        if (!this.miningBlockVisual) return;
+
+        if (immediate) {
+            this.miningBlockVisual.currentRotation.set(0, 0, 0);
+            this.miningBlockVisual.targetRotation.set(0, 0, 0);
+            this.applyMiningBlockVisual();
+            this.miningBlockVisual = null;
+            return;
+        }
+
+        this.miningBlockVisual.returning = true;
+    }
+
+    applyMiningBlockVisual() {
+        if (!this.miningBlockVisual) return;
+
+        const visual = this.miningBlockVisual;
+        this.instanceTempQuaternion.setFromEuler(new THREE.Euler(
+            visual.currentRotation.x,
+            visual.currentRotation.y,
+            visual.currentRotation.z,
+            'XYZ'
+        ));
+        this.instanceTempMatrix.compose(
+            new THREE.Vector3(visual.position.x + 0.5, visual.position.y + 0.5, visual.position.z + 0.5),
+            this.instanceTempQuaternion,
+            this.instanceTempScale
+        );
+
+        visual.mesh.setMatrixAt(visual.instanceId, this.instanceTempMatrix);
+        visual.mesh.instanceMatrix.needsUpdate = true;
+    }
+
+    kickMiningBlockVisual() {
+        if (!this.miningBlockVisual) return;
+
+        const axis = Math.floor(Math.random() * 3);
+        const amount = (Math.random() * 0.05 + 0.025) * (Math.random() < 0.5 ? -1 : 1);
+        this.miningBlockVisual.targetRotation.set(0, 0, 0);
+
+        if (axis === 0) this.miningBlockVisual.targetRotation.x = amount;
+        if (axis === 1) this.miningBlockVisual.targetRotation.y = amount;
+        if (axis === 2) this.miningBlockVisual.targetRotation.z = amount;
+    }
+
+    updateMiningBlockVisual(delta) {
+        if (!this.miningBlockVisual) return;
+
+        const visual = this.miningBlockVisual;
+        const targetDecay = Math.min(1, delta * (visual.returning ? 11 : 8));
+        visual.targetRotation.lerp(this.miningBlockVisualZero, targetDecay);
+
+        const rotationFollow = Math.min(1, delta * (visual.returning ? 12 : 18));
+        visual.currentRotation.lerp(visual.targetRotation, rotationFollow);
+        this.applyMiningBlockVisual();
+
+        if (this.miningOverlay && this.miningOverlay.visible && this.miningTargetKey === visual.key && !visual.returning) {
+            this.miningOverlay.rotation.set(visual.currentRotation.x, visual.currentRotation.y, visual.currentRotation.z);
+        }
+
+        if (!visual.returning) return;
+
+        if (visual.currentRotation.distanceToSquared(this.miningBlockVisualZero) < 0.00001 &&
+            visual.targetRotation.distanceToSquared(this.miningBlockVisualZero) < 0.00001) {
+            visual.currentRotation.set(0, 0, 0);
+            visual.targetRotation.set(0, 0, 0);
+            this.applyMiningBlockVisual();
+            this.miningBlockVisual = null;
+        }
     }
 
     raycastBlock(maxDistance) {
@@ -337,6 +546,100 @@ class Game {
         }
 
         return true;
+    }
+
+    spawnMiningParticles(type, hitPoint, normal) {
+        if (!type || !hitPoint || !normal) return;
+
+        const material = this.getBreakParticleMaterial(type);
+        const sideways = new THREE.Vector3(normal.z, 0, -normal.x);
+        if (sideways.lengthSq() < 0.0001) {
+            sideways.set(1, 0, 0);
+        }
+        sideways.normalize();
+
+        const tangent = new THREE.Vector3().crossVectors(normal, sideways).normalize();
+        const center = hitPoint.clone().addScaledVector(normal, 0.06);
+
+        for (let i = 0; i < 3; i++) {
+            const particle = new THREE.Mesh(this.breakParticleGeometry, material);
+            particle.position.copy(center);
+            particle.position.addScaledVector(sideways, (Math.random() - 0.5) * 0.18);
+            particle.position.addScaledVector(tangent, (Math.random() - 0.5) * 0.18);
+            particle.scale.setScalar(0.7 + Math.random() * 0.8);
+            particle.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            particle.userData.velocity = normal.clone().multiplyScalar(0.9 + Math.random() * 0.7)
+                .addScaledVector(sideways, (Math.random() - 0.5) * 1.1)
+                .addScaledVector(tangent, (Math.random() - 0.5) * 1.1)
+                .add(new THREE.Vector3(0, 0.5 + Math.random() * 0.7, 0));
+            particle.userData.spin = new THREE.Vector3(
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 8
+            );
+            particle.userData.life = 0.35 + Math.random() * 0.18;
+
+            this.scene.add(particle);
+            this.breakParticles.push(particle);
+        }
+
+        while (this.breakParticles.length > 72) {
+            const oldest = this.breakParticles.shift();
+            this.scene.remove(oldest);
+        }
+    }
+
+    updateMiningParticles(delta) {
+        for (let i = this.breakParticles.length - 1; i >= 0; i--) {
+            const particle = this.breakParticles[i];
+            particle.userData.life -= delta;
+
+            if (particle.userData.life <= 0) {
+                this.scene.remove(particle);
+                this.breakParticles.splice(i, 1);
+                continue;
+            }
+
+            particle.userData.velocity.y -= 5.5 * delta;
+            particle.position.addScaledVector(particle.userData.velocity, delta);
+            particle.rotation.x += particle.userData.spin.x * delta;
+            particle.rotation.y += particle.userData.spin.y * delta;
+            particle.rotation.z += particle.userData.spin.z * delta;
+        }
+    }
+
+    updateMiningOverlay(position) {
+        if (!this.miningOverlay || !position || this.miningTargetDuration <= 0 || this.miningProgress <= 0) {
+            if (this.miningOverlay) {
+                this.miningOverlay.visible = false;
+                this.miningOverlay.rotation.set(0, 0, 0);
+            }
+            return;
+        }
+
+        const progress = Math.min(1, this.miningProgress / this.miningTargetDuration);
+        const stage = Math.min(this.miningOverlayTextures.length - 1, Math.floor(progress * this.miningOverlayTextures.length));
+
+        this.miningOverlay.material.map = this.miningOverlayTextures[stage];
+        this.miningOverlay.material.needsUpdate = true;
+        this.miningOverlay.position.set(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+        if (this.miningBlockVisual && this.miningBlockVisual.key === `${position.x},${position.y},${position.z}`) {
+            this.miningOverlay.rotation.set(
+                this.miningBlockVisual.currentRotation.x,
+                this.miningBlockVisual.currentRotation.y,
+                this.miningBlockVisual.currentRotation.z
+            );
+        } else {
+            this.miningOverlay.rotation.set(0, 0, 0);
+        }
+        this.miningOverlay.visible = true;
+    }
+
+    performMiningStrike(blockType, hit) {
+        if (!hit || !hit.face) return;
+
+        this.spawnMiningParticles(blockType, hit.point, hit.face.normal);
+        this.kickMiningBlockVisual();
     }
     
     placeBlock() {
@@ -369,42 +672,67 @@ class Game {
     updateMining(delta) {
         if (!this.isBreakInputActive || !this.cameraController.isLocked) {
             this.resetMiningTarget();
+            this.resetMiningBlockVisual(false);
             return;
         }
 
         const hit = this.raycastBlock(this.breakDistance);
         if (!hit) {
             this.resetMiningTarget();
+            this.resetMiningBlockVisual(false);
             return;
         }
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos) {
             this.resetMiningTarget();
+            this.resetMiningBlockVisual(false);
             return;
         }
 
         const breakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
         if (!breakDuration || !Number.isFinite(breakDuration)) {
             this.resetMiningTarget();
+            this.resetMiningBlockVisual(false);
             return;
         }
+
+        const blockType = this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z);
 
         const targetKey = `${worldPos.x},${worldPos.y},${worldPos.z}`;
         if (targetKey !== this.miningTargetKey) {
             this.miningTargetKey = targetKey;
             this.miningTargetDuration = breakDuration;
             this.miningProgress = 0;
+            this.miningTargetType = blockType;
+            this.miningStrikeTimer = 0;
+            this.bindMiningBlockVisual(hit, targetKey);
+            if (this.miningOverlay) {
+                this.miningOverlay.visible = false;
+            }
             return;
         }
 
+        this.bindMiningBlockVisual(hit, targetKey);
+        this.miningTargetType = blockType;
         this.miningProgress += delta;
+        this.miningStrikeTimer += delta;
+
+        while (this.miningStrikeTimer >= this.miningStrikeInterval) {
+            this.performMiningStrike(blockType, hit);
+            this.miningStrikeTimer -= this.miningStrikeInterval;
+        }
+
+        this.updateMiningOverlay(worldPos);
+
         if (this.miningProgress < this.miningTargetDuration) {
             return;
         }
 
+        this.performMiningStrike(blockType, hit);
         this.finishBreakingBlock(worldPos);
         this.resetMiningTarget();
+        this.resetMiningBlockVisual(false);
     }
     
     showHitIndicator() {
@@ -435,18 +763,21 @@ class Game {
     updateSelectionBox() {
         if (!this.cameraController.isLocked) {
             this.selectionBox.visible = false;
+            this.selectionBox.rotation.set(0, 0, 0);
             return;
         }
 
         const hit = this.raycastBlock(this.breakDistance);
         if (!hit) {
             this.selectionBox.visible = false;
+            this.selectionBox.rotation.set(0, 0, 0);
             return;
         }
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos) {
             this.selectionBox.visible = false;
+            this.selectionBox.rotation.set(0, 0, 0);
             return;
         }
         
@@ -454,8 +785,18 @@ class Game {
         if (this.miningTargetKey === `${worldPos.x},${worldPos.y},${worldPos.z}` && this.miningTargetDuration > 0) {
             const progress = Math.min(1, this.miningProgress / this.miningTargetDuration);
             this.selectionBox.material.color.setRGB(0.35 + progress * 0.5, 0.15 + progress * 0.2, 0.05);
+            if (this.miningBlockVisual && this.miningBlockVisual.key === this.miningTargetKey) {
+                this.selectionBox.rotation.set(
+                    this.miningBlockVisual.currentRotation.x,
+                    this.miningBlockVisual.currentRotation.y,
+                    this.miningBlockVisual.currentRotation.z
+                );
+            } else {
+                this.selectionBox.rotation.set(0, 0, 0);
+            }
         } else {
             this.selectionBox.material.color.setHex(0x000000);
+            this.selectionBox.rotation.set(0, 0, 0);
         }
         this.selectionBox.visible = true;
     }
@@ -502,6 +843,8 @@ class Game {
         this.cameraController.update(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateMining(delta);
+        this.updateMiningParticles(delta);
+        this.updateMiningBlockVisual(delta);
         this.updateFirstPersonHand(delta);
         
         if (now - this.lastSelectionUpdate >= this.selectionUpdateInterval) {

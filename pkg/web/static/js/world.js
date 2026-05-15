@@ -638,6 +638,11 @@ class WorldRenderer {
         return def.breakDuration ?? 0.5;
     }
 
+    getBlockColorForType(type) {
+        const def = this.blockTypes[type];
+        return def ? def.color : 0xFFFFFF;
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
