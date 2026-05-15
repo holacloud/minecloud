@@ -188,8 +188,8 @@ class CameraController {
         return this.getCollisionBlocks(x, z, feetY).length === 0;
     }
 
-    applyStepUp(feetY) {
-        this.camera.position.y = Math.max(this.camera.position.y, feetY + this.stepHeight + this.eyeHeight);
+    applyStepUp(targetFeetY) {
+        this.camera.position.y = targetFeetY + this.eyeHeight;
         this.velocityY = Math.max(0, this.velocityY);
         this.onGround = true;
     }
@@ -264,11 +264,12 @@ class CameraController {
                 // Sneak movement prevents falling off ledges.
             } else {
                 const resolved = this.resolveHorizontalPosition(targetX, targetZ, py);
-                if (resolved.collided && (this.onGround || this.velocityY <= 0.2)) {
+                if (resolved.collided && this.onGround) {
                     const stepFeetY = py + this.stepHeight;
                     const stepped = this.resolveHorizontalPosition(targetX, targetZ, stepFeetY);
-                    if (this.canStandAt(stepped.x, stepped.z, stepFeetY)) {
-                        this.applyStepUp(py);
+                    const steppedFloorY = this.getFloorY(stepped.x, stepped.z, stepFeetY);
+                    if (steppedFloorY > currentFloorY + 0.001 && steppedFloorY <= currentFloorY + this.stepHeight + 0.001 && this.canStandAt(stepped.x, stepped.z, steppedFloorY)) {
+                        this.applyStepUp(steppedFloorY);
                         this.camera.position.x = stepped.x;
                         this.camera.position.z = stepped.z;
                     } else {

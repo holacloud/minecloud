@@ -194,6 +194,7 @@ class Game {
 
         this.firstPersonHand = null;
         this.firstPersonLeftHand = null;
+        this.firstPersonItemAnchor = null;
         this.heldItemMesh = null;
         this.heldItemType = null;
         this.handBasePosition = new THREE.Vector3(0.62, -0.72, -1.05);
@@ -1346,6 +1347,9 @@ class Game {
             mesh.frustumCulled = false;
         });
 
+        const itemAnchor = new THREE.Group();
+        itemAnchor.position.set(0, 0.5, -0.55);
+        sleeve.add(itemAnchor);
         handGroup.add(sleeve);
         handGroup.add(cuff);
         handGroup.add(hand);
@@ -1355,6 +1359,7 @@ class Game {
 
         this.camera.add(handGroup);
         this.firstPersonHand = handGroup;
+        this.firstPersonItemAnchor = itemAnchor;
 
         const leftHandGroup = new THREE.Group();
         const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.72, 0.26), createMaterial(appearance.skin));
@@ -2641,14 +2646,14 @@ class Game {
     }
 
     refreshHeldItemMesh(forceRebuild = false) {
-        if (!this.firstPersonHand || !this.world) return;
+        if (!this.firstPersonItemAnchor || !this.world) return;
 
         const selectedType = this.getSelectedBlockType();
         const hasSelectedItem = selectedType && this.getInventoryCount(selectedType) > 0;
 
         if (!hasSelectedItem) {
             if (this.heldItemMesh) {
-                this.firstPersonHand.remove(this.heldItemMesh);
+                this.firstPersonItemAnchor.remove(this.heldItemMesh);
                 if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
                 this.heldItemMesh = null;
                 this.heldItemType = null;
@@ -2661,13 +2666,13 @@ class Game {
         }
 
         if (this.heldItemMesh) {
-            this.firstPersonHand.remove(this.heldItemMesh);
+            this.firstPersonItemAnchor.remove(this.heldItemMesh);
             if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
         }
 
-        const heldItem = this.world.createDisplayMesh(selectedType, 0.23);
-        heldItem.position.set(0.02, -0.72, 0.1);
-        heldItem.rotation.set(0.32, 0.72, 0.08);
+        const heldItem = this.world.createDisplayMesh(selectedType, 0.24);
+        heldItem.position.set(0, 0, 0);
+        heldItem.rotation.set(0.34, 0.68, 0.12);
         heldItem.renderOrder = 10001;
         heldItem.frustumCulled = false;
         heldItem.traverse((node) => {
@@ -2681,7 +2686,7 @@ class Game {
             }
         });
 
-        this.firstPersonHand.add(heldItem);
+        this.firstPersonItemAnchor.add(heldItem);
         this.heldItemMesh = heldItem;
         this.heldItemType = selectedType;
     }
@@ -3818,11 +3823,12 @@ class Game {
             this.cameraController.keys.left || this.cameraController.keys.right ||
             Math.abs(this.cameraController.moveInput.x) > 0.05 || Math.abs(this.cameraController.moveInput.y) > 0.05;
         if (this.cameraController.onGround && hasMoveInput) {
-            const walkBob = Math.sin(this.cameraBobPhase * 2) * 0.035;
+            const walkPhase = this.cameraBobPhase * 0.48;
+            const walkBob = Math.sin(walkPhase) * 0.11;
             targetY += walkBob;
-            targetRotZ += Math.sin(this.cameraBobPhase) * 0.035;
+            targetRotZ += Math.sin(walkPhase) * 0.11;
             leftTargetY -= walkBob;
-            leftTargetRotZ -= Math.sin(this.cameraBobPhase) * 0.035;
+            leftTargetRotZ -= Math.sin(walkPhase) * 0.11;
         }
 
         const isMining = this.isBreakInputActive && this.miningTargetKey !== null;
