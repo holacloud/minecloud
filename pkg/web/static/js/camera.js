@@ -77,7 +77,10 @@ class CameraController {
         
         this.domElement.addEventListener('click', () => {
             if (!this.touchControlsEnabled) {
-                this.domElement.requestPointerLock();
+                const request = this.domElement.requestPointerLock();
+                if (request && typeof request.catch === 'function') {
+                    request.catch((error) => console.warn('Pointer lock unavailable', error));
+                }
             }
         });
         document.addEventListener('pointerlockchange', () => this.isLocked = document.pointerLockElement === this.domElement);
