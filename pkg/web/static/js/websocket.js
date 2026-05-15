@@ -82,6 +82,18 @@ class NetworkClient {
             case 'system':
                 this.emit('system', message.payload);
                 break;
+            case 'voiceState':
+                this.emit('voiceState', message.payload);
+                break;
+            case 'webrtcOffer':
+                this.emit('webrtcOffer', message.payload);
+                break;
+            case 'webrtcAnswer':
+                this.emit('webrtcAnswer', message.payload);
+                break;
+            case 'webrtcIceCandidate':
+                this.emit('webrtcIceCandidate', message.payload);
+                break;
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;
@@ -145,6 +157,22 @@ class NetworkClient {
 
     setUsername(username) {
         this.username = username;
+    }
+
+    setVoiceEnabled(enabled) {
+        this.send('voiceState', { enabled: enabled });
+    }
+
+    sendWebRTCOffer(toPlayerId, sdp) {
+        this.send('webrtcOffer', { toPlayerId: toPlayerId, sdp: sdp });
+    }
+
+    sendWebRTCAnswer(toPlayerId, sdp) {
+        this.send('webrtcAnswer', { toPlayerId: toPlayerId, sdp: sdp });
+    }
+
+    sendWebRTCIceCandidate(toPlayerId, candidate) {
+        this.send('webrtcIceCandidate', { toPlayerId: toPlayerId, candidate: candidate });
     }
     
     updateStatus(text) {

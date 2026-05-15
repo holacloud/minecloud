@@ -24,4 +24,4 @@ Next tasks
 - [x] Mejorar las texturas del modo RTX, ahora solo son grano con ruido
 - [x] Iniciar chat al hacer click en un jugador
 - [x] Crear el objeto cartel en el que se pueda escribir un mensaje de hasta 288 caracteres y plantar en el mundo para que el resto de jugadores lo puedan ver
-- [ ] Crear un chat de audio (se activa con un botón) en el que puedes hablar con otros jugadores si estás lo suficientemente cerca (puede que con Web RTC o similar)
+- [x] Crear un chat de audio (se activa con un botón) en el que puedes hablar con otros jugadores si estás lo suficientemente cerca (puede que con Web RTC o similar)

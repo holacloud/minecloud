@@ -22,6 +22,7 @@ type Client struct {
 	conn     *websocket.Conn
 	send     chan []byte
 	username string
+	voiceEnabled bool
 }
 
 type Message struct {
@@ -176,6 +177,7 @@ func (c *Client) readPump() {
 		stateMu.Unlock()
 		
 		if c.ID != "" {
+			c.voiceEnabled = false
 			broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s left the world", leftName)}))
 		}
 		broadcastPlayerList()
@@ -325,9 +327,63 @@ func handleMessage(client *Client, msg Message) {
 		}
 
 		broadcastToAll(createMessage("chat", chat))
+
+	case "voiceState":
+		var payload struct {
+			Enabled bool `json:"enabled"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		client.voiceEnabled = payload.Enabled
+		broadcastToAll(createMessage("voiceState", map[string]interface{}{
+			"playerId": client.ID,
+			"enabled": payload.Enabled,
+		}))
+		broadcastPlayerList()
+
+	case "webrtcOffer":
+		forwardSignalMessage(client.ID, "webrtcOffer", msg.Payload)
+
+	case "webrtcAnswer":
+		forwardSignalMessage(client.ID, "webrtcAnswer", msg.Payload)
+
+	case "webrtcIceCandidate":
+		forwardSignalMessage(client.ID, "webrtcIceCandidate", msg.Payload)
 		
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)
+	}
+}
+
+func forwardSignalMessage(fromPlayerID string, msgType string, rawPayload json.RawMessage) {
+	var payload map[string]interface{}
+	if err := json.Unmarshal(rawPayload, &payload); err != nil {
+		return
+	}
+
+	toPlayerID, _ := payload["toPlayerId"].(string)
+	if toPlayerID == "" {
+		return
+	}
+
+	delete(payload, "toPlayerId")
+	payload["fromPlayerId"] = fromPlayerID
+	sendToPlayer(toPlayerID, createMessage(msgType, payload))
+}
+
+func sendToPlayer(playerID string, data []byte) {
+	clientsMu.RLock()
+	defer clientsMu.RUnlock()
+
+	for client := range clients {
+		if client.ID != playerID {
+			continue
+		}
+
+		select {
+		case client.send <- data:
+		default:
+		}
+		return
 	}
 }
 
@@ -351,13 +407,24 @@ func sendInitialState(client *Client) {
 
 func broadcastPlayerList() {
 	stateMu.RLock()
-	players := make([]map[string]string, 0)
+	players := make([]map[string]interface{}, 0)
 	for id, p := range gameState.Players {
 		name := p.Username
 		if name == "" {
 			name = p.ID
 		}
-		players = append(players, map[string]string{"id": id, "name": name})
+
+		voiceEnabled := false
+		clientsMu.RLock()
+		for client := range clients {
+			if client.ID == id {
+				voiceEnabled = client.voiceEnabled
+				break
+			}
+		}
+		clientsMu.RUnlock()
+
+		players = append(players, map[string]interface{}{"id": id, "name": name, "voiceEnabled": voiceEnabled})
 	}
 	stateMu.RUnlock()
 	

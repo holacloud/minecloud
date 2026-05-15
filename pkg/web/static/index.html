@@ -159,6 +159,21 @@
             background: linear-gradient(90deg, #d74646 0%, #ff8080 100%);
             transform-origin: left center;
         }
+        #voice-toggle {
+            margin-top: 8px;
+            height: 28px;
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(24, 30, 44, 0.72);
+            color: #fff;
+            font: 12px/1 'Consolas', monospace;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        #voice-toggle.active {
+            background: rgba(72, 146, 108, 0.82);
+        }
 
         #chat-container {
             position: absolute;
@@ -427,6 +442,7 @@
         <div><span id="status">Connecting...</span></div>
         <div>Players: <span id="player-count">0</span></div>
         <div>RTX: <span id="rtx-status">Off</span></div>
+        <button id="voice-toggle" type="button">Voice Off</button>
     </div>
     <div id="player-list-container">
         <h3>Players</h3>
@@ -483,6 +499,7 @@
     <script src="js/camera.js"></script>
     <script src="js/world.js"></script>
     <script src="js/websocket.js"></script>
+    <script src="js/voice.js"></script>
     <script src="js/game.js"></script>
     <script>
         document.addEventListener('contextmenu', e => e.preventDefault());

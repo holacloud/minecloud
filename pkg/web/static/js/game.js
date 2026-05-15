@@ -103,6 +103,7 @@ class Game {
         this.pickups = new Map();
         this.pickupIdCounter = 0;
         this.remotePlayerNames = new Map();
+        this.voiceChat = null;
         this.audioContext = null;
         this.audioUnlocked = false;
         this.noiseBuffer = null;
@@ -165,6 +166,7 @@ class Game {
         this.initHotbar();
         this.initInput();
         this.initPauseMenu();
+        this.initVoiceChat();
         
         document.getElementById('connecting').style.display = 'none';
         this.refreshChatVisibility();
@@ -1061,6 +1063,9 @@ class Game {
         });
 
         this.updatePlayerCount(activeIds.size);
+        if (this.voiceChat) {
+            this.voiceChat.syncPlayerList(payload.players);
+        }
 
         for (const [id, avatar] of this.otherPlayerMeshes) {
             if (id === this.network.playerId || activeIds.has(id)) continue;
@@ -1079,6 +1084,10 @@ class Game {
 
     disposeRemoteAvatar(avatar) {
         if (!avatar) return;
+
+        if (this.voiceChat && avatar.userData.playerId) {
+            this.voiceChat.removePeer(avatar.userData.playerId);
+        }
 
         avatar.traverse((node) => {
             if (node instanceof THREE.Mesh && node.material) {
@@ -1231,10 +1240,36 @@ class Game {
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
         this.network.on('chat', (payload) => this.receiveChatMessage(payload));
         this.network.on('system', (payload) => this.receiveSystemMessage(payload));
+        this.network.on('voiceState', (payload) => {
+            if (this.voiceChat) {
+                this.voiceChat.updateVoiceState(payload.playerId, payload.enabled);
+            }
+        });
+        this.network.on('webrtcOffer', (payload) => {
+            if (this.voiceChat) {
+                this.voiceChat.handleOffer(payload);
+            }
+        });
+        this.network.on('webrtcAnswer', (payload) => {
+            if (this.voiceChat) {
+                this.voiceChat.handleAnswer(payload);
+            }
+        });
+        this.network.on('webrtcIceCandidate', (payload) => {
+            if (this.voiceChat) {
+                this.voiceChat.handleIceCandidate(payload);
+            }
+        });
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
         this.network.connect(wsUrl);
+    }
+
+    initVoiceChat() {
+        if (typeof VoiceChatManager === 'undefined') return;
+        this.voiceChat = new VoiceChatManager(this, this.network);
+        this.voiceChat.init();
     }
     
     updateOtherPlayer(player) {
@@ -2449,6 +2484,9 @@ class Game {
         this.updateDayNightCycle(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);
+        if (this.voiceChat) {
+            this.voiceChat.updateProximity();
+        }
         this.updatePickups(delta);
         this.updateMining(delta);
         this.updateMiningParticles(delta);
