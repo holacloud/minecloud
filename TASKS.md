@@ -46,3 +46,13 @@ Next tasks
 - [x] Añadir modo foto con `F2` para ocultar toda la interfaz
 - [x] Permitir dormir en la cama para saltar la noche
 - [ ] Permitir comer para recuperar vida
+- [x] Mejorar la luz de las antorchas para que iluminen con un radio claro de al menos 5 bloques y caída cuadrática
+- [ ] Crear mobs interactuables: oveja, pato y cerdo
+- [ ] Al cerrar cualquier ventana interactiva, recapturar el mouse automáticamente sin necesidad de click
+- [ ] Mejorar la usabilidad general de la barra de inventario
+- [ ] Al picar un cubo situado arriba, hacer que caiga con la gravedad
+- [ ] Corregir el chat de voz del micrófono y hacerlo funcional
+- [ ] Hacer que se oigan correctamente los pasos de otros jugadores cercanos
+- [ ] Permitir comer para recuperar vida
+- [ ] Añadir pantalla inicial con fondo desenfocado de la partida, título MineCloud y opciones de continuar o cambiar nombre
+- [ ] Corregir la orientación de los ojos de los avatares para que no parezcan estar en la nuca

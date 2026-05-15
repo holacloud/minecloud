@@ -237,7 +237,7 @@ class WorldRenderer {
     }
 
     createTorchLight() {
-        const light = new THREE.PointLight(0xffd38a, this.rtxModeEnabled ? 1.4 : 0.9, this.rtxModeEnabled ? 10 : 7, 2);
+        const light = new THREE.PointLight(0xffd38a, this.rtxModeEnabled ? 3.4 : 2.2, this.rtxModeEnabled ? 16 : 13, 2);
         light.castShadow = false;
         return light;
     }
