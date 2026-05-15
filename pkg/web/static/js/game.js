@@ -54,6 +54,9 @@ class Game {
         this.dayNightCycleEnabled = true;
         this.dayNightCycleDuration = 240;
         this.timeOfDay = 0.22;
+        this.weatherState = 'clear';
+        this.weatherTimer = 0;
+        this.nextWeatherChange = 70;
         this.craftingOpen = false;
         this.pauseOpen = false;
         this.craftingRecipes = [
@@ -108,6 +111,8 @@ class Game {
         this.audioUnlocked = false;
         this.noiseBuffer = null;
         this.wasOnGround = false;
+        this.rainSystem = null;
+        this.rainPositions = null;
         this.chatMessages = [];
         this.chatOpen = false;
         this.chatHideTimeout = null;
@@ -784,11 +789,37 @@ class Game {
         this.scene.add(this.selectionBox);
 
         this.initMiningEffects();
+        this.initWeatherEffects();
         
         this.hitIndicator = document.getElementById('hit-indicator');
         this.initViewModel();
 
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+
+    initWeatherEffects() {
+        const rainCount = 360;
+        const positions = new Float32Array(rainCount * 3);
+        for (let i = 0; i < rainCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 28;
+            positions[i * 3 + 1] = Math.random() * 20 + 4;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 28;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const material = new THREE.PointsMaterial({
+            color: 0x9fd8ff,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.7,
+            depthWrite: false
+        });
+
+        this.rainSystem = new THREE.Points(geometry, material);
+        this.rainSystem.visible = false;
+        this.scene.add(this.rainSystem);
+        this.rainPositions = positions;
     }
 
     initMiningEffects() {
@@ -1064,6 +1095,39 @@ class Game {
         if (this.rtxModeEnabled) {
             this.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.52, 1.18, daylight) + sunset * 0.05;
         }
+    }
+
+    updateWeather(delta) {
+        if (!this.rainSystem || !this.rainPositions) return;
+
+        this.weatherTimer += delta;
+        if (this.weatherTimer >= this.nextWeatherChange) {
+            this.weatherTimer = 0;
+            this.nextWeatherChange = 55 + Math.random() * 70;
+            this.weatherState = this.weatherState === 'clear' ? 'rain' : 'clear';
+        }
+
+        const raining = this.weatherState === 'rain';
+        this.rainSystem.visible = raining;
+        if (!raining) {
+            return;
+        }
+
+        this.rainSystem.position.set(this.camera.position.x, this.camera.position.y - 1, this.camera.position.z);
+        for (let i = 0; i < this.rainPositions.length; i += 3) {
+            this.rainPositions[i + 1] -= delta * (15 + (i % 5));
+            if (this.rainPositions[i + 1] < -2) {
+                this.rainPositions[i] = (Math.random() - 0.5) * 28;
+                this.rainPositions[i + 1] = Math.random() * 20 + 8;
+                this.rainPositions[i + 2] = (Math.random() - 0.5) * 28;
+            }
+        }
+        this.rainSystem.geometry.attributes.position.needsUpdate = true;
+
+        this.sunLight.intensity *= 0.78;
+        this.ambientLight.intensity *= 0.92;
+        this.hemiLight.intensity *= 0.9;
+        this.scene.fog.color.copy(this.blendColors(this.scene.fog.color, new THREE.Color(0x8ca0af), 0.35));
     }
 
     createPlayerAvatarMaterial(color) {
@@ -2682,6 +2746,7 @@ class Game {
         this.updateSurvival(delta);
         this.updateLocalMovementFeedback(delta);
         this.updateDayNightCycle(delta);
+        this.updateWeather(delta);
         this.updateUnderwaterEffect();
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);
