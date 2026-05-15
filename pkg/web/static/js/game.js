@@ -21,6 +21,16 @@ class Game {
         this.selectionUpdateInterval = 50;
         
         this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'leaves'];
+        this.inventoryCounts = {
+            grass: 24,
+            dirt: 24,
+            cobblestone: 24,
+            wood: 20,
+            planks: 20,
+            brick: 16,
+            sand: 20,
+            leaves: 16
+        };
         this.selectedSlot = 0;
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
@@ -35,6 +45,10 @@ class Game {
         this.ambientLight = null;
         this.sunLight = null;
         this.hemiLight = null;
+        this.hotbarSlotElements = [];
+        this.hotbarCountElements = [];
+        this.pickups = new Map();
+        this.pickupIdCounter = 0;
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -427,6 +441,7 @@ class Game {
         this.refreshOtherPlayerAvatarMaterials();
 
         this.world.setRTXMode(enabled);
+        this.rebuildPickupMeshes();
         this.syncOtherPlayerShadows();
         this.updateRTXStatus();
         this.lastSelectionUpdate = 0;
@@ -495,6 +510,10 @@ class Game {
     
     initHotbar() {
         const hotbar = document.getElementById('hotbar');
+        hotbar.innerHTML = '';
+        this.hotbarSlotElements = [];
+        this.hotbarCountElements = [];
+
         this.inventory.forEach((blockType, index) => {
             const slot = document.createElement('div');
             slot.className = 'hotbar-slot' + (index === 0 ? ' selected' : '');
@@ -510,9 +529,144 @@ class Game {
             num.className = 'slot-num';
             num.textContent = index + 1;
             slot.appendChild(num);
+
+            const count = document.createElement('span');
+            count.className = 'slot-count';
+            slot.appendChild(count);
             
             hotbar.appendChild(slot);
+            this.hotbarSlotElements[index] = slot;
+            this.hotbarCountElements[index] = count;
         });
+
+        this.updateHotbarCounts();
+    }
+
+    updateHotbarCounts() {
+        for (let i = 0; i < this.inventory.length; i++) {
+            const type = this.inventory[i];
+            const count = this.getInventoryCount(type);
+            const slotEl = this.hotbarSlotElements[i];
+            const countEl = this.hotbarCountElements[i];
+            if (!slotEl || !countEl) continue;
+
+            countEl.textContent = count > 0 ? count : '0';
+            slotEl.classList.toggle('empty', count <= 0);
+        }
+    }
+
+    ensureInventorySlot(type) {
+        if (this.inventory.includes(type)) return;
+        this.inventory.push(type);
+        this.inventoryCounts[type] = this.inventoryCounts[type] || 0;
+        this.initHotbar();
+        this.selectSlot(Math.min(this.selectedSlot, this.inventory.length - 1));
+    }
+
+    getSelectedBlockType() {
+        return this.inventory[this.selectedSlot] || null;
+    }
+
+    getInventoryCount(type) {
+        return this.inventoryCounts[type] || 0;
+    }
+
+    addInventory(type, amount = 1) {
+        if (!type || amount <= 0) return;
+        this.ensureInventorySlot(type);
+        this.inventoryCounts[type] = this.getInventoryCount(type) + amount;
+        this.updateHotbarCounts();
+    }
+
+    consumeSelectedBlock() {
+        const type = this.getSelectedBlockType();
+        if (!type) return false;
+
+        const count = this.getInventoryCount(type);
+        if (count <= 0) return false;
+
+        this.inventoryCounts[type] = count - 1;
+        this.updateHotbarCounts();
+        return true;
+    }
+
+    rebuildPickupMeshes() {
+        for (const pickup of this.pickups.values()) {
+            if (pickup.mesh) {
+                this.scene.remove(pickup.mesh);
+                if (pickup.mesh.material) pickup.mesh.material.dispose();
+            }
+            pickup.mesh = this.world.createDisplayMesh(pickup.type, 0.34);
+            pickup.mesh.position.copy(pickup.position);
+            pickup.mesh.rotation.set(pickup.rotation.x, pickup.rotation.y, pickup.rotation.z);
+            this.scene.add(pickup.mesh);
+        }
+    }
+
+    spawnPickup(type, position, amount = 1) {
+        if (!type) return;
+
+        const id = `pickup_${this.pickupIdCounter++}`;
+        const pickup = {
+            id: id,
+            type: type,
+            amount: amount,
+            position: new THREE.Vector3(position.x + 0.5, position.y + 0.35, position.z + 0.5),
+            velocity: new THREE.Vector3((Math.random() - 0.5) * 1.1, 2.2 + Math.random() * 0.7, (Math.random() - 0.5) * 1.1),
+            rotation: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
+            floatPhase: Math.random() * Math.PI * 2,
+            age: 0,
+            settleHeight: position.y + 0.42,
+            settled: false,
+            mesh: this.world.createDisplayMesh(type, 0.34)
+        };
+
+        pickup.mesh.position.copy(pickup.position);
+        pickup.mesh.rotation.copy(pickup.rotation);
+        this.scene.add(pickup.mesh);
+        this.pickups.set(id, pickup);
+    }
+
+    collectPickup(id) {
+        const pickup = this.pickups.get(id);
+        if (!pickup) return;
+
+        this.addInventory(pickup.type, pickup.amount);
+        this.scene.remove(pickup.mesh);
+        if (pickup.mesh.material) pickup.mesh.material.dispose();
+        this.pickups.delete(id);
+    }
+
+    updatePickups(delta) {
+        const playerPos = this.cameraController.getPosition();
+        const playerVector = new THREE.Vector3(playerPos.x, playerPos.y - 1.1, playerPos.z);
+
+        for (const [id, pickup] of this.pickups) {
+            pickup.age += delta;
+
+            if (!pickup.settled) {
+                pickup.velocity.y -= 8.5 * delta;
+                pickup.position.addScaledVector(pickup.velocity, delta);
+
+                if (pickup.position.y <= pickup.settleHeight && pickup.velocity.y <= 0) {
+                    pickup.position.y = pickup.settleHeight;
+                    pickup.settled = true;
+                }
+            } else {
+                pickup.position.y = pickup.settleHeight + Math.sin(pickup.age * 3 + pickup.floatPhase) * 0.08;
+            }
+
+            pickup.rotation.x += delta * 1.1;
+            pickup.rotation.y += delta * 2.7;
+            pickup.rotation.z += delta * 0.35;
+
+            pickup.mesh.position.copy(pickup.position);
+            pickup.mesh.rotation.copy(pickup.rotation);
+
+            if (pickup.age > 0.3 && pickup.position.distanceTo(playerVector) < 1.25) {
+                this.collectPickup(id);
+            }
+        }
     }
     
     initInput() {
@@ -855,7 +1009,13 @@ class Game {
     }
     
     finishBreakingBlock(position) {
+        const blockType = this.world.getBlockTypeAt(position.x, position.y, position.z);
+        const dropType = this.world.getDropTypeForBlock(blockType);
         if (!this.world.removeBlockAt(position.x, position.y, position.z)) return false;
+
+        if (dropType) {
+            this.spawnPickup(dropType, position, 1);
+        }
 
         this.showHitIndicator();
         this.lastSelectionUpdate = 0;
@@ -976,8 +1136,10 @@ class Game {
         };
 
         if (newPos.y >= 0) {
-            const blockType = this.inventory[this.selectedSlot];
+            const blockType = this.getSelectedBlockType();
+            if (!blockType || this.getInventoryCount(blockType) <= 0) return;
             if (!this.world.addBlock(newPos, blockType)) return;
+            this.consumeSelectedBlock();
 
             this.showHitIndicator();
             this.lastSelectionUpdate = 0;
@@ -1162,6 +1324,7 @@ class Game {
         
         this.cameraController.update(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
+        this.updatePickups(delta);
         this.updateMining(delta);
         this.updateMiningParticles(delta);
         this.updateMiningBlockVisual(delta);

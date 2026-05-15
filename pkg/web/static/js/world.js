@@ -772,6 +772,28 @@ class WorldRenderer {
         return def ? def.color : 0xFFFFFF;
     }
 
+    getDropTypeForBlock(type) {
+        switch (type) {
+            case 'stone': return 'cobblestone';
+            case 'water':
+            case 'bedrock':
+            case 'air':
+                return null;
+            default:
+                return type;
+        }
+    }
+
+    createDisplayMesh(type, scale = 0.36) {
+        const material = this.getMaterial(type).clone();
+        const mesh = new THREE.Mesh(this.geometry, material);
+        mesh.scale.setScalar(scale);
+        mesh.castShadow = this.rtxModeEnabled && type !== 'water';
+        mesh.receiveShadow = this.rtxModeEnabled;
+        mesh.userData.blockType = type;
+        return mesh;
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
