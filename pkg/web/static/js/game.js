@@ -103,6 +103,7 @@ class Game {
         this.chatMessages = [];
         this.chatOpen = false;
         this.chatHideTimeout = null;
+        this.remoteFootstepRange = 9;
         this.maxHealth = 20;
         this.health = this.maxHealth;
         this.wasOnGroundForDamage = false;
@@ -473,6 +474,61 @@ class Game {
     playJumpSound() {
         this.playTone({ frequency: 240, duration: 0.05, type: 'triangle', volume: 0.03, release: 0.07 });
         this.playNoiseBurst({ duration: 0.03, volume: 0.012, highpass: 140, lowpass: 900 });
+    }
+
+    getProximityAudio(position, maxRange = this.remoteFootstepRange) {
+        const listenerPos = this.cameraController.getPosition();
+        const dx = position.x - listenerPos.x;
+        const dz = position.z - listenerPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        if (distance >= maxRange) return null;
+
+        const volume = Math.pow(1 - distance / maxRange, 1.7);
+        const pan = THREE.MathUtils.clamp(dx / maxRange, -1, 1);
+        return { volume, pan };
+    }
+
+    playPositionalFootstep(position, blockType) {
+        const audio = this.ensureAudio();
+        const proximity = this.getProximityAudio(position);
+        const buffer = this.getNoiseBuffer();
+        if (!audio || !buffer || !proximity || audio.state !== 'running') return;
+
+        const source = audio.createBufferSource();
+        source.buffer = buffer;
+
+        const hp = audio.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(['stone', 'cobblestone', 'stone_bricks', 'brick', 'glass'].includes(blockType) ? 420 : 180, audio.currentTime);
+
+        const lp = audio.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(['sand', 'dirt', 'grass', 'leaves', 'cactus'].includes(blockType) ? 1200 : 1800, audio.currentTime);
+
+        const gain = audio.createGain();
+        gain.gain.setValueAtTime(0.012 * proximity.volume * this.masterVolume, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.12);
+
+        if (typeof audio.createStereoPanner === 'function') {
+            const panner = audio.createStereoPanner();
+            panner.pan.setValueAtTime(proximity.pan, audio.currentTime);
+            gain.connect(panner).connect(audio.destination);
+        } else {
+            gain.connect(audio.destination);
+        }
+
+        source.connect(hp).connect(lp).connect(gain);
+        source.start();
+        source.stop(audio.currentTime + 0.13);
+
+        this.playTone({
+            frequency: ['stone', 'cobblestone', 'stone_bricks', 'brick', 'glass'].includes(blockType) ? 165 : 120,
+            duration: 0.035,
+            type: 'triangle',
+            volume: 0.007 * proximity.volume,
+            release: 0.03,
+            detune: (Math.random() - 0.5) * 35
+        });
     }
 
     updateHealthUI() {
@@ -926,6 +982,7 @@ class Game {
         group.userData.targetPosition = new THREE.Vector3();
         group.userData.targetYaw = 0;
         group.userData.walkPhase = 0;
+        group.userData.lastStepIndex = 0;
         group.userData.nameSprite = this.createNameTagSprite('Player');
         group.userData.nameSprite.position.set(0, 2.15, 0);
         group.add(group.userData.nameSprite);
@@ -1052,6 +1109,16 @@ class Game {
             parts.rightArm.rotation.x = -swing;
             parts.leftLeg.rotation.x = -swing;
             parts.rightLeg.rotation.x = swing;
+
+            if (stride > 0.08) {
+                const cycle = ((avatar.userData.walkPhase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+                const stepIndex = Math.floor(cycle / Math.PI);
+                if (stepIndex !== avatar.userData.lastStepIndex) {
+                    avatar.userData.lastStepIndex = stepIndex;
+                    const stepBlock = this.world.getBlockTypeAt(Math.round(avatar.position.x), Math.floor(avatar.position.y), Math.round(avatar.position.z)) || 'grass';
+                    this.playPositionalFootstep(avatar.position, stepBlock);
+                }
+            }
         }
     }
 

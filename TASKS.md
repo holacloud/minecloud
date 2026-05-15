@@ -20,7 +20,7 @@ Next tasks
 - [x] Añadir biomas con variación visible de terreno y vegetación
 - [x] Añadir mensajes de sistema de entrada/salida en el chat y contador de jugadores conectado
 - [x] Añadir un bloque de cama para fijar el punto de respawn del jugador
-- [ ] Escuchar los pasos de otros jugadores cuando están cerca
+- [x] Escuchar los pasos de otros jugadores cuando están cerca
 - [ ] Mejorar las texturas del modo RTX, ahora solo son grano con ruido
 - [ ] Iniciar chat al hacer click en un jugador
 - [ ] Crear el objeto cartel en el que se pueda escribir un mensaje de hasta 288 caracteres y plantar en el mundo para que el resto de jugadores lo puedan ver
