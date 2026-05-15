@@ -101,6 +101,8 @@ class Game {
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
         this.respawnPoint = { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
+        this.lastSafePosition = null;
+        this.lastSafePositionSaveTimer = 0;
         
         this.otherPlayerMeshes = new Map();
         this.playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.8, 8);
@@ -142,6 +144,7 @@ class Game {
         this.initThreeJS();
         this.initCamera();
         this.initWorld();
+        this.restoreLastSafePosition();
         this.applyRTXMode(this.rtxPreferred);
         this.initNetwork();
         this.initHotbar();
@@ -196,6 +199,34 @@ class Game {
             mouseSensitivity: this.mouseSensitivity,
             rtxModeEnabled: this.rtxPreferred
         }));
+    }
+
+    restoreLastSafePosition() {
+        const saved = window.localStorage.getItem('minecloud-last-safe-position');
+        if (!saved) return;
+
+        try {
+            const parsed = JSON.parse(saved);
+            if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number' || typeof parsed.z !== 'number') {
+                return;
+            }
+
+            this.lastSafePosition = {
+                x: parsed.x,
+                y: parsed.y,
+                z: parsed.z,
+                yaw: typeof parsed.yaw === 'number' ? parsed.yaw : 0,
+                pitch: typeof parsed.pitch === 'number' ? parsed.pitch : 0
+            };
+            this.cameraController.setPosition(this.lastSafePosition);
+        } catch (_error) {
+        }
+    }
+
+    saveLastSafePosition() {
+        if (!this.lastSafePosition) return;
+
+        window.localStorage.setItem('minecloud-last-safe-position', JSON.stringify(this.lastSafePosition));
     }
 
     restoreInventoryState() {
@@ -465,7 +496,7 @@ class Game {
     }
 
     updateSurvival(delta) {
-        void delta;
+        this.lastSafePositionSaveTimer += delta;
         const feetY = this.camera.position.y - this.cameraController.eyeHeight;
 
         if (!this.cameraController.onGround) {
@@ -483,6 +514,19 @@ class Game {
 
         if (this.camera.position.y < -35) {
             this.applyDamage(this.maxHealth);
+        }
+
+        if (this.cameraController.onGround && this.health > 0 && this.lastSafePositionSaveTimer >= 1) {
+            const position = this.cameraController.getPosition();
+            this.lastSafePosition = {
+                x: position.x,
+                y: position.y,
+                z: position.z,
+                yaw: position.yaw,
+                pitch: position.pitch
+            };
+            this.saveLastSafePosition();
+            this.lastSafePositionSaveTimer = 0;
         }
 
         this.wasOnGroundForDamage = this.cameraController.onGround;
