@@ -38,7 +38,7 @@ Next tasks
 - [x] Crear el bloque antorcha y su receta de crafteo
 - [x] Hacer que las antorchas emitan luz dinámica al colocarse
 - [x] Permitir soltar el bloque seleccionado del inventario con Q
-- [ ] Añadir efecto imán para recoger pickups cercanos
+- [x] Añadir efecto imán para recoger pickups cercanos
 - [ ] Añadir pantalla de muerte con cuenta atrás de respawn
 - [ ] Mostrar mensajes de muerte en el chat multijugador
 - [ ] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`

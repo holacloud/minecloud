@@ -1705,9 +1705,11 @@ class Game {
     updatePickups(delta) {
         const playerPos = this.cameraController.getPosition();
         const playerVector = new THREE.Vector3(playerPos.x, playerPos.y - 1.1, playerPos.z);
+        const magnetRadius = 3.4;
 
         for (const [id, pickup] of this.pickups) {
             pickup.age += delta;
+            const distanceToPlayer = pickup.position.distanceTo(playerVector);
 
             if (!pickup.settled) {
                 pickup.velocity.y -= 8.5 * delta;
@@ -1719,6 +1721,17 @@ class Game {
                 }
             } else {
                 pickup.position.y = pickup.settleHeight + Math.sin(pickup.age * 3 + pickup.floatPhase) * 0.08;
+            }
+
+            if (pickup.age > 0.18 && distanceToPlayer < magnetRadius) {
+                const direction = playerVector.clone().sub(pickup.position);
+                const distanceFactor = 1 - distanceToPlayer / magnetRadius;
+                if (direction.lengthSq() > 0.0001) {
+                    direction.normalize();
+                    pickup.position.addScaledVector(direction, delta * (2.4 + distanceFactor * 5.5));
+                    pickup.position.y += delta * distanceFactor * 0.8;
+                    pickup.settled = false;
+                }
             }
 
             pickup.rotation.x += delta * 1.1;
