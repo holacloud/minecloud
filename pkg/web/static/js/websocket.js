@@ -206,7 +206,7 @@ class NetworkClient {
         }
     }
     
-    updatePosition(position) {
+    updatePosition(position, heldItem = null) {
         this.send('playerMove', {
             id: this.playerId,
             x: position.x,
@@ -214,7 +214,8 @@ class NetworkClient {
             z: position.z,
             yaw: position.yaw,
             pitch: position.pitch,
-            shirtColor: this.shirtColor
+            shirtColor: this.shirtColor,
+            heldItem: heldItem || ''
         });
     }
 }

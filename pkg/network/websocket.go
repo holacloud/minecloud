@@ -68,6 +68,7 @@ type Player struct {
 	ID         string  `json:"id"`
 	Username   string  `json:"username,omitempty"`
 	ShirtColor string  `json:"shirtColor,omitempty"`
+	HeldItem   string  `json:"heldItem,omitempty"`
 	X          float64 `json:"x"`
 	Y          float64 `json:"y"`
 	Z          float64 `json:"z"`

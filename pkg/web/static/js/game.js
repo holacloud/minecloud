@@ -854,7 +854,39 @@ class Game {
         this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
         this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
+        this.updateAvatarHeldItem(this.localPlayerAvatar, this.getSelectedHeldItemType());
         this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
+    }
+
+    getSelectedHeldItemType() {
+        const selectedType = this.getSelectedBlockType();
+        return selectedType && this.getInventoryCount(selectedType) > 0 ? selectedType : null;
+    }
+
+    updateAvatarHeldItem(avatar, type) {
+        if (!avatar || !this.world) return;
+        if (avatar.userData.heldItemType === type) return;
+
+        const parts = avatar.userData.avatarParts;
+        if (!parts || !parts.rightArm) return;
+
+        if (avatar.userData.heldItemMesh) {
+            parts.rightArm.remove(avatar.userData.heldItemMesh);
+            avatar.userData.heldItemMesh.traverse((node) => {
+                if (node.material) node.material.dispose();
+            });
+            avatar.userData.heldItemMesh = null;
+        }
+
+        avatar.userData.heldItemType = type;
+        if (!type) return;
+
+        const item = this.world.createDisplayMesh(type, 0.18);
+        item.position.set(0, -0.44, -0.14);
+        item.rotation.set(0.4, 0.2, 0.15);
+        item.frustumCulled = false;
+        parts.rightArm.add(item);
+        avatar.userData.heldItemMesh = item;
     }
 
     togglePhotoMode() {
@@ -1644,6 +1676,8 @@ class Game {
         head.add(face);
 
         group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
+        group.userData.heldItemMesh = null;
+        group.userData.heldItemType = null;
         group.userData.lastPosition = new THREE.Vector3();
         group.userData.targetPosition = new THREE.Vector3();
         group.userData.targetYaw = 0;
@@ -2232,6 +2266,7 @@ class Game {
         }
 
         this.updateAvatarNameTag(avatar, displayName);
+        this.updateAvatarHeldItem(avatar, player.heldItem || null);
         const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);
         if (!avatar.userData.initialized) {
             avatar.userData.lastPosition.copy(nextFeetPosition);
@@ -3886,7 +3921,7 @@ class Game {
         }
         
         if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
-            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition());
+            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType());
             this.lastNetworkUpdate = now;
         }
         
