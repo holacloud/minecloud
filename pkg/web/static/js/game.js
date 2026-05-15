@@ -34,6 +34,7 @@ class Game {
             stone_bricks: 0
         };
         this.selectedSlot = 0;
+        this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
@@ -153,6 +154,34 @@ class Game {
         const resolved = (requested || 'Player').trim().slice(0, 20) || 'Player';
         window.localStorage.setItem('minecloud-player-name', resolved);
         return resolved;
+    }
+
+    restoreInventoryState() {
+        const saved = window.localStorage.getItem('minecloud-inventory-state');
+        if (!saved) return;
+
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed.inventory)) {
+                this.inventory = parsed.inventory.filter((type) => typeof type === 'string' && type.length > 0);
+            }
+            if (parsed.counts && typeof parsed.counts === 'object') {
+                this.inventoryCounts = { ...this.inventoryCounts, ...parsed.counts };
+            }
+            if (Number.isInteger(parsed.selectedSlot)) {
+                this.selectedSlot = Math.max(0, Math.min(parsed.selectedSlot, this.inventory.length - 1));
+            }
+        } catch (error) {
+            console.warn('Failed to restore inventory state', error);
+        }
+    }
+
+    saveInventoryState() {
+        window.localStorage.setItem('minecloud-inventory-state', JSON.stringify({
+            inventory: this.inventory,
+            counts: this.inventoryCounts,
+            selectedSlot: this.selectedSlot
+        }));
     }
 
     getBlockDisplayName(type) {
@@ -876,6 +905,7 @@ class Game {
 
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
+        this.saveInventoryState();
     }
 
     updateHotbarCounts() {
@@ -897,6 +927,7 @@ class Game {
         this.inventoryCounts[type] = this.inventoryCounts[type] || 0;
         this.initHotbar();
         this.selectSlot(Math.min(this.selectedSlot, this.inventory.length - 1));
+        this.saveInventoryState();
     }
 
     getSelectedBlockType() {
@@ -914,6 +945,7 @@ class Game {
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
         this.renderCraftingPanel();
+        this.saveInventoryState();
     }
 
     consumeSelectedBlock() {
@@ -927,6 +959,7 @@ class Game {
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
         this.renderCraftingPanel();
+        this.saveInventoryState();
         return true;
     }
 
@@ -1281,6 +1314,7 @@ class Game {
             el.classList.toggle('selected', i === index);
         });
         this.refreshHeldItemMesh();
+        this.saveInventoryState();
     }
 
     resetMiningTarget() {
