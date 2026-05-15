@@ -29,7 +29,9 @@ class Game {
             planks: 20,
             brick: 16,
             sand: 20,
-            leaves: 16
+            leaves: 16,
+            glass: 0,
+            stone_bricks: 0
         };
         this.selectedSlot = 0;
         this.playerName = this.loadPlayerName();
@@ -45,6 +47,33 @@ class Game {
         this.dayNightCycleEnabled = true;
         this.dayNightCycleDuration = 240;
         this.timeOfDay = 0.22;
+        this.craftingOpen = false;
+        this.craftingRecipes = [
+            {
+                id: 'planks',
+                name: 'Saw Wood into Planks',
+                output: { type: 'planks', amount: 4 },
+                inputs: [{ type: 'wood', amount: 1 }]
+            },
+            {
+                id: 'glass',
+                name: 'Smelt Sand into Glass',
+                output: { type: 'glass', amount: 2 },
+                inputs: [{ type: 'sand', amount: 3 }]
+            },
+            {
+                id: 'brick',
+                name: 'Pack Clay Bricks',
+                output: { type: 'brick', amount: 2 },
+                inputs: [{ type: 'dirt', amount: 2 }, { type: 'sand', amount: 1 }]
+            },
+            {
+                id: 'stone_bricks',
+                name: 'Cut Stone Bricks',
+                output: { type: 'stone_bricks', amount: 2 },
+                inputs: [{ type: 'cobblestone', amount: 2 }, { type: 'brick', amount: 1 }]
+            }
+        ];
 
         this.ambientLight = null;
         this.sunLight = null;
@@ -109,6 +138,7 @@ class Game {
         
         document.getElementById('connecting').style.display = 'none';
         this.refreshChatVisibility();
+        this.renderCraftingPanel();
         
         this.animate();
     }
@@ -123,6 +153,11 @@ class Game {
         const resolved = (requested || 'Player').trim().slice(0, 20) || 'Player';
         window.localStorage.setItem('minecloud-player-name', resolved);
         return resolved;
+    }
+
+    getBlockDisplayName(type) {
+        const def = this.world && this.world.blockTypes[type];
+        return def ? def.name : type;
     }
 
     ensureAudio() {
@@ -878,6 +913,7 @@ class Game {
         this.inventoryCounts[type] = this.getInventoryCount(type) + amount;
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
+        this.renderCraftingPanel();
     }
 
     consumeSelectedBlock() {
@@ -890,6 +926,7 @@ class Game {
         this.inventoryCounts[type] = count - 1;
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
+        this.renderCraftingPanel();
         return true;
     }
 
@@ -1026,6 +1063,9 @@ class Game {
             this.stopMining();
             this.resetTouchTransientInput();
             this.closeChatInput();
+            if (this.craftingOpen) {
+                this.toggleCraftingPanel();
+            }
         });
 
         const chatInput = document.getElementById('chat-input');
@@ -1162,7 +1202,7 @@ class Game {
     }
     
     onMouseDown(event) {
-        if (this.chatOpen) return;
+        if (this.chatOpen || this.craftingOpen) return;
         if (!this.cameraController.canInteract()) return;
         
         if (event.button === 0) {
@@ -1179,20 +1219,36 @@ class Game {
     }
     
     onKeyDown(event) {
-        if (event.code === 'Enter' && !event.repeat) {
-            event.preventDefault();
-            if (this.chatOpen) {
+        if (this.chatOpen) {
+            if (event.code === 'Enter') {
+                event.preventDefault();
                 this.submitChatMessage();
-            } else {
-                this.openChatInput();
+                return;
+            }
+            if (event.code === 'Escape') {
+                event.preventDefault();
+                this.closeChatInput();
             }
             return;
         }
 
-        if (this.chatOpen) {
-            if (event.code === 'Escape') {
-                this.closeChatInput();
+        if (this.craftingOpen) {
+            if ((event.code === 'Escape' || event.code === 'KeyC') && !event.repeat) {
+                event.preventDefault();
+                this.toggleCraftingPanel();
             }
+            return;
+        }
+
+        if (event.code === 'Enter' && !event.repeat) {
+            event.preventDefault();
+            this.openChatInput();
+            return;
+        }
+
+        if (event.code === 'KeyC' && !event.repeat) {
+            event.preventDefault();
+            this.toggleCraftingPanel();
             return;
         }
 
@@ -1276,6 +1332,73 @@ class Game {
         });
 
         this.refreshChatVisibility();
+    }
+
+    canCraftRecipe(recipe) {
+        return recipe.inputs.every((input) => this.getInventoryCount(input.type) >= input.amount);
+    }
+
+    renderCraftingPanel() {
+        const panel = document.getElementById('crafting-panel');
+        const list = document.getElementById('crafting-recipes');
+        if (!panel || !list) return;
+
+        panel.classList.toggle('visible', this.craftingOpen);
+        list.innerHTML = '';
+
+        this.craftingRecipes.forEach((recipe) => {
+            const row = document.createElement('div');
+            row.className = 'craft-recipe';
+
+            const info = document.createElement('div');
+            info.className = 'craft-recipe-info';
+
+            const name = document.createElement('div');
+            name.className = 'craft-recipe-name';
+            name.textContent = `${recipe.name} -> ${recipe.output.amount} ${this.getBlockDisplayName(recipe.output.type)}`;
+
+            const cost = document.createElement('div');
+            cost.className = 'craft-recipe-cost';
+            cost.textContent = recipe.inputs.map((input) => `${input.amount} ${this.getBlockDisplayName(input.type)}`).join(' + ');
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = 'Craft';
+            button.disabled = !this.canCraftRecipe(recipe);
+            button.addEventListener('click', () => this.craftRecipe(recipe.id));
+
+            info.appendChild(name);
+            info.appendChild(cost);
+            row.appendChild(info);
+            row.appendChild(button);
+            list.appendChild(row);
+        });
+    }
+
+    toggleCraftingPanel() {
+        this.craftingOpen = !this.craftingOpen;
+        if (this.craftingOpen) {
+            this.stopMining();
+            this.closeChatInput();
+            if (document.pointerLockElement === this.renderer.domElement) {
+                document.exitPointerLock();
+            }
+        }
+
+        this.renderCraftingPanel();
+    }
+
+    craftRecipe(recipeId) {
+        const recipe = this.craftingRecipes.find((item) => item.id === recipeId);
+        if (!recipe || !this.canCraftRecipe(recipe)) return;
+
+        recipe.inputs.forEach((input) => {
+            this.inventoryCounts[input.type] = Math.max(0, this.getInventoryCount(input.type) - input.amount);
+        });
+        this.addInventory(recipe.output.type, recipe.output.amount);
+        this.updateHotbarCounts();
+        this.renderCraftingPanel();
+        this.playTone({ frequency: 520, duration: 0.06, type: 'triangle', volume: 0.024, release: 0.07 });
     }
 
     receiveChatMessage(payload) {

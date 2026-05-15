@@ -35,6 +35,8 @@ class WorldRenderer {
             gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
+            glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
+            stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
         };
 
         this.generateInitialChunks();
@@ -261,6 +263,24 @@ class WorldRenderer {
                     }
                 }
                 break;
+            case 'stone_bricks':
+                ctx.fillStyle = this.shadeColor(0x7B7B7B, 0);
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = this.shadeColor(0x999999, 0);
+                for (let y = 1; y < size; y += 5) {
+                    const offset = (Math.floor(y / 5) % 2) * 4;
+                    for (let x = -offset; x < size; x += 8) {
+                        ctx.fillRect(x + 1, y, 7, 4);
+                    }
+                }
+                ctx.fillStyle = this.shadeColor(0x666666, 0);
+                for (let y = 0; y < size; y += 5) {
+                    ctx.fillRect(0, y, size, 1);
+                }
+                for (let x = 0; x < size; x += 8) {
+                    ctx.fillRect(x, 0, 1, size);
+                }
+                break;
             case 'cobblestone':
                 ctx.fillStyle = this.shadeColor(0x5A5A5A, 0);
                 ctx.fillRect(0, 0, size, size);
@@ -271,6 +291,16 @@ class WorldRenderer {
                         ctx.fillRect(x + 1, y + 1, 4, 3);
                     }
                 }
+                break;
+            case 'glass':
+                ctx.fillStyle = 'rgba(195, 235, 247, 0.38)';
+                ctx.fillRect(0, 0, size, size);
+                ctx.strokeStyle = 'rgba(230, 250, 255, 0.45)';
+                ctx.lineWidth = Math.max(1, size / 18);
+                ctx.strokeRect(1, 1, size - 2, size - 2);
+                ctx.strokeRect(size * 0.25, size * 0.25, size * 0.5, size * 0.5);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+                ctx.fillRect(size * 0.16, size * 0.12, size * 0.22, size * 0.6);
                 break;
             case 'leaves':
                 for (let y = 0; y < size; y++) {
@@ -340,10 +370,12 @@ class WorldRenderer {
             case 'dirt': return { roughness: 0.97, metalness: 0.01, bumpScale: 0.1, envMapIntensity: 0.2 };
             case 'sand': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.28 };
             case 'stone': return { roughness: 0.82, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.45 };
+            case 'stone_bricks': return { roughness: 0.8, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.46 };
             case 'cobblestone': return { roughness: 0.84, metalness: 0.06, bumpScale: 0.15, envMapIntensity: 0.42 };
             case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
             case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
             case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
+            case 'glass': return { roughness: 0.14, metalness: 0.08, bumpScale: 0.01, envMapIntensity: 1.05 };
             case 'coal_ore': return { roughness: 0.7, metalness: 0.12, bumpScale: 0.14, envMapIntensity: 0.55 };
             case 'iron_ore': return { roughness: 0.64, metalness: 0.16, bumpScale: 0.14, envMapIntensity: 0.62 };
             case 'gold_ore': return { roughness: 0.5, metalness: 0.32, bumpScale: 0.14, envMapIntensity: 0.8 };

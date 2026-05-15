@@ -180,6 +180,70 @@
             display: block;
         }
 
+        #crafting-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(420px, calc(100vw - 28px));
+            max-height: min(70vh, 560px);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            background: rgba(8, 12, 20, 0.9);
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            z-index: 260;
+            overflow: auto;
+        }
+        #crafting-panel.visible {
+            display: flex;
+        }
+        #crafting-panel h3 {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        .craft-recipe {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .craft-recipe-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .craft-recipe-name {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .craft-recipe-cost {
+            font-size: 12px;
+            color: #bcd0e9;
+        }
+        .craft-recipe button {
+            min-width: 78px;
+            height: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            background: rgba(63, 102, 181, 0.8);
+            color: #fff;
+            font: 700 13px/1 'Consolas', monospace;
+            cursor: pointer;
+        }
+        .craft-recipe button:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
         #mobile-controls {
             position: absolute;
             inset: 0;
@@ -292,6 +356,10 @@
     <div id="chat-container">
         <div id="chat-log"></div>
         <input id="chat-input" type="text" maxlength="140" placeholder="Type a message and press Enter">
+    </div>
+    <div id="crafting-panel">
+        <h3>Crafting</h3>
+        <div id="crafting-recipes"></div>
     </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">
