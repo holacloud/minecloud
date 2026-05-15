@@ -42,6 +42,9 @@ class Game {
         this.mobileLookLast = { x: 0, y: 0 };
         this.mobileJoystickTravel = 42;
         this.resetTouchJoystick = null;
+        this.dayNightCycleEnabled = true;
+        this.dayNightCycleDuration = 240;
+        this.timeOfDay = 0.22;
 
         this.ambientLight = null;
         this.sunLight = null;
@@ -463,6 +466,69 @@ class Game {
         statusEl.style.color = this.rtxModeEnabled ? '#7CE7FF' : '#FFFFFF';
     }
 
+    getSkyPreset() {
+        return this.rtxModeEnabled
+            ? {
+                daySky: new THREE.Color(0x90B6D4),
+                sunsetSky: new THREE.Color(0xF28B52),
+                nightSky: new THREE.Color(0x07111F),
+                dayFog: new THREE.Color(0xB4C8D9),
+                sunsetFog: new THREE.Color(0xE39A69),
+                nightFog: new THREE.Color(0x0B1521)
+            }
+            : {
+                daySky: new THREE.Color(0x87CEEB),
+                sunsetSky: new THREE.Color(0xE58A5C),
+                nightSky: new THREE.Color(0x10243A),
+                dayFog: new THREE.Color(0x87CEEB),
+                sunsetFog: new THREE.Color(0xD59369),
+                nightFog: new THREE.Color(0x13263A)
+            };
+    }
+
+    blendColors(colorA, colorB, alpha) {
+        return colorA.clone().lerp(colorB, alpha);
+    }
+
+    updateDayNightCycle(delta) {
+        if (!this.dayNightCycleEnabled) return;
+
+        this.timeOfDay = (this.timeOfDay + delta / this.dayNightCycleDuration) % 1;
+
+        const angle = this.timeOfDay * Math.PI * 2;
+        const sunHeight = Math.sin(angle - Math.PI / 2);
+        const daylight = THREE.MathUtils.clamp((sunHeight + 0.16) / 1.16, 0, 1);
+        const sunset = Math.max(0, 1 - Math.abs(sunHeight) * 3.2) * (1 - daylight * 0.55);
+
+        const preset = this.getSkyPreset();
+        const sky = this.blendColors(this.blendColors(preset.nightSky, preset.sunsetSky, sunset), preset.daySky, daylight);
+        const fog = this.blendColors(this.blendColors(preset.nightFog, preset.sunsetFog, sunset), preset.dayFog, daylight);
+
+        this.scene.background.copy(sky);
+        this.scene.fog.color.copy(fog);
+        this.scene.fog.near = this.rtxModeEnabled ? 18 : 20;
+        this.scene.fog.far = THREE.MathUtils.lerp(this.rtxModeEnabled ? 115 : 105, this.rtxModeEnabled ? 210 : 160, daylight);
+
+        const orbitRadius = 180;
+        this.sunLight.position.set(
+            Math.cos(angle) * orbitRadius,
+            Math.max(18, sunHeight * orbitRadius + 24),
+            Math.sin(angle) * orbitRadius * 0.65
+        );
+
+        this.sunLight.intensity = THREE.MathUtils.lerp(0.08, this.rtxModeEnabled ? 1.7 : 1.0, daylight) + sunset * 0.16;
+        this.sunLight.color.copy(this.blendColors(new THREE.Color(0x8AA6D8), new THREE.Color(0xFFD7A8), sunset + daylight * 0.2));
+
+        this.ambientLight.intensity = THREE.MathUtils.lerp(this.rtxModeEnabled ? 0.03 : 0.08, this.rtxModeEnabled ? 0.22 : 0.6, daylight);
+        this.hemiLight.intensity = THREE.MathUtils.lerp(this.rtxModeEnabled ? 0.14 : 0.16, this.rtxModeEnabled ? 0.92 : 0.45, daylight);
+        this.hemiLight.color.copy(this.blendColors(new THREE.Color(0x445B8A), new THREE.Color(0xBFD7FF), daylight));
+        this.hemiLight.groundColor.copy(this.blendColors(new THREE.Color(0x171718), new THREE.Color(0x4C4336), daylight));
+
+        if (this.rtxModeEnabled) {
+            this.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.52, 1.18, daylight) + sunset * 0.05;
+        }
+    }
+
     createPlayerAvatarMaterial(color) {
         return this.rtxModeEnabled
             ? new THREE.MeshStandardMaterial({ color: color, roughness: 0.72, metalness: 0.03 })
@@ -681,6 +747,7 @@ class Game {
         this.syncOtherPlayerShadows();
         this.updateRTXStatus();
         this.lastSelectionUpdate = 0;
+        this.updateDayNightCycle(0);
     }
 
     toggleRTXMode() {
@@ -1601,6 +1668,7 @@ class Game {
             this.playJumpSound();
         }
         this.wasOnGround = this.cameraController.onGround;
+        this.updateDayNightCycle(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateRemotePlayers(delta);
         this.updatePickups(delta);

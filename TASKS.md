@@ -9,5 +9,5 @@ Next tasks
 - [x] Permitir elegir nombre de jugador y mostrarlo sobre la cabeza del avatar
 - [x] Suavizar el movimiento de otros jugadores y eliminar correctamente los avatares al desconectarse
 - [x] Añadir efectos de sonido procedurales para minar, colocar, saltar y recoger objetos
-- [ ] Añadir un ciclo de dia y noche con transiciones de luz y cielo
+- [x] Añadir un ciclo de dia y noche con transiciones de luz y cielo
 - 
