@@ -50,6 +50,13 @@ class CameraController {
     
     init() {
         document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyW' && this.canInteract()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+
+        document.addEventListener('keydown', e => {
             if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ControlLeft' || e.code === 'ControlRight')) {
                 e.preventDefault();
             }
