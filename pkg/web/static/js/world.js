@@ -13,6 +13,8 @@ class WorldRenderer {
         this.rtxModeEnabled = false;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
+        this.waterSurfaceGeometry = new THREE.PlaneGeometry(1, 1);
+        this.waterSurfaceGeometry.rotateX(-Math.PI / 2);
         this.materials = new Map();
         this.textures = new Map();
         this.iconCache = new Map();
@@ -1004,12 +1006,20 @@ class WorldRenderer {
         const baseX = chunkX * this.chunkSize;
         const baseZ = chunkZ * this.chunkSize;
         const instancesByType = new Map();
+        const waterSurfacePositions = [];
 
         for (const blockKey of blockKeys) {
             const type = this.blockData.get(blockKey);
             if (!type) continue;
 
             const { x, y, z } = this.parseBlockKey(blockKey);
+            if (type === 'water') {
+                const aboveType = this.blockData.get(this.blockKey(x, y + 1, z));
+                if (aboveType !== 'water') {
+                    waterSurfacePositions.push({ x: x - baseX, y: y + 0.5, z: z - baseZ });
+                }
+                continue;
+            }
             if (!this.isBlockVisible(x, y, z, type)) continue;
 
             let positions = instancesByType.get(type);
@@ -1050,6 +1060,22 @@ class WorldRenderer {
 
             mesh.instanceMatrix.needsUpdate = true;
             chunk.add(mesh);
+        }
+
+        if (waterSurfacePositions.length > 0) {
+            const waterMesh = new THREE.InstancedMesh(this.waterSurfaceGeometry, this.getMaterial('water'), waterSurfacePositions.length);
+            waterMesh.userData.blockType = 'water';
+            waterMesh.userData.instancePositions = waterSurfacePositions;
+            waterMesh.userData.chunkBaseX = baseX;
+            waterMesh.userData.chunkBaseZ = baseZ;
+            waterMesh.matrixAutoUpdate = false;
+            for (let i = 0; i < waterSurfacePositions.length; i++) {
+                const position = waterSurfacePositions[i];
+                this.tempMatrix.makeTranslation(position.x + 0.5, position.y, position.z + 0.5);
+                waterMesh.setMatrixAt(i, this.tempMatrix);
+            }
+            waterMesh.instanceMatrix.needsUpdate = true;
+            chunk.add(waterMesh);
         }
 
         for (const blockKey of blockKeys) {

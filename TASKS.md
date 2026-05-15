@@ -65,6 +65,6 @@ Next tasks
 - [ ] Añadir vista en tercera persona
 - [x] Hacer que los agujeros o cuevas se vean más oscuros que el exterior
 - [x] Permitir seguir con la cámara a otros jugadores al hacer click en su nombre
-- [ ] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
+- [x] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
 - [x] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
 - [ ] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star
