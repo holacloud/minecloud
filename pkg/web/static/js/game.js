@@ -511,7 +511,10 @@ class Game {
 
         setTimeout(() => {
             if (!this.touchControlsEnabled && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
-                this.renderer.domElement.requestPointerLock();
+                const request = this.renderer.domElement.requestPointerLock();
+                if (request && typeof request.catch === 'function') {
+                    request.catch((error) => console.warn('Pointer lock unavailable', error));
+                }
             }
         }, 0);
     }
@@ -1427,9 +1430,37 @@ class Game {
             : new THREE.MeshLambertMaterial({ color: color });
     }
 
-    createOtherPlayerAvatar(playerId) {
+    hashString(value) {
+        let hash = 0;
+        for (let i = 0; i < value.length; i++) {
+            hash = ((hash << 5) - hash) + value.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
+    getPlayerAppearance(name) {
+        const key = name || 'Player';
+        const hash = this.hashString(key);
+        const shirts = [0x2F63C8, 0x7C3AED, 0x0F8A6B, 0xB45309, 0xC2414C, 0x475569];
+        const pants = [0x28334D, 0x1F2937, 0x3B2F2F, 0x2A3442, 0x23364B, 0x36302A];
+        const hats = [0x5B3A29, 0x433125, 0x2B2F4B, 0x3E3221, 0x44252C, 0x2B3A2E];
+        const skins = [0xE2B48D, 0xD9A07A, 0xC98B6C, 0xF1C49B, 0xAD6E54];
+
+        return {
+            shirt: shirts[hash % shirts.length],
+            pants: pants[Math.floor(hash / 7) % pants.length],
+            hat: hats[Math.floor(hash / 13) % hats.length],
+            skin: skins[Math.floor(hash / 17) % skins.length],
+            key
+        };
+    }
+
+    createOtherPlayerAvatar(playerId, playerName = 'Player') {
         const group = new THREE.Group();
         group.userData.playerId = playerId;
+        const appearance = this.getPlayerAppearance(playerName);
+        group.userData.appearanceKey = appearance.key;
         const createPart = (geometry, color, x, y, z) => {
             const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
             mesh.position.set(x, y, z);
@@ -1441,13 +1472,13 @@ class Game {
             return mesh;
         };
 
-        const head = createPart(new THREE.BoxGeometry(0.48, 0.48, 0.48), 0xE2B48D, 0, 1.55, 0);
-        const torso = createPart(new THREE.BoxGeometry(0.56, 0.72, 0.28), 0x2F63C8, 0, 1.03, 0);
-        const leftArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), 0xE2B48D, -0.38, 1.03, 0);
-        const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), 0xE2B48D, 0.38, 1.03, 0);
-        const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), 0x28334D, -0.14, 0.34, 0);
-        const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), 0x28334D, 0.14, 0.34, 0);
-        createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), 0x5B3A29, 0, 1.83, 0);
+        const head = createPart(new THREE.BoxGeometry(0.48, 0.48, 0.48), appearance.skin, 0, 1.55, 0);
+        const torso = createPart(new THREE.BoxGeometry(0.56, 0.72, 0.28), appearance.shirt, 0, 1.03, 0);
+        const leftArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, -0.38, 1.03, 0);
+        const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, 0.38, 1.03, 0);
+        const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, -0.14, 0.34, 0);
+        const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, 0.14, 0.34, 0);
+        createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), appearance.hat, 0, 1.83, 0);
 
         const face = this.createAvatarFaceMesh();
         face.position.set(0, 0.02, 0.245);
@@ -1923,14 +1954,20 @@ class Game {
     }
     
     updateOtherPlayer(player) {
+        const displayName = player.username || this.remotePlayerNames.get(player.id) || player.id;
         let avatar = this.otherPlayerMeshes.get(player.id);
         if (!avatar) {
-            avatar = this.createOtherPlayerAvatar(player.id);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName);
+            this.scene.add(avatar);
+            this.otherPlayerMeshes.set(player.id, avatar);
+        } else if (avatar.userData.appearanceKey !== displayName) {
+            this.disposeRemoteAvatar(avatar);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
         }
 
-        this.updateAvatarNameTag(avatar, player.username || this.remotePlayerNames.get(player.id) || player.id);
+        this.updateAvatarNameTag(avatar, displayName);
         const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);
         if (!avatar.userData.initialized) {
             avatar.userData.lastPosition.copy(nextFeetPosition);
