@@ -213,6 +213,12 @@ class WorldRenderer {
         return sprite;
     }
 
+    createTorchLight() {
+        const light = new THREE.PointLight(0xffd38a, this.rtxModeEnabled ? 1.4 : 0.9, this.rtxModeEnabled ? 10 : 7, 2);
+        light.castShadow = false;
+        return light;
+    }
+
     isSolidType(type) {
         const def = this.blockTypes[type];
         return def ? !def.fluid && def.solid !== false : false;
@@ -1025,15 +1031,22 @@ class WorldRenderer {
 
         for (const blockKey of blockKeys) {
             const type = this.blockData.get(blockKey);
-            if (type !== 'sign') continue;
-
-            const text = this.signTextByKey.get(blockKey);
-            if (!text) continue;
-
             const { x, y, z } = this.parseBlockKey(blockKey);
-            const sprite = this.createSignLabel(text);
-            sprite.position.set(x - baseX + 0.5, y + 1.15, z - baseZ + 0.5);
-            chunk.add(sprite);
+
+            if (type === 'sign') {
+                const text = this.signTextByKey.get(blockKey);
+                if (text) {
+                    const sprite = this.createSignLabel(text);
+                    sprite.position.set(x - baseX + 0.5, y + 1.15, z - baseZ + 0.5);
+                    chunk.add(sprite);
+                }
+            }
+
+            if (type === 'torch') {
+                const torchLight = this.createTorchLight();
+                torchLight.position.set(x - baseX + 0.5, y + 0.9, z - baseZ + 0.5);
+                chunk.add(torchLight);
+            }
         }
 
         this.scene.add(chunk);
