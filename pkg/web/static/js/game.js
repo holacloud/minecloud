@@ -131,6 +131,7 @@ class Game {
         this.localFootstepStepLength = 1.1;
         this.lastLocalGroundPosition = null;
         this.cameraBobPhase = 0;
+        this.photoMode = false;
         this.maxHealth = 20;
         this.health = this.maxHealth;
         this.respawnPending = false;
@@ -646,6 +647,11 @@ class Game {
             const minutes = Math.floor((dayHour % 1) * 60).toString().padStart(2, '0');
             clock.textContent = `${hours}:${minutes}`;
         }
+    }
+
+    togglePhotoMode() {
+        this.photoMode = !this.photoMode;
+        document.body.classList.toggle('photo-mode', this.photoMode);
     }
 
     updateDeathScreen() {
@@ -2055,6 +2061,12 @@ class Game {
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
             this.tryReadSign();
+            return;
+        }
+
+        if (event.code === 'F2' && !event.repeat) {
+            event.preventDefault();
+            this.togglePhotoMode();
             return;
         }
 

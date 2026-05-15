@@ -43,5 +43,5 @@ Next tasks
 - [x] Mostrar mensajes de muerte en el chat multijugador
 - [x] Implementar comandos de chat `/help`, `/spawn`, `/rtx` y `/time`
 - [x] Añadir brújula y reloj visual en el HUD
-- [ ] Añadir modo foto con `F2` para ocultar toda la interfaz
+- [x] Añadir modo foto con `F2` para ocultar toda la interfaz
 - [ ] Permitir dormir en la cama para saltar la noche
