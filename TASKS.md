@@ -37,7 +37,7 @@ Next tasks
 - [x] Ampliar el menú de pausa con fullscreen y ajuste de distancia de renderizado
 - [x] Crear el bloque antorcha y su receta de crafteo
 - [x] Hacer que las antorchas emitan luz dinámica al colocarse
-- [ ] Permitir soltar el bloque seleccionado del inventario con Q
+- [x] Permitir soltar el bloque seleccionado del inventario con Q
 - [ ] Añadir efecto imán para recoger pickups cercanos
 - [ ] Añadir pantalla de muerte con cuenta atrás de respawn
 - [ ] Mostrar mensajes de muerte en el chat multijugador

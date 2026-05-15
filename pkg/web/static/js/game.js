@@ -1648,16 +1648,17 @@ class Game {
         }
     }
 
-    spawnPickup(type, position, amount = 1) {
+    spawnPickup(type, position, amount = 1, options = {}) {
         if (!type) return;
 
         const id = `pickup_${this.pickupIdCounter++}`;
+        const initialVelocity = options.velocity || new THREE.Vector3((Math.random() - 0.5) * 1.1, 2.2 + Math.random() * 0.7, (Math.random() - 0.5) * 1.1);
         const pickup = {
             id: id,
             type: type,
             amount: amount,
             position: new THREE.Vector3(position.x + 0.5, position.y + 0.35, position.z + 0.5),
-            velocity: new THREE.Vector3((Math.random() - 0.5) * 1.1, 2.2 + Math.random() * 0.7, (Math.random() - 0.5) * 1.1),
+            velocity: initialVelocity.clone(),
             rotation: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
             floatPhase: Math.random() * Math.PI * 2,
             age: 0,
@@ -1670,6 +1671,24 @@ class Game {
         pickup.mesh.rotation.copy(pickup.rotation);
         this.scene.add(pickup.mesh);
         this.pickups.set(id, pickup);
+    }
+
+    dropSelectedBlock() {
+        const type = this.getSelectedBlockType();
+        if (!type || this.getInventoryCount(type) <= 0) return;
+
+        if (!this.consumeSelectedBlock()) return;
+
+        const direction = new THREE.Vector3();
+        this.camera.getWorldDirection(direction);
+        const dropPosition = {
+            x: this.camera.position.x + direction.x * 1.1,
+            y: this.camera.position.y - this.cameraController.eyeHeight * 0.35,
+            z: this.camera.position.z + direction.z * 1.1
+        };
+        const velocity = direction.multiplyScalar(2.6).add(new THREE.Vector3(0, 1.4, 0));
+        this.spawnPickup(type, dropPosition, 1, { velocity: velocity });
+        this.playPlaceSound(type);
     }
 
     collectPickup(id) {
@@ -1990,6 +2009,12 @@ class Game {
 
         if (event.code === 'KeyR' && !event.repeat) {
             this.handleRTXShortcut();
+            return;
+        }
+
+        if (event.code === 'KeyQ' && !event.repeat) {
+            event.preventDefault();
+            this.dropSelectedBlock();
             return;
         }
 
