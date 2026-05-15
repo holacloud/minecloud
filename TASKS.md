@@ -10,4 +10,9 @@ Next tasks
 - [x] Suavizar el movimiento de otros jugadores y eliminar correctamente los avatares al desconectarse
 - [x] Añadir efectos de sonido procedurales para minar, colocar, saltar y recoger objetos
 - [x] Añadir un ciclo de dia y noche con transiciones de luz y cielo
+- [x] Añadir chat multijugador en tiempo real con historial y entrada al pulsar Enter
+- [ ] Implementar un sistema de crafteo simple con recetas y panel accesible con C
+- [ ] Permitir subir automáticamente bloques de 1 de altura al caminar
+- [ ] Guardar y restaurar el inventario local del jugador entre sesiones
+- [ ] Añadir un menú de pausa y ajustes para sensibilidad, volumen y RTX
 - 

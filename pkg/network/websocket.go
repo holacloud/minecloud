@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -26,6 +27,13 @@ type Client struct {
 type Message struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
+}
+
+type ChatMessage struct {
+	PlayerID  string `json:"playerId"`
+	Username  string `json:"username"`
+	Text      string `json:"text"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 type Block struct {
@@ -278,6 +286,29 @@ func handleMessage(client *Client, msg Message) {
 		
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
 		broadcastToAll(createMessage("blockPlace", payload))
+
+	case "chat":
+		var payload struct {
+			Text string `json:"text"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+
+		text := payload.Text
+		if len(text) == 0 {
+			return
+		}
+		if len(text) > 140 {
+			text = text[:140]
+		}
+
+		chat := ChatMessage{
+			PlayerID:  client.ID,
+			Username:  client.username,
+			Text:      text,
+			Timestamp: time.Now().UnixMilli(),
+		}
+
+		broadcastToAll(createMessage("chat", chat))
 		
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)

@@ -76,6 +76,9 @@ class NetworkClient {
             case 'blockPlace':
                 this.handleBlockPlace(message.payload);
                 break;
+            case 'chat':
+                this.emit('chat', message.payload);
+                break;
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;

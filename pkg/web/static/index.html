@@ -132,6 +132,54 @@
             z-index: 99;
         }
 
+        #chat-container {
+            position: absolute;
+            left: 14px;
+            bottom: 84px;
+            width: min(360px, calc(100vw - 28px));
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 180;
+            pointer-events: none;
+        }
+        #chat-log {
+            max-height: 170px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.28);
+            color: #fff;
+            font: 12px/1.35 'Consolas', monospace;
+            text-shadow: 1px 1px 1px #000;
+        }
+        .chat-message {
+            opacity: 0.92;
+            word-break: break-word;
+        }
+        .chat-message .chat-name {
+            color: #9ed2ff;
+            font-weight: 700;
+        }
+        #chat-input {
+            display: none;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            background: rgba(10, 14, 22, 0.84);
+            color: #fff;
+            font: 13px/1.2 'Consolas', monospace;
+            outline: none;
+            pointer-events: auto;
+        }
+        #chat-input.visible {
+            display: block;
+        }
+
         #mobile-controls {
             position: absolute;
             inset: 0;
@@ -241,6 +289,10 @@
     </div>
     <div id="hotbar"></div>
     <div id="connecting">Connecting to server...</div>
+    <div id="chat-container">
+        <div id="chat-log"></div>
+        <input id="chat-input" type="text" maxlength="140" placeholder="Type a message and press Enter">
+    </div>
     <div id="mobile-controls">
         <div id="mobile-move-zone" class="mobile-zone">
             <div id="mobile-joystick">
