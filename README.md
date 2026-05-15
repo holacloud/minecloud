@@ -12,17 +12,25 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Real-time multiplayer over WebSockets.
 - Procedural terrain.
 - Visible biome variety, including plains, forests, rocky zones, and deserts with cactus.
+- Extra decorative flora, including tall grass, flowers, and mushrooms.
 - First-person movement with auto-step over 1-block ledges.
+- Sneak/crouch movement for careful building and edge safety.
 - Health system with fall damage, respawn, and a persistent safe-position restore.
+- Swimmable water with underwater visual feedback.
 - Hold-to-mine blocks with impact particles, crack overlay, and first-person hand animation.
 - Place blocks from a real hotbar inventory with floating collectible drops.
 - Beds that set your respawn point when placed.
 - Placeable sign blocks with persistent shared text.
+- Full sign reading panel for longer sign messages.
+- Block inspector overlay that shows information about the block you are aiming at.
 - Humanoid remote player avatars with nametags and smoothed movement.
+- Facial details on player avatars.
+- Local footsteps, nearby remote footsteps, and light camera bob while walking.
 - Nearby remote footsteps with distance-based audio.
 - Crafting system with recipes for blocks like `glass` and `stone_bricks`.
-- Toggleable RTX-style visual mode with upgraded lighting/materials.
+- Toggleable RTX-style visual mode with upgraded lighting, materials, and real texture assets for key blocks.
 - Dynamic day/night cycle.
+- Dynamic rain with visual and lighting changes.
 - Procedural sound effects for mining, placing, jumping, and pickups.
 - Multiplayer chat, player mentions by clicking avatars, and system join/leave messages.
 - Proximity voice chat with WebRTC signaling.
@@ -34,6 +42,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 
 - `WASD`: move.
 - `Shift`: sprint.
+- `Ctrl`: crouch / sneak.
 - `Space`: jump.
 - Hold left click: mine block.
 - Right click: place block.
@@ -42,6 +51,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Keys `1` to `8`: select a hotbar block.
 - `Enter`: open chat / send message.
 - `C`: open crafting panel.
+- `F`: read the full text of the sign you are aiming at.
 - `Esc`: open pause/settings menu.
 - Press `R` 3 times quickly: toggle RTX mode.
 - `Voice` button in the HUD: enable/disable proximity voice chat.
@@ -74,6 +84,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
   - a text prompt appears,
   - enter up to `288` characters.
 - Result: the sign text is visible to every player and is saved with the world.
+- To read a placed sign comfortably later, aim at it and press `F`.
 
 ### Other crafted blocks
 
@@ -88,6 +99,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Clicking a player opens the chat with an `@name` mention prefilled.
 - The chat shows normal player messages and system messages when players join or leave.
 - Voice chat is proximity-based: enable it with the `Voice` button and players become louder as they get closer.
+- Other players now have humanoid avatars with simple faces and smoother movement.
 
 ## Run Locally
 
@@ -127,4 +139,6 @@ Then open `http://localhost:8080` in your browser.
 - `cmd/server`: server entrypoint.
 - `pkg/network`: WebSocket logic and shared state.
 - `pkg/web/static`: embedded web client, assets, and game scripts.
+- `pkg/web/static/textures/rtx`: texture assets used by the RTX visual mode.
+- `pkg/web/static/js/voice.js`: proximity voice chat manager.
 - `data/world.json`: persisted world block state created at runtime.
