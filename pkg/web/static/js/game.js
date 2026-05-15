@@ -30,6 +30,7 @@ class Game {
             brick: 16,
             sand: 20,
             leaves: 16,
+            bed: 0,
             glass: 0,
             stone_bricks: 0
         };
@@ -78,6 +79,12 @@ class Game {
                 name: 'Cut Stone Bricks',
                 output: { type: 'stone_bricks', amount: 2 },
                 inputs: [{ type: 'cobblestone', amount: 2 }, { type: 'brick', amount: 1 }]
+            },
+            {
+                id: 'bed',
+                name: 'Build Bed',
+                output: { type: 'bed', amount: 1 },
+                inputs: [{ type: 'planks', amount: 3 }, { type: 'leaves', amount: 2 }, { type: 'wood', amount: 1 }]
             }
         ];
 
@@ -100,7 +107,7 @@ class Game {
         this.health = this.maxHealth;
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
-        this.respawnPoint = { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
+        this.respawnPoint = this.loadRespawnPoint() || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
         this.lastSafePosition = null;
         this.lastSafePositionSaveTimer = 0;
         
@@ -199,6 +206,31 @@ class Game {
             mouseSensitivity: this.mouseSensitivity,
             rtxModeEnabled: this.rtxPreferred
         }));
+    }
+
+    loadRespawnPoint() {
+        const saved = window.localStorage.getItem('minecloud-respawn-point');
+        if (!saved) return null;
+
+        try {
+            const parsed = JSON.parse(saved);
+            if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number' || typeof parsed.z !== 'number') {
+                return null;
+            }
+            return {
+                x: parsed.x,
+                y: parsed.y,
+                z: parsed.z,
+                yaw: typeof parsed.yaw === 'number' ? parsed.yaw : 0,
+                pitch: typeof parsed.pitch === 'number' ? parsed.pitch : 0
+            };
+        } catch (_error) {
+            return null;
+        }
+    }
+
+    saveRespawnPoint() {
+        window.localStorage.setItem('minecloud-respawn-point', JSON.stringify(this.respawnPoint));
     }
 
     restoreLastSafePosition() {
@@ -493,6 +525,24 @@ class Game {
         this.healToFull();
         this.airbornePeakFeetY = null;
         this.wasOnGroundForDamage = false;
+    }
+
+    setRespawnPointFromBlock(position) {
+        this.respawnPoint = {
+            x: position.x + 0.5,
+            y: position.y + 1 + this.cameraController.eyeHeight,
+            z: position.z + 0.5,
+            yaw: this.cameraController.yaw,
+            pitch: this.cameraController.pitch
+        };
+        this.saveRespawnPoint();
+        this.receiveSystemMessage({ text: 'Respawn point updated to your bed' });
+    }
+
+    isRespawnBoundToBlock(position) {
+        return Math.abs(this.respawnPoint.x - (position.x + 0.5)) < 0.001 &&
+            Math.abs(this.respawnPoint.y - (position.y + 1 + this.cameraController.eyeHeight)) < 0.001 &&
+            Math.abs(this.respawnPoint.z - (position.z + 0.5)) < 0.001;
     }
 
     updateSurvival(delta) {
@@ -1932,6 +1982,12 @@ class Game {
         const dropType = this.world.getDropTypeForBlock(blockType);
         if (!this.world.removeBlockAt(position.x, position.y, position.z)) return false;
 
+        if (blockType === 'bed' && this.isRespawnBoundToBlock(position)) {
+            this.respawnPoint = { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 };
+            this.saveRespawnPoint();
+            this.receiveSystemMessage({ text: 'Respawn point reset because your bed was removed' });
+        }
+
         if (dropType) {
             this.spawnPickup(dropType, position, 1);
         }
@@ -2060,6 +2116,9 @@ class Game {
             if (!blockType || this.getInventoryCount(blockType) <= 0) return;
             if (!this.world.addBlock(newPos, blockType)) return;
             this.consumeSelectedBlock();
+            if (blockType === 'bed') {
+                this.setRespawnPointFromBlock(newPos);
+            }
             this.playPlaceSound(blockType);
 
             this.showHitIndicator();

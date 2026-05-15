@@ -35,6 +35,7 @@ class WorldRenderer {
             gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
+            bed: { color: 0xC05050, name: 'Bed', breakDuration: 0.55 },
             cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
@@ -264,6 +265,18 @@ class WorldRenderer {
                     ctx.fillRect(0, y, size, 1);
                 }
                 break;
+            case 'bed':
+                ctx.fillStyle = this.shadeColor(0xEEE7D2, 0);
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = this.shadeColor(0xC05050, 0);
+                ctx.fillRect(0, 0, size, size * 0.48);
+                ctx.fillStyle = this.shadeColor(0x6B3F21, 0);
+                ctx.fillRect(0, size * 0.7, size, size * 0.18);
+                ctx.fillStyle = this.shadeColor(0x8B5A2B, 0);
+                ctx.fillRect(0, size * 0.52, size, size * 0.14);
+                ctx.fillStyle = this.shadeColor(0xFFF6E0, 0);
+                ctx.fillRect(size * 0.1, size * 0.08, size * 0.3, size * 0.18);
+                break;
             case 'brick':
                 ctx.fillStyle = this.shadeColor(0x864030, 0);
                 ctx.fillRect(0, 0, size, size);
@@ -386,6 +399,7 @@ class WorldRenderer {
             case 'cobblestone': return { roughness: 0.84, metalness: 0.06, bumpScale: 0.15, envMapIntensity: 0.42 };
             case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
             case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
+            case 'bed': return { roughness: 0.78, metalness: 0.01, bumpScale: 0.04, envMapIntensity: 0.25 };
             case 'cactus': return { roughness: 0.88, metalness: 0.01, bumpScale: 0.08, envMapIntensity: 0.22 };
             case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
             case 'glass': return { roughness: 0.14, metalness: 0.08, bumpScale: 0.01, envMapIntensity: 1.05 };

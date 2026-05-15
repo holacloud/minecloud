@@ -19,8 +19,9 @@ Next tasks
 - [x] Guardar y restaurar la última posición segura del jugador entre sesiones
 - [x] Añadir biomas con variación visible de terreno y vegetación
 - [x] Añadir mensajes de sistema de entrada/salida en el chat y contador de jugadores conectado
-- [ ] Añadir un bloque de cama para fijar el punto de respawn del jugador
+- [x] Añadir un bloque de cama para fijar el punto de respawn del jugador
 - [ ] Escuchar los pasos de otros jugadores cuando están cerca
 - [ ] Mejorar las texturas del modo RTX, ahora solo son grano con ruido
 - [ ] Iniciar chat al hacer click en un jugador
 - [ ] Crear el objeto cartel en el que se pueda escribir un mensaje de hasta 288 caracteres y plantar en el mundo para que el resto de jugadores lo puedan ver
+- [ ] Crear un chat de audio (se activa con un botón) en el que puedes hablar con otros jugadores si estás lo suficientemente cerca (puede que con Web RTC o similar)
