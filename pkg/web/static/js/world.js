@@ -15,6 +15,8 @@ class WorldRenderer {
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.materials = new Map();
         this.textures = new Map();
+        this.textureLoader = new THREE.TextureLoader();
+        this.rtxAssetTextures = new Set(['grass', 'dirt', 'stone', 'sand', 'wood', 'planks', 'brick', 'glass', 'water', 'leaves']);
         this.tempMatrix = new THREE.Matrix4();
 
         this.lastPlayerChunkX = null;
@@ -95,6 +97,24 @@ class WorldRenderer {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             this.rebuildChunk(chunkX, chunkZ);
         }
+    }
+
+    getAssetTexture(type) {
+        const cacheKey = `asset:${type}`;
+        let texture = this.textures.get(cacheKey);
+        if (texture) return texture;
+
+        texture = this.textureLoader.load(`textures/rtx/${type}.svg`);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = 4;
+        texture.magFilter = THREE.LinearFilter;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        if (THREE.sRGBEncoding) {
+            texture.encoding = THREE.sRGBEncoding;
+        }
+        this.textures.set(cacheKey, texture);
+        return texture;
     }
 
     wrapSignText(text, maxLineLength = 24, maxLines = 6) {
@@ -513,6 +533,8 @@ class WorldRenderer {
         const ctx = canvas.getContext('2d');
         if (kind === 'height') {
             this.paintHeightTexture(ctx, type, canvas.width);
+        } else if (this.rtxModeEnabled && kind === 'albedo' && this.rtxAssetTextures.has(type)) {
+            return this.getAssetTexture(type);
         } else {
             this.paintTexture(ctx, type, canvas.width);
         }

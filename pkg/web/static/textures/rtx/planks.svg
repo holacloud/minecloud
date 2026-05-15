@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#c8a675"/>
+  <g fill="#b48e5f">
+    <rect x="0" y="0" width="128" height="28"/>
+    <rect x="0" y="34" width="128" height="26"/>
+    <rect x="0" y="66" width="128" height="28"/>
+    <rect x="0" y="100" width="128" height="28"/>
+  </g>
+  <g stroke="#8a683d" stroke-width="3" opacity="0.7">
+    <path d="M0 30h128"/><path d="M0 62h128"/><path d="M0 96h128"/>
+    <path d="M18 0v28"/><path d="M92 34v26"/><path d="M48 66v28"/><path d="M106 100v28"/>
+  </g>
+  <g fill="#ddb788" opacity="0.35">
+    <ellipse cx="36" cy="16" rx="10" ry="5"/><ellipse cx="78" cy="48" rx="8" ry="4"/>
+    <ellipse cx="58" cy="80" rx="11" ry="5"/><ellipse cx="98" cy="114" rx="9" ry="4"/>
+  </g>
+</svg>

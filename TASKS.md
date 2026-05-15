@@ -26,7 +26,7 @@ Next tasks
 - [x] Crear el objeto cartel en el que se pueda escribir un mensaje de hasta 288 caracteres y plantar en el mundo para que el resto de jugadores lo puedan ver
 - [x] Crear un chat de audio (se activa con un botón) en el que puedes hablar con otros jugadores si estás lo suficientemente cerca (puede que con Web RTC o similar)
 - [x] Ponerle cara a los avatares de los jugadores
-- [ ] Usar assets de texturas más reales en el modo RTX
+- [x] Usar assets de texturas más reales en el modo RTX
 - [ ] Hacer que el agua se pueda nadar y añadir efecto visual bajo el agua
 - [ ] Añadir más elementos naturales decorativos al mundo como flores, hierba alta y setas
 - [ ] Crear un visor de elementos que describa las propiedades del bloque al que apuntas
