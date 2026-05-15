@@ -9,12 +9,16 @@ class Game {
         
         this.clock = new THREE.Clock();
         this.frameCount = 0;
-        this.lastFpsUpdate = 0;
+        this.lastFpsUpdate = performance.now();
+        this.lastSelectionUpdate = 0;
+        this.lastNetworkUpdate = 0;
         
         this.raycaster = new THREE.Raycaster();
+        this.screenCenter = new THREE.Vector2(0, 0);
         
         this.breakDistance = 4.5;
         this.placeDistance = 4.5;
+        this.selectionUpdateInterval = 50;
         
         this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'leaves'];
         this.selectedSlot = 0;
@@ -52,9 +56,9 @@ class Game {
         this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 20, 0);
         
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
         
         document.getElementById('game-container').appendChild(this.renderer.domElement);
         
@@ -84,7 +88,7 @@ class Game {
     
     initCamera() {
         this.cameraController = new CameraController(this.camera, this.renderer.domElement);
-        this.cameraController.setWorldGetter(() => this.world.getAllBlocks());
+        this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
     }
     
     initWorld() {
@@ -93,13 +97,14 @@ class Game {
     
     initNetwork() {
         this.network = new NetworkClient();
-        const wsUrl = `ws://${window.location.host}/ws`;
-        this.network.connect(wsUrl);
-        
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload, payload.blockType));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
+
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
+        this.network.connect(wsUrl);
     }
     
     updateOtherPlayer(player) {
@@ -133,6 +138,7 @@ class Game {
     initInput() {
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
         document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        document.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     }
     
     onMouseDown(event) {
@@ -151,6 +157,18 @@ class Game {
             this.selectSlot(slot);
         }
     }
+
+    onWheel(event) {
+        if (!this.cameraController.isLocked) return;
+        if (event.deltaY === 0) return;
+
+        event.preventDefault();
+
+        const direction = event.deltaY > 0 ? 1 : -1;
+        const totalSlots = this.inventory.length;
+        const nextSlot = (this.selectedSlot + direction + totalSlots) % totalSlots;
+        this.selectSlot(nextSlot);
+    }
     
     selectSlot(index) {
         this.selectedSlot = index;
@@ -158,51 +176,59 @@ class Game {
             el.classList.toggle('selected', i === index);
         });
     }
+
+    raycastBlock(maxDistance) {
+        this.raycaster.setFromCamera(this.screenCenter, this.camera);
+
+        const blocks = this.world.getInteractableObjects(this.camera.position, maxDistance);
+        if (blocks.length === 0) return null;
+
+        const intersects = this.raycaster.intersectObjects(blocks, false);
+        if (intersects.length === 0 || intersects[0].distance > maxDistance) {
+            return null;
+        }
+
+        return intersects[0];
+    }
     
     breakBlock() {
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-        const blocks = this.world.getAllBlocks();
-        const intersects = this.raycaster.intersectObjects(blocks);
-        
-        if (intersects.length > 0 && intersects[0].distance <= this.breakDistance) {
-            const hit = intersects[0];
-            const block = hit.object;
-            const pos = this.world.getBlockPosition(block);
-            
-            this.showHitIndicator();
-            this.world.removeBlock(block);
-            
-            if (this.network.connected) {
-                this.network.send('blockBreak', { x: pos.x, y: pos.y, z: pos.z });
-            }
+        const hit = this.raycastBlock(this.breakDistance);
+        if (!hit) return;
+
+        const pos = this.world.getBlockPositionFromIntersection(hit);
+        if (!pos) return;
+
+        if (!this.world.removeBlockAt(pos.x, pos.y, pos.z)) return;
+
+        this.showHitIndicator();
+
+        if (this.network.connected) {
+            this.network.send('blockBreak', { x: pos.x, y: pos.y, z: pos.z });
         }
     }
     
     placeBlock() {
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-        const blocks = this.world.getAllBlocks();
-        const intersects = this.raycaster.intersectObjects(blocks);
-        
-        if (intersects.length > 0 && intersects[0].distance <= this.placeDistance) {
-            const hit = intersects[0];
-            const normal = hit.face.normal;
-            const block = hit.object;
-            
-            const newPos = {
-                x: Math.round(block.parent.position.x + block.position.x + normal.x),
-                y: Math.round(block.parent.position.y + block.position.y + normal.y),
-                z: Math.round(block.parent.position.z + block.position.z + normal.z)
-            };
-            
-            if (newPos.y >= 0) {
-                const blockType = this.inventory[this.selectedSlot];
-                this.world.addBlock(newPos, blockType);
-                
-                this.showHitIndicator();
-                
-                if (this.network.connected) {
-                    this.network.send('blockPlace', { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType });
-                }
+        const hit = this.raycastBlock(this.placeDistance);
+        if (!hit) return;
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos || !hit.face) return;
+
+        const normal = hit.face.normal;
+        const newPos = {
+            x: Math.round(worldPos.x + normal.x),
+            y: Math.round(worldPos.y + normal.y),
+            z: Math.round(worldPos.z + normal.z)
+        };
+
+        if (newPos.y >= 0) {
+            const blockType = this.inventory[this.selectedSlot];
+            if (!this.world.addBlock(newPos, blockType)) return;
+
+            this.showHitIndicator();
+
+            if (this.network.connected) {
+                this.network.send('blockPlace', { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType });
             }
         }
     }
@@ -233,34 +259,44 @@ class Game {
     }
     
     updateSelectionBox() {
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-        const blocks = this.world.getAllBlocks();
-        const intersects = this.raycaster.intersectObjects(blocks);
-        
-        if (intersects.length > 0 && intersects[0].distance <= this.breakDistance) {
-            const hit = intersects[0];
-            const block = hit.object;
-            const worldPos = this.world.getBlockPosition(block);
-            
-            this.selectionBox.position.set(worldPos.x + 0.5, worldPos.y + 0.5, worldPos.z + 0.5);
-            this.selectionBox.visible = true;
-        } else {
+        if (!this.cameraController.isLocked) {
             this.selectionBox.visible = false;
+            return;
         }
+
+        const hit = this.raycastBlock(this.breakDistance);
+        if (!hit) {
+            this.selectionBox.visible = false;
+            return;
+        }
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos) {
+            this.selectionBox.visible = false;
+            return;
+        }
+        
+        this.selectionBox.position.set(worldPos.x + 0.5, worldPos.y + 0.5, worldPos.z + 0.5);
+        this.selectionBox.visible = true;
     }
     
     animate() {
         requestAnimationFrame(() => this.animate());
         
         const delta = Math.min(this.clock.getDelta(), 0.1);
+        const now = performance.now();
         
         this.cameraController.update(delta);
         this.world.update(this.camera.position.x, this.camera.position.z);
         
-        this.updateSelectionBox();
+        if (now - this.lastSelectionUpdate >= this.selectionUpdateInterval) {
+            this.updateSelectionBox();
+            this.lastSelectionUpdate = now;
+        }
         
-        if (this.network.connected && this.frameCount % 20 === 0) {
+        if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
             this.network.updatePosition(this.cameraController.getPosition());
+            this.lastNetworkUpdate = now;
         }
         
         this.updateUI();

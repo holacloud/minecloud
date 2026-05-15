@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -84,13 +85,13 @@ func (c *Client) readPump() {
 		log.Println("Client disconnected:", c.ID)
 		clientsMu.Lock()
 		delete(clients, c)
+		clientsMu.Unlock()
 		
 		stateMu.Lock()
 		delete(gameState.Players, c.ID)
 		stateMu.Unlock()
 		
 		broadcastPlayerList()
-		clientsMu.Unlock()
 		c.conn.Close()
 	}()
 
@@ -173,7 +174,7 @@ func handleMessage(client *Client, msg Message) {
 		}
 		stateMu.Unlock()
 		
-		broadcastToAll(msg.Payload)
+		broadcastToAll(createMessage("playerMove", payload))
 		
 	case "blockBreak":
 		var payload struct {
@@ -209,7 +210,7 @@ func handleMessage(client *Client, msg Message) {
 }
 
 func blockKey(x, y, z int) string {
-	return string(rune(x+1000)) + "," + string(rune(y+1000)) + "," + string(rune(z+1000))
+	return fmt.Sprintf("%d,%d,%d", x, y, z)
 }
 
 func sendInitialState(client *Client) {
@@ -252,15 +253,28 @@ func createMessage(msgType string, data interface{}) []byte {
 }
 
 func broadcastToAll(data []byte) {
-	clientsMu.RLock()
-	defer clientsMu.RUnlock()
+	staleClients := make([]*Client, 0)
 
+	clientsMu.RLock()
 	for client := range clients {
 		select {
 		case client.send <- data:
 		default:
-			close(client.send)
-			delete(clients, client)
+			staleClients = append(staleClients, client)
 		}
 	}
+	clientsMu.RUnlock()
+
+	if len(staleClients) == 0 {
+		return
+	}
+
+	clientsMu.Lock()
+	for _, client := range staleClients {
+		if clients[client] {
+			delete(clients, client)
+			close(client.send)
+		}
+	}
+	clientsMu.Unlock()
 }

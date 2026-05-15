@@ -7,6 +7,7 @@ class CameraController {
         this.yaw = 0;
         this.moveSpeed = 4.5;
         this.sprintSpeed = 6;
+        this.jumpVelocity = 7.25;
         this.lookSpeed = 0.002;
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false };
@@ -15,13 +16,13 @@ class CameraController {
         this.isLocked = false;
         this.onGround = false;
         
-        this.worldBlocks = null;
+        this.blockChecker = null;
         this.eyeHeight = 1.62;
         
         this.init();
     }
     
-    setWorldGetter(fn) { this.worldBlocks = fn; }
+    setBlockChecker(fn) { this.blockChecker = fn; }
     
     init() {
         document.addEventListener('keydown', e => {
@@ -54,23 +55,13 @@ class CameraController {
     }
     
     hasBlock(x, y, z) {
-        if (!this.worldBlocks) return false;
-        const blocks = this.worldBlocks();
-        for (let i = 0; i < blocks.length; i++) {
-            const b = blocks[i];
-            if (b.userData.blockType === 'water') continue;
-            const wx = Math.round(b.parent.position.x + b.position.x);
-            const wy = Math.round(b.parent.position.y + b.position.y);
-            const wz = Math.round(b.parent.position.z + b.position.z);
-            if (wx === x && wy === y && wz === z) return true;
-        }
-        return false;
+        return this.blockChecker ? this.blockChecker(x, y, z) : false;
     }
     
-    getFloorY(x, z) {
+    getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
-        for (let y = -5; y < 30; y++) {
+        for (let y = Math.floor(startY); y >= -5; y--) {
             if (this.hasBlock(ix, y, iz)) return y + 1;
         }
         return -100;
@@ -113,8 +104,8 @@ class CameraController {
             }
         }
         
-        const floorY = this.getFloorY(this.camera.position.x, this.camera.position.z);
         const feetY = this.camera.position.y - this.eyeHeight;
+        const floorY = this.getFloorY(this.camera.position.x, this.camera.position.z, feetY);
         
         if (feetY <= floorY + 0.001 && this.velocityY <= 0) {
             this.camera.position.y = floorY + this.eyeHeight;
@@ -125,7 +116,7 @@ class CameraController {
         }
         
         if (this.keys.jump && this.onGround) {
-            this.velocityY = 4.5;
+            this.velocityY = this.jumpVelocity;
             this.onGround = false;
         }
         
@@ -135,7 +126,7 @@ class CameraController {
         const newFeetY = newY - this.eyeHeight;
         
         if (this.velocityY < 0) {
-            const newFloorY = this.getFloorY(this.camera.position.x, this.camera.position.z);
+            const newFloorY = this.getFloorY(this.camera.position.x, this.camera.position.z, newFeetY);
             if (newFeetY <= newFloorY + 0.001) {
                 this.camera.position.y = newFloorY + this.eyeHeight;
                 this.velocityY = 0;

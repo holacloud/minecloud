@@ -41,7 +41,7 @@ class NetworkClient {
     }
     
     send(type, payload) {
-        if (!this.connected) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         
         const message = {
             type: type,
@@ -50,13 +50,15 @@ class NetworkClient {
         
         this.ws.send(JSON.stringify(message));
     }
+
+    emit(type, payload) {
+        const handler = this.messageHandlers.get(type);
+        if (handler) {
+            handler(payload);
+        }
+    }
     
     handleMessage(message) {
-        const handler = this.messageHandlers.get(message.type);
-        if (handler) {
-            handler(message.payload);
-        }
-        
         switch(message.type) {
             case 'init':
                 this.handleInit(message.payload);
@@ -76,6 +78,9 @@ class NetworkClient {
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;
+            default:
+                this.emit(message.type, message.payload);
+                break;
         }
     }
     
@@ -89,10 +94,7 @@ class NetworkClient {
         }
         
         if (payload.blocks) {
-            const handler = this.messageHandlers.get('worldInit');
-            if (handler) {
-                handler(payload.blocks);
-            }
+            this.emit('worldInit', payload.blocks);
         }
     }
     
@@ -115,25 +117,16 @@ class NetworkClient {
         if (payload.id === this.playerId) return;
         
         this.otherPlayers.set(payload.id, payload);
-        
-        const handler = this.messageHandlers.get('otherPlayerMove');
-        if (handler) {
-            handler(payload);
-        }
+
+        this.emit('otherPlayerMove', payload);
     }
     
     handleBlockBreak(payload) {
-        const handler = this.messageHandlers.get('blockBreak');
-        if (handler) {
-            handler(payload);
-        }
+        this.emit('blockBreak', payload);
     }
     
     handleBlockPlace(payload) {
-        const handler = this.messageHandlers.get('blockPlace');
-        if (handler) {
-            handler(payload);
-        }
+        this.emit('blockPlace', payload);
     }
     
     on(type, handler) {
