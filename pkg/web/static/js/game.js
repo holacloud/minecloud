@@ -48,6 +48,8 @@ class Game {
         this.rtxModeEnabled = false;
         this.rtxTogglePresses = [];
         this.rtxToggleWindowMs = 1200;
+        this.wheelSlotAccumulator = 0;
+        this.lastWheelStepAt = 0;
         this.touchControlsEnabled = false;
         this.mobileMovePointerId = null;
         this.mobileLookPointerId = null;
@@ -789,11 +791,15 @@ class Game {
             return true;
         }
 
-        this.timeOfDay = 0;
-        this.weatherState = 'clear';
-        this.weatherTimer = 0;
-        this.nextWeatherChange = 55 + Math.random() * 70;
-        this.receiveSystemMessage({ text: 'You slept until dawn' });
+        if (this.network && this.network.connected) {
+            this.network.requestSleep();
+        } else {
+            this.timeOfDay = 0;
+            this.weatherState = 'clear';
+            this.weatherTimer = 0;
+            this.nextWeatherChange = 55 + Math.random() * 70;
+            this.receiveSystemMessage({ text: 'You slept until dawn' });
+        }
         this.playTone({ frequency: 520, duration: 0.08, type: 'triangle', volume: 0.03, release: 0.08 });
         return true;
     }
@@ -1573,6 +1579,11 @@ class Game {
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
         this.network.on('chat', (payload) => this.receiveChatMessage(payload));
         this.network.on('system', (payload) => this.receiveSystemMessage(payload));
+        this.network.on('timeSync', (payload) => {
+            if (typeof payload.timeOfDay === 'number') {
+                this.timeOfDay = payload.timeOfDay;
+            }
+        });
         this.network.on('voiceState', (payload) => {
             if (this.voiceChat) {
                 this.voiceChat.updateVoiceState(payload.playerId, payload.enabled);
@@ -2135,7 +2146,20 @@ class Game {
 
         event.preventDefault();
 
-        const direction = event.deltaY > 0 ? 1 : -1;
+        const now = performance.now();
+        if (now - this.lastWheelStepAt > 150) {
+            this.wheelSlotAccumulator = 0;
+        }
+
+        this.wheelSlotAccumulator += event.deltaY;
+        if (Math.abs(this.wheelSlotAccumulator) < 60) {
+            return;
+        }
+
+        const direction = this.wheelSlotAccumulator > 0 ? 1 : -1;
+        this.wheelSlotAccumulator = 0;
+        this.lastWheelStepAt = now;
+
         const totalSlots = this.inventory.length;
         const nextSlot = (this.selectedSlot + direction + totalSlots) % totalSlots;
         this.selectSlot(nextSlot);

@@ -62,10 +62,10 @@ class NetworkClient {
     handleMessage(message) {
         switch(message.type) {
             case 'init':
-                this.handleInit(message.payload);
+                this.handleInit(message.payload || message);
                 break;
             case 'playerList':
-                this.handlePlayerList(message.payload);
+                this.handlePlayerList(message.payload || message);
                 break;
             case 'playerMove':
                 this.handlePlayerMove(message.payload);
@@ -81,6 +81,9 @@ class NetworkClient {
                 break;
             case 'system':
                 this.emit('system', message.payload);
+                break;
+            case 'timeSync':
+                this.emit('timeSync', message.payload || message);
                 break;
             case 'voiceState':
                 this.emit('voiceState', message.payload);
@@ -104,6 +107,8 @@ class NetworkClient {
     }
     
     handleInit(payload) {
+        if (!payload) return;
+
         if (payload.players) {
             for (const [id, player] of Object.entries(payload.players)) {
                 if (id !== this.playerId) {
@@ -116,9 +121,15 @@ class NetworkClient {
         if (payload.blocks) {
             this.emit('worldInit', payload.blocks);
         }
+
+        if (typeof payload.timeOfDay === 'number') {
+            this.emit('timeSync', { timeOfDay: payload.timeOfDay });
+        }
     }
     
     handlePlayerList(payload) {
+        if (!payload || !Array.isArray(payload.players)) return;
+
         const listEl = document.getElementById('player-list');
         if (listEl) {
             listEl.innerHTML = '';
@@ -161,6 +172,10 @@ class NetworkClient {
 
     setVoiceEnabled(enabled) {
         this.send('voiceState', { enabled: enabled });
+    }
+
+    requestSleep() {
+        this.send('sleepInBed', {});
     }
 
     sendWebRTCOffer(toPlayerId, sdp) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -58,6 +59,7 @@ type Player struct {
 type GameState struct {
 	Players map[string]Player    `json:"players"`
 	Blocks  map[string]Block     `json:"blocks"`
+	WorldTime float64            `json:"worldTime"`
 }
 
 type persistedWorldState struct {
@@ -72,6 +74,7 @@ var (
 	gameState = &GameState{
 		Players: make(map[string]Player),
 		Blocks:  make(map[string]Block),
+		WorldTime: 0.22,
 	}
 	stateMu   sync.RWMutex
 )
@@ -79,7 +82,26 @@ var (
 const worldStatePath = "data/world.json"
 
 func Initialize() error {
-	return loadWorldState()
+	if err := loadWorldState(); err != nil {
+		return err
+	}
+
+	go runWorldClock()
+	return nil
+}
+
+func runWorldClock() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		stateMu.Lock()
+		gameState.WorldTime = math.Mod(gameState.WorldTime+1.0/240.0, 1)
+		currentTime := gameState.WorldTime
+		stateMu.Unlock()
+
+		broadcastToAll(createMessage("timeSync", map[string]float64{"timeOfDay": currentTime}))
+	}
 }
 
 func loadWorldState() error {
@@ -351,6 +373,13 @@ func handleMessage(client *Client, msg Message) {
 		}
 		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
 
+	case "sleepInBed":
+		stateMu.Lock()
+		gameState.WorldTime = 0
+		stateMu.Unlock()
+		broadcastToAll(createMessage("timeSync", map[string]float64{"timeOfDay": 0}))
+		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s slept until dawn", client.username)}))
+
 	case "webrtcOffer":
 		forwardSignalMessage(client.ID, "webrtcOffer", msg.Payload)
 
@@ -410,6 +439,7 @@ func sendInitialState(client *Client) {
 		"type":    "init",
 		"players": gameState.Players,
 		"blocks":  gameState.Blocks,
+		"timeOfDay": gameState.WorldTime,
 	}
 	
 	data, _ := json.Marshal(initMsg)
