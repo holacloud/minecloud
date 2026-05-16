@@ -131,6 +131,7 @@ class Game {
         this.followReturnPosition = null;
         this.followCameraAngle = 0;
         this.ambientMobs = [];
+        this.followingDog = null;
         this.voiceChat = null;
         this.audioContext = null;
         this.audioUnlocked = false;
@@ -1774,6 +1775,7 @@ class Game {
         group.userData.bounceVelocity = 0;
         group.userData.hostile = species === 'spider' || species === 'cave_monster';
         group.userData.attackCooldown = 0;
+        group.userData.defendCooldown = 0;
         group.userData.flyHeight = species === 'macaw' ? 2.2 : 0;
         group.userData.maxHealth = species === 'cave_monster' ? 16 : 1;
         group.userData.health = group.userData.maxHealth;
@@ -1854,6 +1856,15 @@ class Game {
             const rightWing = createPart(new THREE.BoxGeometry(0.34, 0.08, 0.12), palette.wing, 0.02, 0.64, 0.26);
             createPart(new THREE.BoxGeometry(0.36, 0.08, 0.12), palette.tail, -0.34, 0.56, 0);
             group.userData.wings = [leftWing, rightWing];
+        } else if (species === 'dog') {
+            createPart(new THREE.BoxGeometry(0.7, 0.38, 0.36), 0xc89058, 0, 0.5, 0);
+            createPart(new THREE.BoxGeometry(0.32, 0.28, 0.3), 0xd9a86f, 0.45, 0.62, 0);
+            createPart(new THREE.BoxGeometry(0.14, 0.1, 0.16), 0x5a3522, 0.62, 0.58, 0);
+            createPart(new THREE.BoxGeometry(0.06, 0.06, 0.04), 0x17120f, 0.55, 0.68, -0.1);
+            createPart(new THREE.BoxGeometry(0.06, 0.06, 0.04), 0x17120f, 0.55, 0.68, 0.1);
+            createPart(new THREE.BoxGeometry(0.1, 0.2, 0.08), 0x8a5a35, 0.38, 0.74, -0.18);
+            createPart(new THREE.BoxGeometry(0.1, 0.2, 0.08), 0x8a5a35, 0.38, 0.74, 0.18);
+            createPart(new THREE.BoxGeometry(0.28, 0.1, 0.1), 0xd9a86f, -0.46, 0.62, 0);
         } else {
             createPart(new THREE.BoxGeometry(0.72, 0.42, 0.4), 0xd89aa3, 0, 0.5, 0);
             createPart(new THREE.BoxGeometry(0.28, 0.22, 0.24), 0xd89aa3, 0.4, 0.56, 0);
@@ -1865,8 +1876,10 @@ class Game {
                 ? [[-0.26, 0.34, -0.14], [-0.26, 0.34, 0.14], [0.26, 0.34, -0.14], [0.26, 0.34, 0.14]]
             : species === 'macaw'
                 ? [[0.04, 0.36, -0.06], [0.04, 0.36, 0.06], [0.14, 0.36, -0.06], [0.14, 0.36, 0.06]]
+            : species === 'dog'
+                ? [[-0.2, 0.2, -0.11], [-0.2, 0.2, 0.11], [0.26, 0.2, -0.11], [0.26, 0.2, 0.11]]
             : [[-0.22, 0.2, -0.12], [-0.22, 0.2, 0.12], [0.22, 0.2, -0.12], [0.22, 0.2, 0.12]];
-        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' || species === 'macaw' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : species === 'giraffe' ? 0xf6b650 : 0xb87683;
+        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' || species === 'macaw' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : species === 'giraffe' ? 0xf6b650 : species === 'dog' ? 0x8a5a35 : 0xb87683;
         const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : species === 'macaw' ? [0.035, 0.16, 0.035] : species === 'giraffe' ? [0.12, 1.4, 0.12] : species === 'cave_monster' ? [0.16, 0.68, 0.16] : [0.1, 0.32, 0.1];
         group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
 
@@ -1882,6 +1895,7 @@ class Game {
             ['duck', new THREE.Vector3(-6, 0, 10)],
             ['pig', new THREE.Vector3(12, 0, -8)],
             ['giraffe', new THREE.Vector3(2, 0, 14)],
+            ['dog', new THREE.Vector3(-2, 0, 8)],
             ['sheep', new THREE.Vector3(-10, 0, -6)],
             ['duck', new THREE.Vector3(4, 0, -12)],
             ['spider', new THREE.Vector3(-14, 0, 14)],
@@ -1936,6 +1950,7 @@ class Game {
             duck: 520,
             pig: 240,
             giraffe: 390,
+            dog: 440,
             spider: 180,
             cave_monster: 120
         };
@@ -1945,25 +1960,38 @@ class Game {
 
     updateAmbientMobs(delta) {
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
+        if (this.followingDog && !this.ambientMobs.includes(this.followingDog)) {
+            this.followingDog = null;
+        }
+
         for (const mob of this.ambientMobs) {
             mob.userData.moveTimer -= delta;
             mob.userData.attackCooldown = Math.max(0, mob.userData.attackCooldown - delta);
+            mob.userData.defendCooldown = Math.max(0, mob.userData.defendCooldown - delta);
 
             const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
             const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
             const chaseDistance = mob.userData.species === 'cave_monster' ? 10 : 16;
             const keepDistance = mob.userData.species === 'cave_monster' ? 4 : 0;
             const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
+            const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
 
-            if (isChasing) {
+            if (mob.userData.species === 'dog' && !this.followingDog && distanceToPlayer <= 10) {
+                this.followingDog = mob;
+                this.receiveSystemMessage({ text: 'An adorable dog is now your friend' });
+            }
+
+            if (isFollowingDog) {
+                mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
+            } else if (isChasing) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
             } else if (mob.userData.moveTimer <= 0) {
                 mob.userData.moveTimer = 1.2 + Math.random() * 2.8;
                 mob.userData.direction += (Math.random() - 0.5) * 1.8;
             }
 
-            const moveSpeed = isChasing ? (mob.userData.species === 'spider' ? 1.25 : 0.9) : mob.userData.species === 'macaw' ? 0.85 : mob.userData.species === 'duck' ? 0.55 : 0.38;
-            const moveScale = isChasing && distanceToPlayer <= keepDistance ? 0 : 1;
+            const moveSpeed = isChasing ? (mob.userData.species === 'spider' ? 1.25 : 0.9) : isFollowingDog ? 0.95 : mob.userData.species === 'macaw' ? 0.85 : mob.userData.species === 'duck' ? 0.55 : 0.38;
+            const moveScale = (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             const candidate = mob.position.clone().add(move);
             const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
@@ -1978,6 +2006,20 @@ class Game {
             if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
                 this.applyDamage(mob.userData.species === 'spider' ? 2 : 4, `You were attacked by a ${mob.userData.species === 'spider' ? 'spider' : 'cave monster'}`);
                 mob.userData.attackCooldown = 1.2;
+            }
+
+            if (isFollowingDog && mob.userData.defendCooldown <= 0) {
+                const enemy = this.ambientMobs.find((candidate) => candidate.userData.species === 'cave_monster' && candidate.position.distanceTo(mob.position) < 2.2);
+                if (enemy) {
+                    enemy.userData.health -= 4;
+                    enemy.userData.direction = Math.atan2(enemy.position.z - mob.position.z, enemy.position.x - mob.position.x);
+                    mob.userData.defendCooldown = 0.8;
+                    if (enemy.userData.health <= 0) {
+                        this.scene.remove(enemy);
+                        this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== enemy);
+                        this.receiveSystemMessage({ text: 'Your dog defended you from the cave monster' });
+                    }
+                }
             }
 
             mob.userData.stepPhase += delta * 7;
@@ -3375,7 +3417,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -3403,8 +3445,8 @@ class Game {
 
     spawnMobFromCommand(args) {
         const species = (args[0] || '').toLowerCase();
-        if (species !== 'giraffe' && species !== 'macaw') {
-            this.receiveSystemMessage({ text: 'Usage: /mob giraffe or /mob macaw' });
+        if (species !== 'giraffe' && species !== 'macaw' && species !== 'dog') {
+            this.receiveSystemMessage({ text: 'Usage: /mob giraffe, /mob macaw, or /mob dog' });
             return;
         }
 
