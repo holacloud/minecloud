@@ -80,14 +80,16 @@ type Player struct {
 }
 
 type GameState struct {
-	Players   map[string]Player `json:"players"`
-	Blocks    map[string]Block  `json:"blocks"`
-	WorldTime float64           `json:"worldTime"`
-	WorldDay  int               `json:"worldDay"`
+	Players       map[string]Player `json:"players"`
+	Blocks        map[string]Block  `json:"blocks"`
+	RemovedBlocks map[string]bool   `json:"removedBlocks"`
+	WorldTime     float64           `json:"worldTime"`
+	WorldDay      int               `json:"worldDay"`
 }
 
 type persistedWorldState struct {
-	Blocks map[string]Block `json:"blocks"`
+	Blocks        map[string]Block `json:"blocks"`
+	RemovedBlocks map[string]bool  `json:"removedBlocks"`
 }
 
 var (
@@ -96,10 +98,11 @@ var (
 	broadcast = make(chan []byte)
 
 	gameState = &GameState{
-		Players:   make(map[string]Player),
-		Blocks:    make(map[string]Block),
-		WorldTime: 0.22,
-		WorldDay:  0,
+		Players:       make(map[string]Player),
+		Blocks:        make(map[string]Block),
+		RemovedBlocks: make(map[string]bool),
+		WorldTime:     0.22,
+		WorldDay:      0,
 	}
 	stateMu sync.RWMutex
 
@@ -169,19 +172,28 @@ func loadWorldState() error {
 	} else {
 		gameState.Blocks = make(map[string]Block)
 	}
+	if persisted.RemovedBlocks != nil {
+		gameState.RemovedBlocks = persisted.RemovedBlocks
+	} else {
+		gameState.RemovedBlocks = make(map[string]bool)
+	}
 	stateMu.Unlock()
 
-	log.Printf("Loaded %d persisted blocks", len(gameState.Blocks))
+	log.Printf("Loaded %d persisted blocks and %d removed blocks", len(gameState.Blocks), len(gameState.RemovedBlocks))
 	return nil
 }
 
 func saveWorldState() {
 	stateMu.RLock()
 	persisted := persistedWorldState{
-		Blocks: make(map[string]Block, len(gameState.Blocks)),
+		Blocks:        make(map[string]Block, len(gameState.Blocks)),
+		RemovedBlocks: make(map[string]bool, len(gameState.RemovedBlocks)),
 	}
 	for key, block := range gameState.Blocks {
 		persisted.Blocks[key] = block
+	}
+	for key, removed := range gameState.RemovedBlocks {
+		persisted.RemovedBlocks[key] = removed
 	}
 	stateMu.RUnlock()
 
@@ -450,6 +462,7 @@ func handleMessage(client *Client, msg Message) {
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
 		delete(gameState.Blocks, key)
+		gameState.RemovedBlocks[key] = true
 		stateMu.Unlock()
 		saveWorldState()
 
@@ -474,6 +487,7 @@ func handleMessage(client *Client, msg Message) {
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
 		gameState.Blocks[key] = payload
+		delete(gameState.RemovedBlocks, key)
 		stateMu.Unlock()
 		saveWorldState()
 		recordSignMessage(client, payload)
@@ -625,11 +639,12 @@ func sendInitialState(client *Client) {
 	defer stateMu.RUnlock()
 
 	initMsg := map[string]interface{}{
-		"type":      "init",
-		"players":   gameState.Players,
-		"blocks":    gameState.Blocks,
-		"timeOfDay": gameState.WorldTime,
-		"worldDay":  gameState.WorldDay,
+		"type":          "init",
+		"players":       gameState.Players,
+		"blocks":        gameState.Blocks,
+		"removedBlocks": gameState.RemovedBlocks,
+		"timeOfDay":     gameState.WorldTime,
+		"worldDay":      gameState.WorldDay,
 	}
 
 	data, _ := json.Marshal(initMsg)

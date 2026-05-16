@@ -122,8 +122,8 @@ class NetworkClient {
             }
         }
         
-        if (payload.blocks) {
-            this.emit('worldInit', payload.blocks);
+        if (payload.blocks || payload.removedBlocks) {
+            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {} });
         }
 
         if (typeof payload.timeOfDay === 'number') {

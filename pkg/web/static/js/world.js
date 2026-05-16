@@ -9,6 +9,7 @@ class WorldRenderer {
         this.signTextByKey = new Map();
         this.signVotesByKey = new Map();
         this.solidBlocks = new Set();
+        this.removedBlockKeys = new Set();
         this.chunkSize = 16;
         this.renderDistance = 4;
         this.rtxModeEnabled = false;
@@ -986,10 +987,18 @@ class WorldRenderer {
         this.setBlockData(x, y, z, type);
     }
 
-    setBlockData(x, y, z, type, chunkKey = null) {
+    setBlockData(x, y, z, type, chunkKey = null, options = {}) {
         const key = this.blockKey(x, y, z);
         const resolvedChunkKey = chunkKey || this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
         const currentType = this.blockData.get(key);
+
+        if (this.removedBlockKeys.has(key) && !options.persisted && !options.playerChange) {
+            return false;
+        }
+
+        if (options.persisted || options.playerChange) {
+            this.removedBlockKeys.delete(key);
+        }
 
         if (currentType === type) {
             this.ensureChunkBlockSet(resolvedChunkKey).add(key);
@@ -1405,7 +1414,7 @@ class WorldRenderer {
         const x = Math.round(payload.x);
         const y = Math.round(payload.y);
         const z = Math.round(payload.z);
-        const changed = this.setBlockData(x, y, z, payload.blockType);
+        const changed = this.setBlockData(x, y, z, payload.blockType, null, { playerChange: true });
         const key = this.blockKey(x, y, z);
         if (payload.blockType === 'sign' && Object.prototype.hasOwnProperty.call(payload, 'text')) {
             this.signTextByKey.set(key, payload.text || '');
@@ -1426,15 +1435,26 @@ class WorldRenderer {
         return true;
     }
 
-    loadBlocks(blocks) {
+    loadBlocks(state) {
+        const blocks = state && state.blocks ? state.blocks : (state || {});
+        const removedBlocks = state && state.removedBlocks ? state.removedBlocks : {};
         const dirtyChunks = new Set();
+
+        for (const key in removedBlocks) {
+            if (!removedBlocks[key]) continue;
+            this.removedBlockKeys.add(key);
+            const { x, y, z } = this.parseBlockKey(key);
+            this.deleteBlockData(x, y, z, false);
+            const { chunkX, chunkZ } = this.getChunkCoords(x, z);
+            dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
+        }
 
         for (const key in blocks) {
             const block = blocks[key];
             const x = Math.round(block.x);
             const y = Math.round(block.y);
             const z = Math.round(block.z);
-            if (!this.setBlockData(x, y, z, block.blockType)) continue;
+            if (!this.setBlockData(x, y, z, block.blockType, null, { persisted: true })) continue;
 
             const blockKey = this.blockKey(x, y, z);
             if (block.blockType === 'sign' && block.text) {
@@ -1471,9 +1491,13 @@ class WorldRenderer {
         return true;
     }
 
-    deleteBlockData(x, y, z) {
+    deleteBlockData(x, y, z, recordRemoval = true) {
         const key = this.blockKey(x, y, z);
         if (!this.blockData.has(key)) return false;
+
+        if (recordRemoval) {
+            this.removedBlockKeys.add(key);
+        }
 
         this.blockData.delete(key);
         this.signTextByKey.delete(key);
