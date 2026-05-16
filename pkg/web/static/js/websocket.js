@@ -92,6 +92,12 @@ class NetworkClient {
             case 'signVoteUpdate':
                 this.emit('signVoteUpdate', message.payload);
                 break;
+            case 'sprayPaint':
+                this.emit('sprayPaint', message.payload);
+                break;
+            case 'sprayPaintRemove':
+                this.emit('sprayPaintRemove', message.payload);
+                break;
             case 'webrtcOffer':
                 this.emit('webrtcOffer', message.payload);
                 break;
@@ -122,8 +128,8 @@ class NetworkClient {
             }
         }
         
-        if (payload.blocks || payload.removedBlocks) {
-            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {} });
+        if (payload.blocks || payload.removedBlocks || payload.sprayPaints) {
+            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {}, sprayPaints: payload.sprayPaints || {} });
         }
 
         if (typeof payload.timeOfDay === 'number') {

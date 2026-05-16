@@ -20,7 +20,7 @@ class Game {
         this.placeDistance = 4.5;
         this.selectionUpdateInterval = 50;
         
-        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch', 'sound_block'];
+        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch', 'sound_block', 'spray_paint'];
         this.inventoryCounts = {
             grass: 24,
             dirt: 24,
@@ -36,7 +36,8 @@ class Game {
             glass: 0,
             stone_bricks: 0,
             torch: 0,
-            sound_block: 0
+            sound_block: 0,
+            spray_paint: 0
         };
         this.selectedSlot = 0;
         this.restoreInventoryState();
@@ -121,6 +122,12 @@ class Game {
                 name: 'Build Sound Block',
                 output: { type: 'sound_block', amount: 1 },
                 inputs: [{ type: 'planks', amount: 2 }, { type: 'cobblestone', amount: 1 }, { type: 'coal_ore', amount: 1 }]
+            },
+            {
+                id: 'spray_paint',
+                name: 'Mix Fluorescent Spray Paint',
+                output: { type: 'spray_paint', amount: 1 },
+                inputs: [{ type: 'sand', amount: 1 }, { type: 'flower_red', amount: 1 }, { type: 'coal_ore', amount: 1 }]
             }
         ];
 
@@ -215,6 +222,9 @@ class Game {
         this.handSwingTime = 0;
         this.soundBlockInstruments = ['bell', 'drum', 'pluck', 'flute', 'bass'];
         this.soundBlockNotes = [262, 294, 330, 349, 392, 440, 494, 523];
+        this.sprayColors = ['green', 'pink', 'blue'];
+        this.sprayColorIndex = 0;
+        this.sprayActiveUntil = 0;
 
         this.init();
     }
@@ -966,6 +976,12 @@ class Game {
             const state = this.world.getSoundBlockStateAt(worldPos.x, worldPos.y, worldPos.z);
             lines.push(`<span class="label">Sound:</span> ${state.instrument} note ${state.note + 1}`);
             lines.push('<span class="label">Use:</span> F play, Shift+F tune');
+        }
+
+        if (this.getSelectedBlockType() === 'spray_paint') {
+            const remaining = Math.max(0, Math.ceil((this.sprayActiveUntil - performance.now()) / 1000));
+            lines.push(`<span class="label">Spray:</span> ${this.sprayColors[this.sprayColorIndex]}${remaining ? `, ${remaining}s` : ''}`);
+            lines.push('<span class="label">Use:</span> Right click paint, F color');
         }
 
         inspector.innerHTML = lines.join('<br>');
@@ -2420,6 +2436,8 @@ class Game {
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
+        this.network.on('sprayPaint', (payload) => this.world.addSprayPaint(payload));
+        this.network.on('sprayPaintRemove', (payload) => this.world.removeSprayPaint(payload.key));
         this.network.on('worldNote', (payload) => this.addFloatingWorldText(payload));
         this.network.on('worldPing', (payload) => this.addWorldPing(payload));
         this.network.on('playerReaction', (payload) => this.addPlayerReaction(payload));
@@ -3120,6 +3138,9 @@ class Game {
 
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
+            if (this.tryCycleSprayColor()) {
+                return;
+            }
             if (this.tryUseSoundBlock(event.shiftKey)) {
                 return;
             }
@@ -3591,6 +3612,55 @@ class Game {
             }
         }
 
+        return true;
+    }
+
+    tryCycleSprayColor() {
+        if (this.getSelectedBlockType() !== 'spray_paint') return false;
+        this.sprayColorIndex = (this.sprayColorIndex + 1) % this.sprayColors.length;
+        this.receiveSystemMessage({ text: `Spray color: ${this.sprayColors[this.sprayColorIndex]}` });
+        return true;
+    }
+
+    getSprayFaceFromNormal(normal) {
+        const axis = Math.max(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z));
+        if (axis === Math.abs(normal.x)) return normal.x > 0 ? 'px' : 'nx';
+        if (axis === Math.abs(normal.y)) return normal.y > 0 ? 'py' : 'ny';
+        return normal.z > 0 ? 'pz' : 'nz';
+    }
+
+    trySprayPaint(hit) {
+        if (!hit || !hit.face) return false;
+        if (this.getInventoryCount('spray_paint') <= 0 && performance.now() > this.sprayActiveUntil) return false;
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos) return false;
+
+        const now = performance.now();
+        if (now > this.sprayActiveUntil) {
+            this.inventoryCounts.spray_paint = Math.max(0, this.getInventoryCount('spray_paint') - 1);
+            this.sprayActiveUntil = now + 30000;
+            this.saveInventoryState();
+            this.updateHotbar();
+            this.renderInventoryPanel();
+        }
+
+        const payload = {
+            x: worldPos.x,
+            y: worldPos.y,
+            z: worldPos.z,
+            face: this.getSprayFaceFromNormal(hit.face.normal),
+            color: this.sprayColors[this.sprayColorIndex]
+        };
+
+        if (this.network.connected) {
+            this.network.send('sprayPaint', payload);
+        } else {
+            this.world.addSprayPaint({ ...payload, expiresAtDay: this.worldDay + 1, expiresAtTime: this.timeOfDay });
+        }
+
+        this.playNoiseBurst({ duration: 0.06, volume: 0.018, highpass: 900, lowpass: 2800 });
+        this.showHitIndicator();
         return true;
     }
 
@@ -4138,6 +4208,10 @@ class Game {
 
         if (newPos.y >= 0) {
             const blockType = this.getSelectedBlockType();
+            if (blockType === 'spray_paint') {
+                this.trySprayPaint(hit);
+                return;
+            }
             if (!blockType || this.getInventoryCount(blockType) <= 0) return;
 
             const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
@@ -4393,6 +4467,7 @@ class Game {
             this.updateWeather(delta);
             this.updateUnderwaterEffect();
             this.world.update(this.camera.position.x, this.camera.position.z);
+            this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
             this.updatePlayerReactions(delta);
@@ -4429,6 +4504,7 @@ class Game {
             this.updateUnderwaterEffect();
             this.updateCaveLighting();
             this.world.update(this.camera.position.x, this.camera.position.z);
+            this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
             this.updatePlayerReactions(delta);
@@ -4457,6 +4533,7 @@ class Game {
         const playerAnchor = this.camera.position.clone();
         this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
         this.world.update(this.camera.position.x, this.camera.position.z);
+        this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
         this.updateWorldNotes();
         this.updateWorldPings(delta);
         this.updatePlayerReactions(delta);

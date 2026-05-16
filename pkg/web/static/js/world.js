@@ -9,6 +9,7 @@ class WorldRenderer {
         this.signTextByKey = new Map();
         this.signVotesByKey = new Map();
         this.soundBlockStateByKey = new Map();
+        this.sprayPaintsByKey = new Map();
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
         this.chunkSize = 16;
@@ -57,6 +58,7 @@ class WorldRenderer {
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
             torch: { color: 0xE7B94B, name: 'Torch', transparent: true, breakDuration: 0.1, solid: false },
             sound_block: { color: 0x6A4CC2, name: 'Sound Block', breakDuration: 0.55 },
+            spray_paint: { color: 0xFF3BD5, name: 'Spray Paint', breakDuration: 0, solid: false },
         };
 
         this.generateInitialChunks();
@@ -1355,6 +1357,87 @@ class WorldRenderer {
         return this.soundBlockStateByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || { instrument: 'bell', note: 0 };
     }
 
+    sprayPaintKey(x, y, z, face) {
+        return `${Math.round(x)},${Math.round(y)},${Math.round(z)},${face}`;
+    }
+
+    getSprayPaintMaterial(color) {
+        const colors = { green: 0x39ff14, pink: 0xff2bd6, blue: 0x33ccff };
+        return new THREE.MeshBasicMaterial({ color: colors[color] || colors.green, transparent: true, opacity: 0.78, depthWrite: false, side: THREE.DoubleSide });
+    }
+
+    addSprayPaint(paint) {
+        if (!paint || !paint.face) return;
+        const key = this.sprayPaintKey(paint.x, paint.y, paint.z, paint.face);
+        this.removeSprayPaint(key);
+
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.82), this.getSprayPaintMaterial(paint.color));
+        const offset = 0.506;
+        const x = Math.round(paint.x) + 0.5;
+        const y = Math.round(paint.y) + 0.5;
+        const z = Math.round(paint.z) + 0.5;
+
+        if (paint.face === 'px') {
+            mesh.position.set(x + offset, y, z);
+            mesh.rotation.y = Math.PI / 2;
+        } else if (paint.face === 'nx') {
+            mesh.position.set(x - offset, y, z);
+            mesh.rotation.y = -Math.PI / 2;
+        } else if (paint.face === 'py') {
+            mesh.position.set(x, y + offset, z);
+            mesh.rotation.x = -Math.PI / 2;
+        } else if (paint.face === 'ny') {
+            mesh.position.set(x, y - offset, z);
+            mesh.rotation.x = Math.PI / 2;
+        } else if (paint.face === 'pz') {
+            mesh.position.set(x, y, z + offset);
+        } else if (paint.face === 'nz') {
+            mesh.position.set(x, y, z - offset);
+            mesh.rotation.y = Math.PI;
+        } else {
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+            return;
+        }
+
+        mesh.renderOrder = 80;
+        this.scene.add(mesh);
+        this.sprayPaintsByKey.set(key, { ...paint, key, mesh });
+    }
+
+    removeSprayPaint(key) {
+        const paint = this.sprayPaintsByKey.get(key);
+        if (!paint) return;
+        this.scene.remove(paint.mesh);
+        paint.mesh.geometry.dispose();
+        paint.mesh.material.dispose();
+        this.sprayPaintsByKey.delete(key);
+    }
+
+    removeSprayPaintsForBlock(x, y, z) {
+        const prefix = `${Math.round(x)},${Math.round(y)},${Math.round(z)},`;
+        for (const key of Array.from(this.sprayPaintsByKey.keys())) {
+            if (key.startsWith(prefix)) {
+                this.removeSprayPaint(key);
+            }
+        }
+    }
+
+    loadSprayPaints(paints) {
+        for (const key of Array.from(this.sprayPaintsByKey.keys())) {
+            this.removeSprayPaint(key);
+        }
+        Object.values(paints || {}).forEach((paint) => this.addSprayPaint(paint));
+    }
+
+    updateSprayPaints(worldDay, timeOfDay) {
+        for (const [key, paint] of Array.from(this.sprayPaintsByKey.entries())) {
+            if (worldDay > paint.expiresAtDay || (worldDay === paint.expiresAtDay && timeOfDay >= paint.expiresAtTime)) {
+                this.removeSprayPaint(key);
+            }
+        }
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
@@ -1447,6 +1530,7 @@ class WorldRenderer {
     loadBlocks(state) {
         const blocks = state && state.blocks ? state.blocks : (state || {});
         const removedBlocks = state && state.removedBlocks ? state.removedBlocks : {};
+        const sprayPaints = state && state.sprayPaints ? state.sprayPaints : {};
         const dirtyChunks = new Set();
 
         for (const key in removedBlocks) {
@@ -1486,6 +1570,8 @@ class WorldRenderer {
             const includeCenter = this.activeChunks.has(key);
             this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter);
         }
+
+        this.loadSprayPaints(sprayPaints);
     }
 
     removeBlockAt(x, y, z) {
@@ -1515,6 +1601,7 @@ class WorldRenderer {
         this.signTextByKey.delete(key);
         this.signVotesByKey.delete(key);
         this.soundBlockStateByKey.delete(key);
+        this.removeSprayPaintsForBlock(x, y, z);
         this.solidBlocks.delete(key);
 
         const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));

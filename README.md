@@ -32,6 +32,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Full sign reading panel for longer sign messages.
 - Craftable torches with placed dynamic light.
 - Craftable multiplayer sound blocks with nearby positional audio.
+- Craftable fluorescent spray paint for temporary multiplayer block-face graffiti.
 - Block inspector overlay that shows information about the block you are aiming at.
 - Humanoid remote player avatars with nametags and smoothed movement.
 - Facial details on player avatars, with player-specific clothing colors derived from identity.

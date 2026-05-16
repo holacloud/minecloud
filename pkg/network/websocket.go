@@ -71,6 +71,17 @@ type Block struct {
 	Note       int            `json:"note,omitempty"`
 }
 
+type SprayPaint struct {
+	X              int     `json:"x"`
+	Y              int     `json:"y"`
+	Z              int     `json:"z"`
+	Face           string  `json:"face"`
+	Color          string  `json:"color"`
+	Author         string  `json:"author,omitempty"`
+	ExpiresAtDay   int     `json:"expiresAtDay"`
+	ExpiresAtTime  float64 `json:"expiresAtTime"`
+}
+
 type Player struct {
 	ID         string  `json:"id"`
 	Username   string  `json:"username,omitempty"`
@@ -87,6 +98,7 @@ type GameState struct {
 	Players       map[string]Player `json:"players"`
 	Blocks        map[string]Block  `json:"blocks"`
 	RemovedBlocks map[string]bool   `json:"removedBlocks"`
+	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
 	WorldTime     float64           `json:"worldTime"`
 	WorldDay      int               `json:"worldDay"`
 }
@@ -94,6 +106,7 @@ type GameState struct {
 type persistedWorldState struct {
 	Blocks        map[string]Block `json:"blocks"`
 	RemovedBlocks map[string]bool  `json:"removedBlocks"`
+	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
 }
 
 var (
@@ -105,6 +118,7 @@ var (
 		Players:       make(map[string]Player),
 		Blocks:        make(map[string]Block),
 		RemovedBlocks: make(map[string]bool),
+		SprayPaints:   make(map[string]SprayPaint),
 		WorldTime:     0.22,
 		WorldDay:      0,
 	}
@@ -148,12 +162,31 @@ func runWorldClock() {
 			gameState.WorldTime = math.Mod(gameState.WorldTime, 1)
 			gameState.WorldDay++
 		}
+		expiredPaints := pruneExpiredSprayPaintsLocked()
 		currentTime := gameState.WorldTime
 		currentDay := gameState.WorldDay
 		stateMu.Unlock()
 
 		broadcastToAll(createMessage("timeSync", map[string]interface{}{"timeOfDay": currentTime, "worldDay": currentDay}))
+		for _, key := range expiredPaints {
+			broadcastToAll(createMessage("sprayPaintRemove", map[string]string{"key": key}))
+		}
 	}
+}
+
+func sprayPaintExpired(paint SprayPaint, day int, worldTime float64) bool {
+	return day > paint.ExpiresAtDay || (day == paint.ExpiresAtDay && worldTime >= paint.ExpiresAtTime)
+}
+
+func pruneExpiredSprayPaintsLocked() []string {
+	expired := make([]string, 0)
+	for key, paint := range gameState.SprayPaints {
+		if sprayPaintExpired(paint, gameState.WorldDay, gameState.WorldTime) {
+			delete(gameState.SprayPaints, key)
+			expired = append(expired, key)
+		}
+	}
+	return expired
 }
 
 func loadWorldState() error {
@@ -181,9 +214,15 @@ func loadWorldState() error {
 	} else {
 		gameState.RemovedBlocks = make(map[string]bool)
 	}
+	if persisted.SprayPaints != nil {
+		gameState.SprayPaints = persisted.SprayPaints
+		pruneExpiredSprayPaintsLocked()
+	} else {
+		gameState.SprayPaints = make(map[string]SprayPaint)
+	}
 	stateMu.Unlock()
 
-	log.Printf("Loaded %d persisted blocks and %d removed blocks", len(gameState.Blocks), len(gameState.RemovedBlocks))
+	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
 	return nil
 }
 
@@ -192,12 +231,16 @@ func saveWorldState() {
 	persisted := persistedWorldState{
 		Blocks:        make(map[string]Block, len(gameState.Blocks)),
 		RemovedBlocks: make(map[string]bool, len(gameState.RemovedBlocks)),
+		SprayPaints:   make(map[string]SprayPaint, len(gameState.SprayPaints)),
 	}
 	for key, block := range gameState.Blocks {
 		persisted.Blocks[key] = block
 	}
 	for key, removed := range gameState.RemovedBlocks {
 		persisted.RemovedBlocks[key] = removed
+	}
+	for key, paint := range gameState.SprayPaints {
+		persisted.SprayPaints[key] = paint
 	}
 	stateMu.RUnlock()
 
@@ -467,6 +510,7 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Lock()
 		delete(gameState.Blocks, key)
 		gameState.RemovedBlocks[key] = true
+		removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
 		stateMu.Unlock()
 		saveWorldState()
 
@@ -510,6 +554,26 @@ func handleMessage(client *Client, msg Message) {
 
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
 		broadcastToAll(createMessage("blockPlace", payload))
+
+	case "sprayPaint":
+		var payload SprayPaint
+		json.Unmarshal(msg.Payload, &payload)
+		payload.Face = normalizeSprayFace(payload.Face)
+		payload.Color = normalizeSprayColor(payload.Color)
+		if payload.Face == "" || payload.Color == "" {
+			return
+		}
+
+		stateMu.Lock()
+		payload.Author = client.username
+		payload.ExpiresAtDay = gameState.WorldDay + 1
+		payload.ExpiresAtTime = gameState.WorldTime
+		key := sprayPaintKey(payload.X, payload.Y, payload.Z, payload.Face)
+		gameState.SprayPaints[key] = payload
+		stateMu.Unlock()
+		saveWorldState()
+
+		broadcastToAll(createMessage("sprayPaint", payload))
 
 	case "soundBlockPlay":
 		var payload struct {
@@ -728,6 +792,37 @@ func blockKey(x, y, z int) string {
 	return fmt.Sprintf("%d,%d,%d", x, y, z)
 }
 
+func sprayPaintKey(x, y, z int, face string) string {
+	return fmt.Sprintf("%d,%d,%d,%s", x, y, z, face)
+}
+
+func normalizeSprayFace(face string) string {
+	switch face {
+	case "px", "nx", "py", "ny", "pz", "nz":
+		return face
+	default:
+		return ""
+	}
+}
+
+func normalizeSprayColor(color string) string {
+	switch strings.ToLower(strings.TrimSpace(color)) {
+	case "green", "pink", "blue":
+		return strings.ToLower(strings.TrimSpace(color))
+	default:
+		return ""
+	}
+}
+
+func removeSprayPaintsForBlockLocked(x, y, z int) {
+	prefix := fmt.Sprintf("%d,%d,%d,", x, y, z)
+	for key := range gameState.SprayPaints {
+		if strings.HasPrefix(key, prefix) {
+			delete(gameState.SprayPaints, key)
+		}
+	}
+}
+
 func sendInitialState(client *Client) {
 	stateMu.RLock()
 	defer stateMu.RUnlock()
@@ -737,6 +832,7 @@ func sendInitialState(client *Client) {
 		"players":       gameState.Players,
 		"blocks":        gameState.Blocks,
 		"removedBlocks": gameState.RemovedBlocks,
+		"sprayPaints":   gameState.SprayPaints,
 		"timeOfDay":     gameState.WorldTime,
 		"worldDay":      gameState.WorldDay,
 	}
