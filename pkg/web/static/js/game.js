@@ -186,6 +186,7 @@ class Game {
         this.breakParticleMaterials = new Map();
         this.breakParticles = [];
         this.worldNotes = [];
+        this.worldPings = [];
 
         this.isBreakInputActive = false;
         this.miningTargetKey = null;
@@ -2419,6 +2420,7 @@ class Game {
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
         this.network.on('worldNote', (payload) => this.addFloatingWorldText(payload));
+        this.network.on('worldPing', (payload) => this.addWorldPing(payload));
         this.network.on('signVoteUpdate', (payload) => {
             this.world.addBlock(payload);
             if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
@@ -3488,7 +3490,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /ping, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -3510,6 +3512,9 @@ class Game {
             }
             case 'sayhere':
                 this.sendWorldNote(args.join(' '));
+                break;
+            case 'ping':
+                this.sendWorldPing();
                 break;
             default:
                 this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
@@ -3643,6 +3648,57 @@ class Game {
             this.scene.remove(note.sprite);
             if (note.sprite.material && note.sprite.material.map) note.sprite.material.map.dispose();
             if (note.sprite.material) note.sprite.material.dispose();
+            return false;
+        });
+    }
+
+    sendWorldPing() {
+        const position = this.getLocalPlayerPosition();
+        const payload = {
+            username: this.playerName,
+            x: position.x,
+            y: position.y,
+            z: position.z
+        };
+
+        if (this.network.connected) {
+            this.network.send('worldPing', payload);
+        } else {
+            this.addWorldPing(payload);
+        }
+    }
+
+    addWorldPing(payload) {
+        const group = new THREE.Group();
+        const material = new THREE.MeshBasicMaterial({ color: 0x58d7ff, transparent: true, opacity: 0.48, depthWrite: false });
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.18, 7, 12), material);
+        beam.position.y = 3.5;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.035, 8, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 }));
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.08;
+        const label = this.createNameTagSprite(payload.username ? `${payload.username} ping` : 'Ping');
+        label.position.y = 7.3;
+        group.add(beam);
+        group.add(ring);
+        group.add(label);
+        group.position.set(payload.x, payload.y, payload.z);
+        this.scene.add(group);
+        this.worldPings.push({ group, expiresAt: performance.now() + 10000 });
+    }
+
+    updateWorldPings(delta) {
+        const now = performance.now();
+        this.worldPings = this.worldPings.filter((ping) => {
+            ping.group.rotation.y += delta * 1.8;
+            if (now < ping.expiresAt) return true;
+            this.scene.remove(ping.group);
+            ping.group.traverse((node) => {
+                if (node.geometry) node.geometry.dispose();
+                if (node.material) {
+                    if (node.material.map) node.material.map.dispose();
+                    node.material.dispose();
+                }
+            });
             return false;
         });
     }
@@ -4222,6 +4278,7 @@ class Game {
             this.updateUnderwaterEffect();
             this.world.update(this.camera.position.x, this.camera.position.z);
             this.updateWorldNotes();
+            this.updateWorldPings(delta);
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             if (this.voiceChat) {
@@ -4256,6 +4313,7 @@ class Game {
             this.updateCaveLighting();
             this.world.update(this.camera.position.x, this.camera.position.z);
             this.updateWorldNotes();
+            this.updateWorldPings(delta);
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             this.updateFollowCamera(delta);
@@ -4282,6 +4340,7 @@ class Game {
         this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateWorldNotes();
+        this.updateWorldPings(delta);
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
         this.updateFallingBlockDrops(delta);

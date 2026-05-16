@@ -548,6 +548,17 @@ func handleMessage(client *Client, msg Message) {
 		payload.Username = client.username
 		broadcastToAll(createMessage("worldNote", payload))
 
+	case "worldPing":
+		var payload struct {
+			Username string  `json:"username,omitempty"`
+			X        float64 `json:"x"`
+			Y        float64 `json:"y"`
+			Z        float64 `json:"z"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		payload.Username = client.username
+		broadcastToAll(createMessage("worldPing", payload))
+
 	case "chat":
 		var payload struct {
 			Text string `json:"text"`
