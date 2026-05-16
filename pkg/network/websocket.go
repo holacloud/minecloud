@@ -575,6 +575,20 @@ func handleMessage(client *Client, msg Message) {
 		}
 		broadcastToAll(createMessage("playerReaction", payload))
 
+	case "proximityEmote":
+		var payload struct {
+			Kind string  `json:"kind"`
+			X    float64 `json:"x"`
+			Y    float64 `json:"y"`
+			Z    float64 `json:"z"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		payload.Kind = strings.TrimSpace(payload.Kind)
+		if payload.Kind != "laugh" && payload.Kind != "cheer" && payload.Kind != "boo" {
+			return
+		}
+		broadcastToAll(createMessage("proximityEmote", payload))
+
 	case "chat":
 		var payload struct {
 			Text string `json:"text"`

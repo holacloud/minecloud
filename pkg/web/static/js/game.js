@@ -2423,6 +2423,7 @@ class Game {
         this.network.on('worldNote', (payload) => this.addFloatingWorldText(payload));
         this.network.on('worldPing', (payload) => this.addWorldPing(payload));
         this.network.on('playerReaction', (payload) => this.addPlayerReaction(payload));
+        this.network.on('proximityEmote', (payload) => this.playProximityEmoteAt(payload));
         this.network.on('signVoteUpdate', (payload) => {
             this.world.addBlock(payload);
             if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
@@ -3492,7 +3493,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /ping, /react, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -3520,6 +3521,11 @@ class Game {
                 break;
             case 'react':
                 this.sendPlayerReaction(args[0] || 'heart');
+                break;
+            case 'laugh':
+            case 'cheer':
+            case 'boo':
+                this.sendProximityEmote(normalized);
                 break;
             default:
                 this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
@@ -3778,6 +3784,39 @@ class Game {
             });
             return false;
         });
+    }
+
+    sendProximityEmote(kind) {
+        const position = this.getLocalPlayerPosition();
+        const payload = { kind, x: position.x, y: position.y, z: position.z };
+        if (this.network.connected) {
+            this.network.send('proximityEmote', payload);
+        } else {
+            this.playProximityEmoteAt(payload);
+        }
+    }
+
+    playProximityEmoteAt(payload) {
+        const player = this.getLocalPlayerPosition();
+        const dx = player.x - payload.x;
+        const dy = player.y - payload.y;
+        const dz = player.z - payload.z;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const volume = Math.max(0, 1 - distance / 16) * 0.045;
+        if (volume <= 0.002) return;
+
+        if (payload.kind === 'laugh') {
+            this.playTone({ frequency: 520, duration: 0.06, type: 'triangle', volume, release: 0.05 });
+            setTimeout(() => this.playTone({ frequency: 680, duration: 0.06, type: 'triangle', volume: volume * 0.85, release: 0.05 }), 70);
+            setTimeout(() => this.playTone({ frequency: 610, duration: 0.06, type: 'triangle', volume: volume * 0.75, release: 0.05 }), 140);
+        } else if (payload.kind === 'cheer') {
+            this.playTone({ frequency: 392, duration: 0.08, type: 'square', volume: volume * 0.75, release: 0.06 });
+            setTimeout(() => this.playTone({ frequency: 523, duration: 0.1, type: 'triangle', volume, release: 0.08 }), 80);
+            setTimeout(() => this.playTone({ frequency: 784, duration: 0.12, type: 'triangle', volume: volume * 0.9, release: 0.1 }), 170);
+        } else if (payload.kind === 'boo') {
+            this.playTone({ frequency: 130, duration: 0.18, type: 'sawtooth', volume: volume * 0.9, release: 0.16 });
+            this.playNoiseBurst({ duration: 0.12, volume: volume * 0.55, highpass: 90, lowpass: 500 });
+        }
     }
 
     promptSignText() {
