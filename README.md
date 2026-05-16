@@ -13,7 +13,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural terrain.
 - Visible biome variety, including plains, forests, rocky zones, and deserts with cactus.
 - Extra decorative flora, including tall grass, flowers, and mushrooms.
-- Ambient interactive mobs: sheep, ducks, and pigs.
+- Ambient interactive mobs: sheep, ducks, pigs, and adorable giraffes.
 - First-person movement with auto-step over 1-block ledges.
 - Optional third-person camera view.
 - Sneak/crouch movement for careful building and edge safety.
@@ -45,7 +45,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural sound effects for mining, placing, jumping, and pickups.
 - Multiplayer chat, player mentions by clicking avatars, system join/leave messages, and death messages.
 - Player roster supports click-to-follow camera mode.
-- Chat slash commands such as `/help`, `/spawn`, `/rtx`, and `/time`.
+- Chat slash commands such as `/help`, `/spawn`, `/mob giraffe`, `/rtx`, and `/time`.
 - Proximity voice chat with WebRTC signaling.
 - Compass and world clock in the HUD.
 - Photo mode for clean screenshots.

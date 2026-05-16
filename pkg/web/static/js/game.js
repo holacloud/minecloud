@@ -1800,19 +1800,40 @@ class Game {
             createPart(new THREE.BoxGeometry(0.5, 0.32, 0.34), 0xf4f0d8, 0, 0.4, 0);
             createPart(new THREE.BoxGeometry(0.18, 0.18, 0.18), 0xf4f0d8, 0.32, 0.5, 0);
             createPart(new THREE.BoxGeometry(0.16, 0.06, 0.12), 0xe1a53b, 0.42, 0.46, 0);
+        } else if (species === 'giraffe') {
+            createPart(new THREE.BoxGeometry(0.92, 0.62, 0.46), 0xf4a12c, 0, 1.5, 0);
+            createPart(new THREE.BoxGeometry(0.2, 1.68, 0.2), 0xf4a12c, 0.32, 2.55, 0);
+            createPart(new THREE.BoxGeometry(0.48, 0.38, 0.34), 0xf4a12c, 0.55, 3.48, 0);
+            createPart(new THREE.BoxGeometry(0.2, 0.14, 0.24), 0xf0c47d, 0.82, 3.42, 0);
+            createPart(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0x1f160f, 0.8, 3.54, -0.1);
+            createPart(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0x1f160f, 0.8, 3.54, 0.1);
+            createPart(new THREE.BoxGeometry(0.014, 0.035, 0.16), 0x6d3a1a, 0.928, 3.38, 0);
+            createPart(new THREE.BoxGeometry(0.014, 0.055, 0.055), 0xffb1a7, 0.928, 3.45, -0.12);
+            createPart(new THREE.BoxGeometry(0.014, 0.055, 0.055), 0xffb1a7, 0.928, 3.45, 0.12);
+            createPart(new THREE.BoxGeometry(0.08, 0.16, 0.08), 0xc87821, 0.45, 3.78, -0.1);
+            createPart(new THREE.BoxGeometry(0.08, 0.16, 0.08), 0xc87821, 0.45, 3.78, 0.1);
+            createPart(new THREE.BoxGeometry(0.1, 0.06, 0.14), 0xf6b650, 0.38, 3.62, -0.22);
+            createPart(new THREE.BoxGeometry(0.1, 0.06, 0.14), 0xf6b650, 0.38, 3.62, 0.22);
+
+            const spots = [
+                [-0.28, 1.66, -0.236, 0.18, 0.18], [0.1, 1.34, -0.236, 0.2, 0.16], [0.34, 1.64, -0.236, 0.14, 0.2],
+                [-0.18, 1.34, 0.236, 0.16, 0.2], [0.18, 1.7, 0.236, 0.22, 0.16], [-0.4, 1.48, 0.236, 0.14, 0.14],
+                [0.316, 2.0, -0.106, 0.11, 0.18], [0.316, 2.42, 0.106, 0.12, 0.2], [0.316, 2.86, -0.106, 0.1, 0.18],
+                [0.58, 3.56, -0.176, 0.12, 0.1], [0.48, 3.38, 0.176, 0.1, 0.1]
+            ];
+            for (const [x, y, z, width, height] of spots) {
+                createPart(new THREE.BoxGeometry(width, height, 0.012), 0x8b4a1d, x, y, z);
+            }
         } else {
             createPart(new THREE.BoxGeometry(0.72, 0.42, 0.4), 0xd89aa3, 0, 0.5, 0);
             createPart(new THREE.BoxGeometry(0.28, 0.22, 0.24), 0xd89aa3, 0.4, 0.56, 0);
         }
 
-        const legOffsets = [
-            [-0.22, 0.2, -0.12],
-            [-0.22, 0.2, 0.12],
-            [0.22, 0.2, -0.12],
-            [0.22, 0.2, 0.12]
-        ];
-        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : 0xb87683;
-        const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : [0.1, 0.32, 0.1];
+        const legOffsets = species === 'giraffe'
+            ? [[-0.32, 0.7, -0.14], [-0.32, 0.7, 0.14], [0.32, 0.7, -0.14], [0.32, 0.7, 0.14]]
+            : [[-0.22, 0.2, -0.12], [-0.22, 0.2, 0.12], [0.22, 0.2, -0.12], [0.22, 0.2, 0.12]];
+        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : species === 'giraffe' ? 0xf6b650 : 0xb87683;
+        const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : species === 'giraffe' ? [0.12, 1.4, 0.12] : [0.1, 0.32, 0.1];
         group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
 
         group.position.copy(position);
@@ -1825,6 +1846,7 @@ class Game {
             ['sheep', new THREE.Vector3(8, 0, 6)],
             ['duck', new THREE.Vector3(-6, 0, 10)],
             ['pig', new THREE.Vector3(12, 0, -8)],
+            ['giraffe', new THREE.Vector3(2, 0, 14)],
             ['sheep', new THREE.Vector3(-10, 0, -6)],
             ['duck', new THREE.Vector3(4, 0, -12)],
             ['spider', new THREE.Vector3(-14, 0, 14)],
@@ -1868,6 +1890,7 @@ class Game {
             sheep: 330,
             duck: 520,
             pig: 240,
+            giraffe: 390,
             spider: 180,
             cave_monster: 120
         };
@@ -3293,16 +3316,19 @@ class Game {
     }
 
     runChatCommand(commandLine) {
-        const [command] = commandLine.slice(1).split(/\s+/);
+        const [command, ...args] = commandLine.slice(1).split(/\s+/);
         const normalized = command.toLowerCase();
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
                 this.receiveSystemMessage({ text: 'Teleported to your current spawn point' });
+                break;
+            case 'mob':
+                this.spawnMobFromCommand(args);
                 break;
             case 'rtx':
                 this.toggleRTXMode();
@@ -3319,6 +3345,30 @@ class Game {
                 this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
                 break;
         }
+    }
+
+    spawnMobFromCommand(args) {
+        const species = (args[0] || '').toLowerCase();
+        if (species !== 'giraffe') {
+            this.receiveSystemMessage({ text: 'Usage: /mob giraffe' });
+            return;
+        }
+
+        const player = this.getLocalPlayerPosition();
+        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw || 0);
+        const x = player.x + forward.x * 3;
+        const z = player.z + forward.z * 3;
+        const floorY = this.cameraController.getFloorY(x, z, player.y + 4);
+
+        if (floorY <= -20) {
+            this.receiveSystemMessage({ text: 'Could not find safe ground for the giraffe' });
+            return;
+        }
+
+        const mob = this.createMob('giraffe', new THREE.Vector3(x, floorY, z));
+        mob.userData.direction = Math.atan2(player.z - mob.position.z, player.x - mob.position.x);
+        this.ambientMobs.push(mob);
+        this.receiveSystemMessage({ text: 'Spawned an adorable giraffe' });
     }
 
     promptSignText() {
