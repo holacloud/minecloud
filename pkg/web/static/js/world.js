@@ -8,6 +8,7 @@ class WorldRenderer {
         this.blockData = new Map();
         this.signTextByKey = new Map();
         this.signVotesByKey = new Map();
+        this.soundBlockStateByKey = new Map();
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
         this.chunkSize = 16;
@@ -55,6 +56,7 @@ class WorldRenderer {
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
             torch: { color: 0xE7B94B, name: 'Torch', transparent: true, breakDuration: 0.1, solid: false },
+            sound_block: { color: 0x6A4CC2, name: 'Sound Block', breakDuration: 0.55 },
         };
 
         this.generateInitialChunks();
@@ -1349,6 +1351,10 @@ class WorldRenderer {
         return this.signVotesByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 };
     }
 
+    getSoundBlockStateAt(x, y, z) {
+        return this.soundBlockStateByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || { instrument: 'bell', note: 0 };
+    }
+
     getBreakDurationAt(x, y, z) {
         return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
     }
@@ -1421,9 +1427,12 @@ class WorldRenderer {
             this.signVotesByKey.set(key, payload.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
         } else if (payload.blockType === 'sign' && payload.votes) {
             this.signVotesByKey.set(key, payload.votes);
+        } else if (payload.blockType === 'sound_block') {
+            this.soundBlockStateByKey.set(key, { instrument: payload.instrument || 'bell', note: Number.isInteger(payload.note) ? payload.note : 0 });
         } else {
             this.signTextByKey.delete(key);
             this.signVotesByKey.delete(key);
+            this.soundBlockStateByKey.delete(key);
         }
 
         if (!changed) return false;
@@ -1460,9 +1469,12 @@ class WorldRenderer {
             if (block.blockType === 'sign' && block.text) {
                 this.signTextByKey.set(blockKey, block.text);
                 this.signVotesByKey.set(blockKey, block.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
+            } else if (block.blockType === 'sound_block') {
+                this.soundBlockStateByKey.set(blockKey, { instrument: block.instrument || 'bell', note: Number.isInteger(block.note) ? block.note : 0 });
             } else {
                 this.signTextByKey.delete(blockKey);
                 this.signVotesByKey.delete(blockKey);
+                this.soundBlockStateByKey.delete(blockKey);
             }
 
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
@@ -1502,6 +1514,7 @@ class WorldRenderer {
         this.blockData.delete(key);
         this.signTextByKey.delete(key);
         this.signVotesByKey.delete(key);
+        this.soundBlockStateByKey.delete(key);
         this.solidBlocks.delete(key);
 
         const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));

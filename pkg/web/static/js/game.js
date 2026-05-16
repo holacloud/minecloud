@@ -20,7 +20,7 @@ class Game {
         this.placeDistance = 4.5;
         this.selectionUpdateInterval = 50;
         
-        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch'];
+        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch', 'sound_block'];
         this.inventoryCounts = {
             grass: 24,
             dirt: 24,
@@ -35,7 +35,8 @@ class Game {
             sign: 0,
             glass: 0,
             stone_bricks: 0,
-            torch: 0
+            torch: 0,
+            sound_block: 0
         };
         this.selectedSlot = 0;
         this.restoreInventoryState();
@@ -114,6 +115,12 @@ class Game {
                 name: 'Build Torch',
                 output: { type: 'torch', amount: 4 },
                 inputs: [{ type: 'wood', amount: 1 }, { type: 'coal_ore', amount: 1 }]
+            },
+            {
+                id: 'sound_block',
+                name: 'Build Sound Block',
+                output: { type: 'sound_block', amount: 1 },
+                inputs: [{ type: 'planks', amount: 2 }, { type: 'cobblestone', amount: 1 }, { type: 'coal_ore', amount: 1 }]
             }
         ];
 
@@ -203,6 +210,8 @@ class Game {
         this.leftHandBasePosition = new THREE.Vector3(-0.62, -0.74, -1.02);
         this.leftHandBaseRotation = new THREE.Euler(-0.55, -0.2, -0.18);
         this.handSwingTime = 0;
+        this.soundBlockInstruments = ['bell', 'drum', 'pluck', 'flute', 'bass'];
+        this.soundBlockNotes = [262, 294, 330, 349, 392, 440, 494, 523];
 
         this.init();
     }
@@ -948,6 +957,12 @@ class Game {
         if (signText) {
             const preview = signText.length > 72 ? `${signText.slice(0, 72)}...` : signText;
             lines.push(`<span class="label">Sign:</span> ${preview}`);
+        }
+
+        if (type === 'sound_block') {
+            const state = this.world.getSoundBlockStateAt(worldPos.x, worldPos.y, worldPos.z);
+            lines.push(`<span class="label">Sound:</span> ${state.instrument} note ${state.note + 1}`);
+            lines.push('<span class="label">Use:</span> F play, Shift+F tune');
         }
 
         inspector.innerHTML = lines.join('<br>');
@@ -2401,6 +2416,7 @@ class Game {
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
+        this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
         this.network.on('signVoteUpdate', (payload) => {
             this.world.addBlock(payload);
             if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
@@ -3097,6 +3113,9 @@ class Game {
 
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
+            if (this.tryUseSoundBlock(event.shiftKey)) {
+                return;
+            }
             if (this.trySleepInBed()) {
                 return;
             }
@@ -3517,6 +3536,69 @@ class Game {
         this.receiveSystemMessage({ text: `Spawned an adorable ${species}` });
     }
 
+    tryUseSoundBlock(tune) {
+        const hit = this.raycastBlock(5);
+        if (!hit) return false;
+
+        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+        if (!worldPos || this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z) !== 'sound_block') return false;
+
+        const current = this.world.getSoundBlockStateAt(worldPos.x, worldPos.y, worldPos.z);
+        const payload = {
+            x: worldPos.x,
+            y: worldPos.y,
+            z: worldPos.z,
+            blockType: 'sound_block',
+            instrument: current.instrument,
+            note: current.note
+        };
+
+        if (tune) {
+            const instrumentIndex = this.soundBlockInstruments.indexOf(current.instrument);
+            payload.instrument = this.soundBlockInstruments[(Math.max(0, instrumentIndex) + 1) % this.soundBlockInstruments.length];
+            payload.note = (current.note + 1) % this.soundBlockNotes.length;
+            this.world.addBlock(payload);
+            if (this.network.connected) {
+                this.network.send('blockPlace', payload);
+            }
+            this.receiveSystemMessage({ text: `Sound block set to ${payload.instrument} note ${payload.note + 1}` });
+        } else {
+            if (this.network.connected) {
+                this.network.send('soundBlockPlay', payload);
+            } else {
+                this.playSoundBlockAt(payload);
+            }
+        }
+
+        return true;
+    }
+
+    playSoundBlockAt(payload) {
+        const player = this.getLocalPlayerPosition();
+        const dx = player.x - payload.x;
+        const dy = player.y - payload.y;
+        const dz = player.z - payload.z;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const volume = Math.max(0, 1 - distance / 18) * 0.055;
+        if (volume <= 0.002) return;
+
+        const note = this.soundBlockNotes[Math.max(0, Math.min(this.soundBlockNotes.length - 1, payload.note || 0))];
+        const instrument = payload.instrument || 'bell';
+        if (instrument === 'drum') {
+            this.playNoiseBurst({ duration: 0.09, volume, highpass: 70, lowpass: 520 });
+            this.playTone({ frequency: 95, duration: 0.06, type: 'sine', volume: volume * 0.7, release: 0.05 });
+        } else if (instrument === 'pluck') {
+            this.playTone({ frequency: note, duration: 0.08, type: 'triangle', volume, attack: 0.002, release: 0.09 });
+        } else if (instrument === 'flute') {
+            this.playTone({ frequency: note, duration: 0.18, type: 'sine', volume: volume * 0.75, attack: 0.02, release: 0.14 });
+        } else if (instrument === 'bass') {
+            this.playTone({ frequency: note / 2, duration: 0.16, type: 'sawtooth', volume: volume * 0.8, attack: 0.006, release: 0.12 });
+        } else {
+            this.playTone({ frequency: note * 2, duration: 0.12, type: 'triangle', volume, attack: 0.004, release: 0.16 });
+            this.playTone({ frequency: note * 3, duration: 0.08, type: 'sine', volume: volume * 0.35, attack: 0.004, release: 0.12 });
+        }
+    }
+
     promptSignText() {
         const requested = window.prompt('Write the sign message (up to 288 characters)', '');
         if (requested === null) return null;
@@ -3843,6 +3925,9 @@ class Game {
                 const text = this.promptSignText();
                 if (!text) return;
                 payload.text = text;
+            } else if (blockType === 'sound_block') {
+                payload.instrument = 'bell';
+                payload.note = 0;
             }
 
             if (!this.world.addBlock(payload)) return;

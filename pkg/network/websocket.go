@@ -61,12 +61,14 @@ type ICEConfig struct {
 }
 
 type Block struct {
-	X         int            `json:"x"`
-	Y         int            `json:"y"`
-	Z         int            `json:"z"`
-	BlockType string         `json:"blockType"`
-	Text      string         `json:"text,omitempty"`
-	Votes     map[string]int `json:"votes,omitempty"`
+	X          int            `json:"x"`
+	Y          int            `json:"y"`
+	Z          int            `json:"z"`
+	BlockType  string         `json:"blockType"`
+	Text       string         `json:"text,omitempty"`
+	Votes      map[string]int `json:"votes,omitempty"`
+	Instrument string         `json:"instrument,omitempty"`
+	Note       int            `json:"note,omitempty"`
 }
 
 type Player struct {
@@ -485,6 +487,18 @@ func handleMessage(client *Client, msg Message) {
 			payload.Text = ""
 			payload.Votes = nil
 		}
+		if payload.BlockType == "sound_block" {
+			payload.Instrument = strings.TrimSpace(payload.Instrument)
+			if payload.Instrument == "" {
+				payload.Instrument = "bell"
+			}
+			if payload.Note < 0 || payload.Note > 7 {
+				payload.Note = 0
+			}
+		} else {
+			payload.Instrument = ""
+			payload.Note = 0
+		}
 
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
@@ -496,6 +510,24 @@ func handleMessage(client *Client, msg Message) {
 
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
 		broadcastToAll(createMessage("blockPlace", payload))
+
+	case "soundBlockPlay":
+		var payload struct {
+			X          int    `json:"x"`
+			Y          int    `json:"y"`
+			Z          int    `json:"z"`
+			Instrument string `json:"instrument"`
+			Note       int    `json:"note"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		payload.Instrument = strings.TrimSpace(payload.Instrument)
+		if payload.Instrument == "" {
+			payload.Instrument = "bell"
+		}
+		if payload.Note < 0 || payload.Note > 7 {
+			payload.Note = 0
+		}
+		broadcastToAll(createMessage("soundBlockPlay", payload))
 
 	case "chat":
 		var payload struct {
