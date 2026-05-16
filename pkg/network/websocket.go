@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/holacloud/store"
 )
 
 var upgrader = websocket.Upgrader{
@@ -649,6 +651,57 @@ func sendInitialState(client *Client) {
 
 	data, _ := json.Marshal(initMsg)
 	client.send <- data
+}
+
+func SavePlayerStates() error {
+	if playerStateStore == nil {
+		return nil
+	}
+
+	stateMu.RLock()
+	players := make([]Player, 0, len(gameState.Players))
+	for _, player := range gameState.Players {
+		players = append(players, player)
+	}
+	stateMu.RUnlock()
+
+	sessionsByPlayer := make(map[string]string, len(players))
+	clientsMu.RLock()
+	for client := range clients {
+		if client.ID != "" {
+			sessionsByPlayer[client.ID] = client.sessionID
+		}
+	}
+	clientsMu.RUnlock()
+
+	now := time.Now().UTC()
+	for _, player := range players {
+		if player.ID == "" {
+			continue
+		}
+
+		record := &PlayerStateRecord{
+			Id:         store.NewId(player.ID),
+			SessionID:  sessionsByPlayer[player.ID],
+			PlayerID:   player.ID,
+			Username:   player.Username,
+			ShirtColor: player.ShirtColor,
+			HeldItem:   player.HeldItem,
+			X:          player.X,
+			Y:          player.Y,
+			Z:          player.Z,
+			Yaw:        player.Yaw,
+			Pitch:      player.Pitch,
+			UpdatedAt:  now,
+		}
+
+		if err := playerStateStore.Put(context.Background(), &record); err != nil {
+			return err
+		}
+	}
+
+	log.Printf("Saved %d player states", len(players))
+	return nil
 }
 
 func broadcastPlayerList() {

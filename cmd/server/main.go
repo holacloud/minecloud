@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/fulldump/goconfig"
 
@@ -54,10 +58,28 @@ func main() {
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
 
+	server := &http.Server{Addr: config.Addr}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		log.Println("Shutting down server gracefully")
+		if err := network.SavePlayerStates(); err != nil {
+			log.Printf("Failed to save player states: %v", err)
+		}
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+
 	log.Println("Server started on", config.Addr)
 	log.Println("WebSocket endpoint: " + config.Addr + "/ws")
 
-	if err := http.ListenAndServe(config.Addr, nil); err != nil {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

@@ -68,11 +68,27 @@ type SignMessageRecord struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type PlayerStateRecord struct {
+	*store.Id
+	SessionID  string    `json:"sessionId"`
+	PlayerID   string    `json:"playerId"`
+	Username   string    `json:"username,omitempty"`
+	ShirtColor string    `json:"shirtColor,omitempty"`
+	HeldItem   string    `json:"heldItem,omitempty"`
+	X          float64   `json:"x"`
+	Y          float64   `json:"y"`
+	Z          float64   `json:"z"`
+	Yaw        float64   `json:"yaw"`
+	Pitch      float64   `json:"pitch"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
 var (
 	sessionStore      *store.StoreDisk[*SessionRecord]
 	registrationStore *store.StoreDisk[*RegistrationRecord]
 	chatMessageStore  *store.StoreDisk[*ChatMessageRecord]
 	signMessageStore  *store.StoreDisk[*SignMessageRecord]
+	playerStateStore  *store.StoreDisk[*PlayerStateRecord]
 	auditConfig       AuditConfig
 )
 
@@ -103,6 +119,11 @@ func initializeAuditStores() error {
 	}
 
 	signMessageStore, err = store.NewStoreDisk[*SignMessageRecord]("data/sign-messages")
+	if err != nil {
+		return err
+	}
+
+	playerStateStore, err = store.NewStoreDisk[*PlayerStateRecord]("data/player-states")
 	return err
 }
 
