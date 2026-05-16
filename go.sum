@@ -1,6 +1,10 @@
+github.com/fulldump/biff v1.3.0 h1:FZDqvP8lkrCMDv/oNEH+j2unpuAY+8aXZ44GIvXYOx4=
+github.com/fulldump/biff v1.3.0/go.mod h1:TnBce9eRITmnv3otdmITKeU/zmC08DxotA9s0VcJELg=
 github.com/fulldump/goconfig v1.8.0 h1:pxTmqe9LxQRiv8LATCnnB7bUQvWnfducesgxx2h0f4I=
 github.com/fulldump/goconfig v1.8.0/go.mod h1:LzfgG6u54UuTDjKpT0Z9eOu6aYEFZExKRbpTec3bCtA=
 github.com/gorilla/websocket v1.5.1 h1:gmztn0JnHVt9JZquRuzLw3g4wouNVzKL15iLr/zn/QY=
 github.com/gorilla/websocket v1.5.1/go.mod h1:x3kM2JMyaluk02fnUJpQuwD2dCS5NDG2ZHL0uE0tcaY=
+github.com/holacloud/store v0.3.0 h1:03CxUzdGnJbq4BEwGDrKDWwgrlV2X+067UsnW4lfMAY=
+github.com/holacloud/store v0.3.0/go.mod h1:F1ktF2qodYz1Ow6YdPbt6WFisTEKC6fGk4CUSx+GYts=
 golang.org/x/net v0.17.0 h1:pVaXccu2ozPjCXewfr1S7xza/zcXTity9cCdXQYSjIM=
 golang.org/x/net v0.17.0/go.mod h1:NxSsAGuq816PNPmqtQdLE42eU2Fs7NoRIZrHJAlaCOE=

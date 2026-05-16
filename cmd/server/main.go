@@ -11,13 +11,14 @@ import (
 )
 
 type Config struct {
-	Addr           string `usage:"Port to listen on"`
-	STUNURLs       string `usage:"Comma-separated STUN URLs for WebRTC voice"`
-	TURNURLs       string `usage:"Comma-separated TURN URLs for WebRTC voice"`
-	TURNUsername   string `usage:"TURN username for WebRTC voice"`
-	TURNCredential string `usage:"TURN credential for WebRTC voice"`
-	MeteredAPIBase string `usage:"Metered TURN API base URL"`
-	MeteredAPIKey  string `usage:"Metered TURN API key"`
+	Addr              string `usage:"Port to listen on"`
+	STUNURLs          string `usage:"Comma-separated STUN URLs for WebRTC voice"`
+	TURNURLs          string `usage:"Comma-separated TURN URLs for WebRTC voice"`
+	TURNUsername      string `usage:"TURN username for WebRTC voice"`
+	TURNCredential    string `usage:"TURN credential for WebRTC voice"`
+	MeteredAPIBase    string `usage:"Metered TURN API base URL"`
+	MeteredAPIKey     string `usage:"Metered TURN API key"`
+	SessionGlobalSalt string `usage:"Global secret salt for hashing session cookies"`
 }
 
 func main() {
@@ -37,6 +38,9 @@ func main() {
 		MeteredAPIBase: config.MeteredAPIBase,
 		MeteredAPIKey:  config.MeteredAPIKey,
 	})
+	network.ConfigureAudit(network.AuditConfig{
+		SessionGlobalSalt: config.SessionGlobalSalt,
+	})
 
 	if err := network.Initialize(); err != nil {
 		log.Fatal(err)
@@ -45,7 +49,7 @@ func main() {
 	http.HandleFunc("/voice-test", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/voice-test.html", http.StatusFound)
 	})
-	http.Handle("/", http.FileServer(http.FS(web.MustStaticFS())))
+	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(web.MustStaticFS()))))
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
 

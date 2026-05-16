@@ -26,6 +26,9 @@ type Client struct {
 	send         chan []byte
 	username     string
 	voiceEnabled bool
+	sessionID    string
+	ip           string
+	userAgent    string
 }
 
 type Message struct {
@@ -108,6 +111,10 @@ var (
 const worldStatePath = "data/world.json"
 
 func Initialize() error {
+	if err := initializeAuditStores(); err != nil {
+		return err
+	}
+
 	if err := loadWorldState(); err != nil {
 		return err
 	}
@@ -202,15 +209,33 @@ func saveWorldState() {
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Println("WebSocket connection request from:", r.RemoteAddr)
-	conn, err := upgrader.Upgrade(w, r, nil)
+	session, cookie, err := ensureSession(r)
+	if err != nil {
+		log.Printf("Failed to ensure websocket session: %v", err)
+	}
+
+	responseHeader := http.Header{}
+	if cookie != nil {
+		responseHeader.Add("Set-Cookie", cookie.String())
+	}
+
+	conn, err := upgrader.Upgrade(w, r, responseHeader)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 
+	sessionID := ""
+	if session != nil {
+		sessionID = session.GetId()
+	}
+
 	client := &Client{
-		conn: conn,
-		send: make(chan []byte, 256),
+		conn:      conn,
+		send:      make(chan []byte, 256),
+		sessionID: sessionID,
+		ip:        clientIP(r),
+		userAgent: r.UserAgent(),
 	}
 
 	clientsMu.Lock()
@@ -381,6 +406,7 @@ func handleMessage(client *Client, msg Message) {
 		} else {
 			client.username = payload.PlayerID
 		}
+		recordRegistration(client, payload.PlayerID)
 
 		stateMu.Lock()
 		gameState.Players[client.ID] = Player{
@@ -450,6 +476,7 @@ func handleMessage(client *Client, msg Message) {
 		gameState.Blocks[key] = payload
 		stateMu.Unlock()
 		saveWorldState()
+		recordSignMessage(client, payload)
 
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
 		broadcastToAll(createMessage("blockPlace", payload))
@@ -474,6 +501,7 @@ func handleMessage(client *Client, msg Message) {
 			Text:      text,
 			Timestamp: time.Now().UnixMilli(),
 		}
+		recordChatMessage(client, text)
 
 		broadcastToAll(createMessage("chat", chat))
 
