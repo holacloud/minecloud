@@ -187,6 +187,7 @@ class Game {
         this.breakParticles = [];
         this.worldNotes = [];
         this.worldPings = [];
+        this.playerReactions = [];
 
         this.isBreakInputActive = false;
         this.miningTargetKey = null;
@@ -2421,6 +2422,7 @@ class Game {
         this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
         this.network.on('worldNote', (payload) => this.addFloatingWorldText(payload));
         this.network.on('worldPing', (payload) => this.addWorldPing(payload));
+        this.network.on('playerReaction', (payload) => this.addPlayerReaction(payload));
         this.network.on('signVoteUpdate', (payload) => {
             this.world.addBlock(payload);
             if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
@@ -3490,7 +3492,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /ping, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /ping, /react, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -3515,6 +3517,9 @@ class Game {
                 break;
             case 'ping':
                 this.sendWorldPing();
+                break;
+            case 'react':
+                this.sendPlayerReaction(args[0] || 'heart');
                 break;
             default:
                 this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
@@ -3698,6 +3703,78 @@ class Game {
                     if (node.material.map) node.material.map.dispose();
                     node.material.dispose();
                 }
+            });
+            return false;
+        });
+    }
+
+    sendPlayerReaction(kind) {
+        const normalized = ['heart', 'clap', 'confetti'].includes(kind) ? kind : 'heart';
+        const hit = this.raycastPlayer(7);
+        if (!hit) {
+            this.receiveSystemMessage({ text: 'Aim at a player, then use /react heart, /react clap, or /react confetti' });
+            return;
+        }
+
+        const payload = { targetId: hit.playerId, kind: normalized };
+        if (this.network.connected) {
+            this.network.send('playerReaction', payload);
+        } else {
+            this.addPlayerReaction(payload);
+        }
+    }
+
+    getReactionAnchor(targetId) {
+        if (this.network && targetId === this.network.playerId) {
+            const position = this.getLocalPlayerPosition();
+            return new THREE.Vector3(position.x, position.y + 1.6, position.z);
+        }
+
+        const avatar = this.otherPlayerMeshes.get(targetId);
+        if (!avatar) return null;
+        const position = new THREE.Vector3();
+        avatar.getWorldPosition(position);
+        position.y += 1.8;
+        return position;
+    }
+
+    addPlayerReaction(payload) {
+        const anchor = this.getReactionAnchor(payload.targetId);
+        if (!anchor) return;
+
+        const group = new THREE.Group();
+        const kind = payload.kind || 'heart';
+        const color = kind === 'heart' ? 0xff5f8a : kind === 'clap' ? 0xffd166 : 0x80ffdb;
+        const count = kind === 'confetti' ? 16 : kind === 'clap' ? 6 : 8;
+        for (let i = 0; i < count; i++) {
+            const geometry = kind === 'clap' ? new THREE.BoxGeometry(0.12, 0.08, 0.04) : new THREE.SphereGeometry(0.07, 8, 8);
+            const material = new THREE.MeshBasicMaterial({ color: kind === 'confetti' ? [0xff5f8a, 0x58d7ff, 0xffd166, 0x80ffdb][i % 4] : color, transparent: true, opacity: 0.9 });
+            const mesh = new THREE.Mesh(geometry, material);
+            const angle = (i / count) * Math.PI * 2;
+            mesh.position.set(Math.cos(angle) * 0.55, 0.2 + (i % 4) * 0.12, Math.sin(angle) * 0.55);
+            mesh.userData.velocity = new THREE.Vector3(Math.cos(angle) * 0.45, 0.65 + (i % 3) * 0.12, Math.sin(angle) * 0.45);
+            group.add(mesh);
+        }
+        group.position.copy(anchor);
+        this.scene.add(group);
+        this.playerReactions.push({ group, expiresAt: performance.now() + 1800, startedAt: performance.now() });
+    }
+
+    updatePlayerReactions(delta) {
+        const now = performance.now();
+        this.playerReactions = this.playerReactions.filter((reaction) => {
+            const age = (now - reaction.startedAt) / 1800;
+            reaction.group.children.forEach((mesh) => {
+                mesh.position.addScaledVector(mesh.userData.velocity, delta);
+                mesh.rotation.x += delta * 4;
+                mesh.rotation.y += delta * 3;
+                if (mesh.material) mesh.material.opacity = Math.max(0, 1 - age);
+            });
+            if (now < reaction.expiresAt) return true;
+            this.scene.remove(reaction.group);
+            reaction.group.traverse((node) => {
+                if (node.geometry) node.geometry.dispose();
+                if (node.material) node.material.dispose();
             });
             return false;
         });
@@ -4279,6 +4356,7 @@ class Game {
             this.world.update(this.camera.position.x, this.camera.position.z);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
+            this.updatePlayerReactions(delta);
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             if (this.voiceChat) {
@@ -4314,6 +4392,7 @@ class Game {
             this.world.update(this.camera.position.x, this.camera.position.z);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
+            this.updatePlayerReactions(delta);
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             this.updateFollowCamera(delta);
@@ -4341,6 +4420,7 @@ class Game {
         this.world.update(this.camera.position.x, this.camera.position.z);
         this.updateWorldNotes();
         this.updateWorldPings(delta);
+        this.updatePlayerReactions(delta);
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
         this.updateFallingBlockDrops(delta);

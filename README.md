@@ -46,7 +46,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural sound effects for mining, placing, jumping, and pickups.
 - Multiplayer chat, player mentions by clicking avatars, system join/leave messages, and death messages.
 - Player roster supports click-to-follow camera mode.
-- Chat slash commands such as `/help`, `/spawn`, `/mob giraffe`, `/mob macaw`, `/mob dog`, `/sayhere`, `/ping`, `/rtx`, and `/time`.
+- Chat slash commands such as `/help`, `/spawn`, `/mob giraffe`, `/mob macaw`, `/mob dog`, `/sayhere`, `/ping`, `/react`, `/rtx`, and `/time`.
 - Proximity voice chat with WebRTC signaling.
 - Compass and world clock in the HUD.
 - Photo mode for clean screenshots.

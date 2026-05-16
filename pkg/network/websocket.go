@@ -559,6 +559,22 @@ func handleMessage(client *Client, msg Message) {
 		payload.Username = client.username
 		broadcastToAll(createMessage("worldPing", payload))
 
+	case "playerReaction":
+		var payload struct {
+			TargetID string `json:"targetId"`
+			Kind     string `json:"kind"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		payload.TargetID = strings.TrimSpace(payload.TargetID)
+		payload.Kind = strings.TrimSpace(payload.Kind)
+		if payload.TargetID == "" {
+			return
+		}
+		if payload.Kind != "heart" && payload.Kind != "clap" && payload.Kind != "confetti" {
+			payload.Kind = "heart"
+		}
+		broadcastToAll(createMessage("playerReaction", payload))
+
 	case "chat":
 		var payload struct {
 			Text string `json:"text"`
