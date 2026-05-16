@@ -140,7 +140,7 @@ class NetworkClient {
             payload.players.forEach(p => {
                 const li = document.createElement('li');
                 li.dataset.playerId = p.id;
-                li.textContent = p.name;
+                li.textContent = `${p.voiceEnabled ? '🎙️' : '🔇'} ${p.name}`;
                 if (p.id === this.playerId) {
                     li.classList.add('self');
                 }
