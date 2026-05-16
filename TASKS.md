@@ -74,4 +74,4 @@ Next tasks
 - [x] ENHANCEMENT: Guarda en el server el estado de cada jugador y en el gracefulshutdown escríbelos en disco (puedes usar la librería "store")
 - [x] ENHANCEMENT: El monstruo de las cavernas tiene que ser más grande y más adorable y tiene que poderse matar de alguna forma. Vive en sitios profundos y cuando te ve (a 10 bloques de distancia) te empieza a perseguir PERO no se acerca demasiado, permanece siempre 4 bloques alejado del jugador
 - [x] FEAT: Nuevo mob: un perro adorable que cuando te ve (a 10 bloques o menos) te empieza a seguir. Sólo te puede seguir 1 perro al mismo tiempo. El perro que te sigue es tu amigo y te defiende del monstruo de las cavernas.
-- [ ] FEAT: Las arañas se tienen que poder matar de alguna forma (les podemos poner una barra de vida encima con el porcentaje de vida restante) Si la araña está al 100% NO aparece barra de vida
+- [x] FEAT: Las arañas se tienen que poder matar de alguna forma (les podemos poner una barra de vida encima con el porcentaje de vida restante) Si la araña está al 100% NO aparece barra de vida

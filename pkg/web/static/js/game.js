@@ -1777,7 +1777,7 @@ class Game {
         group.userData.attackCooldown = 0;
         group.userData.defendCooldown = 0;
         group.userData.flyHeight = species === 'macaw' ? 2.2 : 0;
-        group.userData.maxHealth = species === 'cave_monster' ? 16 : 1;
+        group.userData.maxHealth = species === 'cave_monster' ? 16 : species === 'spider' ? 8 : 1;
         group.userData.health = group.userData.maxHealth;
 
         const createPart = (geometry, color, x, y, z) => {
@@ -1883,10 +1883,58 @@ class Game {
         const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : species === 'macaw' ? [0.035, 0.16, 0.035] : species === 'giraffe' ? [0.12, 1.4, 0.12] : species === 'cave_monster' ? [0.16, 0.68, 0.16] : [0.1, 0.32, 0.1];
         group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
 
+        if (group.userData.maxHealth > 1) {
+            group.userData.healthBar = this.createMobHealthBar();
+            group.userData.healthBar.position.set(0, species === 'spider' ? 0.86 : 2.5, 0);
+            group.add(group.userData.healthBar);
+            this.updateMobHealthBar(group);
+        }
+
         group.position.copy(position);
         group.position.y += group.userData.flyHeight;
         this.scene.add(group);
         return group;
+    }
+
+    createMobHealthBar() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 20;
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.1, 0.18, 1);
+        sprite.renderOrder = 1300;
+        sprite.userData.canvas = canvas;
+        sprite.userData.texture = texture;
+        return sprite;
+    }
+
+    updateMobHealthBar(mob) {
+        const healthBar = mob.userData.healthBar;
+        if (!healthBar) return;
+
+        const healthPercent = Math.max(0, mob.userData.health / mob.userData.maxHealth);
+        healthBar.visible = healthPercent < 1;
+        if (!healthBar.visible) return;
+
+        const canvas = healthBar.userData.canvas;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#4b1111';
+        ctx.fillRect(4, 4, 120, 12);
+        ctx.fillStyle = '#6ee36f';
+        ctx.fillRect(4, 4, Math.round(120 * healthPercent), 12);
+        ctx.strokeStyle = '#ffffff';
+        ctx.strokeRect(4, 4, 120, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.ceil(healthPercent * 100)}%`, 64, 10);
+        healthBar.userData.texture.needsUpdate = true;
     }
 
     initAmbientMobs() {
@@ -1934,10 +1982,11 @@ class Game {
     interactWithMob(mob) {
         if (mob.userData.maxHealth > 1) {
             mob.userData.health -= 4;
+            this.updateMobHealthBar(mob);
             if (mob.userData.health <= 0) {
                 this.scene.remove(mob);
                 this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== mob);
-                this.receiveSystemMessage({ text: `You befriended the ${mob.userData.species.replace('_', ' ')}` });
+                this.receiveSystemMessage({ text: `You defeated the ${mob.userData.species.replace('_', ' ')}` });
                 return;
             }
         }
@@ -2012,6 +2061,7 @@ class Game {
                 const enemy = this.ambientMobs.find((candidate) => candidate.userData.species === 'cave_monster' && candidate.position.distanceTo(mob.position) < 2.2);
                 if (enemy) {
                     enemy.userData.health -= 4;
+                    this.updateMobHealthBar(enemy);
                     enemy.userData.direction = Math.atan2(enemy.position.z - mob.position.z, enemy.position.x - mob.position.x);
                     mob.userData.defendCooldown = 0.8;
                     if (enemy.userData.health <= 0) {
