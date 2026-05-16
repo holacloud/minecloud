@@ -325,6 +325,17 @@ class Game {
 
         titleScreen.classList.toggle('visible', this.titleScreenOpen);
         document.body.classList.toggle('title-screen-active', this.titleScreenOpen);
+        this.updateFirstPersonHandVisibility();
+    }
+
+    updateFirstPersonHandVisibility() {
+        const visible = this.cameraViewMode === 'first' && !this.titleScreenOpen;
+        if (this.firstPersonHand) {
+            this.firstPersonHand.visible = visible;
+        }
+        if (this.firstPersonLeftHand) {
+            this.firstPersonLeftHand.visible = visible;
+        }
     }
 
     updateTitleScreenCamera(delta) {
@@ -810,12 +821,7 @@ class Game {
     toggleCameraView() {
         const wasThirdPerson = this.cameraViewMode === 'third';
         this.cameraViewMode = wasThirdPerson ? 'first' : 'third';
-        if (this.firstPersonHand) {
-            this.firstPersonHand.visible = this.cameraViewMode === 'first';
-        }
-        if (this.firstPersonLeftHand) {
-            this.firstPersonLeftHand.visible = this.cameraViewMode === 'first';
-        }
+        this.updateFirstPersonHandVisibility();
         if (this.localPlayerAvatar) {
             this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         }
@@ -1381,6 +1387,7 @@ class Game {
         leftHandGroup.rotation.copy(this.leftHandBaseRotation);
         this.camera.add(leftHandGroup);
         this.firstPersonLeftHand = leftHandGroup;
+        this.updateFirstPersonHandVisibility();
         this.initLocalPlayerAvatar();
     }
 

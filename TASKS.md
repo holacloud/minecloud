@@ -68,3 +68,10 @@ Next tasks
 - [x] Evitar superficies internas entre bloques contiguos de agua y mantener la transparencia correcta
 - [x] Hacer que el efecto submarino solo aparezca cuando la cámara esté realmente dentro del agua
 - [x] Añadir votaciones con emojis a los carteles: thumbup, thumbdown, heart, happy, star
+- [x] En la pantalla de inicio se ve de fondo el mundo girando PERO también se ven los brazos de primera persona, en esa pantalla los brazos deben estar ocultos
+- [ ] Añade un mob nuevo, volador. Un guacamayo adorable que al nacer puede adoptar distintos colores llamativos, verde, amarillo, rojo, azul. Se spawnea con el comando /mob macaw
+- [ ] BUG: cuando se reinicia un server, los bloques que se han eliminado se vuelven a recrear, se tiene que restaurar el estado del mundo tras cada reinicio
+- [ ] ENHANCEMENT: Guarda en el server el estado de cada jugador y en el gracefulshutdown escríbelos en disco (puedes usar la librería "store")
+- [ ] ENHANCEMENT: El monstruo de las cavernas tiene que ser más grande y más adorable y tiene que poderse matar de alguna forma. Vive en sitios profundos y cuando te ve (a 10 bloques de distancia) te empieza a perseguir PERO no se acerca demasiado, permanece siempre 4 bloques alejado del jugador
+- [ ] FEAT: Nuevo mob: un perro adorable que cuando te ve (a 10 bloques o menos) te empieza a seguir. Sólo te puede seguir 1 perro al mismo tiempo. El perro que te sigue es tu amigo y te defiende del monstruo de las cavernas.
+- [ ] FEAT: Las arañas se tienen que poder matar de alguna forma (les podemos poner una barra de vida encima con el porcentaje de vida restante) Si la araña está al 100% NO aparece barra de vida
