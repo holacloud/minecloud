@@ -16,6 +16,7 @@ class WorldRenderer {
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.waterSurfaceGeometry = new THREE.PlaneGeometry(1, 1);
         this.waterSurfaceGeometry.rotateX(-Math.PI / 2);
+        this.cutoutGeometries = new Map();
         this.materials = new Map();
         this.textures = new Map();
         this.iconCache = new Map();
@@ -56,6 +57,88 @@ class WorldRenderer {
         };
 
         this.generateInitialChunks();
+    }
+
+    createCutoutGeometry(planes) {
+        const positions = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+
+        for (let i = 0; i < planes.length; i++) {
+            const plane = planes[i];
+            const width = plane.width ?? 1;
+            const height = plane.height ?? 1;
+            const yOffset = plane.yOffset ?? 0;
+            const zOffset = plane.zOffset ?? 0;
+            const angle = plane.rotationY ?? 0;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            const vertexOffset = positions.length / 3;
+            const corners = [
+                [-width / 2, -height / 2 + yOffset, zOffset, 0, 0],
+                [width / 2, -height / 2 + yOffset, zOffset, 1, 0],
+                [width / 2, height / 2 + yOffset, zOffset, 1, 1],
+                [-width / 2, height / 2 + yOffset, zOffset, 0, 1],
+            ];
+
+            for (let j = 0; j < corners.length; j++) {
+                const [x, y, z, u, v] = corners[j];
+                positions.push(x * cos + z * sin, y, -x * sin + z * cos);
+                normals.push(sin, 0, cos);
+                uvs.push(u, v);
+            }
+
+            indices.push(
+                vertexOffset, vertexOffset + 1, vertexOffset + 2,
+                vertexOffset, vertexOffset + 2, vertexOffset + 3,
+                vertexOffset + 2, vertexOffset + 1, vertexOffset,
+                vertexOffset + 3, vertexOffset + 2, vertexOffset,
+            );
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setIndex(indices);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    }
+
+    getGeometry(type) {
+        let geometry = this.cutoutGeometries.get(type);
+        if (geometry) return geometry;
+
+        switch (type) {
+            case 'tall_grass':
+                geometry = this.createCutoutGeometry([
+                    { width: 0.78, height: 0.95, rotationY: 0, yOffset: -0.025 },
+                    { width: 0.72, height: 0.88, rotationY: Math.PI / 2, yOffset: -0.06 },
+                    { width: 0.62, height: 0.82, rotationY: Math.PI / 4, yOffset: -0.09 },
+                ]);
+                break;
+            case 'flower_red':
+            case 'flower_yellow':
+            case 'mushroom_red':
+            case 'mushroom_brown':
+                geometry = this.createCutoutGeometry([
+                    { width: 0.72, height: 0.82, rotationY: Math.PI / 4, yOffset: -0.09 },
+                    { width: 0.72, height: 0.82, rotationY: -Math.PI / 4, yOffset: -0.09 },
+                ]);
+                break;
+            case 'torch':
+                geometry = this.createCutoutGeometry([
+                    { width: 0.44, height: 0.92, rotationY: Math.PI / 4, yOffset: -0.04 },
+                ]);
+                break;
+            default:
+                return this.geometry;
+        }
+
+        this.cutoutGeometries.set(type, geometry);
+        return geometry;
     }
 
     chunkKey(chunkX, chunkZ) {
@@ -712,7 +795,8 @@ class WorldRenderer {
                 transparent: def.transparent || false,
                 opacity: def.opacity || 1,
                 alphaTest: alphaCutoutTypes.has(type) ? 0.28 : 0,
-                depthWrite: !def.transparent || alphaCutoutTypes.has(type)
+                depthWrite: !def.transparent || alphaCutoutTypes.has(type),
+                side: alphaCutoutTypes.has(type) ? THREE.DoubleSide : THREE.FrontSide
             });
         } else {
             material = new THREE.MeshLambertMaterial({
@@ -721,7 +805,8 @@ class WorldRenderer {
                 transparent: def.transparent || false,
                 opacity: def.opacity || 1,
                 alphaTest: alphaCutoutTypes.has(type) ? 0.35 : 0,
-                depthWrite: !def.transparent || alphaCutoutTypes.has(type)
+                depthWrite: !def.transparent || alphaCutoutTypes.has(type),
+                side: alphaCutoutTypes.has(type) ? THREE.DoubleSide : THREE.FrontSide
             });
         }
 
@@ -1040,7 +1125,7 @@ class WorldRenderer {
         chunk.matrixAutoUpdate = false;
 
         for (const [type, positions] of instancesByType) {
-            const mesh = new THREE.InstancedMesh(this.geometry, this.getMaterial(type), positions.length);
+            const mesh = new THREE.InstancedMesh(this.getGeometry(type), this.getMaterial(type), positions.length);
             mesh.userData.blockType = type;
             mesh.userData.instancePositions = positions;
             mesh.userData.chunkBaseX = baseX;
@@ -1239,7 +1324,7 @@ class WorldRenderer {
 
     createDisplayMesh(type, scale = 0.36) {
         const material = this.getMaterial(type).clone();
-        const mesh = new THREE.Mesh(this.geometry, material);
+        const mesh = new THREE.Mesh(this.getGeometry(type), material);
         mesh.scale.setScalar(scale);
         mesh.castShadow = this.rtxModeEnabled && type !== 'water';
         mesh.receiveShadow = this.rtxModeEnabled;
