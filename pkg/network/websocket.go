@@ -529,6 +529,25 @@ func handleMessage(client *Client, msg Message) {
 		}
 		broadcastToAll(createMessage("soundBlockPlay", payload))
 
+	case "worldNote":
+		var payload struct {
+			Text     string  `json:"text"`
+			Username string  `json:"username,omitempty"`
+			X        float64 `json:"x"`
+			Y        float64 `json:"y"`
+			Z        float64 `json:"z"`
+		}
+		json.Unmarshal(msg.Payload, &payload)
+		payload.Text = strings.TrimSpace(payload.Text)
+		if payload.Text == "" {
+			return
+		}
+		if len(payload.Text) > 80 {
+			payload.Text = payload.Text[:80]
+		}
+		payload.Username = client.username
+		broadcastToAll(createMessage("worldNote", payload))
+
 	case "chat":
 		var payload struct {
 			Text string `json:"text"`

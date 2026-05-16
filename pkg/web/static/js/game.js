@@ -185,6 +185,7 @@ class Game {
         this.breakParticleGeometry = null;
         this.breakParticleMaterials = new Map();
         this.breakParticles = [];
+        this.worldNotes = [];
 
         this.isBreakInputActive = false;
         this.miningTargetKey = null;
@@ -2417,6 +2418,7 @@ class Game {
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
+        this.network.on('worldNote', (payload) => this.addFloatingWorldText(payload));
         this.network.on('signVoteUpdate', (payload) => {
             this.world.addBlock(payload);
             if (this.activeSignPosition && payload.x === this.activeSignPosition.x && payload.y === this.activeSignPosition.y && payload.z === this.activeSignPosition.z) {
@@ -3486,7 +3488,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /sayhere, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -3506,6 +3508,9 @@ class Game {
                 this.receiveSystemMessage({ text: `Current world time: ${hours}:${minutes}` });
                 break;
             }
+            case 'sayhere':
+                this.sendWorldNote(args.join(' '));
+                break;
             default:
                 this.receiveSystemMessage({ text: `Unknown command: /${normalized}` });
                 break;
@@ -3597,6 +3602,49 @@ class Game {
             this.playTone({ frequency: note * 2, duration: 0.12, type: 'triangle', volume, attack: 0.004, release: 0.16 });
             this.playTone({ frequency: note * 3, duration: 0.08, type: 'sine', volume: volume * 0.35, attack: 0.004, release: 0.12 });
         }
+    }
+
+    sendWorldNote(text) {
+        const trimmed = text.trim().slice(0, 80);
+        if (!trimmed) {
+            this.receiveSystemMessage({ text: 'Usage: /sayhere message' });
+            return;
+        }
+
+        const position = this.getLocalPlayerPosition();
+        const payload = {
+            text: trimmed,
+            username: this.playerName,
+            x: position.x,
+            y: position.y + 0.4,
+            z: position.z
+        };
+
+        if (this.network.connected) {
+            this.network.send('worldNote', payload);
+        } else {
+            this.addFloatingWorldText(payload);
+        }
+    }
+
+    addFloatingWorldText(payload) {
+        const label = payload.username ? `${payload.username}: ${payload.text}` : payload.text;
+        const sprite = this.createNameTagSprite(label.slice(0, 96));
+        sprite.position.set(payload.x, payload.y + 1.2, payload.z);
+        sprite.scale.set(3.2, 0.8, 1);
+        this.scene.add(sprite);
+        this.worldNotes.push({ sprite, expiresAt: performance.now() + 30000 });
+    }
+
+    updateWorldNotes() {
+        const now = performance.now();
+        this.worldNotes = this.worldNotes.filter((note) => {
+            if (now < note.expiresAt) return true;
+            this.scene.remove(note.sprite);
+            if (note.sprite.material && note.sprite.material.map) note.sprite.material.map.dispose();
+            if (note.sprite.material) note.sprite.material.dispose();
+            return false;
+        });
     }
 
     promptSignText() {
@@ -4173,6 +4221,7 @@ class Game {
             this.updateWeather(delta);
             this.updateUnderwaterEffect();
             this.world.update(this.camera.position.x, this.camera.position.z);
+            this.updateWorldNotes();
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             if (this.voiceChat) {
@@ -4206,6 +4255,7 @@ class Game {
             this.updateUnderwaterEffect();
             this.updateCaveLighting();
             this.world.update(this.camera.position.x, this.camera.position.z);
+            this.updateWorldNotes();
             this.updateAmbientMobs(delta);
             this.updateRemotePlayers(delta);
             this.updateFollowCamera(delta);
@@ -4231,6 +4281,7 @@ class Game {
         const playerAnchor = this.camera.position.clone();
         this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
         this.world.update(this.camera.position.x, this.camera.position.z);
+        this.updateWorldNotes();
         this.updateAmbientMobs(delta);
         this.updateRemotePlayers(delta);
         this.updateFallingBlockDrops(delta);
