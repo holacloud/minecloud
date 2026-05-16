@@ -20,7 +20,7 @@ class Game {
         this.placeDistance = 4.5;
         this.selectionUpdateInterval = 50;
         
-        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch', 'sound_block', 'spray_paint'];
+        this.inventory = ['grass', 'dirt', 'cobblestone', 'wood', 'planks', 'brick', 'sand', 'water', 'leaves', 'torch', 'sound_block', 'spray_paint', 'ladder'];
         this.inventoryCounts = {
             grass: 24,
             dirt: 24,
@@ -37,7 +37,8 @@ class Game {
             stone_bricks: 0,
             torch: 0,
             sound_block: 0,
-            spray_paint: 0
+            spray_paint: 0,
+            ladder: 0
         };
         this.selectedSlot = 0;
         this.restoreInventoryState();
@@ -128,6 +129,12 @@ class Game {
                 name: 'Mix Fluorescent Spray Paint',
                 output: { type: 'spray_paint', amount: 1 },
                 inputs: [{ type: 'sand', amount: 1 }, { type: 'flower_red', amount: 1 }, { type: 'coal_ore', amount: 1 }]
+            },
+            {
+                id: 'ladder',
+                name: 'Build Ladders',
+                output: { type: 'ladder', amount: 8 },
+                inputs: [{ type: 'wood', amount: 1 }]
             }
         ];
 
@@ -3629,6 +3636,11 @@ class Game {
         return normal.z > 0 ? 'pz' : 'nz';
     }
 
+    getLadderFacingFromNormal(normal) {
+        if (Math.abs(normal.x) > Math.abs(normal.z)) return normal.x > 0 ? 'px' : 'nx';
+        return normal.z > 0 ? 'pz' : 'nz';
+    }
+
     trySprayPaint(hit) {
         if (!hit || !hit.face) return false;
         if (this.getInventoryCount('spray_paint') <= 0 && performance.now() > this.sprayActiveUntil) return false;
@@ -4222,6 +4234,9 @@ class Game {
             } else if (blockType === 'sound_block') {
                 payload.instrument = 'bell';
                 payload.note = 0;
+            } else if (blockType === 'ladder') {
+                if (normal.y !== 0) return;
+                payload.facing = this.getLadderFacingFromNormal(normal);
             }
 
             if (!this.world.addBlock(payload)) return;

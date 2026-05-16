@@ -69,6 +69,7 @@ type Block struct {
 	Votes      map[string]int `json:"votes,omitempty"`
 	Instrument string         `json:"instrument,omitempty"`
 	Note       int            `json:"note,omitempty"`
+	Facing     string         `json:"facing,omitempty"`
 }
 
 type SprayPaint struct {
@@ -543,6 +544,14 @@ func handleMessage(client *Client, msg Message) {
 			payload.Instrument = ""
 			payload.Note = 0
 		}
+		if payload.BlockType == "ladder" {
+			payload.Facing = normalizeLadderFacing(payload.Facing)
+			if payload.Facing == "" {
+				payload.Facing = "pz"
+			}
+		} else {
+			payload.Facing = ""
+		}
 
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
@@ -809,6 +818,15 @@ func normalizeSprayColor(color string) string {
 	switch strings.ToLower(strings.TrimSpace(color)) {
 	case "green", "pink", "blue":
 		return strings.ToLower(strings.TrimSpace(color))
+	default:
+		return ""
+	}
+}
+
+func normalizeLadderFacing(facing string) string {
+	switch facing {
+	case "px", "nx", "pz", "nz":
+		return facing
 	default:
 		return ""
 	}

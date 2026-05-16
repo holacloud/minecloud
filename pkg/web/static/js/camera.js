@@ -34,6 +34,7 @@ class CameraController {
         this.blockChecker = null;
         this.eyeHeight = this.standingEyeHeight;
         this.isCrouching = false;
+        this.isOnLadder = false;
         
         this.init();
     }
@@ -230,6 +231,7 @@ class CameraController {
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
         const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water' || eyeBlockType === 'water';
+        this.isOnLadder = feetBlockType === 'ladder' || torsoBlockType === 'ladder' || eyeBlockType === 'ladder';
 
         const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
@@ -294,7 +296,12 @@ class CameraController {
             this.onGround = false;
         }
         
-        if (this.isInWater) {
+        if (this.isOnLadder) {
+            const wantsUp = this.keys.forward || this.keys.jump || this.moveInput.y > 0.05;
+            const wantsDown = this.keys.backward || this.keys.crouch || this.moveInput.y < -0.05;
+            this.velocityY = wantsUp ? 3.2 : wantsDown ? -2.2 : 0;
+            this.onGround = true;
+        } else if (this.isInWater) {
             if (this.keys.jump || this.touchJump) {
                 this.velocityY = Math.min(4.8, this.velocityY + 0.85);
             } else {
@@ -305,7 +312,9 @@ class CameraController {
             this.onGround = false;
         }
         
-        this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
+        if (!this.isOnLadder) {
+            this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
+        }
         
         const newY = this.camera.position.y + this.velocityY * delta;
         const newFeetY = newY - this.eyeHeight;

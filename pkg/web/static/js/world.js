@@ -9,6 +9,7 @@ class WorldRenderer {
         this.signTextByKey = new Map();
         this.signVotesByKey = new Map();
         this.soundBlockStateByKey = new Map();
+        this.ladderFacingByKey = new Map();
         this.sprayPaintsByKey = new Map();
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
@@ -59,6 +60,7 @@ class WorldRenderer {
             torch: { color: 0xE7B94B, name: 'Torch', transparent: true, breakDuration: 0.1, solid: false },
             sound_block: { color: 0x6A4CC2, name: 'Sound Block', breakDuration: 0.55 },
             spray_paint: { color: 0xFF3BD5, name: 'Spray Paint', breakDuration: 0, solid: false },
+            ladder: { color: 0xB98548, name: 'Ladder', transparent: true, breakDuration: 0.25, solid: false },
         };
 
         this.generateInitialChunks();
@@ -333,6 +335,26 @@ class WorldRenderer {
         return light;
     }
 
+    createLadderMesh(facing) {
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.92), this.getMaterial('ladder'));
+        const offset = 0.492;
+        if (facing === 'px') {
+            mesh.position.x = -offset;
+            mesh.rotation.y = Math.PI / 2;
+        } else if (facing === 'nx') {
+            mesh.position.x = offset;
+            mesh.rotation.y = -Math.PI / 2;
+        } else if (facing === 'pz') {
+            mesh.position.z = -offset;
+        } else {
+            mesh.position.z = offset;
+            mesh.rotation.y = Math.PI;
+        }
+        mesh.position.y = 0.5;
+        mesh.userData.blockType = 'ladder';
+        return mesh;
+    }
+
     isSolidType(type) {
         const def = this.blockTypes[type];
         return def ? !def.fluid && def.solid !== false : false;
@@ -471,6 +493,31 @@ class WorldRenderer {
         } else if (type === 'cactus') {
             linePass(0.18, Math.max(3, Math.floor(size / 16)), (_x, _y) => '#275f25', true, 0.2);
             overlay(0.08, (_noise) => '#82c469', 0.74, 0.8);
+        } else if (type === 'ladder') {
+            ctx.clearRect(0, 0, size, size);
+            const railWidth = Math.max(5, Math.round(size * 0.12));
+            const rungHeight = Math.max(5, Math.round(size * 0.085));
+            const leftRail = Math.round(size * 0.18);
+            const rightRail = Math.round(size * 0.7);
+            const rungLeft = Math.round(size * 0.18);
+            const rungWidth = Math.round(size * 0.64);
+            ctx.fillStyle = '#5f3518';
+            ctx.fillRect(leftRail - 2, 0, railWidth + 4, size);
+            ctx.fillRect(rightRail - 2, 0, railWidth + 4, size);
+            ctx.fillStyle = '#9b632e';
+            ctx.fillRect(leftRail, 0, railWidth, size);
+            ctx.fillRect(rightRail, 0, railWidth, size);
+            ctx.fillStyle = '#d49a55';
+            ctx.fillRect(leftRail + 2, 0, 2, size);
+            ctx.fillRect(rightRail + 2, 0, 2, size);
+            for (let y = Math.round(size * 0.16); y < size * 0.9; y += Math.round(size * 0.22)) {
+                ctx.fillStyle = '#5f3518';
+                ctx.fillRect(rungLeft - 2, y + 2, rungWidth + 4, rungHeight + 2);
+                ctx.fillStyle = '#9b632e';
+                ctx.fillRect(rungLeft, y, rungWidth, rungHeight);
+                ctx.fillStyle = '#d49a55';
+                ctx.fillRect(rungLeft + 2, y, rungWidth - 4, 2);
+            }
         } else {
             overlay(0.14, (noise) => noise > 0.82 ? '#f0e6d2' : '#2d2d2d', 0.58, 1);
         }
@@ -543,6 +590,40 @@ class WorldRenderer {
                 ctx.fillStyle = '#fff0a6';
                 ctx.fillRect(size * 0.4, 0, size * 0.2, size * 0.12);
                 break;
+            case 'ladder': {
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, size, size);
+
+                const railWidth = Math.max(2, Math.round(size * 0.13));
+                const rungHeight = Math.max(2, Math.round(size * 0.1));
+                const leftRail = Math.round(size * 0.18);
+                const rightRail = Math.round(size * 0.69);
+                const rungLeft = Math.round(size * 0.18);
+                const rungWidth = Math.round(size * 0.64);
+                const wood = '#9b632e';
+                const light = '#d49a55';
+                const dark = '#5f3518';
+
+                ctx.fillStyle = dark;
+                ctx.fillRect(leftRail - 1, 1, railWidth + 2, size - 2);
+                ctx.fillRect(rightRail - 1, 1, railWidth + 2, size - 2);
+                ctx.fillStyle = wood;
+                ctx.fillRect(leftRail, 0, railWidth, size);
+                ctx.fillRect(rightRail, 0, railWidth, size);
+                ctx.fillStyle = light;
+                ctx.fillRect(leftRail + 1, 0, 1, size);
+                ctx.fillRect(rightRail + 1, 0, 1, size);
+
+                for (let y = Math.round(size * 0.16); y < size * 0.9; y += Math.round(size * 0.22)) {
+                    ctx.fillStyle = dark;
+                    ctx.fillRect(rungLeft - 1, y + 1, rungWidth + 2, rungHeight + 1);
+                    ctx.fillStyle = wood;
+                    ctx.fillRect(rungLeft, y, rungWidth, rungHeight);
+                    ctx.fillStyle = light;
+                    ctx.fillRect(rungLeft + 1, y, rungWidth - 2, 1);
+                }
+                break;
+            }
             case 'dirt':
                 this.paintPaletteTexture(ctx, size, [0x6E431D, 0x7A4A22, 0x8B5A2B, 0x9D6832], seed);
                 break;
@@ -785,7 +866,7 @@ class WorldRenderer {
         if (material) return material;
 
         const def = this.blockTypes[type];
-        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch']);
+        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch', 'ladder']);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
             material = new THREE.MeshStandardMaterial({
@@ -1119,6 +1200,7 @@ class WorldRenderer {
                 }
                 continue;
             }
+            if (type === 'ladder') continue;
             if (!this.isBlockVisible(x, y, z, type)) continue;
 
             let positions = instancesByType.get(type);
@@ -1194,6 +1276,14 @@ class WorldRenderer {
                 const torchLight = this.createTorchLight();
                 torchLight.position.set(x - baseX + 0.5, y + 0.9, z - baseZ + 0.5);
                 chunk.add(torchLight);
+            }
+
+            if (type === 'ladder') {
+                const ladder = this.createLadderMesh(this.ladderFacingByKey.get(blockKey) || 'pz');
+                ladder.position.x += x - baseX + 0.5;
+                ladder.position.y += y;
+                ladder.position.z += z - baseZ + 0.5;
+                chunk.add(ladder);
             }
         }
 
@@ -1357,6 +1447,10 @@ class WorldRenderer {
         return this.soundBlockStateByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || { instrument: 'bell', note: 0 };
     }
 
+    getLadderFacingAt(x, y, z) {
+        return this.ladderFacingByKey.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || 'pz';
+    }
+
     sprayPaintKey(x, y, z, face) {
         return `${Math.round(x)},${Math.round(y)},${Math.round(z)},${face}`;
     }
@@ -1512,10 +1606,17 @@ class WorldRenderer {
             this.signVotesByKey.set(key, payload.votes);
         } else if (payload.blockType === 'sound_block') {
             this.soundBlockStateByKey.set(key, { instrument: payload.instrument || 'bell', note: Number.isInteger(payload.note) ? payload.note : 0 });
+            this.ladderFacingByKey.delete(key);
+        } else if (payload.blockType === 'ladder') {
+            this.ladderFacingByKey.set(key, payload.facing || 'pz');
+            this.signTextByKey.delete(key);
+            this.signVotesByKey.delete(key);
+            this.soundBlockStateByKey.delete(key);
         } else {
             this.signTextByKey.delete(key);
             this.signVotesByKey.delete(key);
             this.soundBlockStateByKey.delete(key);
+            this.ladderFacingByKey.delete(key);
         }
 
         if (!changed) return false;
@@ -1555,10 +1656,13 @@ class WorldRenderer {
                 this.signVotesByKey.set(blockKey, block.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
             } else if (block.blockType === 'sound_block') {
                 this.soundBlockStateByKey.set(blockKey, { instrument: block.instrument || 'bell', note: Number.isInteger(block.note) ? block.note : 0 });
+            } else if (block.blockType === 'ladder') {
+                this.ladderFacingByKey.set(blockKey, block.facing || 'pz');
             } else {
                 this.signTextByKey.delete(blockKey);
                 this.signVotesByKey.delete(blockKey);
                 this.soundBlockStateByKey.delete(blockKey);
+                this.ladderFacingByKey.delete(blockKey);
             }
 
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
@@ -1601,6 +1705,7 @@ class WorldRenderer {
         this.signTextByKey.delete(key);
         this.signVotesByKey.delete(key);
         this.soundBlockStateByKey.delete(key);
+        this.ladderFacingByKey.delete(key);
         this.removeSprayPaintsForBlock(x, y, z);
         this.solidBlocks.delete(key);
 
