@@ -24,10 +24,11 @@ type Config struct {
 func main() {
 
 	config := &Config{
-		Addr:           ":8080",
-		STUNURLs:       "stun:stun.relay.metered.ca:80",
-		TURNURLs:       "turn:global.relay.metered.ca:80,turn:global.relay.metered.ca:80?transport=tcp,turn:global.relay.metered.ca:443,turns:global.relay.metered.ca:443?transport=tcp",
-		MeteredAPIBase: "https://minecloud.metered.live",
+		Addr:              ":8080",
+		STUNURLs:          "stun:stun.relay.metered.ca:80",
+		TURNURLs:          "turn:global.relay.metered.ca:80,turn:global.relay.metered.ca:80?transport=tcp,turn:global.relay.metered.ca:443,turns:global.relay.metered.ca:443?transport=tcp",
+		MeteredAPIBase:    "https://minecloud.metered.live",
+		SessionGlobalSalt: "just-for-development",
 	}
 	goconfig.Read(config)
 	network.ConfigureICE(network.ICEConfig{
