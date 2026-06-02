@@ -228,6 +228,7 @@ class Game {
         this.leftHandBasePosition = new THREE.Vector3(-0.62, -0.74, -1.02);
         this.leftHandBaseRotation = new THREE.Euler(-0.55, -0.2, -0.18);
         this.handSwingTime = 0;
+        this.placeActionTimer = 0;
         this.soundBlockInstruments = ['bell', 'drum', 'pluck', 'flute', 'bass'];
         this.soundBlockNotes = [262, 294, 330, 349, 392, 440, 494, 523];
         this.sprayColors = ['green', 'pink', 'blue'];
@@ -898,8 +899,11 @@ class Game {
         this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
         this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
         this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
+        this.applyAvatarHeadPitch(this.localPlayerAvatar, this.cameraController.pitch, 1);
         this.updateAvatarHeldItem(this.localPlayerAvatar, this.getSelectedHeldItemType());
         this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
+        this.localPlayerAvatar.userData.targetAction = this.getCurrentPlayerAction();
+        this.applyAvatarAction(this.localPlayerAvatar, delta);
     }
 
     getSelectedHeldItemType() {
@@ -1751,7 +1755,10 @@ class Game {
         const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, 0.38, 1.03, 0);
         const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, -0.14, 0.34, 0);
         const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, 0.14, 0.34, 0);
-        createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), appearance.hat, 0, 1.83, 0);
+        const hat = createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), appearance.hat, 0, 1.83, 0);
+        group.remove(hat);
+        hat.position.set(0, 0.28, 0);
+        head.add(hat);
 
         const face = this.createAvatarFaceMesh();
         face.position.set(0, 0.02, 0.245);
@@ -1763,6 +1770,10 @@ class Game {
         group.userData.lastPosition = new THREE.Vector3();
         group.userData.targetPosition = new THREE.Vector3();
         group.userData.targetYaw = 0;
+        group.userData.targetPitch = 0;
+        group.userData.targetAction = '';
+        group.userData.currentAction = '';
+        group.userData.actionPhase = 0;
         group.userData.walkPhase = 0;
         group.userData.lastStepIndex = 0;
         group.userData.stepDistance = 0;
@@ -2405,13 +2416,77 @@ class Game {
         }
     }
 
+    normalizePlayerAction(action) {
+        return action === 'mine' || action === 'place' ? action : '';
+    }
+
+    getCurrentPlayerAction() {
+        if (this.isBreakInputActive && this.miningTargetKey !== null) return 'mine';
+        if (this.placeActionTimer > 0) return 'place';
+        return '';
+    }
+
+    updatePlayerActionTimers(delta) {
+        this.placeActionTimer = Math.max(0, this.placeActionTimer - delta);
+    }
+
+    applyAvatarAction(avatar, delta) {
+        const parts = avatar && avatar.userData ? avatar.userData.avatarParts : null;
+        if (!parts || !parts.leftArm || !parts.rightArm) return;
+
+        const action = this.normalizePlayerAction(avatar.userData.targetAction);
+        if (!action) {
+            avatar.userData.currentAction = '';
+            avatar.userData.actionPhase = 0;
+            return;
+        }
+
+        if (avatar.userData.currentAction !== action) {
+            avatar.userData.currentAction = action;
+            avatar.userData.actionPhase = 0;
+        }
+        avatar.userData.actionPhase += delta;
+
+        if (action === 'mine') {
+            const swing = Math.sin(avatar.userData.actionPhase * 16);
+            const strike = Math.abs(swing);
+            parts.rightArm.rotation.x = -0.45 - strike * 1.05;
+            parts.rightArm.rotation.z = -0.12 + swing * 0.18;
+            parts.leftArm.rotation.x = 0.18 + strike * 0.22;
+            parts.leftArm.rotation.z = -swing * 0.08;
+            return;
+        }
+
+        const pulse = Math.sin(Math.min(Math.PI, avatar.userData.actionPhase * 9));
+        parts.rightArm.rotation.x = -0.95 * pulse;
+        parts.rightArm.rotation.z = -0.28 * pulse;
+        parts.leftArm.rotation.x = 0.22 * pulse;
+    }
+
+    getAvatarHeadPitch(lookPitch) {
+        const pitch = typeof lookPitch === 'number' && Number.isFinite(lookPitch) ? lookPitch : 0;
+        return THREE.MathUtils.clamp(-pitch, -Math.PI / 2, Math.PI / 2);
+    }
+
+    applyAvatarHeadPitch(avatar, lookPitch, alpha = 1) {
+        const parts = avatar && avatar.userData ? avatar.userData.avatarParts : null;
+        if (!parts || !parts.head) return;
+
+        const targetPitch = this.getAvatarHeadPitch(lookPitch);
+        parts.head.rotation.x = alpha >= 1
+            ? targetPitch
+            : THREE.MathUtils.lerp(parts.head.rotation.x, targetPitch, alpha);
+    }
+
     updateRemotePlayers(delta) {
         const alpha = Math.min(1, delta * 10);
         for (const avatar of this.otherPlayerMeshes.values()) {
             const previousPosition = avatar.position.clone();
             avatar.position.lerp(avatar.userData.targetPosition, alpha);
             avatar.rotation.y = this.lerpAngle(avatar.rotation.y, avatar.userData.targetYaw, alpha);
+            this.applyAvatarHeadPitch(avatar, avatar.userData.targetPitch, alpha);
             this.animatePlayerAvatar(avatar, previousPosition, delta, true);
+            this.applyAvatarAction(avatar, delta);
         }
     }
 
@@ -2592,11 +2667,14 @@ class Game {
             avatar.userData.targetPosition.copy(nextFeetPosition);
             avatar.position.copy(nextFeetPosition);
             avatar.rotation.y = player.yaw + Math.PI;
+            this.applyAvatarHeadPitch(avatar, player.pitch, 1);
             avatar.userData.initialized = true;
         }
 
         avatar.userData.targetPosition.copy(nextFeetPosition);
         avatar.userData.targetYaw = player.yaw + Math.PI;
+        avatar.userData.targetPitch = typeof player.pitch === 'number' ? player.pitch : 0;
+        avatar.userData.targetAction = this.normalizePlayerAction(player.action);
     }
     
     initHotbar() {
@@ -4315,6 +4393,7 @@ class Game {
                 this.setRespawnPointFromBlock(newPos);
             }
             this.playPlaceSound(blockType);
+            this.placeActionTimer = 0.35;
 
             this.showHitIndicator();
             this.lastSelectionUpdate = 0;
@@ -4632,6 +4711,7 @@ class Game {
         this.updateMining(delta);
         this.updateMiningParticles(delta);
         this.updateMiningBlockVisual(delta);
+        this.updatePlayerActionTimers(delta);
         this.updateFirstPersonHand(delta);
         this.updateHeldTorchLight();
 
@@ -4645,7 +4725,7 @@ class Game {
         }
         
         if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
-            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType());
+            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType(), this.getCurrentPlayerAction());
             this.lastNetworkUpdate = now;
         }
         

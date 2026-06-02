@@ -75,6 +75,7 @@ type PlayerStateRecord struct {
 	Username   string    `json:"username,omitempty"`
 	ShirtColor string    `json:"shirtColor,omitempty"`
 	HeldItem   string    `json:"heldItem,omitempty"`
+	Action     string    `json:"action,omitempty"`
 	X          float64   `json:"x"`
 	Y          float64   `json:"y"`
 	Z          float64   `json:"z"`
