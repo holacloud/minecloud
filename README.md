@@ -13,7 +13,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural terrain.
 - Visible biome variety, including plains, forests, rocky zones, and deserts with cactus.
 - Extra decorative flora, including tall grass, flowers, and mushrooms.
-- Ambient interactive mobs: sheep, ducks, pigs, adorable giraffes, colorful macaws, and friendly dogs.
+- Ambient interactive mobs: sheep, ducks, pigs, adorable giraffes, colorful macaws, friendly dogs, and tiny cats.
 - First-person movement with auto-step over 1-block ledges.
 - Optional third-person camera view.
 - Sneak/crouch movement for careful building and edge safety.
@@ -48,7 +48,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Procedural sound effects for mining, placing, jumping, and pickups.
 - Multiplayer chat, player mentions by clicking avatars, system join/leave messages, and death messages.
 - Player roster supports click-to-follow camera mode.
-- Chat slash commands such as `/help`, `/spawn`, `/mob giraffe`, `/mob macaw`, `/mob dog`, `/sayhere`, `/ping`, `/react`, `/laugh`, `/cheer`, `/boo`, `/rtx`, and `/time`.
+- Chat slash commands such as `/help`, `/spawn`, `/mob giraffe`, `/mob macaw`, `/mob dog`, `/mob cat`, `/sayhere`, `/ping`, `/react`, `/laugh`, `/cheer`, `/boo`, `/rtx`, and `/time`.
 - Proximity voice chat with WebRTC signaling.
 - Compass and world clock in the HUD.
 - Photo mode for clean screenshots.
@@ -189,7 +189,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - `/ping` creates a temporary visible marker at your position.
 - `/react heart`, `/react clap`, and `/react confetti` create short visual reactions on the player you are aiming at.
 - `/laugh`, `/cheer`, and `/boo` play nearby positional emote sounds.
-- `/mob giraffe`, `/mob macaw`, and `/mob dog` spawn friendly ambient mobs near you.
+- `/mob giraffe`, `/mob macaw`, `/mob dog`, and `/mob cat` spawn friendly ambient mobs near you.
 
 ## Run Locally
 
