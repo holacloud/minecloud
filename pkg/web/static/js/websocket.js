@@ -222,6 +222,7 @@ class NetworkClient {
     updatePosition(position, heldItem = null, action = '') {
         this.send('playerMove', {
             id: this.playerId,
+            username: this.username,
             x: position.x,
             y: position.y,
             z: position.z,

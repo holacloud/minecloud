@@ -373,7 +373,7 @@ class Game {
                 this.titleScreenOpen = false;
                 this.appearanceMenuOpen = false;
                 this.updateTitleScreen();
-                this.recapturePointerLock();
+                this.recapturePointerLockFromGesture();
             });
         }
 
@@ -429,15 +429,38 @@ class Game {
         if (appearanceSaveButton) {
             appearanceSaveButton.addEventListener('click', () => {
                 syncDraft();
-                window.localStorage.setItem('minecloud-player-name', this.appearanceDraft.name);
-                window.localStorage.setItem('minecloud-shirt-color', this.appearanceDraft.shirtColor);
-                window.localStorage.setItem('minecloud-hair-style', this.appearanceDraft.hairStyle);
-                window.localStorage.setItem('minecloud-hair-color', this.appearanceDraft.hairColor);
-                window.location.reload();
+                this.applyAppearanceDraft();
             });
         }
 
         this.updateAppearanceControls();
+    }
+
+    applyAppearanceDraft() {
+        if (!this.appearanceDraft) return;
+
+        this.playerName = this.appearanceDraft.name;
+        this.playerShirtColor = this.appearanceDraft.shirtColor;
+        this.playerHairStyle = this.appearanceDraft.hairStyle;
+        this.playerHairColor = this.appearanceDraft.hairColor;
+
+        window.localStorage.setItem('minecloud-player-name', this.playerName);
+        window.localStorage.setItem('minecloud-shirt-color', this.playerShirtColor);
+        window.localStorage.setItem('minecloud-hair-style', this.playerHairStyle);
+        window.localStorage.setItem('minecloud-hair-color', this.playerHairColor);
+
+        if (this.network) {
+            this.network.setUsername(this.playerName);
+            this.network.setShirtColor(this.playerShirtColor);
+            this.network.setHair(this.playerHairStyle, this.playerHairColor);
+        }
+
+        if (this.localPlayerAvatar) {
+            this.disposeRemoteAvatar(this.localPlayerAvatar);
+        }
+        this.initLocalPlayerAvatar();
+        this.appearanceMenuOpen = false;
+        this.updateTitleScreen();
     }
 
     updateAppearanceControls() {
@@ -521,7 +544,7 @@ class Game {
         titleScreen.classList.toggle('visible', this.titleScreenOpen);
         const appearancePanel = document.getElementById('appearance-panel');
         if (appearancePanel) {
-            appearancePanel.classList.toggle('visible', this.titleScreenOpen && this.appearanceMenuOpen);
+            appearancePanel.classList.toggle('visible', (this.titleScreenOpen || this.pauseOpen) && this.appearanceMenuOpen);
         }
         document.body.classList.toggle('title-screen-active', this.titleScreenOpen);
         this.updateFirstPersonHandVisibility();
@@ -643,9 +666,10 @@ class Game {
         const fovInput = document.getElementById('settings-fov');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
         const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
+        const appearanceButton = document.getElementById('settings-appearance');
         const resumeButton = document.getElementById('settings-resume');
 
-        if (!sensitivityInput || !volumeInput || !renderDistanceInput || !fovInput || !rtxToggle || !fullscreenToggle || !resumeButton) return;
+        if (!sensitivityInput || !volumeInput || !renderDistanceInput || !fovInput || !rtxToggle || !fullscreenToggle || !appearanceButton || !resumeButton) return;
 
         sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         volumeInput.value = this.masterVolume.toFixed(2);
@@ -683,7 +707,13 @@ class Game {
 
         rtxToggle.addEventListener('click', () => this.toggleRTXMode());
         fullscreenToggle.addEventListener('click', () => this.toggleFullscreen());
+        appearanceButton.addEventListener('click', () => this.openAppearanceEditorFromPause());
+        resumeButton.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            this.closePauseMenu();
+        });
         resumeButton.addEventListener('click', () => this.closePauseMenu());
+        document.addEventListener('pointerdown', (event) => this.onDocumentPointerDown(event));
 
         this.updateSettingsUI();
     }
@@ -750,14 +780,40 @@ class Game {
         this.updateSettingsUI();
     }
 
-    closePauseMenu() {
+    closePauseMenu(recapturePointer = true) {
         const menu = document.getElementById('pause-menu');
         if (!menu) return;
 
         this.pauseOpen = false;
         menu.classList.remove('visible');
         this.updateSettingsUI();
-        this.recapturePointerLock();
+        if (recapturePointer) {
+            this.recapturePointerLockFromGesture();
+        }
+    }
+
+    onDocumentPointerDown(event) {
+        if (!this.pauseOpen) return;
+
+        const menu = document.getElementById('pause-menu');
+        const appearancePanel = document.getElementById('appearance-panel');
+        if (!menu || menu.contains(event.target) || (appearancePanel && appearancePanel.contains(event.target))) return;
+
+        event.preventDefault();
+        this.closePauseMenu();
+    }
+
+    recapturePointerLockFromGesture() {
+        this.recapturePointerLock(false);
+        window.addEventListener('pointerup', () => this.recapturePointerLock(false), { once: true });
+    }
+
+    openAppearanceEditorFromPause() {
+        this.appearanceMenuOpen = true;
+        this.updateAppearanceControls();
+        this.updateTitleScreen();
+        this.initAppearancePreview();
+        this.updateAppearancePreview(true);
     }
 
     togglePauseMenu() {
@@ -768,21 +824,27 @@ class Game {
         }
     }
 
-    recapturePointerLock() {
+    recapturePointerLock(defer = true) {
         if (this.touchControlsEnabled) return;
-        if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) {
+        if (this.titleScreenOpen || this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) {
             return;
         }
         if (document.pointerLockElement === this.renderer.domElement) return;
 
-        setTimeout(() => {
-            if (!this.touchControlsEnabled && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
+        const requestPointer = () => {
+            if (!this.touchControlsEnabled && !this.titleScreenOpen && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
                 const request = this.renderer.domElement.requestPointerLock();
                 if (request && typeof request.catch === 'function') {
                     request.catch((error) => console.warn('Pointer lock unavailable', error));
                 }
             }
-        }, 0);
+        };
+
+        if (defer) {
+            setTimeout(requestPointer, 0);
+        } else {
+            requestPointer();
+        }
     }
 
     ensureAudio() {
@@ -1018,11 +1080,17 @@ class Game {
     }
 
     toggleCameraView() {
-        const wasThirdPerson = this.cameraViewMode === 'third';
-        this.cameraViewMode = wasThirdPerson ? 'first' : 'third';
+        const wasThirdPerson = this.cameraViewMode !== 'first';
+        if (this.cameraViewMode === 'first') {
+            this.cameraViewMode = 'third';
+        } else if (this.cameraViewMode === 'third') {
+            this.cameraViewMode = 'thirdBack';
+        } else {
+            this.cameraViewMode = 'first';
+        }
         this.updateFirstPersonHandVisibility();
         if (this.localPlayerAvatar) {
-            this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
+            this.localPlayerAvatar.visible = this.cameraViewMode !== 'first';
         }
         if (this.cameraViewMode === 'first') {
             if (wasThirdPerson && this.thirdPersonAnchor) {
@@ -1037,7 +1105,7 @@ class Game {
     }
 
     getLocalPlayerPosition() {
-        if (this.cameraViewMode === 'third' && this.thirdPersonAnchor) {
+        if (this.cameraViewMode !== 'first' && this.thirdPersonAnchor) {
             return {
                 x: this.thirdPersonAnchor.x,
                 y: this.thirdPersonAnchor.y,
@@ -1053,17 +1121,22 @@ class Game {
     updateThirdPersonCamera(anchor, delta) {
         this.thirdPersonAnchor = anchor.clone();
         this.updateLocalPlayerAvatar(anchor, delta);
-        const behind = new THREE.Vector3(0, 1.5, 3.6);
-        behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + Math.PI);
-        this.camera.position.copy(anchor).add(behind);
-        this.camera.lookAt(anchor.x, anchor.y + 0.6, anchor.z);
+        const pitch = THREE.MathUtils.clamp(this.cameraController.pitch, -1.05, 1.05);
+        const distance = this.cameraViewMode === 'thirdBack' ? 3.8 : 3.6;
+        const horizontalDistance = Math.cos(pitch) * distance;
+        const verticalOffset = -Math.sin(pitch) * distance;
+        const orbitTarget = new THREE.Vector3(anchor.x, anchor.y - this.cameraController.eyeHeight + 1.55, anchor.z);
+        const offset = new THREE.Vector3(0, verticalOffset, horizontalDistance);
+        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + (this.cameraViewMode === 'thirdBack' ? 0 : Math.PI));
+        this.camera.position.copy(orbitTarget).add(offset);
+        this.camera.lookAt(orbitTarget);
     }
 
     updateLocalPlayerAvatar(anchor, delta) {
         if (!this.localPlayerAvatar) return;
 
         const previousPosition = this.localPlayerAvatar.position.clone();
-        this.localPlayerAvatar.visible = this.cameraViewMode === 'third';
+        this.localPlayerAvatar.visible = this.cameraViewMode !== 'first';
         this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
         this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
         this.applyAvatarHeadPitch(this.localPlayerAvatar, this.cameraController.pitch, 1);
@@ -2536,7 +2609,7 @@ class Game {
             this.followTargetPlayerId = null;
             if (this.followReturnPosition) {
                 this.cameraController.setPosition(this.followReturnPosition);
-                if (this.cameraViewMode === 'third') {
+                if (this.cameraViewMode !== 'first') {
                     this.thirdPersonAnchor = this.camera.position.clone();
                 }
                 this.followReturnPosition = null;
@@ -2558,7 +2631,7 @@ class Game {
             this.followTargetPlayerId = null;
             if (this.followReturnPosition) {
                 this.cameraController.setPosition(this.followReturnPosition);
-                if (this.cameraViewMode === 'third') {
+                if (this.cameraViewMode !== 'first') {
                     this.thirdPersonAnchor = this.camera.position.clone();
                 }
                 this.followReturnPosition = null;
@@ -3300,6 +3373,9 @@ class Game {
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement !== this.renderer.domElement) {
                 this.stopMining();
+                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
+                    this.openPauseMenu();
+                }
             }
         });
         window.addEventListener('blur', () => {
@@ -4445,18 +4521,30 @@ class Game {
         }
     }
 
-    raycastBlock(maxDistance) {
-        this.raycaster.setFromCamera(this.screenCenter, this.camera);
+    getInteractionRay() {
+        const direction = new THREE.Vector3();
+        this.camera.getWorldDirection(direction);
+        const reachOrigin = this.cameraViewMode === 'first'
+            ? this.camera.position.clone()
+            : (this.thirdPersonAnchor ? this.thirdPersonAnchor.clone() : this.cameraController.getPosition());
+        return { origin: this.camera.position.clone(), direction, reachOrigin };
+    }
 
-        const blocks = this.world.getInteractableObjects(this.camera.position, maxDistance);
+    raycastBlock(maxDistance) {
+        const ray = this.getInteractionRay();
+        this.raycaster.set(ray.origin, ray.direction);
+
+        const blocks = this.world.getInteractableObjects(ray.reachOrigin, maxDistance);
         if (blocks.length === 0) return null;
 
         const intersects = this.raycaster.intersectObjects(blocks, false);
-        if (intersects.length === 0 || intersects[0].distance > maxDistance) {
-            return null;
+        for (const hit of intersects) {
+            if (hit.point.distanceTo(ray.reachOrigin) <= maxDistance + 0.05) {
+                return hit;
+            }
         }
 
-        return intersects[0];
+        return null;
     }
     
     finishBreakingBlock(position) {
@@ -4849,7 +4937,7 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.1);
         const now = performance.now();
 
-        if (this.cameraViewMode === 'third' && this.thirdPersonAnchor) {
+        if (this.cameraViewMode !== 'first' && this.thirdPersonAnchor) {
             this.camera.position.copy(this.thirdPersonAnchor);
             this.camera.rotation.order = 'YXZ';
             this.camera.rotation.y = this.cameraController.yaw;
@@ -4890,6 +4978,7 @@ class Game {
         }
 
         if (this.pauseOpen) {
+            this.renderAppearancePreview(delta);
             this.updateUI();
             this.renderer.render(this.scene, this.camera);
             return;
@@ -4948,7 +5037,7 @@ class Game {
         this.updateFirstPersonHand(delta);
         this.updateHeldTorchLight();
 
-        if (this.cameraViewMode === 'third') {
+        if (this.cameraViewMode !== 'first') {
             this.updateThirdPersonCamera(playerAnchor, delta);
         }
         

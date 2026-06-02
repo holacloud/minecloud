@@ -58,7 +58,7 @@ class CameraController {
         }, true);
 
         document.addEventListener('keydown', e => {
-            if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ControlLeft' || e.code === 'ControlRight')) {
+            if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight')) {
                 e.preventDefault();
             }
             if (e.code === 'KeyW' && !this.keys.forward) {
@@ -73,8 +73,7 @@ class CameraController {
             if (e.code === 'KeyA') this.keys.left = true;
             if (e.code === 'KeyD') this.keys.right = true;
             if (e.code === 'Space') this.keys.jump = true;
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.sprint = true;
-            if (e.code === 'ControlLeft' || e.code === 'ControlRight') this.keys.crouch = true;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.crouch = true;
         });
         
         document.addEventListener('keyup', e => {
@@ -83,8 +82,7 @@ class CameraController {
             if (e.code === 'KeyA') this.keys.left = false;
             if (e.code === 'KeyD') this.keys.right = false;
             if (e.code === 'Space') this.keys.jump = false;
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.sprint = false;
-            if (e.code === 'ControlLeft' || e.code === 'ControlRight') this.keys.crouch = false;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.crouch = false;
             if (e.code === 'KeyW') this.sprintLatch = false;
         });
         

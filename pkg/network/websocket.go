@@ -496,7 +496,9 @@ func handleMessage(client *Client, msg Message) {
 
 		stateMu.Lock()
 		if existing, ok := gameState.Players[payload.ID]; ok {
-			payload.Username = existing.Username
+			if payload.Username == "" {
+				payload.Username = existing.Username
+			}
 			if payload.ShirtColor == "" {
 				payload.ShirtColor = existing.ShirtColor
 			}

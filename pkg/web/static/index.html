@@ -112,6 +112,10 @@
             cursor: pointer;
         }
         #appearance-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             display: none;
             width: min(760px, calc(100vw - 28px));
             max-height: min(72vh, 620px);
@@ -123,6 +127,7 @@
             background: rgba(9, 16, 31, 0.86);
             box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
             backdrop-filter: blur(10px);
+            z-index: 360;
         }
         #appearance-panel.visible {
             display: grid;
@@ -148,6 +153,7 @@
         #appearance-form h2 {
             font-size: 18px;
             letter-spacing: 0.04em;
+            color: #fff;
         }
         .appearance-field {
             display: grid;
@@ -177,6 +183,20 @@
         #appearance-form .actions {
             justify-content: flex-start;
             margin-top: 4px;
+        }
+        #appearance-form .actions button {
+            min-width: 140px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(61, 99, 177, 0.82);
+            color: #fff;
+            font: 700 13px/1 'Consolas', monospace;
+            cursor: pointer;
+        }
+        #appearance-save {
+            background: linear-gradient(90deg, rgba(44, 150, 88, 0.95), rgba(72, 185, 112, 0.95));
+            border-color: rgba(166, 255, 196, 0.36);
         }
         @media (max-width: 720px) {
             #appearance-panel.visible {
@@ -601,6 +621,11 @@
         }
         .pause-actions {
             display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pause-actions-main {
+            display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
@@ -613,6 +638,12 @@
             color: #fff;
             font: 700 13px/1 'Consolas', monospace;
             cursor: pointer;
+        }
+        #settings-resume {
+            width: 100%;
+            background: linear-gradient(90deg, rgba(44, 150, 88, 0.95), rgba(72, 185, 112, 0.95));
+            border-color: rgba(166, 255, 196, 0.36);
+            box-shadow: 0 0 0 2px rgba(67, 211, 119, 0.14);
         }
 
         #sign-reader {
@@ -841,8 +872,11 @@
             <input id="settings-fov" type="range" min="55" max="100" step="1" value="70">
         </div>
         <div class="pause-actions">
-            <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
-            <button id="settings-fullscreen-toggle" type="button">Toggle Fullscreen</button>
+            <div class="pause-actions-main">
+                <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
+                <button id="settings-fullscreen-toggle" type="button">Toggle Fullscreen</button>
+                <button id="settings-appearance" type="button">Edit Player</button>
+            </div>
             <button id="settings-resume" type="button">Resume</button>
         </div>
     </div>
@@ -870,30 +904,30 @@
             <button id="title-continue" type="button">Continue Game</button>
             <button id="title-appearance" type="button">Edit Player Appearance</button>
         </div>
-        <div id="appearance-panel">
-            <div id="appearance-preview" aria-label="3D player preview"></div>
-            <div id="appearance-form">
-                <h2>Player Appearance</h2>
-                <label class="appearance-field">
-                    Name
-                    <input id="appearance-name" type="text" maxlength="20" autocomplete="off">
-                </label>
-                <label class="appearance-field">
-                    Shirt color
-                    <input id="appearance-shirt-color" type="color">
-                </label>
-                <label class="appearance-field">
-                    Hair style
-                    <select id="appearance-hair-style"></select>
-                </label>
-                <label class="appearance-field">
-                    Hair color
-                    <input id="appearance-hair-color" type="color">
-                </label>
-                <div class="actions">
-                    <button id="appearance-save" type="button">Save Appearance</button>
-                    <button id="appearance-close" type="button">Close</button>
-                </div>
+    </div>
+    <div id="appearance-panel">
+        <div id="appearance-preview" aria-label="3D player preview"></div>
+        <div id="appearance-form">
+            <h2>Player Appearance</h2>
+            <label class="appearance-field">
+                Name
+                <input id="appearance-name" type="text" maxlength="20" autocomplete="off">
+            </label>
+            <label class="appearance-field">
+                Shirt color
+                <input id="appearance-shirt-color" type="color">
+            </label>
+            <label class="appearance-field">
+                Hair style
+                <select id="appearance-hair-style"></select>
+            </label>
+            <label class="appearance-field">
+                Hair color
+                <input id="appearance-hair-color" type="color">
+            </label>
+            <div class="actions">
+                <button id="appearance-save" type="button">Save Appearance</button>
+                <button id="appearance-close" type="button">Close</button>
             </div>
         </div>
     </div>
