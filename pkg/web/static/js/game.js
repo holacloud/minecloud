@@ -44,6 +44,15 @@ class Game {
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
         this.playerShirtColor = this.loadPlayerShirtColor();
+        this.playerHairStyle = this.loadPlayerHairStyle();
+        this.playerHairColor = this.loadPlayerHairColor();
+        this.appearanceMenuOpen = false;
+        this.appearanceDraft = null;
+        this.appearancePreviewRenderer = null;
+        this.appearancePreviewScene = null;
+        this.appearancePreviewCamera = null;
+        this.appearancePreviewAvatar = null;
+        this.appearancePreviewKey = '';
         this.settings = this.loadSettings();
         this.masterVolume = this.settings.masterVolume;
         this.mouseSensitivity = this.settings.mouseSensitivity;
@@ -279,6 +288,37 @@ class Game {
         return /^#[0-9a-f]{6}$/i.test(saved || '') ? saved : '#2f63c8';
     }
 
+    getHairStyles() {
+        return ['short', 'long', 'bob', 'ponytail', 'pixie', 'mohawk', 'sidepart', 'bald'];
+    }
+
+    getHairStyleLabel(style) {
+        const labels = {
+            short: 'Short',
+            long: 'Long',
+            bob: 'Bob',
+            ponytail: 'Ponytail',
+            pixie: 'Pixie',
+            mohawk: 'Mohawk',
+            sidepart: 'Side part',
+            bald: 'Bald'
+        };
+        return labels[style] || labels.short;
+    }
+
+    normalizeHairStyle(style) {
+        return this.getHairStyles().includes(style) ? style : 'short';
+    }
+
+    loadPlayerHairStyle() {
+        return this.normalizeHairStyle(window.localStorage.getItem('minecloud-hair-style'));
+    }
+
+    loadPlayerHairColor() {
+        const saved = window.localStorage.getItem('minecloud-hair-color');
+        return /^#[0-9a-f]{6}$/i.test(saved || '') ? saved : '#5b3a29';
+    }
+
     parseColorHex(color, fallback = 0x2F63C8) {
         return /^#[0-9a-f]{6}$/i.test(color || '') ? parseInt(color.slice(1), 16) : fallback;
     }
@@ -321,34 +361,157 @@ class Game {
 
     initTitleScreen() {
         const continueButton = document.getElementById('title-continue');
-        const renameButton = document.getElementById('title-rename');
-        const shirtColorButton = document.getElementById('title-shirt-color');
+        const appearanceButton = document.getElementById('title-appearance');
+        const appearanceCloseButton = document.getElementById('appearance-close');
+        const appearanceSaveButton = document.getElementById('appearance-save');
+        const nameInput = document.getElementById('appearance-name');
+        const shirtColorInput = document.getElementById('appearance-shirt-color');
+        const hairStyleSelect = document.getElementById('appearance-hair-style');
+        const hairColorInput = document.getElementById('appearance-hair-color');
         if (continueButton) {
             continueButton.addEventListener('click', () => {
                 this.titleScreenOpen = false;
+                this.appearanceMenuOpen = false;
                 this.updateTitleScreen();
                 this.recapturePointerLock();
             });
         }
-        if (renameButton) {
-            renameButton.addEventListener('click', () => {
-                const requested = window.prompt('Choose your player name', this.playerName);
-                if (!requested) return;
-                const resolved = requested.trim().slice(0, 20);
-                if (!resolved) return;
-                window.localStorage.setItem('minecloud-player-name', resolved);
+
+        this.appearanceDraft = {
+            name: this.playerName,
+            shirtColor: this.playerShirtColor,
+            hairStyle: this.playerHairStyle,
+            hairColor: this.playerHairColor
+        };
+        if (hairStyleSelect) {
+            hairStyleSelect.innerHTML = '';
+            this.getHairStyles().forEach((style) => {
+                const option = document.createElement('option');
+                option.value = style;
+                option.textContent = this.getHairStyleLabel(style);
+                hairStyleSelect.appendChild(option);
+            });
+        }
+
+        const syncDraft = () => {
+            this.appearanceDraft = {
+                name: ((nameInput && nameInput.value) || this.playerName).trim().slice(0, 20) || 'Player',
+                shirtColor: (shirtColorInput && shirtColorInput.value) || this.playerShirtColor,
+                hairStyle: this.normalizeHairStyle((hairStyleSelect && hairStyleSelect.value) || this.playerHairStyle),
+                hairColor: (hairColorInput && hairColorInput.value) || this.playerHairColor
+            };
+            this.updateAppearancePreview();
+        };
+
+        [nameInput, shirtColorInput, hairStyleSelect, hairColorInput].forEach((control) => {
+            if (!control) return;
+            control.addEventListener('input', syncDraft);
+            control.addEventListener('change', syncDraft);
+        });
+
+        if (appearanceButton) {
+            appearanceButton.addEventListener('click', () => {
+                this.appearanceMenuOpen = true;
+                this.updateAppearanceControls();
+                this.updateTitleScreen();
+                this.initAppearancePreview();
+                this.updateAppearancePreview(true);
+            });
+        }
+
+        if (appearanceCloseButton) {
+            appearanceCloseButton.addEventListener('click', () => {
+                this.appearanceMenuOpen = false;
+                this.updateTitleScreen();
+            });
+        }
+
+        if (appearanceSaveButton) {
+            appearanceSaveButton.addEventListener('click', () => {
+                syncDraft();
+                window.localStorage.setItem('minecloud-player-name', this.appearanceDraft.name);
+                window.localStorage.setItem('minecloud-shirt-color', this.appearanceDraft.shirtColor);
+                window.localStorage.setItem('minecloud-hair-style', this.appearanceDraft.hairStyle);
+                window.localStorage.setItem('minecloud-hair-color', this.appearanceDraft.hairColor);
                 window.location.reload();
             });
         }
-        if (shirtColorButton) {
-            shirtColorButton.style.background = this.playerShirtColor;
-            shirtColorButton.addEventListener('click', () => {
-                const requested = window.prompt('Choose shirt color as #RRGGBB', this.playerShirtColor);
-                if (!/^#[0-9a-f]{6}$/i.test(requested || '')) return;
-                window.localStorage.setItem('minecloud-shirt-color', requested);
-                window.location.reload();
-            });
+
+        this.updateAppearanceControls();
+    }
+
+    updateAppearanceControls() {
+        const nameInput = document.getElementById('appearance-name');
+        const shirtColorInput = document.getElementById('appearance-shirt-color');
+        const hairStyleSelect = document.getElementById('appearance-hair-style');
+        const hairColorInput = document.getElementById('appearance-hair-color');
+        if (!this.appearanceDraft) return;
+
+        if (nameInput) nameInput.value = this.appearanceDraft.name;
+        if (shirtColorInput) shirtColorInput.value = this.appearanceDraft.shirtColor;
+        if (hairStyleSelect) hairStyleSelect.value = this.appearanceDraft.hairStyle;
+        if (hairColorInput) hairColorInput.value = this.appearanceDraft.hairColor;
+    }
+
+    initAppearancePreview() {
+        if (this.appearancePreviewRenderer || typeof THREE === 'undefined') return;
+
+        const host = document.getElementById('appearance-preview');
+        if (!host) return;
+
+        this.appearancePreviewScene = new THREE.Scene();
+        this.appearancePreviewScene.background = new THREE.Color(0x101827);
+        this.appearancePreviewCamera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+        this.appearancePreviewCamera.position.set(0, 1.05, 4.2);
+        this.appearancePreviewCamera.lookAt(0, 0.75, 0);
+        this.appearancePreviewScene.add(new THREE.AmbientLight(0xffffff, 0.75));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+        keyLight.position.set(2.5, 4, 3);
+        this.appearancePreviewScene.add(keyLight);
+
+        this.appearancePreviewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        this.appearancePreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        host.innerHTML = '';
+        host.appendChild(this.appearancePreviewRenderer.domElement);
+        this.resizeAppearancePreview();
+    }
+
+    resizeAppearancePreview() {
+        const host = document.getElementById('appearance-preview');
+        if (!host || !this.appearancePreviewRenderer || !this.appearancePreviewCamera) return;
+
+        const width = Math.max(180, host.clientWidth || 260);
+        const height = Math.max(220, host.clientHeight || 320);
+        this.appearancePreviewRenderer.setSize(width, height, false);
+        this.appearancePreviewCamera.aspect = width / height;
+        this.appearancePreviewCamera.updateProjectionMatrix();
+    }
+
+    updateAppearancePreview(force = false) {
+        if (!this.appearancePreviewScene || !this.appearanceDraft) return;
+
+        const key = `${this.appearanceDraft.name}:${this.appearanceDraft.shirtColor}:${this.appearanceDraft.hairStyle}:${this.appearanceDraft.hairColor}`;
+        if (!force && key === this.appearancePreviewKey) return;
+
+        if (this.appearancePreviewAvatar) {
+            this.disposeRemoteAvatar(this.appearancePreviewAvatar);
+            this.appearancePreviewAvatar = null;
         }
+
+        this.appearancePreviewAvatar = this.createOtherPlayerAvatar('appearance-preview', this.appearanceDraft.name, this.appearanceDraft.shirtColor, this.appearanceDraft.hairStyle, this.appearanceDraft.hairColor);
+        this.appearancePreviewAvatar.position.set(0, -0.9, 0);
+        this.appearancePreviewScene.add(this.appearancePreviewAvatar);
+        this.appearancePreviewKey = key;
+    }
+
+    renderAppearancePreview(delta) {
+        if (!this.appearanceMenuOpen || !this.appearancePreviewRenderer || !this.appearancePreviewScene || !this.appearancePreviewCamera) return;
+
+        this.resizeAppearancePreview();
+        if (this.appearancePreviewAvatar) {
+            this.appearancePreviewAvatar.rotation.y += delta * 0.8;
+        }
+        this.appearancePreviewRenderer.render(this.appearancePreviewScene, this.appearancePreviewCamera);
     }
 
     updateTitleScreen() {
@@ -356,6 +519,10 @@ class Game {
         if (!titleScreen) return;
 
         titleScreen.classList.toggle('visible', this.titleScreenOpen);
+        const appearancePanel = document.getElementById('appearance-panel');
+        if (appearancePanel) {
+            appearancePanel.classList.toggle('visible', this.titleScreenOpen && this.appearanceMenuOpen);
+        }
         document.body.classList.toggle('title-screen-active', this.titleScreenOpen);
         this.updateFirstPersonHandVisibility();
     }
@@ -1375,7 +1542,7 @@ class Game {
     }
 
     initViewModel() {
-        const appearance = this.getPlayerAppearance(this.playerName, this.playerShirtColor);
+        const appearance = this.getPlayerAppearance(this.playerName, this.playerShirtColor, this.playerHairStyle, this.playerHairColor);
         const createMaterial = (color) => {
             const material = this.rtxModeEnabled
                 ? new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.01, transparent: true, opacity: 1 })
@@ -1439,7 +1606,7 @@ class Game {
     }
 
     initLocalPlayerAvatar() {
-        this.localPlayerAvatar = this.createOtherPlayerAvatar('local', this.playerName, this.playerShirtColor);
+        this.localPlayerAvatar = this.createOtherPlayerAvatar('local', this.playerName, this.playerShirtColor, this.playerHairStyle, this.playerHairColor);
         this.updateAvatarNameTag(this.localPlayerAvatar, this.playerName);
         this.localPlayerAvatar.visible = false;
         this.scene.add(this.localPlayerAvatar);
@@ -1716,27 +1883,29 @@ class Game {
         return Math.abs(hash);
     }
 
-    getPlayerAppearance(name, shirtColor = null) {
+    getPlayerAppearance(name, shirtColor = null, hairStyle = 'short', hairColor = null) {
         const key = name || 'Player';
         const hash = this.hashString(key);
         const shirts = [0x2F63C8, 0x7C3AED, 0x0F8A6B, 0xB45309, 0xC2414C, 0x475569];
         const pants = [0x28334D, 0x1F2937, 0x3B2F2F, 0x2A3442, 0x23364B, 0x36302A];
-        const hats = [0x5B3A29, 0x433125, 0x2B2F4B, 0x3E3221, 0x44252C, 0x2B3A2E];
+        const hairColors = [0x5B3A29, 0x433125, 0xC7A45B, 0x2B2B2B, 0x9A4A2B, 0xECE2CF];
         const skins = [0xE2B48D, 0xD9A07A, 0xC98B6C, 0xF1C49B, 0xAD6E54];
+        const normalizedHairStyle = this.normalizeHairStyle(hairStyle);
 
         return {
             shirt: shirtColor ? this.parseColorHex(shirtColor, shirts[hash % shirts.length]) : shirts[hash % shirts.length],
             pants: pants[Math.floor(hash / 7) % pants.length],
-            hat: hats[Math.floor(hash / 13) % hats.length],
+            hair: hairColor ? this.parseColorHex(hairColor, hairColors[Math.floor(hash / 13) % hairColors.length]) : hairColors[Math.floor(hash / 13) % hairColors.length],
+            hairStyle: normalizedHairStyle,
             skin: skins[Math.floor(hash / 17) % skins.length],
-            key: `${key}:${shirtColor || ''}`
+            key: `${key}:${shirtColor || ''}:${normalizedHairStyle}:${hairColor || ''}`
         };
     }
 
-    createOtherPlayerAvatar(playerId, playerName = 'Player', shirtColor = null) {
+    createOtherPlayerAvatar(playerId, playerName = 'Player', shirtColor = null, hairStyle = 'short', hairColor = null) {
         const group = new THREE.Group();
         group.userData.playerId = playerId;
-        const appearance = this.getPlayerAppearance(playerName, shirtColor);
+        const appearance = this.getPlayerAppearance(playerName, shirtColor, hairStyle, hairColor);
         group.userData.appearanceKey = appearance.key;
         const createPart = (geometry, color, x, y, z) => {
             const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
@@ -1755,16 +1924,14 @@ class Game {
         const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, 0.38, 1.03, 0);
         const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, -0.14, 0.34, 0);
         const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, 0.14, 0.34, 0);
-        const hat = createPart(new THREE.BoxGeometry(0.5, 0.12, 0.5), appearance.hat, 0, 1.83, 0);
-        group.remove(hat);
-        hat.position.set(0, 0.28, 0);
-        head.add(hat);
+        const hair = this.createAvatarHairGroup(appearance.hairStyle, appearance.hair);
+        head.add(hair);
 
         const face = this.createAvatarFaceMesh();
         face.position.set(0, 0.02, 0.245);
         head.add(face);
 
-        group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg };
+        group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg, hair };
         group.userData.heldItemMesh = null;
         group.userData.heldItemType = null;
         group.userData.lastPosition = new THREE.Vector3();
@@ -1781,6 +1948,63 @@ class Game {
         group.userData.nameSprite.position.set(0, 2.15, 0);
         group.add(group.userData.nameSprite);
         return group;
+    }
+
+    createAvatarHairGroup(style, color) {
+        const hair = new THREE.Group();
+        hair.userData.avatarHair = true;
+        const addPiece = (width, height, depth, x, y, z) => {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.createPlayerAvatarMaterial(color));
+            mesh.position.set(x, y, z);
+            mesh.castShadow = this.rtxModeEnabled;
+            mesh.receiveShadow = this.rtxModeEnabled;
+            mesh.userData.baseColor = color;
+            hair.add(mesh);
+            return mesh;
+        };
+
+        if (style === 'bald') {
+            return hair;
+        }
+
+        if (style === 'mohawk') {
+            addPiece(0.16, 0.22, 0.54, 0, 0.32, 0);
+            addPiece(0.12, 0.12, 0.5, 0, 0.18, -0.02);
+            return hair;
+        }
+
+        addPiece(0.54, 0.12, 0.54, 0, 0.28, 0);
+
+        if (style === 'short') {
+            addPiece(0.5, 0.12, 0.1, 0, 0.2, 0.23);
+            addPiece(0.08, 0.28, 0.48, -0.27, 0.08, 0);
+            addPiece(0.08, 0.28, 0.48, 0.27, 0.08, 0);
+        } else if (style === 'sidepart') {
+            addPiece(0.34, 0.16, 0.16, -0.12, 0.2, 0.2);
+            addPiece(0.18, 0.12, 0.42, 0.2, 0.18, 0.02);
+            addPiece(0.08, 0.24, 0.48, -0.27, 0.08, 0);
+        } else if (style === 'pixie') {
+            addPiece(0.44, 0.16, 0.18, 0, 0.2, 0.18);
+            addPiece(0.1, 0.2, 0.42, -0.25, 0.08, 0);
+            addPiece(0.1, 0.16, 0.36, 0.25, 0.1, 0.02);
+        } else if (style === 'bob') {
+            addPiece(0.08, 0.48, 0.5, -0.29, -0.04, 0);
+            addPiece(0.08, 0.48, 0.5, 0.29, -0.04, 0);
+            addPiece(0.48, 0.34, 0.08, 0, -0.02, -0.29);
+            addPiece(0.46, 0.12, 0.1, 0, 0.15, 0.25);
+        } else if (style === 'long') {
+            addPiece(0.09, 0.72, 0.5, -0.3, -0.16, 0);
+            addPiece(0.09, 0.72, 0.5, 0.3, -0.16, 0);
+            addPiece(0.48, 0.72, 0.1, 0, -0.16, -0.3);
+            addPiece(0.46, 0.16, 0.12, 0, 0.15, 0.25);
+        } else if (style === 'ponytail') {
+            addPiece(0.48, 0.16, 0.1, 0, 0.14, -0.26);
+            addPiece(0.18, 0.24, 0.18, 0, 0.05, -0.43);
+            addPiece(0.14, 0.56, 0.14, 0, -0.24, -0.48);
+            addPiece(0.42, 0.12, 0.1, 0, 0.14, 0.25);
+        }
+
+        return hair;
     }
 
     createAvatarFaceMesh() {
@@ -2382,7 +2606,11 @@ class Game {
                 node.material.dispose();
             }
         });
-        this.scene.remove(avatar);
+        if (avatar.parent) {
+            avatar.parent.remove(avatar);
+        } else {
+            this.scene.remove(avatar);
+        }
     }
 
     lerpAngle(current, target, alpha) {
@@ -2584,6 +2812,7 @@ class Game {
         this.network = new NetworkClient();
         this.network.setUsername(this.playerName);
         this.network.setShirtColor(this.playerShirtColor);
+        this.network.setHair(this.playerHairStyle, this.playerHairColor);
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
@@ -2647,14 +2876,16 @@ class Game {
     updateOtherPlayer(player) {
         const displayName = player.username || this.remotePlayerNames.get(player.id) || player.id;
         const shirtColor = player.shirtColor || null;
+        const hairStyle = this.normalizeHairStyle(player.hairStyle || 'short');
+        const hairColor = player.hairColor || null;
         let avatar = this.otherPlayerMeshes.get(player.id);
         if (!avatar) {
-            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor, hairStyle, hairColor);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
-        } else if (avatar.userData.appearanceKey !== this.getPlayerAppearance(displayName, shirtColor).key) {
+        } else if (avatar.userData.appearanceKey !== this.getPlayerAppearance(displayName, shirtColor, hairStyle, hairColor).key) {
             this.disposeRemoteAvatar(avatar);
-            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor);
+            avatar = this.createOtherPlayerAvatar(player.id, displayName, shirtColor, hairStyle, hairColor);
             this.scene.add(avatar);
             this.otherPlayerMeshes.set(player.id, avatar);
         }
@@ -4480,6 +4711,7 @@ class Game {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.rtxModeEnabled ? 2 : 1.25));
+        this.resizeAppearancePreview();
     }
     
     updateUI() {
@@ -4627,6 +4859,7 @@ class Game {
 
         if (this.titleScreenOpen) {
             this.updateTitleScreenCamera(delta);
+            this.renderAppearancePreview(delta);
             this.updateDayNightCycle(delta);
             this.updateWeather(delta);
             this.updateUnderwaterEffect();

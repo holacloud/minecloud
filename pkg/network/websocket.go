@@ -73,20 +73,22 @@ type Block struct {
 }
 
 type SprayPaint struct {
-	X              int     `json:"x"`
-	Y              int     `json:"y"`
-	Z              int     `json:"z"`
-	Face           string  `json:"face"`
-	Color          string  `json:"color"`
-	Author         string  `json:"author,omitempty"`
-	ExpiresAtDay   int     `json:"expiresAtDay"`
-	ExpiresAtTime  float64 `json:"expiresAtTime"`
+	X             int     `json:"x"`
+	Y             int     `json:"y"`
+	Z             int     `json:"z"`
+	Face          string  `json:"face"`
+	Color         string  `json:"color"`
+	Author        string  `json:"author,omitempty"`
+	ExpiresAtDay  int     `json:"expiresAtDay"`
+	ExpiresAtTime float64 `json:"expiresAtTime"`
 }
 
 type Player struct {
 	ID         string  `json:"id"`
 	Username   string  `json:"username,omitempty"`
 	ShirtColor string  `json:"shirtColor,omitempty"`
+	HairStyle  string  `json:"hairStyle,omitempty"`
+	HairColor  string  `json:"hairColor,omitempty"`
 	HeldItem   string  `json:"heldItem,omitempty"`
 	Action     string  `json:"action,omitempty"`
 	X          float64 `json:"x"`
@@ -97,17 +99,17 @@ type Player struct {
 }
 
 type GameState struct {
-	Players       map[string]Player `json:"players"`
-	Blocks        map[string]Block  `json:"blocks"`
-	RemovedBlocks map[string]bool   `json:"removedBlocks"`
+	Players       map[string]Player     `json:"players"`
+	Blocks        map[string]Block      `json:"blocks"`
+	RemovedBlocks map[string]bool       `json:"removedBlocks"`
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
-	WorldTime     float64           `json:"worldTime"`
-	WorldDay      int               `json:"worldDay"`
+	WorldTime     float64               `json:"worldTime"`
+	WorldDay      int                   `json:"worldDay"`
 }
 
 type persistedWorldState struct {
-	Blocks        map[string]Block `json:"blocks"`
-	RemovedBlocks map[string]bool  `json:"removedBlocks"`
+	Blocks        map[string]Block      `json:"blocks"`
+	RemovedBlocks map[string]bool       `json:"removedBlocks"`
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
 }
 
@@ -458,6 +460,8 @@ func handleMessage(client *Client, msg Message) {
 			PlayerID   string `json:"playerId"`
 			Username   string `json:"username,omitempty"`
 			ShirtColor string `json:"shirtColor,omitempty"`
+			HairStyle  string `json:"hairStyle,omitempty"`
+			HairColor  string `json:"hairColor,omitempty"`
 		}
 		json.Unmarshal(msg.Payload, &payload)
 
@@ -474,6 +478,8 @@ func handleMessage(client *Client, msg Message) {
 			ID:         client.ID,
 			Username:   client.username,
 			ShirtColor: payload.ShirtColor,
+			HairStyle:  payload.HairStyle,
+			HairColor:  payload.HairColor,
 			X:          0, Y: 4, Z: 0,
 		}
 		stateMu.Unlock()
@@ -493,6 +499,12 @@ func handleMessage(client *Client, msg Message) {
 			payload.Username = existing.Username
 			if payload.ShirtColor == "" {
 				payload.ShirtColor = existing.ShirtColor
+			}
+			if payload.HairStyle == "" {
+				payload.HairStyle = existing.HairStyle
+			}
+			if payload.HairColor == "" {
+				payload.HairColor = existing.HairColor
 			}
 			gameState.Players[payload.ID] = payload
 		}
@@ -893,6 +905,8 @@ func SavePlayerStates() error {
 			PlayerID:   player.ID,
 			Username:   player.Username,
 			ShirtColor: player.ShirtColor,
+			HairStyle:  player.HairStyle,
+			HairColor:  player.HairColor,
 			HeldItem:   player.HeldItem,
 			Action:     player.Action,
 			X:          player.X,
@@ -931,7 +945,7 @@ func broadcastPlayerList() {
 		}
 		clientsMu.RUnlock()
 
-		players = append(players, map[string]interface{}{"id": id, "name": name, "shirtColor": p.ShirtColor, "voiceEnabled": voiceEnabled})
+		players = append(players, map[string]interface{}{"id": id, "name": name, "shirtColor": p.ShirtColor, "hairStyle": p.HairStyle, "hairColor": p.HairColor, "voiceEnabled": voiceEnabled})
 	}
 	stateMu.RUnlock()
 

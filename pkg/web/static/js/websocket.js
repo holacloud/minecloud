@@ -6,6 +6,8 @@ class NetworkClient {
         this.playerId = this.generatePlayerId();
         this.username = null;
         this.shirtColor = '#2f63c8';
+        this.hairStyle = 'short';
+        this.hairColor = '#5b3a29';
         this.messageHandlers = new Map();
         this.otherPlayers = new Map();
     }
@@ -21,7 +23,7 @@ class NetworkClient {
         this.ws.onopen = () => {
             console.log('WebSocket: Connected to server');
             this.connected = true;
-            this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor });
+            this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor, hairStyle: this.hairStyle, hairColor: this.hairColor });
             this.updateStatus('Connected');
         };
         
@@ -185,6 +187,11 @@ class NetworkClient {
         this.shirtColor = color;
     }
 
+    setHair(style, color) {
+        this.hairStyle = style || 'short';
+        this.hairColor = color || '#5b3a29';
+    }
+
     setVoiceEnabled(enabled) {
         this.send('voiceState', { enabled: enabled });
     }
@@ -221,6 +228,8 @@ class NetworkClient {
             yaw: position.yaw,
             pitch: position.pitch,
             shirtColor: this.shirtColor,
+            hairStyle: this.hairStyle,
+            hairColor: this.hairColor,
             heldItem: heldItem || '',
             action: action || ''
         });

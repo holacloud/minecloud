@@ -111,6 +111,83 @@
             font: 700 14px/1 'Consolas', monospace;
             cursor: pointer;
         }
+        #appearance-panel {
+            display: none;
+            width: min(760px, calc(100vw - 28px));
+            max-height: min(72vh, 620px);
+            grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.1fr);
+            gap: 18px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 18px;
+            background: rgba(9, 16, 31, 0.86);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(10px);
+        }
+        #appearance-panel.visible {
+            display: grid;
+        }
+        #appearance-preview {
+            min-height: 320px;
+            overflow: hidden;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(180deg, #142035, #09101e);
+        }
+        #appearance-preview canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #appearance-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+        }
+        #appearance-form h2 {
+            font-size: 18px;
+            letter-spacing: 0.04em;
+        }
+        .appearance-field {
+            display: grid;
+            gap: 6px;
+            color: #d6e8ff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .appearance-field input,
+        .appearance-field select {
+            width: 100%;
+            min-height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.09);
+            color: #fff;
+            padding: 0 10px;
+            font: 700 14px/1 'Consolas', monospace;
+        }
+        .appearance-field select option {
+            color: #111827;
+        }
+        .appearance-field input[type="color"] {
+            padding: 4px;
+        }
+        #appearance-form .actions {
+            justify-content: flex-start;
+            margin-top: 4px;
+        }
+        @media (max-width: 720px) {
+            #appearance-panel.visible {
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            #appearance-preview {
+                min-height: 250px;
+            }
+        }
 
         #nav-hud {
             position: absolute;
@@ -791,8 +868,33 @@
         <div class="subtitle">A browser multiplayer voxel world with building, mining, chat, crafting, weather, RTX mode and proximity voice.</div>
         <div class="actions">
             <button id="title-continue" type="button">Continue Game</button>
-            <button id="title-rename" type="button">Change Player Name</button>
-            <button id="title-shirt-color" type="button">Change Shirt Color</button>
+            <button id="title-appearance" type="button">Edit Player Appearance</button>
+        </div>
+        <div id="appearance-panel">
+            <div id="appearance-preview" aria-label="3D player preview"></div>
+            <div id="appearance-form">
+                <h2>Player Appearance</h2>
+                <label class="appearance-field">
+                    Name
+                    <input id="appearance-name" type="text" maxlength="20" autocomplete="off">
+                </label>
+                <label class="appearance-field">
+                    Shirt color
+                    <input id="appearance-shirt-color" type="color">
+                </label>
+                <label class="appearance-field">
+                    Hair style
+                    <select id="appearance-hair-style"></select>
+                </label>
+                <label class="appearance-field">
+                    Hair color
+                    <input id="appearance-hair-color" type="color">
+                </label>
+                <div class="actions">
+                    <button id="appearance-save" type="button">Save Appearance</button>
+                    <button id="appearance-close" type="button">Close</button>
+                </div>
+            </div>
         </div>
     </div>
     <div id="mobile-controls">
