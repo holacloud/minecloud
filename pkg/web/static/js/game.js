@@ -3555,12 +3555,6 @@ class Game {
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement !== this.renderer.domElement) {
                 this.stopMining();
-                if (performance.now() < this.suppressPointerLockPauseUntil) {
-                    return;
-                }
-                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
-                    this.openPauseMenu();
-                }
             }
         });
         window.addEventListener('blur', () => {
@@ -3771,6 +3765,10 @@ class Game {
             if (this.followTargetPlayerId) {
                 this.followTargetPlayerId = null;
                 this.decoratePlayerListInteractions();
+            } else if (document.pointerLockElement === this.renderer.domElement) {
+                this.suppressPointerLockPauseUntil = performance.now() + 250;
+                this.stopMining();
+                document.exitPointerLock();
             } else {
                 this.togglePauseMenu();
             }
