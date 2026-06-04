@@ -3060,8 +3060,8 @@ class Game {
             slot.addEventListener('pointerdown', (event) => {
                 if (!this.touchControlsEnabled) return;
                 event.preventDefault();
-                const inventoryIndex = this.getHotbarWindowStart() + visibleIndex;
-                if (inventoryIndex < this.inventory.length) {
+                const inventoryIndex = this.getHotbarSlotInventoryIndex(visibleIndex);
+                if (inventoryIndex !== null) {
                     this.selectSlot(inventoryIndex);
                 }
             });
@@ -3086,16 +3086,30 @@ class Game {
         this.saveInventoryState();
     }
 
-    getHotbarWindowStart() {
-        const maxStart = Math.max(0, this.inventory.length - this.hotbarSize);
-        const centeredStart = this.selectedSlot - Math.floor(this.hotbarSize / 2);
-        return Math.max(0, Math.min(maxStart, centeredStart));
+    getHotbarInventoryIndexes() {
+        const available = this.inventory
+            .map((type, index) => ({ type, index }))
+            .filter((item) => this.getInventoryCount(item.type) > 0);
+        const selectedType = this.inventory[this.selectedSlot];
+        if (!selectedType || this.getInventoryCount(selectedType) <= 0) {
+            return available.slice(0, this.hotbarSize).map((item) => item.index);
+        }
+
+        return [
+            this.selectedSlot,
+            ...available.filter((item) => item.index !== this.selectedSlot).map((item) => item.index)
+        ].slice(0, this.hotbarSize);
+    }
+
+    getHotbarSlotInventoryIndex(visibleIndex) {
+        const indexes = this.getHotbarInventoryIndexes();
+        return Number.isInteger(indexes[visibleIndex]) ? indexes[visibleIndex] : null;
     }
 
     updateHotbarCounts() {
-        const start = this.getHotbarWindowStart();
+        const hotbarIndexes = this.getHotbarInventoryIndexes();
         for (let i = 0; i < this.hotbarSize; i++) {
-            const inventoryIndex = start + i;
+            const inventoryIndex = hotbarIndexes[i];
             const type = this.inventory[inventoryIndex];
             const count = this.getInventoryCount(type);
             const slotEl = this.hotbarSlotElements[i];
@@ -3113,8 +3127,8 @@ class Game {
 
             slotEl.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
             slotEl.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
-            countEl.textContent = count > 0 ? count : '0';
-            slotEl.classList.toggle('empty', count <= 0);
+            countEl.textContent = count;
+            slotEl.classList.remove('empty');
             slotEl.classList.toggle('selected', inventoryIndex === this.selectedSlot);
         }
     }
@@ -3765,8 +3779,8 @@ class Game {
 
         const slot = parseInt(event.key) - 1;
         if (slot >= 0 && slot < this.hotbarSize) {
-            const inventoryIndex = this.getHotbarWindowStart() + slot;
-            if (inventoryIndex < this.inventory.length) {
+            const inventoryIndex = this.getHotbarSlotInventoryIndex(slot);
+            if (inventoryIndex !== null) {
                 this.selectSlot(inventoryIndex);
             }
         }
@@ -3819,8 +3833,15 @@ class Game {
         const direction = event.deltaY > 0 ? 1 : -1;
         this.lastWheelStepAt = now;
 
-        const totalSlots = this.inventory.length;
-        const nextSlot = (this.selectedSlot + direction + totalSlots) % totalSlots;
+        const availableSlots = this.inventory
+            .map((type, index) => ({ type, index }))
+            .filter((item) => this.getInventoryCount(item.type) > 0)
+            .map((item) => item.index);
+        if (availableSlots.length === 0) return;
+
+        const currentAvailableIndex = availableSlots.indexOf(this.selectedSlot);
+        const startIndex = currentAvailableIndex === -1 ? 0 : currentAvailableIndex;
+        const nextSlot = availableSlots[(startIndex + direction + availableSlots.length) % availableSlots.length];
         this.selectSlot(nextSlot);
     }
     
