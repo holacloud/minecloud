@@ -42,6 +42,7 @@ class Game {
         };
         this.selectedSlot = 0;
         this.hotbarPrimaryType = null;
+        this.hotbarPinnedTypes = [];
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
         this.playerShirtColor = this.loadPlayerShirtColor();
@@ -712,6 +713,9 @@ class Game {
             if (typeof parsed.hotbarPrimaryType === 'string') {
                 this.hotbarPrimaryType = parsed.hotbarPrimaryType;
             }
+            if (Array.isArray(parsed.hotbarPinnedTypes)) {
+                this.hotbarPinnedTypes = parsed.hotbarPinnedTypes.filter((type) => typeof type === 'string' && type.length > 0);
+            }
             if (!this.hotbarPrimaryType && this.getInventoryCount(this.inventory[this.selectedSlot]) > 0) {
                 this.hotbarPrimaryType = this.inventory[this.selectedSlot];
             }
@@ -725,7 +729,8 @@ class Game {
             inventory: this.inventory,
             counts: this.inventoryCounts,
             selectedSlot: this.selectedSlot,
-            hotbarPrimaryType: this.hotbarPrimaryType
+            hotbarPrimaryType: this.hotbarPrimaryType,
+            hotbarPinnedTypes: this.hotbarPinnedTypes
         }));
     }
 
@@ -1231,10 +1236,13 @@ class Game {
         if (avatar.userData.heldItemType === type) return;
 
         const parts = avatar.userData.avatarParts;
-        if (!parts || !parts.rightArm) return;
+        const heldArm = parts && (parts.leftArm || parts.rightArm);
+        if (!parts || !heldArm) return;
 
         if (avatar.userData.heldItemMesh) {
-            parts.rightArm.remove(avatar.userData.heldItemMesh);
+            if (avatar.userData.heldItemMesh.parent) {
+                avatar.userData.heldItemMesh.parent.remove(avatar.userData.heldItemMesh);
+            }
             this.disposeObject3D(avatar.userData.heldItemMesh);
             avatar.userData.heldItemMesh = null;
         }
@@ -1252,7 +1260,7 @@ class Game {
             item.rotation.set(0.4, 0.2, 0.15);
         }
         item.frustumCulled = false;
-        parts.rightArm.add(item);
+        heldArm.add(item);
         avatar.userData.heldItemMesh = item;
     }
 
@@ -3115,15 +3123,29 @@ class Game {
         const available = this.inventory
             .map((type, index) => ({ type, index }))
             .filter((item) => this.getInventoryCount(item.type) > 0);
-        const primaryIndex = this.inventory.indexOf(this.hotbarPrimaryType);
-        if (primaryIndex === -1 || this.getInventoryCount(this.hotbarPrimaryType) <= 0) {
-            return available.slice(0, this.hotbarSize).map((item) => item.index);
-        }
 
-        return [
-            primaryIndex,
-            ...available.filter((item) => item.index !== primaryIndex).map((item) => item.index)
-        ].slice(0, this.hotbarSize);
+        const orderedTypes = [];
+        const pushType = (type) => {
+            if (!type || orderedTypes.includes(type) || this.getInventoryCount(type) <= 0) return;
+            orderedTypes.push(type);
+        };
+
+        this.hotbarPinnedTypes.forEach(pushType);
+        if (orderedTypes.length === 0) {
+            pushType(this.hotbarPrimaryType);
+        }
+        available.forEach((item) => pushType(item.type));
+
+        return orderedTypes.slice(0, this.hotbarSize).map((type) => this.inventory.indexOf(type)).filter((index) => index !== -1);
+    }
+
+    promoteTypeToHotbar(type) {
+        if (!type || this.getInventoryCount(type) <= 0) return;
+        this.hotbarPrimaryType = type;
+        this.hotbarPinnedTypes = [type, ...this.getHotbarInventoryIndexes()
+            .map((index) => this.inventory[index])
+            .filter((itemType) => itemType && itemType !== type)]
+            .slice(0, this.hotbarSize);
     }
 
     getHotbarSlotInventoryIndex(visibleIndex) {
@@ -3914,7 +3936,7 @@ class Game {
     selectSlot(index, options = {}) {
         this.selectedSlot = Math.max(0, Math.min(index, this.inventory.length - 1));
         if (options.promoteToHotbar) {
-            this.hotbarPrimaryType = this.inventory[this.selectedSlot] || null;
+            this.promoteTypeToHotbar(this.inventory[this.selectedSlot]);
         }
         this.updateHotbarCounts();
         this.renderInventoryPanel();
@@ -4134,6 +4156,7 @@ class Game {
             this.inventoryCounts[input.type] = Math.max(0, this.getInventoryCount(input.type) - input.amount);
         });
         this.addInventory(recipe.output.type, recipe.output.amount);
+        this.promoteTypeToHotbar(recipe.output.type);
         this.updateHotbarCounts();
         this.renderCraftingPanel();
         this.playTone({ frequency: 520, duration: 0.06, type: 'triangle', volume: 0.024, release: 0.07 });

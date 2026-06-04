@@ -277,9 +277,9 @@ class WorldRenderer {
             this.addDisplayBox(model, headColor, [0.12, 0.18, 0.12], [0, 1.0, 0], [0, 0, Math.PI / 4]);
         } else if (def.toolType === 'pickaxe') {
             this.addDisplayBox(model, handleColor, [0.16, 1.35, 0.16], [0, -0.18, 0], [0, 0, -0.16]);
-            this.addDisplayBox(model, headColor, [1.05, 0.18, 0.18], [0, 0.55, 0]);
-            this.addDisplayBox(model, headColor, [0.34, 0.16, 0.16], [-0.5, 0.43, 0], [0, 0, -0.55]);
-            this.addDisplayBox(model, headColor, [0.34, 0.16, 0.16], [0.5, 0.43, 0], [0, 0, 0.55]);
+            this.addDisplayBox(model, headColor, [1.05, 0.18, 0.18], [0, 0.55, 0], [0, Math.PI / 2, 0]);
+            this.addDisplayBox(model, headColor, [0.34, 0.16, 0.16], [0, 0.43, -0.5], [-0.55, Math.PI / 2, 0]);
+            this.addDisplayBox(model, headColor, [0.34, 0.16, 0.16], [0, 0.43, 0.5], [0.55, Math.PI / 2, 0]);
         } else if (def.toolType === 'axe') {
             this.addDisplayBox(model, handleColor, [0.16, 1.25, 0.16], [0, -0.18, 0], [0, 0, -0.12]);
             this.addDisplayBox(model, headColor, [0.56, 0.48, 0.16], [0.28, 0.52, 0]);
