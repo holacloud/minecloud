@@ -630,6 +630,18 @@ class WorldRenderer {
         ctx.clearRect(0, 0, size, size);
 
         if (patternType !== type) {
+            if (patternType === 'leaves' && type.endsWith('_leaves')) {
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        const noise = this.textureNoise(x, y, seed);
+                        if (noise < 0.18) continue;
+                        const color = noise > 0.7 ? this.offsetHex(def.color, 26) : def.color;
+                        ctx.fillStyle = this.shadeColor(color, 0);
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+                return;
+            }
             this.paintPaletteTexture(ctx, size, [this.offsetHex(def.color, -24), def.color, this.offsetHex(def.color, 24)], seed, def.transparent ? 0.82 : 1);
             ctx.fillStyle = this.shadeColor(this.offsetHex(def.color, -42), 0);
             if (patternType === 'brick' || patternType === 'stone_bricks') {
@@ -961,6 +973,12 @@ class WorldRenderer {
         return type;
     }
 
+    isAlphaCutoutType(type) {
+        return type === 'leaves' || type.endsWith('_leaves') ||
+            type === 'tall_grass' || type === 'flower_red' || type === 'flower_yellow' ||
+            type === 'mushroom_red' || type === 'mushroom_brown' || type === 'torch' || type === 'ladder';
+    }
+
     getRTXMaterialProps(type) {
         switch (type) {
             case 'grass': return { roughness: 0.92, metalness: 0.02, bumpScale: 0.08, envMapIntensity: 0.35 };
@@ -997,7 +1015,9 @@ class WorldRenderer {
         if (material) return material;
 
         const def = this.blockTypes[type];
-        const alphaCutoutTypes = new Set(['leaves', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch', 'ladder']);
+        const alphaCutout = this.isAlphaCutoutType(type);
+        const transparent = def.transparent && !alphaCutout;
+        const depthWrite = type === 'water' ? true : (!transparent || alphaCutout);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
             material = new THREE.MeshStandardMaterial({
@@ -1009,21 +1029,21 @@ class WorldRenderer {
                 metalness: props.metalness,
                 envMapIntensity: props.envMapIntensity,
                 emissive: props.emissive || 0x000000,
-                transparent: def.transparent || false,
+                transparent,
                 opacity: def.opacity || 1,
-                alphaTest: alphaCutoutTypes.has(type) ? 0.28 : 0,
-                depthWrite: !def.transparent || alphaCutoutTypes.has(type),
-                side: alphaCutoutTypes.has(type) ? THREE.DoubleSide : THREE.FrontSide
+                alphaTest: alphaCutout ? 0.28 : 0,
+                depthWrite,
+                side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
             });
         } else {
             material = new THREE.MeshLambertMaterial({
                 color: 0xFFFFFF,
                 map: this.getTexture(type, 'albedo'),
-                transparent: def.transparent || false,
+                transparent,
                 opacity: def.opacity || 1,
-                alphaTest: alphaCutoutTypes.has(type) ? 0.35 : 0,
-                depthWrite: !def.transparent || alphaCutoutTypes.has(type),
-                side: alphaCutoutTypes.has(type) ? THREE.DoubleSide : THREE.FrontSide
+                alphaTest: alphaCutout ? 0.35 : 0,
+                depthWrite,
+                side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
             });
         }
 
