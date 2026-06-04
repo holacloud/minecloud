@@ -245,6 +245,84 @@ class WorldRenderer {
         return geometry;
     }
 
+    createDisplayMaterial(color) {
+        return this.rtxModeEnabled
+            ? new THREE.MeshStandardMaterial({ color, roughness: 0.74, metalness: 0.08 })
+            : new THREE.MeshLambertMaterial({ color });
+    }
+
+    addDisplayBox(group, color, size, position, rotation = null) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), this.createDisplayMaterial(color));
+        mesh.position.set(position[0], position[1], position[2]);
+        if (rotation) mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+        mesh.castShadow = this.rtxModeEnabled;
+        mesh.receiveShadow = this.rtxModeEnabled;
+        mesh.userData.disposeGeometry = true;
+        group.add(mesh);
+        return mesh;
+    }
+
+    createToolDisplayMesh(type, def, scale) {
+        const group = new THREE.Group();
+        const materialColors = { wood: 0x8B6914, stone: 0x808080, iron: 0xC8CDD2, gold: 0xE4B83F };
+        const headColor = materialColors[def.toolMaterial] || def.color;
+        const handleColor = def.toolMaterial === 'wood' ? 0x7A4F25 : 0x6B4A2B;
+
+        if (def.toolType === 'sword') {
+            this.addDisplayBox(group, handleColor, [0.16, 0.5, 0.16], [0, -0.58, 0]);
+            this.addDisplayBox(group, 0xD2B48C, [0.52, 0.12, 0.18], [0, -0.3, 0]);
+            this.addDisplayBox(group, headColor, [0.18, 1.2, 0.14], [0, 0.32, 0]);
+            this.addDisplayBox(group, headColor, [0.12, 0.18, 0.12], [0, 1.0, 0], [0, 0, Math.PI / 4]);
+        } else if (def.toolType === 'pickaxe') {
+            this.addDisplayBox(group, handleColor, [0.16, 1.35, 0.16], [0, -0.18, 0], [0, 0, -0.16]);
+            this.addDisplayBox(group, headColor, [1.05, 0.18, 0.18], [0, 0.55, 0]);
+            this.addDisplayBox(group, headColor, [0.34, 0.16, 0.16], [-0.5, 0.43, 0], [0, 0, -0.55]);
+            this.addDisplayBox(group, headColor, [0.34, 0.16, 0.16], [0.5, 0.43, 0], [0, 0, 0.55]);
+        } else if (def.toolType === 'axe') {
+            this.addDisplayBox(group, handleColor, [0.16, 1.25, 0.16], [0, -0.18, 0], [0, 0, -0.12]);
+            this.addDisplayBox(group, headColor, [0.56, 0.48, 0.16], [0.28, 0.52, 0]);
+            this.addDisplayBox(group, headColor, [0.34, 0.28, 0.16], [0.52, 0.32, 0], [0, 0, -0.35]);
+        } else if (def.toolType === 'shovel') {
+            this.addDisplayBox(group, handleColor, [0.14, 1.05, 0.14], [0, -0.28, 0]);
+            this.addDisplayBox(group, headColor, [0.46, 0.44, 0.12], [0, 0.46, 0]);
+            this.addDisplayBox(group, headColor, [0.24, 0.18, 0.12], [0, 0.78, 0], [0, 0, Math.PI / 4]);
+        } else if (def.toolType === 'hoe') {
+            this.addDisplayBox(group, handleColor, [0.14, 1.25, 0.14], [0, -0.18, 0], [0, 0, -0.12]);
+            this.addDisplayBox(group, headColor, [0.7, 0.16, 0.16], [0.25, 0.54, 0]);
+            this.addDisplayBox(group, headColor, [0.16, 0.42, 0.16], [0.55, 0.32, 0]);
+        } else if (def.toolType === 'shears') {
+            this.addDisplayBox(group, headColor, [0.14, 0.95, 0.12], [-0.16, 0.04, 0], [0, 0, -0.32]);
+            this.addDisplayBox(group, headColor, [0.14, 0.95, 0.12], [0.16, 0.04, 0], [0, 0, 0.32]);
+            this.addDisplayBox(group, 0x6A7480, [0.2, 0.2, 0.12], [-0.18, -0.48, 0]);
+            this.addDisplayBox(group, 0x6A7480, [0.2, 0.2, 0.12], [0.18, -0.48, 0]);
+        }
+
+        group.scale.setScalar(scale);
+        group.userData.blockType = type;
+        return group;
+    }
+
+    createEggDisplayMesh(type, def, scale) {
+        const geometry = new THREE.SphereGeometry(0.42, 12, 8);
+        const mesh = new THREE.Mesh(geometry, this.createDisplayMaterial(def.color));
+        mesh.scale.set(scale * 0.82, scale * 1.08, scale * 0.82);
+        mesh.castShadow = this.rtxModeEnabled;
+        mesh.receiveShadow = this.rtxModeEnabled;
+        mesh.userData.disposeGeometry = true;
+        mesh.userData.blockType = type;
+        return mesh;
+    }
+
+    createSaplingDisplayMesh(type, def, scale) {
+        const group = new THREE.Group();
+        this.addDisplayBox(group, 0x6B4A2B, [0.12, 0.72, 0.12], [0, -0.05, 0]);
+        this.addDisplayBox(group, def.color, [0.46, 0.18, 0.16], [-0.18, 0.22, 0], [0, 0, 0.45]);
+        this.addDisplayBox(group, def.color, [0.46, 0.18, 0.16], [0.18, 0.36, 0], [0, 0, -0.45]);
+        group.scale.setScalar(scale);
+        group.userData.blockType = type;
+        return group;
+    }
+
     chunkKey(chunkX, chunkZ) {
         return `${chunkX},${chunkZ}`;
     }
@@ -1582,6 +1660,11 @@ class WorldRenderer {
     }
 
     createDisplayMesh(type, scale = 0.36) {
+        const def = this.blockTypes[type];
+        if (def && def.toolType) return this.createToolDisplayMesh(type, def, scale);
+        if (def && def.eggSpecies) return this.createEggDisplayMesh(type, def, scale);
+        if (def && def.saplingWood) return this.createSaplingDisplayMesh(type, def, scale);
+
         const material = this.getMaterial(type).clone();
         const mesh = new THREE.Mesh(this.getGeometry(type), material);
         mesh.scale.setScalar(scale);

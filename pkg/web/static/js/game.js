@@ -1235,9 +1235,7 @@ class Game {
 
         if (avatar.userData.heldItemMesh) {
             parts.rightArm.remove(avatar.userData.heldItemMesh);
-            avatar.userData.heldItemMesh.traverse((node) => {
-                if (node.material) node.material.dispose();
-            });
+            this.disposeObject3D(avatar.userData.heldItemMesh);
             avatar.userData.heldItemMesh = null;
         }
 
@@ -1250,6 +1248,18 @@ class Game {
         item.frustumCulled = false;
         parts.rightArm.add(item);
         avatar.userData.heldItemMesh = item;
+    }
+
+    disposeObject3D(object) {
+        if (!object) return;
+        object.traverse((node) => {
+            if (node.geometry && node.userData && node.userData.disposeGeometry) node.geometry.dispose();
+            if (Array.isArray(node.material)) {
+                node.material.forEach((material) => material.dispose());
+            } else if (node.material) {
+                node.material.dispose();
+            }
+        });
     }
 
     togglePhotoMode() {
@@ -3299,7 +3309,7 @@ class Game {
         for (const pickup of this.pickups.values()) {
             if (pickup.mesh) {
                 this.scene.remove(pickup.mesh);
-                if (pickup.mesh.material) pickup.mesh.material.dispose();
+                this.disposeObject3D(pickup.mesh);
             }
             pickup.mesh = this.world.createDisplayMesh(pickup.type, 0.34);
             pickup.mesh.position.copy(pickup.position);
@@ -3344,7 +3354,7 @@ class Game {
 
             if (falling.position.y <= falling.landingY + 0.18) {
                 this.scene.remove(falling.mesh);
-                if (falling.mesh.material) falling.mesh.material.dispose();
+                this.disposeObject3D(falling.mesh);
                 this.fallingBlockDrops.splice(i, 1);
                 this.spawnPickup(falling.type, { x: falling.position.x - 0.5, y: falling.landingY, z: falling.position.z - 0.5 }, 1, {
                     velocity: new THREE.Vector3(0, 0.4, 0)
@@ -3403,7 +3413,7 @@ class Game {
         this.addInventory(pickup.type, pickup.amount);
         this.playPickupSound();
         this.scene.remove(pickup.mesh);
-        if (pickup.mesh.material) pickup.mesh.material.dispose();
+        this.disposeObject3D(pickup.mesh);
         this.pickups.delete(id);
     }
 
@@ -3461,7 +3471,7 @@ class Game {
         if (!hasSelectedItem) {
             if (this.heldItemMesh) {
                 this.firstPersonItemAnchor.remove(this.heldItemMesh);
-                if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
+                this.disposeObject3D(this.heldItemMesh);
                 this.heldItemMesh = null;
                 this.heldItemType = null;
             }
@@ -3474,7 +3484,7 @@ class Game {
 
         if (this.heldItemMesh) {
             this.firstPersonItemAnchor.remove(this.heldItemMesh);
-            if (this.heldItemMesh.material) this.heldItemMesh.material.dispose();
+            this.disposeObject3D(this.heldItemMesh);
         }
 
         const heldItem = this.world.createDisplayMesh(selectedType, 0.24);
