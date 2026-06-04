@@ -28,4 +28,4 @@
 ## 5. Verification
 - [x] Run available automated checks.
 - [ ] Smoke-test crafting, mining, placement, eggs, and tree generation manually where possible.
-- [ ] Commit each relevant completed milestone.
+- [x] Commit each relevant completed milestone.
