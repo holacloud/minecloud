@@ -80,6 +80,7 @@ class Game {
         this.nextWeatherChange = 70;
         this.craftingOpen = false;
         this.craftingSearchTerm = '';
+        this.inventorySearchTerm = '';
         this.selectedCraftingRecipeId = null;
         this.suppressPointerLockPauseUntil = 0;
         this.pauseOpen = false;
@@ -3147,11 +3148,33 @@ class Game {
         if (!panel || !grid) return;
 
         panel.classList.toggle('visible', this.inventoryOpen);
+        const searchInput = document.getElementById('inventory-search');
+        if (searchInput && searchInput.value !== this.inventorySearchTerm) {
+            searchInput.value = this.inventorySearchTerm;
+        }
         grid.innerHTML = '';
 
-        this.inventory.forEach((type, index) => {
+        const query = this.inventorySearchTerm.trim().toLowerCase();
+        const visibleItems = this.inventory
+            .map((type, index) => ({ type, index }))
+            .filter(({ type }) => this.getInventoryCount(type) > 0)
+            .filter(({ type }) => {
+                if (!query) return true;
+                const searchable = `${type} ${this.getBlockDisplayName(type)}`.toLowerCase();
+                return searchable.includes(query);
+            });
+
+        if (visibleItems.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'inventory-empty-message';
+            empty.textContent = query ? 'No items match your search' : 'No items in inventory';
+            grid.appendChild(empty);
+            return;
+        }
+
+        visibleItems.forEach(({ type, index }) => {
             const item = document.createElement('div');
-            item.className = 'inventory-item' + (this.selectedSlot === index ? ' selected' : '') + (this.getInventoryCount(type) <= 0 ? ' empty' : '');
+            item.className = 'inventory-item' + (this.selectedSlot === index ? ' selected' : '');
             item.addEventListener('click', () => {
                 this.selectSlot(index, { promoteToHotbar: true });
                 this.closeInventoryPanel();
@@ -3185,6 +3208,8 @@ class Game {
             document.exitPointerLock();
         }
         this.renderInventoryPanel();
+        const search = document.getElementById('inventory-search');
+        if (search) search.focus();
     }
 
     closeInventoryPanel() {
@@ -3516,6 +3541,20 @@ class Game {
                 if (event.code === 'Escape') {
                     event.preventDefault();
                     this.closeCraftingPanel();
+                }
+                event.stopPropagation();
+            });
+        }
+        const inventorySearch = document.getElementById('inventory-search');
+        if (inventorySearch) {
+            inventorySearch.addEventListener('input', () => {
+                this.inventorySearchTerm = inventorySearch.value;
+                this.renderInventoryPanel();
+            });
+            inventorySearch.addEventListener('keydown', (event) => {
+                if (event.code === 'Escape') {
+                    event.preventDefault();
+                    this.closeInventoryPanel();
                 }
                 event.stopPropagation();
             });
