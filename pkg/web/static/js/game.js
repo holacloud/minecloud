@@ -1253,8 +1253,8 @@ class Game {
         const item = this.world.createDisplayMesh(type, 0.18);
         const def = this.world.blockTypes[type];
         if (def && def.itemOnly) {
-            item.position.set(0, -0.34, 0.02);
-            item.rotation.set(0.24, -0.05, 0.08);
+            item.position.set(0.22, -0.1, -0.2);
+            item.rotation.set(0.3, 0.08, 0.12);
         } else {
             item.position.set(0, -0.44, -0.14);
             item.rotation.set(0.4, 0.2, 0.15);
@@ -3518,8 +3518,8 @@ class Game {
         const heldItem = this.world.createDisplayMesh(selectedType, 0.24);
         const def = this.world.blockTypes[selectedType];
         if (def && def.itemOnly) {
-            heldItem.position.set(0, -0.46, 0.24);
-            heldItem.rotation.set(0.18, 0.48, 0.05);
+            heldItem.position.set(0.34, -0.14, -0.02);
+            heldItem.rotation.set(0.24, 0.64, 0.08);
         } else {
             heldItem.position.set(0, 0, 0);
             heldItem.rotation.set(0.34, 0.68, 0.12);
@@ -4157,8 +4157,12 @@ class Game {
         });
         this.addInventory(recipe.output.type, recipe.output.amount);
         this.promoteTypeToHotbar(recipe.output.type);
+        this.selectedSlot = this.inventory.indexOf(recipe.output.type);
         this.updateHotbarCounts();
         this.renderCraftingPanel();
+        this.renderInventoryPanel();
+        this.refreshHeldItemMesh();
+        this.saveInventoryState();
         this.playTone({ frequency: 520, duration: 0.06, type: 'triangle', volume: 0.024, release: 0.07 });
     }
 
