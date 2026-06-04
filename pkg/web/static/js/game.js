@@ -149,6 +149,7 @@ class Game {
                 inputs: [{ type: 'wood', amount: 1 }]
             }
         ];
+        this.registerExpansionContent();
 
         this.ambientLight = null;
         this.sunLight = null;
@@ -248,6 +249,68 @@ class Game {
         this.sprayActiveUntil = 0;
 
         this.init();
+    }
+
+    registerExpansionContent() {
+        const colorNames = ['white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black'];
+        const woodNames = ['spruce', 'birch', 'jungle', 'acacia', 'dark_oak', 'cherry', 'maple', 'willow'];
+        const materialBlocks = ['marble', 'basalt', 'slate', 'limestone', 'granite', 'copper_block', 'iron_block', 'gold_block', 'obsidian', 'concrete'];
+        const elementSymbols = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', 'mg', 'al', 'si', 'p', 's', 'cl', 'ar', 'k', 'ca', 'ti', 'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ag', 'sn', 'i', 'w', 'pt', 'au', 'hg', 'pb'];
+        const toolItems = ['wood_pickaxe', 'wood_shovel', 'wood_axe', 'wood_sword', 'wood_hoe', 'stone_pickaxe', 'stone_shovel', 'stone_axe', 'stone_sword', 'stone_hoe', 'iron_pickaxe', 'iron_shovel', 'iron_axe', 'iron_sword', 'iron_hoe', 'iron_shears', 'gold_pickaxe', 'gold_shovel', 'gold_axe', 'gold_sword', 'gold_hoe'];
+        const eggItems = ['sheep_egg', 'duck_egg', 'pig_egg', 'giraffe_egg', 'dog_egg', 'cat_egg', 'spider_egg', 'cave_monster_egg', 'macaw_egg'];
+        const slabBlocks = ['stone_slab', 'cobblestone_slab', 'brick_slab', 'stone_bricks_slab', 'planks_slab', 'spruce_planks_slab', 'birch_planks_slab', 'jungle_planks_slab', 'acacia_planks_slab', 'dark_oak_planks_slab', 'cherry_planks_slab', 'maple_planks_slab', 'willow_planks_slab'];
+
+        const addItemSlot = (type) => {
+            if (!this.inventory.includes(type)) this.inventory.push(type);
+            if (!Object.prototype.hasOwnProperty.call(this.inventoryCounts, type)) this.inventoryCounts[type] = 0;
+        };
+
+        const addRecipe = (id, name, outputType, outputAmount, inputs) => {
+            if (this.craftingRecipes.some((recipe) => recipe.id === id)) return;
+            this.craftingRecipes.push({ id, name, output: { type: outputType, amount: outputAmount }, inputs });
+            addItemSlot(outputType);
+            inputs.forEach((input) => addItemSlot(input.type));
+        };
+
+        colorNames.forEach((color) => {
+            addRecipe(`${color}_brick`, `Mix ${this.formatItemName(color)} Brick`, `${color}_brick`, 4, [{ type: 'brick', amount: 1 }, { type: 'sand', amount: 1 }]);
+            addRecipe(`${color}_wool`, `Dye ${this.formatItemName(color)} Wool`, `${color}_wool`, 4, [{ type: 'leaves', amount: 2 }, { type: 'flower_red', amount: 1 }]);
+        });
+
+        woodNames.forEach((wood) => {
+            addRecipe(`${wood}_planks`, `Saw ${this.formatItemName(wood)} Planks`, `${wood}_planks`, 4, [{ type: `${wood}_wood`, amount: 1 }]);
+            addRecipe(`${wood}_sapling`, `Prepare ${this.formatItemName(wood)} Sapling`, `${wood}_sapling`, 1, [{ type: `${wood}_leaves`, amount: 2 }, { type: 'dirt', amount: 1 }]);
+        });
+
+        slabBlocks.forEach((slab) => {
+            const source = slab.replace('_slab', '');
+            addRecipe(slab, `Cut ${this.formatItemName(slab)}`, slab, 2, [{ type: source, amount: 1 }]);
+        });
+
+        materialBlocks.forEach((type) => {
+            const input = type.includes('block') || type === 'obsidian' ? 'stone' : 'cobblestone';
+            addRecipe(type, `Refine ${this.formatItemName(type)}`, type, 2, [{ type: input, amount: 2 }, { type: 'sand', amount: 1 }]);
+        });
+
+        elementSymbols.forEach((symbol) => {
+            addRecipe(`element_${symbol}`, `Synthesize ${symbol.toUpperCase()} Block`, `element_${symbol}`, 1, [{ type: 'stone', amount: 1 }, { type: 'coal_ore', amount: 1 }]);
+        });
+
+        const toolMaterials = { wood: 'planks', stone: 'cobblestone', iron: 'iron_ore', gold: 'gold_ore' };
+        Object.entries(toolMaterials).forEach(([material, source]) => {
+            ['pickaxe', 'shovel', 'axe', 'sword', 'hoe'].forEach((tool) => {
+                addRecipe(`${material}_${tool}`, `Craft ${this.formatItemName(`${material}_${tool}`)}`, `${material}_${tool}`, 1, [{ type: source, amount: tool === 'sword' ? 2 : 3 }, { type: 'wood', amount: 1 }]);
+            });
+        });
+        addRecipe('iron_shears', 'Craft Iron Shears', 'iron_shears', 1, [{ type: 'iron_ore', amount: 2 }]);
+
+        eggItems.forEach((egg) => addItemSlot(egg));
+        toolItems.forEach((tool) => addItemSlot(tool));
+        ['spruce_wood', 'birch_wood', 'jungle_wood', 'acacia_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'cherry_leaves', 'maple_leaves', 'willow_leaves'].forEach(addItemSlot);
+    }
+
+    formatItemName(type) {
+        return String(type).split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
     }
     
     init() {
@@ -3129,6 +3192,31 @@ class Game {
         return this.inventory[this.selectedSlot] || null;
     }
 
+    getItemDefinition(type) {
+        return this.world && this.world.blockTypes ? this.world.blockTypes[type] : null;
+    }
+
+    getToolMiningMultiplier(toolType, blockType) {
+        const toolDef = this.getItemDefinition(toolType);
+        const blockDef = this.getItemDefinition(blockType);
+        if (!toolDef || !toolDef.toolType || !blockDef) return 1;
+
+        const tier = { wood: 1.45, stone: 1.9, iron: 2.6, gold: 3.2 }[toolDef.toolMaterial] || 1;
+        const category = blockDef.category || (blockType.includes('wood') || blockType.includes('planks') ? 'wood' : blockType.includes('leaves') ? 'leaves' : blockType === 'dirt' || blockType === 'sand' ? 'soil' : 'stone');
+        const effective = (toolDef.toolType === 'pickaxe' && (category === 'stone' || category === 'element')) ||
+            (toolDef.toolType === 'shovel' && (category === 'soil' || blockType === 'dirt' || blockType === 'sand' || blockType === 'grass')) ||
+            (toolDef.toolType === 'axe' && category === 'wood') ||
+            (toolDef.toolType === 'hoe' && (category === 'leaves' || blockType === 'grass')) ||
+            (toolDef.toolType === 'shears' && (category === 'leaves' || category === 'wool'));
+        return effective ? tier : Math.max(1, tier * 0.55);
+    }
+
+    getAdjustedBreakDuration(blockType, baseDuration) {
+        if (!blockType || !baseDuration) return baseDuration;
+        const multiplier = this.getToolMiningMultiplier(this.getSelectedBlockType(), blockType);
+        return Math.max(0.08, baseDuration / multiplier);
+    }
+
     getInventoryCount(type) {
         return this.inventoryCounts[type] || 0;
     }
@@ -4704,6 +4792,11 @@ class Game {
             }
         }
 
+        const bonusDrop = this.getExpansionBonusDrop(blockType);
+        if (bonusDrop) {
+            this.spawnPickup(bonusDrop, { x: position.x + 0.25, y: position.y + 0.2, z: position.z + 0.25 }, 1);
+        }
+
         this.showHitIndicator();
         this.lastSelectionUpdate = 0;
 
@@ -4712,6 +4805,19 @@ class Game {
         }
 
         return true;
+    }
+
+    getExpansionBonusDrop(blockType) {
+        if (!blockType) return null;
+        if ((blockType === 'grass' || blockType.includes('leaves')) && Math.random() < 0.08) {
+            const saplings = ['spruce_sapling', 'birch_sapling', 'jungle_sapling', 'acacia_sapling', 'dark_oak_sapling', 'cherry_sapling', 'maple_sapling', 'willow_sapling'];
+            return saplings[Math.floor(Math.random() * saplings.length)];
+        }
+        if ((blockType === 'tall_grass' || blockType.includes('leaves')) && Math.random() < 0.035) {
+            const eggs = ['sheep_egg', 'duck_egg', 'pig_egg', 'giraffe_egg', 'dog_egg', 'cat_egg', 'spider_egg', 'cave_monster_egg', 'macaw_egg'];
+            return eggs[Math.floor(Math.random() * eggs.length)];
+        }
+        return null;
     }
 
     spawnMiningParticles(type, hitPoint, normal) {
@@ -4808,6 +4914,55 @@ class Game {
         this.kickMiningBlockVisual();
         this.playMiningSound(blockType);
     }
+
+    spawnAnimalFromEgg(species, position) {
+        const ground = this.cameraController.getFloorY(position.x + 0.5, position.z + 0.5, position.y + 4);
+        const spawnPosition = new THREE.Vector3(position.x + 0.5, Math.max(position.y, ground), position.z + 0.5);
+        this.ambientMobs.push(this.createMob(species, spawnPosition));
+        this.consumeSelectedBlock();
+        this.playPlaceSound('grass');
+        this.receiveSystemMessage({ text: `${this.formatItemName(species)} spawned` });
+        this.placeActionTimer = 0.35;
+        this.showHitIndicator();
+    }
+
+    plantSaplingTree(itemDef, position) {
+        if (!this.world.hasSolidBlock(position.x, position.y - 1, position.z) || this.world.getBlockTypeAt(position.x, position.y, position.z)) return;
+        const trunkHeight = itemDef.saplingWood === 'dark_oak_wood' ? 6 : 5;
+        const payloads = [];
+
+        for (let y = 0; y < trunkHeight; y++) {
+            payloads.push({ x: position.x, y: position.y + y, z: position.z, blockType: itemDef.saplingWood });
+        }
+
+        const leavesStart = position.y + trunkHeight - 2;
+        for (let ly = 0; ly < 3; ly++) {
+            const radius = ly === 2 ? 1 : 2;
+            for (let lx = -radius; lx <= radius; lx++) {
+                for (let lz = -radius; lz <= radius; lz++) {
+                    if (lx === 0 && lz === 0 && ly < 2) continue;
+                    if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
+                    payloads.push({ x: position.x + lx, y: leavesStart + ly, z: position.z + lz, blockType: itemDef.saplingLeaves });
+                }
+            }
+        }
+
+        let placedAny = false;
+        for (const payload of payloads) {
+            if (this.world.addBlock(payload)) {
+                placedAny = true;
+                if (this.network.connected) this.network.send('blockPlace', payload);
+            }
+        }
+        if (!placedAny) return;
+
+        this.consumeSelectedBlock();
+        this.playPlaceSound(itemDef.saplingWood);
+        this.receiveSystemMessage({ text: `${this.formatItemName(itemDef.saplingWood.replace('_wood', ''))} tree planted` });
+        this.placeActionTimer = 0.35;
+        this.showHitIndicator();
+        this.lastSelectionUpdate = 0;
+    }
     
     placeBlock() {
         const hit = this.raycastBlock(this.placeDistance);
@@ -4830,6 +4985,17 @@ class Game {
                 return;
             }
             if (!blockType || this.getInventoryCount(blockType) <= 0) return;
+
+            const itemDef = this.getItemDefinition(blockType);
+            if (itemDef && itemDef.eggSpecies) {
+                this.spawnAnimalFromEgg(itemDef.eggSpecies, newPos);
+                return;
+            }
+            if (itemDef && itemDef.saplingWood) {
+                this.plantSaplingTree(itemDef, newPos);
+                return;
+            }
+            if (itemDef && itemDef.itemOnly) return;
 
             const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
             if (blockType === 'sign') {
@@ -4882,14 +5048,15 @@ class Game {
             return;
         }
 
-        const breakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
-        if (!breakDuration || !Number.isFinite(breakDuration)) {
+        const baseBreakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
+        if (!baseBreakDuration || !Number.isFinite(baseBreakDuration)) {
             this.resetMiningTarget();
             this.resetMiningBlockVisual(false);
             return;
         }
 
         const blockType = this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z);
+        const breakDuration = this.getAdjustedBreakDuration(blockType, baseBreakDuration);
 
         const targetKey = `${worldPos.x},${worldPos.y},${worldPos.z}`;
         if (targetKey !== this.miningTargetKey) {

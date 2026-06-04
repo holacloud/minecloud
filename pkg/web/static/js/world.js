@@ -62,8 +62,105 @@ class WorldRenderer {
             spray_paint: { color: 0xFF3BD5, name: 'Spray Paint', breakDuration: 0, solid: false },
             ladder: { color: 0xB98548, name: 'Ladder', transparent: true, breakDuration: 0.25, solid: false },
         };
+        this.registerExpansionBlockTypes();
 
         this.generateInitialChunks();
+    }
+
+    registerExpansionBlockTypes() {
+        const colors = {
+            white: 0xF4F4F0, orange: 0xE88932, magenta: 0xC653C9, light_blue: 0x67A9E8,
+            yellow: 0xE6D64C, lime: 0x72C54B, pink: 0xEA7AAE, gray: 0x555B63,
+            light_gray: 0xA8ADB2, cyan: 0x2EA7B8, purple: 0x7E4CC2, blue: 0x3558B8,
+            brown: 0x7A4A2A, green: 0x3E8A3D, red: 0xB93A32, black: 0x17191D
+        };
+        const labels = {
+            white: 'White', orange: 'Orange', magenta: 'Magenta', light_blue: 'Light Blue', yellow: 'Yellow', lime: 'Lime',
+            pink: 'Pink', gray: 'Gray', light_gray: 'Light Gray', cyan: 'Cyan', purple: 'Purple', blue: 'Blue', brown: 'Brown',
+            green: 'Green', red: 'Red', black: 'Black'
+        };
+
+        for (const [key, color] of Object.entries(colors)) {
+            this.blockTypes[`${key}_brick`] = { color, name: `${labels[key]} Brick`, breakDuration: 0.85, category: 'stone' };
+            this.blockTypes[`${key}_wool`] = { color, name: `${labels[key]} Wool`, breakDuration: 0.35, category: 'wool' };
+        }
+
+        const woods = {
+            spruce: [0x5B3B24, 'Spruce'], birch: [0xD8C48F, 'Birch'], jungle: [0xA7673A, 'Jungle'],
+            acacia: [0xB85F33, 'Acacia'], dark_oak: [0x3F2818, 'Dark Oak'], cherry: [0xE6A0B6, 'Cherry'],
+            maple: [0xC47A2C, 'Maple'], willow: [0x8FA85A, 'Willow']
+        };
+        for (const [key, [color, label]] of Object.entries(woods)) {
+            this.blockTypes[`${key}_wood`] = { color, name: `${label} Wood`, breakDuration: 0.8, category: 'wood' };
+            this.blockTypes[`${key}_planks`] = { color: this.lightenHex(color, 0x222222), name: `${label} Planks`, breakDuration: 0.6, category: 'wood' };
+            this.blockTypes[`${key}_leaves`] = { color: key === 'cherry' ? 0xEAA3BE : key === 'willow' ? 0x7EA84E : 0x4E8F36, name: `${label} Leaves`, transparent: true, breakDuration: 0.2, category: 'leaves' };
+            this.blockTypes[`${key}_sapling`] = { color: this.lightenHex(color, 0x333333), name: `${label} Sapling`, transparent: true, breakDuration: 0.1, solid: false, itemOnly: true, saplingWood: `${key}_wood`, saplingLeaves: `${key}_leaves` };
+        }
+
+        const slabSources = ['stone', 'cobblestone', 'brick', 'stone_bricks', 'planks', 'spruce_planks', 'birch_planks', 'jungle_planks', 'acacia_planks', 'dark_oak_planks', 'cherry_planks', 'maple_planks', 'willow_planks'];
+        for (const source of slabSources) {
+            const def = this.blockTypes[source];
+            if (!def) continue;
+            this.blockTypes[`${source}_slab`] = { color: def.color, name: `${def.name} Slab`, breakDuration: Math.max(0.2, (def.breakDuration || 0.6) * 0.6), category: def.category || (source.includes('planks') ? 'wood' : 'stone') };
+        }
+
+        const materials = {
+            marble: [0xDAD7D2, 'Marble'], basalt: [0x2D3136, 'Basalt'], slate: [0x46515E, 'Slate'], limestone: [0xCFC5A6, 'Limestone'],
+            granite: [0x9B6C5D, 'Granite'], copper_block: [0xB46A3C, 'Copper Block'], iron_block: [0xC8CDD2, 'Iron Block'],
+            gold_block: [0xE4B83F, 'Gold Block'], obsidian: [0x171126, 'Obsidian'], concrete: [0xB4B4B4, 'Concrete']
+        };
+        for (const [key, [color, label]] of Object.entries(materials)) {
+            this.blockTypes[key] = { color, name: label, breakDuration: key === 'obsidian' ? 3.5 : 1.0, category: 'stone' };
+        }
+
+        const elements = [
+            ['h', 'Hydrogen', 0xDCEBFF], ['he', 'Helium', 0xF4D7FF], ['li', 'Lithium', 0xBFA0FF], ['be', 'Beryllium', 0xC8D68B],
+            ['b', 'Boron', 0x8D704F], ['c', 'Carbon', 0x242424], ['n', 'Nitrogen', 0x8FB7FF], ['o', 'Oxygen', 0xFF6B6B],
+            ['f', 'Fluorine', 0xD2FF65], ['ne', 'Neon', 0xFF7BEA], ['na', 'Sodium', 0xD5C04C], ['mg', 'Magnesium', 0xC9CED6],
+            ['al', 'Aluminium', 0xB9C0C9], ['si', 'Silicon', 0x8A8171], ['p', 'Phosphorus', 0xFFB347], ['s', 'Sulfur', 0xE7D84A],
+            ['cl', 'Chlorine', 0x9CE36B], ['ar', 'Argon', 0xA8E5FF], ['k', 'Potassium', 0xC0A1FF], ['ca', 'Calcium', 0xDAD6BF],
+            ['ti', 'Titanium', 0xAEB8C2], ['cr', 'Chromium', 0x9CA6A8], ['mn', 'Manganese', 0xA78EA8], ['fe', 'Iron Element', 0x9EA4AA],
+            ['co', 'Cobalt', 0x3F63B5], ['ni', 'Nickel', 0xB1B985], ['cu', 'Copper Element', 0xB46A3C], ['zn', 'Zinc', 0x9DA9B1],
+            ['ag', 'Silver', 0xD8DEE8], ['sn', 'Tin', 0xA6B4B8], ['i', 'Iodine', 0x5B3F7A], ['w', 'Tungsten', 0x5D6872],
+            ['pt', 'Platinum', 0xD7D2C4], ['au', 'Gold Element', 0xE4B83F], ['hg', 'Mercury', 0xB7C7D7], ['pb', 'Lead', 0x59616A]
+        ];
+        for (const [symbol, label, color] of elements) {
+            this.blockTypes[`element_${symbol}`] = { color, name: `${label} Block`, breakDuration: 0.9, category: 'element' };
+        }
+
+        const toolMaterials = { wood: 0x8B6914, stone: 0x808080, iron: 0xC8CDD2, gold: 0xE4B83F };
+        const toolTypes = ['pickaxe', 'shovel', 'axe', 'sword', 'hoe', 'shears'];
+        for (const [material, color] of Object.entries(toolMaterials)) {
+            for (const tool of toolTypes) {
+                if (tool === 'shears' && material !== 'iron') continue;
+                const id = tool === 'shears' ? 'iron_shears' : `${material}_${tool}`;
+                this.blockTypes[id] = { color, name: `${this.capitalize(material)} ${this.capitalize(tool)}`, breakDuration: 0, solid: false, itemOnly: true, toolType: tool, toolMaterial: material };
+            }
+        }
+
+        const animals = ['sheep', 'duck', 'pig', 'giraffe', 'dog', 'cat', 'spider', 'cave_monster', 'macaw'];
+        const eggColors = [0xF1EFE6, 0xF4F0D8, 0xD89AA3, 0xF4A12C, 0xC89058, 0xF2C36B, 0x24192C, 0x477599, 0x24B45A];
+        animals.forEach((species, index) => {
+            this.blockTypes[`${species}_egg`] = { color: eggColors[index], name: `${this.capitalize(species.replace('_', ' '))} Egg`, breakDuration: 0, solid: false, itemOnly: true, eggSpecies: species };
+        });
+    }
+
+    capitalize(value) {
+        return String(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    lightenHex(color, amount) {
+        const r = Math.min(255, ((color >> 16) & 255) + ((amount >> 16) & 255));
+        const g = Math.min(255, ((color >> 8) & 255) + ((amount >> 8) & 255));
+        const b = Math.min(255, (color & 255) + (amount & 255));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    offsetHex(color, amount) {
+        const r = Math.max(0, Math.min(255, ((color >> 16) & 255) + amount));
+        const g = Math.max(0, Math.min(255, ((color >> 8) & 255) + amount));
+        const b = Math.max(0, Math.min(255, (color & 255) + amount));
+        return (r << 16) | (g << 8) | b;
     }
 
     createCutoutGeometry(planes) {
@@ -392,29 +489,30 @@ class WorldRenderer {
     }
 
     paintHeightTexture(ctx, type, size) {
+        const patternType = this.getTexturePatternType(type);
         const seed = type.length * 23;
 
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
                 let noise = this.textureNoise(x, y, seed);
 
-                if (type === 'wood' || type === 'planks') {
+                if (patternType === 'wood' || patternType === 'planks') {
                     noise = (noise * 0.38) + ((Math.sin((x / size) * Math.PI * 8) * 0.5 + 0.5) * 0.48) + ((y % 6) / 6) * 0.08;
-                } else if (type === 'stone' || type === 'cobblestone' || type.endsWith('_ore')) {
+                } else if (patternType === 'stone' || patternType === 'cobblestone' || patternType.endsWith('_ore')) {
                     noise = (noise * 0.55) + this.textureNoise(x * 0.7, y * 0.7, seed + 7) * 0.25 + this.textureNoise(x * 0.18, y * 0.18, seed + 17) * 0.2;
-                } else if (type === 'grass' || type === 'leaves') {
+                } else if (patternType === 'grass' || patternType === 'leaves') {
                     noise = (noise * 0.46) + this.textureNoise(x * 1.2, y * 1.2, seed + 13) * 0.3 + ((1 - y / size) * 0.24);
-                } else if (type === 'sand') {
+                } else if (patternType === 'sand') {
                     noise = (noise * 0.5) + ((Math.sin((x / size) * Math.PI * 10 + y * 0.15) * 0.5 + 0.5) * 0.22) + this.textureNoise(x * 0.9, y * 0.9, seed + 31) * 0.28;
-                } else if (type === 'brick' || type === 'stone_bricks') {
+                } else if (patternType === 'brick' || patternType === 'stone_bricks') {
                     noise = (noise * 0.42) + ((x % 8) / 8) * 0.12 + ((y % 5) / 5) * 0.16 + this.textureNoise(x * 0.4, y * 0.4, seed + 21) * 0.3;
-                } else if (type === 'glass') {
+                } else if (patternType === 'glass') {
                     noise = 0.18 + this.textureNoise(x * 0.2, y * 0.2, seed + 11) * 0.08 + ((x + y) % 13) / 13 * 0.04;
-                } else if (type === 'water') {
+                } else if (patternType === 'water') {
                     noise = 0.15 + this.textureNoise(x * 0.4, y * 0.4, seed + 19) * 0.1 + ((Math.sin((x + y) * 0.25) * 0.5 + 0.5) * 0.07);
-                } else if (type === 'bed') {
+                } else if (patternType === 'bed') {
                     noise = (y < size * 0.48 ? 0.45 : 0.72) + this.textureNoise(x * 0.6, y * 0.6, seed + 15) * 0.12;
-                } else if (type === 'cactus') {
+                } else if (patternType === 'cactus') {
                     noise = (noise * 0.38) + ((x % 5) / 5) * 0.42 + ((y % 7) / 7) * 0.08;
                 }
 
@@ -426,6 +524,7 @@ class WorldRenderer {
     }
 
     applyRTXSurfaceDetail(ctx, type, size, seed) {
+        type = this.getTexturePatternType(type);
         const overlay = (strength, colorFn, threshold = 0.58, scale = 1.7) => {
             ctx.globalAlpha = strength;
             for (let y = 0; y < size; y++) {
@@ -525,11 +624,30 @@ class WorldRenderer {
 
     paintTexture(ctx, type, size) {
         const def = this.blockTypes[type];
+        const patternType = this.getTexturePatternType(type);
         const seed = type.length * 17;
 
         ctx.clearRect(0, 0, size, size);
 
-        switch (type) {
+        if (patternType !== type) {
+            this.paintPaletteTexture(ctx, size, [this.offsetHex(def.color, -24), def.color, this.offsetHex(def.color, 24)], seed, def.transparent ? 0.82 : 1);
+            ctx.fillStyle = this.shadeColor(this.offsetHex(def.color, -42), 0);
+            if (patternType === 'brick' || patternType === 'stone_bricks') {
+                for (let y = 0; y < size; y += 5) ctx.fillRect(0, y, size, 1);
+                for (let y = 1; y < size; y += 5) {
+                    const offset = (Math.floor(y / 5) % 2) * 4;
+                    for (let x = -offset; x < size; x += 8) ctx.fillRect(x, y, 1, 4);
+                }
+            } else if (patternType === 'wood') {
+                for (let x = 2; x < size; x += 5) ctx.fillRect(x, 0, 1, size);
+            } else if (patternType === 'planks') {
+                for (let y = 0; y < size; y += 4) ctx.fillRect(0, y, size, 1);
+                for (let x = 2; x < size; x += 6) ctx.fillRect(x, 0, 1, size);
+            }
+            return;
+        }
+
+        switch (patternType) {
             case 'grass':
                 this.paintPaletteTexture(ctx, size, [0x3E6B24, 0x4C7E2C, 0x5B8C35, 0x6C9D3F], seed);
                 break;
@@ -830,6 +948,19 @@ class WorldRenderer {
         return texture;
     }
 
+    getTexturePatternType(type) {
+        const def = this.blockTypes[type];
+        if (!def) return type;
+        if (type.endsWith('_brick')) return 'brick';
+        if (type.endsWith('_wool')) return 'leaves';
+        if (type.endsWith('_planks') || type.endsWith('_planks_slab')) return 'planks';
+        if (type.endsWith('_wood')) return 'wood';
+        if (type.endsWith('_leaves')) return 'leaves';
+        if (type.endsWith('_slab')) return type.includes('planks') ? 'planks' : 'stone_bricks';
+        if (type.startsWith('element_')) return 'stone_bricks';
+        return type;
+    }
+
     getRTXMaterialProps(type) {
         switch (type) {
             case 'grass': return { roughness: 0.92, metalness: 0.02, bumpScale: 0.08, envMapIntensity: 0.35 };
@@ -1022,7 +1153,11 @@ class WorldRenderer {
                 const decorRoll = rand(worldX, worldZ, 2048);
 
                 if (treeChance > 0 && rand(worldX, worldZ, 999) < treeChance && height >= 3) {
-                    this.generateTree(worldX, height + 1, worldZ, rand);
+                    const treeTypes = biome === 'forest'
+                        ? ['wood', 'spruce_wood', 'birch_wood', 'jungle_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood']
+                        : ['wood', 'birch_wood', 'acacia_wood', 'maple_wood'];
+                    const treeIndex = Math.floor(rand(worldX, worldZ, 1777) * treeTypes.length);
+                    this.generateTree(worldX, height + 1, worldZ, rand, treeTypes[treeIndex]);
                 } else if (cactusChance > 0 && rand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
                     this.generateCactus(worldX, height + 1, worldZ, rand);
                 } else if (biome === 'forest' && decorRoll < 0.06) {
@@ -1040,11 +1175,12 @@ class WorldRenderer {
         this.generatedChunks.add(key);
     }
 
-    generateTree(x, y, z, rand) {
-        const trunkHeight = 4 + Math.floor(rand(x, z, 2024) * 2);
+    generateTree(x, y, z, rand, woodType = 'wood') {
+        const leavesType = woodType === 'wood' ? 'leaves' : woodType.replace('_wood', '_leaves');
+        const trunkHeight = 4 + Math.floor(rand(x, z, 2024) * (woodType === 'dark_oak_wood' ? 3 : 2));
 
         for (let ty = 0; ty < trunkHeight; ty++) {
-            this.setBlockData(x, y + ty, z, 'wood');
+            this.setBlockData(x, y + ty, z, woodType);
         }
 
         const leavesStart = y + trunkHeight - 2;
@@ -1055,7 +1191,7 @@ class WorldRenderer {
                     if (lx === 0 && lz === 0 && ly < 2) continue;
                     if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
 
-                    this.setBlockData(x + lx, leavesStart + ly, z + lz, 'leaves');
+                    this.setBlockData(x + lx, leavesStart + ly, z + lz, leavesType);
                 }
             }
         }
