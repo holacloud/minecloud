@@ -41,6 +41,7 @@ class Game {
             ladder: 0
         };
         this.selectedSlot = 0;
+        this.hotbarPrimaryType = null;
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
         this.playerShirtColor = this.loadPlayerShirtColor();
@@ -707,6 +708,12 @@ class Game {
             if (Number.isInteger(parsed.selectedSlot)) {
                 this.selectedSlot = Math.max(0, Math.min(parsed.selectedSlot, this.inventory.length - 1));
             }
+            if (typeof parsed.hotbarPrimaryType === 'string') {
+                this.hotbarPrimaryType = parsed.hotbarPrimaryType;
+            }
+            if (!this.hotbarPrimaryType && this.getInventoryCount(this.inventory[this.selectedSlot]) > 0) {
+                this.hotbarPrimaryType = this.inventory[this.selectedSlot];
+            }
         } catch (error) {
             console.warn('Failed to restore inventory state', error);
         }
@@ -716,7 +723,8 @@ class Game {
         window.localStorage.setItem('minecloud-inventory-state', JSON.stringify({
             inventory: this.inventory,
             counts: this.inventoryCounts,
-            selectedSlot: this.selectedSlot
+            selectedSlot: this.selectedSlot,
+            hotbarPrimaryType: this.hotbarPrimaryType
         }));
     }
 
@@ -3090,14 +3098,14 @@ class Game {
         const available = this.inventory
             .map((type, index) => ({ type, index }))
             .filter((item) => this.getInventoryCount(item.type) > 0);
-        const selectedType = this.inventory[this.selectedSlot];
-        if (!selectedType || this.getInventoryCount(selectedType) <= 0) {
+        const primaryIndex = this.inventory.indexOf(this.hotbarPrimaryType);
+        if (primaryIndex === -1 || this.getInventoryCount(this.hotbarPrimaryType) <= 0) {
             return available.slice(0, this.hotbarSize).map((item) => item.index);
         }
 
         return [
-            this.selectedSlot,
-            ...available.filter((item) => item.index !== this.selectedSlot).map((item) => item.index)
+            primaryIndex,
+            ...available.filter((item) => item.index !== primaryIndex).map((item) => item.index)
         ].slice(0, this.hotbarSize);
     }
 
@@ -3145,7 +3153,7 @@ class Game {
             const item = document.createElement('div');
             item.className = 'inventory-item' + (this.selectedSlot === index ? ' selected' : '') + (this.getInventoryCount(type) <= 0 ? ' empty' : '');
             item.addEventListener('click', () => {
-                this.selectSlot(index);
+                this.selectSlot(index, { promoteToHotbar: true });
                 this.closeInventoryPanel();
             });
 
@@ -3833,10 +3841,7 @@ class Game {
         const direction = event.deltaY > 0 ? 1 : -1;
         this.lastWheelStepAt = now;
 
-        const availableSlots = this.inventory
-            .map((type, index) => ({ type, index }))
-            .filter((item) => this.getInventoryCount(item.type) > 0)
-            .map((item) => item.index);
+        const availableSlots = this.getHotbarInventoryIndexes();
         if (availableSlots.length === 0) return;
 
         const currentAvailableIndex = availableSlots.indexOf(this.selectedSlot);
@@ -3845,8 +3850,11 @@ class Game {
         this.selectSlot(nextSlot);
     }
     
-    selectSlot(index) {
+    selectSlot(index, options = {}) {
         this.selectedSlot = Math.max(0, Math.min(index, this.inventory.length - 1));
+        if (options.promoteToHotbar) {
+            this.hotbarPrimaryType = this.inventory[this.selectedSlot] || null;
+        }
         this.updateHotbarCounts();
         this.renderInventoryPanel();
         this.refreshHeldItemMesh();
