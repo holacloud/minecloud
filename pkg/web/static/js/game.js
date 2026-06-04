@@ -873,14 +873,21 @@ class Game {
     }
 
     onDocumentPointerDown(event) {
-        if (!this.pauseOpen) return;
+        if (!this.pauseOpen && !this.appearanceMenuOpen && !this.chatOpen && !this.signReaderOpen && !this.inventoryOpen && !this.craftingOpen) return;
 
-        const menu = document.getElementById('pause-menu');
-        const appearancePanel = document.getElementById('appearance-panel');
-        if (!menu || menu.contains(event.target) || (appearancePanel && appearancePanel.contains(event.target))) return;
+        const windows = [
+            document.getElementById('appearance-panel'),
+            document.getElementById('pause-menu'),
+            document.getElementById('chat-input'),
+            document.getElementById('sign-reader'),
+            document.getElementById('inventory-panel'),
+            document.getElementById('crafting-panel')
+        ].filter(Boolean);
+
+        if (windows.some((panel) => panel.contains(event.target))) return;
 
         event.preventDefault();
-        this.closePauseMenu();
+        this.closeActiveMenuFromEscape();
     }
 
     recapturePointerLockFromGesture() {
@@ -3555,6 +3562,12 @@ class Game {
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement !== this.renderer.domElement) {
                 this.stopMining();
+                if (performance.now() < this.suppressPointerLockPauseUntil) {
+                    return;
+                }
+                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
+                    this.openPauseMenu();
+                }
             }
         });
         window.addEventListener('blur', () => {
@@ -3765,10 +3778,6 @@ class Game {
             if (this.followTargetPlayerId) {
                 this.followTargetPlayerId = null;
                 this.decoratePlayerListInteractions();
-            } else if (document.pointerLockElement === this.renderer.domElement) {
-                this.suppressPointerLockPauseUntil = performance.now() + 250;
-                this.stopMining();
-                document.exitPointerLock();
             } else {
                 this.togglePauseMenu();
             }
