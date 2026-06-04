@@ -465,19 +465,19 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: min(420px, calc(100vw - 28px));
-            max-height: min(70vh, 560px);
+            width: min(720px, calc(100vw - 28px));
+            max-height: min(78vh, 640px);
             display: none;
             flex-direction: column;
-            gap: 10px;
-            padding: 16px;
+            gap: 14px;
+            padding: 18px;
             border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 14px;
             background: rgba(8, 12, 20, 0.9);
             color: #fff;
             font-family: 'Consolas', monospace;
             z-index: 260;
-            overflow: auto;
+            overflow: hidden;
         }
         #crafting-panel.visible {
             display: flex;
@@ -486,40 +486,122 @@
             font-size: 16px;
             margin-bottom: 2px;
         }
-        .craft-recipe {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
+        #crafting-search {
+            width: 100%;
+            height: 40px;
+            padding: 0 12px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font: 13px/1 'Consolas', monospace;
+            outline: none;
         }
-        .craft-recipe-info {
+        #crafting-recipes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+            gap: 12px;
+            overflow: auto;
+            min-height: 0;
+            padding-right: 2px;
+        }
+        .craft-card {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            align-items: center;
+            gap: 8px;
+            min-height: 126px;
+            padding: 10px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #fff;
+            cursor: pointer;
+            text-align: center;
+            font-family: 'Consolas', monospace;
         }
-        .craft-recipe-name {
-            font-size: 14px;
+        .craft-card.unavailable {
+            opacity: 0.42;
+            filter: grayscale(0.75);
+        }
+        .craft-card.selected {
+            border-color: rgba(151, 212, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(151, 212, 255, 0.22);
+        }
+        .craft-card-icon {
+            width: 54px;
+            height: 54px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background-size: cover;
+            background-position: center;
+        }
+        .craft-card-name {
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        .craft-card-amount {
+            color: #a9bdd5;
+            font-size: 11px;
+        }
+        .craft-empty {
+            grid-column: 1 / -1;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #bcd0e9;
+            text-align: center;
+            font-size: 12px;
+        }
+        #crafting-detail {
+            display: none;
+            gap: 12px;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(5, 9, 16, 0.68);
+        }
+        #crafting-detail.visible {
+            display: grid;
+            grid-template-columns: 72px 1fr;
+        }
+        .craft-detail-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .craft-detail-body {
+            display: grid;
+            gap: 8px;
+        }
+        .craft-detail-title {
+            font-size: 15px;
             font-weight: 700;
         }
-        .craft-recipe-cost {
+        .craft-detail-meta,
+        .craft-detail-materials {
+            color: #c7d7ec;
             font-size: 12px;
-            color: #bcd0e9;
         }
-        .craft-recipe button {
-            min-width: 78px;
+        .craft-detail-materials .missing {
+            color: #ff9b9b;
+        }
+        #crafting-detail button {
+            width: fit-content;
+            min-width: 120px;
             height: 36px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 8px;
-            background: rgba(63, 102, 181, 0.8);
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(166, 255, 196, 0.36);
+            background: linear-gradient(90deg, rgba(44, 150, 88, 0.95), rgba(72, 185, 112, 0.95));
             color: #fff;
-            font: 700 13px/1 'Consolas', monospace;
+            font: 700 12px/1 'Consolas', monospace;
             cursor: pointer;
         }
-        .craft-recipe button:disabled {
+        #crafting-detail button:disabled {
             opacity: 0.35;
             cursor: default;
         }
@@ -851,7 +933,9 @@
     </div>
     <div id="crafting-panel">
         <h3>Crafting</h3>
+        <input id="crafting-search" type="text" placeholder="Search recipes..." autocomplete="off">
         <div id="crafting-recipes"></div>
+        <div id="crafting-detail"></div>
     </div>
     <div id="pause-menu">
         <h3>Paused</h3>

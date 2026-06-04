@@ -78,6 +78,9 @@ class Game {
         this.weatherTimer = 0;
         this.nextWeatherChange = 70;
         this.craftingOpen = false;
+        this.craftingSearchTerm = '';
+        this.selectedCraftingRecipeId = null;
+        this.suppressPointerLockPauseUntil = 0;
         this.pauseOpen = false;
         this.titleScreenOpen = true;
         this.titleCameraAngle = 0;
@@ -3373,6 +3376,9 @@ class Game {
         document.addEventListener('pointerlockchange', () => {
             if (document.pointerLockElement !== this.renderer.domElement) {
                 this.stopMining();
+                if (performance.now() < this.suppressPointerLockPauseUntil) {
+                    return;
+                }
                 if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
                     this.openPauseMenu();
                 }
@@ -3390,6 +3396,20 @@ class Game {
 
         const chatInput = document.getElementById('chat-input');
         chatInput.addEventListener('keydown', (event) => this.onChatKeyDown(event));
+        const craftingSearch = document.getElementById('crafting-search');
+        if (craftingSearch) {
+            craftingSearch.addEventListener('input', () => {
+                this.craftingSearchTerm = craftingSearch.value;
+                this.renderCraftingPanel();
+            });
+            craftingSearch.addEventListener('keydown', (event) => {
+                if (event.code === 'Escape') {
+                    event.preventDefault();
+                    this.closeCraftingPanel();
+                }
+                event.stopPropagation();
+            });
+        }
 
         this.initTouchControls();
     }
@@ -3552,15 +3572,10 @@ class Game {
     onKeyDown(event) {
         if (event.code === 'Escape' && !event.repeat) {
             event.preventDefault();
-            if (this.chatOpen) {
-                this.closeChatInput();
-            } else if (this.signReaderOpen) {
-                this.closeSignReader();
-            } else if (this.inventoryOpen) {
-                this.closeInventoryPanel();
-            } else if (this.craftingOpen) {
-                this.toggleCraftingPanel();
-            } else if (this.followTargetPlayerId) {
+            if (this.closeActiveMenuFromEscape()) {
+                return;
+            }
+            if (this.followTargetPlayerId) {
                 this.followTargetPlayerId = null;
                 this.decoratePlayerListInteractions();
             } else {
@@ -3669,6 +3684,39 @@ class Game {
         }
     }
 
+    closeActiveMenuFromEscape() {
+        this.suppressPointerLockPauseUntil = performance.now() + 250;
+
+        if (this.appearanceMenuOpen) {
+            this.appearanceMenuOpen = false;
+            this.updateTitleScreen();
+            return true;
+        }
+        if (this.chatOpen) {
+            this.closeChatInput();
+            return true;
+        }
+        if (this.signReaderOpen) {
+            this.closeSignReader();
+            return true;
+        }
+        if (this.inventoryOpen) {
+            this.closeInventoryPanel();
+            return true;
+        }
+        if (this.craftingOpen) {
+            this.closeCraftingPanel();
+            return true;
+        }
+        if (this.pauseOpen) {
+            this.closePauseMenu();
+            return true;
+        }
+
+        this.suppressPointerLockPauseUntil = 0;
+        return false;
+    }
+
     onWheel(event) {
         if (!this.cameraController.isLocked) return;
         if (event.deltaY === 0) return;
@@ -3760,54 +3808,144 @@ class Game {
     renderCraftingPanel() {
         const panel = document.getElementById('crafting-panel');
         const list = document.getElementById('crafting-recipes');
+        const searchInput = document.getElementById('crafting-search');
         if (!panel || !list) return;
 
         panel.classList.toggle('visible', this.craftingOpen);
+        if (searchInput && searchInput.value !== this.craftingSearchTerm) {
+            searchInput.value = this.craftingSearchTerm;
+        }
         list.innerHTML = '';
 
-        this.craftingRecipes.forEach((recipe) => {
-            const row = document.createElement('div');
-            row.className = 'craft-recipe';
+        const query = this.craftingSearchTerm.trim().toLowerCase();
+        const visibleRecipes = this.craftingRecipes.filter((recipe) => {
+            if (!query) return true;
+            const searchable = [
+                recipe.name,
+                this.getBlockDisplayName(recipe.output.type),
+                ...recipe.inputs.map((input) => this.getBlockDisplayName(input.type))
+            ].join(' ').toLowerCase();
+            return searchable.includes(query);
+        });
 
-            const info = document.createElement('div');
-            info.className = 'craft-recipe-info';
+        if (this.selectedCraftingRecipeId && !visibleRecipes.some((recipe) => recipe.id === this.selectedCraftingRecipeId)) {
+            this.selectedCraftingRecipeId = null;
+        }
+
+        if (visibleRecipes.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'craft-empty';
+            empty.textContent = 'No recipes match your search';
+            list.appendChild(empty);
+        }
+
+        visibleRecipes.forEach((recipe) => {
+            const canCraft = this.canCraftRecipe(recipe);
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'craft-card' + (canCraft ? '' : ' unavailable') + (recipe.id === this.selectedCraftingRecipeId ? ' selected' : '');
+            card.addEventListener('click', () => {
+                this.selectedCraftingRecipeId = recipe.id;
+                this.renderCraftingPanel();
+            });
+
+            const icon = document.createElement('div');
+            icon.className = 'craft-card-icon';
+            icon.style.backgroundImage = `url(${this.world.getInventoryIconUrl(recipe.output.type)})`;
+            icon.style.backgroundColor = '#' + this.world.blockTypes[recipe.output.type].color.toString(16).padStart(6, '0');
 
             const name = document.createElement('div');
-            name.className = 'craft-recipe-name';
-            name.textContent = `${recipe.name} -> ${recipe.output.amount} ${this.getBlockDisplayName(recipe.output.type)}`;
+            name.className = 'craft-card-name';
+            name.textContent = this.getBlockDisplayName(recipe.output.type);
 
-            const cost = document.createElement('div');
-            cost.className = 'craft-recipe-cost';
-            cost.textContent = recipe.inputs.map((input) => `${input.amount} ${this.getBlockDisplayName(input.type)}`).join(' + ');
+            const amount = document.createElement('div');
+            amount.className = 'craft-card-amount';
+            amount.textContent = `Creates x${recipe.output.amount}`;
 
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = 'Craft';
-            button.disabled = !this.canCraftRecipe(recipe);
-            button.addEventListener('click', () => this.craftRecipe(recipe.id));
-
-            info.appendChild(name);
-            info.appendChild(cost);
-            row.appendChild(info);
-            row.appendChild(button);
-            list.appendChild(row);
+            card.appendChild(icon);
+            card.appendChild(name);
+            card.appendChild(amount);
+            list.appendChild(card);
         });
+
+        this.renderCraftingDetail();
+    }
+
+    renderCraftingDetail() {
+        const detail = document.getElementById('crafting-detail');
+        if (!detail) return;
+
+        const recipe = this.craftingRecipes.find((item) => item.id === this.selectedCraftingRecipeId);
+        detail.innerHTML = '';
+        detail.classList.toggle('visible', Boolean(recipe));
+        if (!recipe) return;
+
+        const canCraft = this.canCraftRecipe(recipe);
+        const icon = document.createElement('div');
+        icon.className = 'craft-detail-icon';
+        icon.style.backgroundImage = `url(${this.world.getInventoryIconUrl(recipe.output.type)})`;
+        icon.style.backgroundColor = '#' + this.world.blockTypes[recipe.output.type].color.toString(16).padStart(6, '0');
+
+        const body = document.createElement('div');
+        body.className = 'craft-detail-body';
+
+        const title = document.createElement('div');
+        title.className = 'craft-detail-title';
+        title.textContent = recipe.name;
+
+        const meta = document.createElement('div');
+        meta.className = 'craft-detail-meta';
+        meta.textContent = `Output: ${recipe.output.amount} x ${this.getBlockDisplayName(recipe.output.type)}`;
+
+        const materials = document.createElement('div');
+        materials.className = 'craft-detail-materials';
+        materials.innerHTML = recipe.inputs.map((input) => {
+            const owned = this.getInventoryCount(input.type);
+            const missing = owned < input.amount;
+            return `<span class="${missing ? 'missing' : ''}">${input.amount} x ${this.getBlockDisplayName(input.type)} (${owned} owned)</span>`;
+        }).join('<br>');
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = canCraft ? 'Craft' : 'Missing materials';
+        button.disabled = !canCraft;
+        button.addEventListener('click', () => this.craftRecipe(recipe.id));
+
+        body.appendChild(title);
+        body.appendChild(meta);
+        body.appendChild(materials);
+        body.appendChild(button);
+        detail.appendChild(icon);
+        detail.appendChild(body);
     }
 
     toggleCraftingPanel() {
-        this.craftingOpen = !this.craftingOpen;
         if (this.craftingOpen) {
-            this.stopMining();
-            this.closeChatInput();
-            if (document.pointerLockElement === this.renderer.domElement) {
-                document.exitPointerLock();
-            }
+            this.closeCraftingPanel();
+        } else {
+            this.openCraftingPanel();
         }
+    }
 
-        this.renderCraftingPanel();
-        if (!this.craftingOpen) {
-            this.recapturePointerLock();
+    openCraftingPanel() {
+        this.craftingOpen = true;
+        this.stopMining();
+        this.closeChatInput();
+        if (document.pointerLockElement === this.renderer.domElement) {
+            document.exitPointerLock();
         }
+        if (!this.selectedCraftingRecipeId && this.craftingRecipes.length > 0) {
+            this.selectedCraftingRecipeId = this.craftingRecipes[0].id;
+        }
+        this.renderCraftingPanel();
+        const search = document.getElementById('crafting-search');
+        if (search) search.focus();
+    }
+
+    closeCraftingPanel() {
+        this.craftingOpen = false;
+        this.renderCraftingPanel();
+        this.recapturePointerLock();
     }
 
     craftRecipe(recipeId) {
