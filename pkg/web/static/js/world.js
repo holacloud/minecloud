@@ -301,7 +301,7 @@ class WorldRenderer {
 
         model.rotation.z = -Math.PI / 4;
         model.position.set(0.52, 0.52, 0);
-        group.scale.setScalar(scale * 1.35);
+        group.scale.setScalar(scale * 2.7);
         group.userData.blockType = type;
         return group;
     }
@@ -309,7 +309,7 @@ class WorldRenderer {
     createEggDisplayMesh(type, def, scale) {
         const geometry = new THREE.SphereGeometry(0.42, 12, 8);
         const mesh = new THREE.Mesh(geometry, this.createDisplayMaterial(def.color));
-        mesh.scale.set(scale * 1.02, scale * 1.34, scale * 1.02);
+        mesh.scale.set(scale * 2.04, scale * 2.68, scale * 2.04);
         mesh.castShadow = this.rtxModeEnabled;
         mesh.receiveShadow = this.rtxModeEnabled;
         mesh.userData.disposeGeometry = true;
@@ -322,7 +322,7 @@ class WorldRenderer {
         this.addDisplayBox(group, 0x6B4A2B, [0.12, 0.72, 0.12], [0, -0.05, 0]);
         this.addDisplayBox(group, def.color, [0.46, 0.18, 0.16], [-0.18, 0.22, 0], [0, 0, 0.45]);
         this.addDisplayBox(group, def.color, [0.46, 0.18, 0.16], [0.18, 0.36, 0], [0, 0, -0.45]);
-        group.scale.setScalar(scale * 1.25);
+        group.scale.setScalar(scale * 2.5);
         group.userData.blockType = type;
         return group;
     }

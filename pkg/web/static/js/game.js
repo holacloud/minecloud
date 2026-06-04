@@ -1243,8 +1243,14 @@ class Game {
         if (!type) return;
 
         const item = this.world.createDisplayMesh(type, 0.18);
-        item.position.set(0, -0.44, -0.14);
-        item.rotation.set(0.4, 0.2, 0.15);
+        const def = this.world.blockTypes[type];
+        if (def && def.itemOnly) {
+            item.position.set(0, -0.34, 0.02);
+            item.rotation.set(0.24, -0.05, 0.08);
+        } else {
+            item.position.set(0, -0.44, -0.14);
+            item.rotation.set(0.4, 0.2, 0.15);
+        }
         item.frustumCulled = false;
         parts.rightArm.add(item);
         avatar.userData.heldItemMesh = item;
@@ -3488,8 +3494,14 @@ class Game {
         }
 
         const heldItem = this.world.createDisplayMesh(selectedType, 0.24);
-        heldItem.position.set(0, 0, 0);
-        heldItem.rotation.set(0.34, 0.68, 0.12);
+        const def = this.world.blockTypes[selectedType];
+        if (def && def.itemOnly) {
+            heldItem.position.set(0, -0.46, 0.24);
+            heldItem.rotation.set(0.18, 0.48, 0.05);
+        } else {
+            heldItem.position.set(0, 0, 0);
+            heldItem.rotation.set(0.34, 0.68, 0.12);
+        }
         heldItem.renderOrder = 10001;
         heldItem.frustumCulled = false;
         heldItem.traverse((node) => {
