@@ -394,6 +394,7 @@
             transform-origin: left center;
         }
         #voice-toggle {
+            position: relative;
             margin-top: 8px;
             height: 28px;
             padding: 0 10px;
@@ -404,6 +405,7 @@
             font: 12px/1 'Consolas', monospace;
             cursor: pointer;
             pointer-events: auto;
+            z-index: 320;
         }
         #voice-toggle.active {
             background: rgba(72, 146, 108, 0.82);
@@ -422,7 +424,7 @@
         }
         #chat-log {
             max-height: 170px;
-            overflow: hidden;
+            overflow: hidden auto;
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -432,6 +434,24 @@
             color: #fff;
             font: 12px/1.35 'Consolas', monospace;
             text-shadow: 1px 1px 1px #000;
+            scrollbar-width: none;
+        }
+        #chat-log::-webkit-scrollbar {
+            display: none;
+        }
+        #chat-container.active #chat-log {
+            background: rgba(12, 22, 38, 0.72);
+            box-shadow: 0 0 0 2px rgba(116, 192, 255, 0.32), 0 0 24px rgba(80, 160, 255, 0.2);
+        }
+        #chat-container.active::before {
+            content: 'CHAT MODE';
+            width: fit-content;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(80, 160, 255, 0.86);
+            color: #07101d;
+            font: 700 11px/1 'Consolas', monospace;
+            letter-spacing: 0.08em;
         }
         .chat-message {
             opacity: 0.92;
@@ -459,6 +479,8 @@
         }
         #chat-input.visible {
             display: block;
+            border-color: rgba(116, 192, 255, 0.86);
+            box-shadow: 0 0 0 2px rgba(116, 192, 255, 0.24);
         }
 
         #crafting-panel {

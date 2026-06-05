@@ -881,7 +881,9 @@ class Game {
             document.getElementById('chat-input'),
             document.getElementById('sign-reader'),
             document.getElementById('inventory-panel'),
-            document.getElementById('crafting-panel')
+            document.getElementById('crafting-panel'),
+            document.getElementById('voice-toggle'),
+            document.getElementById('player-list-container')
         ].filter(Boolean);
 
         if (windows.some((panel) => panel.contains(event.target))) return;
@@ -3972,9 +3974,11 @@ class Game {
     }
 
     refreshChatVisibility() {
+        const chatContainer = document.getElementById('chat-container');
         const chatLog = document.getElementById('chat-log');
         if (!chatLog) return;
 
+        if (chatContainer) chatContainer.classList.toggle('active', this.chatOpen);
         chatLog.style.opacity = this.chatOpen ? '1' : (this.chatMessages.length > 0 ? '0.86' : '0');
     }
 
@@ -3983,7 +3987,7 @@ class Game {
         if (!chatLog) return;
 
         chatLog.innerHTML = '';
-        this.chatMessages.slice(-10).forEach((message) => {
+        this.chatMessages.forEach((message) => {
             const row = document.createElement('div');
             row.className = 'chat-message' + (message.system ? ' system' : '');
 
@@ -4006,6 +4010,7 @@ class Game {
         });
 
         this.refreshChatVisibility();
+        chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     canCraftRecipe(recipe) {
@@ -4178,7 +4183,7 @@ class Game {
             username: payload.username || payload.playerId || 'Player',
             text: payload.text || ''
         });
-        if (this.chatMessages.length > 30) {
+        while (this.chatMessages.length > 10) {
             this.chatMessages.shift();
         }
 
@@ -4197,7 +4202,7 @@ class Game {
             text: payload.text || '',
             system: true
         });
-        if (this.chatMessages.length > 30) {
+        while (this.chatMessages.length > 10) {
             this.chatMessages.shift();
         }
 
