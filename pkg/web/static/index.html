@@ -457,6 +457,13 @@
             opacity: 0.92;
             word-break: break-word;
         }
+        .chat-message.mentioned {
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 220, 120, 0.65);
+            background: linear-gradient(90deg, rgba(255, 196, 72, 0.26), rgba(80, 160, 255, 0.18));
+            box-shadow: 0 0 18px rgba(255, 196, 72, 0.18);
+        }
         .chat-message.system {
             color: #f2df9f;
             font-style: italic;
@@ -464,6 +471,40 @@
         .chat-message .chat-name {
             color: #9ed2ff;
             font-weight: 700;
+        }
+        .chat-message.mentioned .chat-name {
+            color: #ffd56e;
+        }
+        .chat-mention-comet {
+            position: fixed;
+            right: 34vw;
+            bottom: 58vh;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #ffe38a;
+            box-shadow: 0 0 12px #ffe38a, 0 0 28px rgba(255, 227, 138, 0.6);
+            pointer-events: none;
+            z-index: 420;
+            animation: chatMentionComet 760ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+        }
+        .chat-mention-comet::after {
+            content: '';
+            position: absolute;
+            right: 4px;
+            top: 4px;
+            width: 92px;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255, 227, 138, 0), rgba(255, 227, 138, 0.9));
+            transform: rotate(-18deg);
+            transform-origin: right center;
+        }
+        @keyframes chatMentionComet {
+            0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+            12% { opacity: 1; }
+            72% { opacity: 1; transform: translate(-28vw, 32vh) scale(1); }
+            100% { opacity: 0; transform: translate(-34vw, 38vh) scale(0.2); }
         }
         #chat-input {
             display: none;

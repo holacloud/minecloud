@@ -3989,7 +3989,7 @@ class Game {
         chatLog.innerHTML = '';
         this.chatMessages.forEach((message) => {
             const row = document.createElement('div');
-            row.className = 'chat-message' + (message.system ? ' system' : '');
+            row.className = 'chat-message' + (message.system ? ' system' : '') + (message.mentioned ? ' mentioned' : '');
 
             if (message.system) {
                 row.textContent = message.text;
@@ -4011,6 +4011,24 @@ class Game {
 
         this.refreshChatVisibility();
         chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    isMentionForLocalPlayer(text, username) {
+        if (!text || !this.playerName || username === this.playerName) return false;
+        const variants = new Set([
+            this.playerName,
+            this.playerName.replace(/\s+/g, ''),
+            this.playerName.replace(/\s+/g, '_')
+        ].map((value) => value.trim().toLowerCase()).filter(Boolean));
+        const normalized = String(text).toLowerCase();
+        return Array.from(variants).some((name) => normalized.includes(`@${name}`));
+    }
+
+    playChatMentionAnimation() {
+        const comet = document.createElement('div');
+        comet.className = 'chat-mention-comet';
+        document.body.appendChild(comet);
+        comet.addEventListener('animationend', () => comet.remove(), { once: true });
     }
 
     canCraftRecipe(recipe) {
@@ -4179,15 +4197,22 @@ class Game {
     }
 
     receiveChatMessage(payload) {
+        const username = payload.username || payload.playerId || 'Player';
+        const text = payload.text || '';
+        const mentioned = this.isMentionForLocalPlayer(text, username);
         this.chatMessages.push({
-            username: payload.username || payload.playerId || 'Player',
-            text: payload.text || ''
+            username,
+            text,
+            mentioned
         });
         while (this.chatMessages.length > 10) {
             this.chatMessages.shift();
         }
 
         this.renderChatMessages();
+        if (mentioned) {
+            this.playChatMentionAnimation();
+        }
 
         if (!this.chatOpen) {
             if (this.chatHideTimeout) {
