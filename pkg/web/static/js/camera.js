@@ -7,7 +7,9 @@ class CameraController {
         this.yaw = 0;
         this.moveSpeed = 4.5;
         this.sprintSpeed = 6;
+        this.surveySpeed = 24;
         this.jumpVelocity = 7.25;
+        this.gravityScale = 1;
         this.lookSpeed = 0.002;
         this.stepHeight = 1;
         this.crouchSpeedFactor = 0.45;
@@ -35,6 +37,7 @@ class CameraController {
         this.eyeHeight = this.standingEyeHeight;
         this.isCrouching = false;
         this.isOnLadder = false;
+        this.surveyMode = false;
         
         this.init();
     }
@@ -47,6 +50,18 @@ class CameraController {
     setTouchJump(active) { this.touchJump = active; }
     setTouchSprint(active) { this.touchSprint = active; }
     setLookSpeed(speed) { this.lookSpeed = speed; }
+    setGravityScale(scale) { this.gravityScale = Math.max(0.25, Math.min(1.8, scale || 1)); }
+    setSurveyMode(enabled) {
+        this.surveyMode = enabled;
+        this.velocityY = 0;
+        this.onGround = false;
+        this.isCrouching = false;
+        this.eyeHeight = this.standingEyeHeight;
+    }
+    toggleSurveyMode() {
+        this.setSurveyMode(!this.surveyMode);
+        return this.surveyMode;
+    }
     canInteract() { return this.isLocked || this.touchControlsEnabled; }
     
     init() {
@@ -209,7 +224,7 @@ class CameraController {
     
     update(delta) {
         const wasCrouching = this.isCrouching;
-        this.isCrouching = this.keys.crouch;
+        this.isCrouching = !this.surveyMode && this.keys.crouch;
         if (wasCrouching !== this.isCrouching) {
             const previousEyeHeight = this.eyeHeight;
             this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
@@ -230,6 +245,35 @@ class CameraController {
         const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water' || eyeBlockType === 'water';
         this.isOnLadder = feetBlockType === 'ladder' || torsoBlockType === 'ladder' || eyeBlockType === 'ladder';
+
+        if (this.surveyMode) {
+            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+            const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+            let moveX = 0, moveY = 0, moveZ = 0;
+            if (this.keys.forward) { moveX += forward.x; moveZ += forward.z; }
+            if (this.keys.backward) { moveX -= forward.x; moveZ -= forward.z; }
+            if (this.keys.left) { moveX -= right.x; moveZ -= right.z; }
+            if (this.keys.right) { moveX += right.x; moveZ += right.z; }
+            if (this.moveInput.y !== 0) { moveX += forward.x * this.moveInput.y; moveZ += forward.z * this.moveInput.y; }
+            if (this.moveInput.x !== 0) { moveX += right.x * this.moveInput.x; moveZ += right.z * this.moveInput.x; }
+            if (this.keys.jump || this.touchJump) moveY += 1;
+            if (this.keys.crouch) moveY -= 1;
+
+            const length = Math.sqrt(moveX * moveX + moveY * moveY + moveZ * moveZ);
+            if (length > 0) {
+                const multiplier = isSprinting ? 1.6 : 1;
+                const distance = this.surveySpeed * multiplier * delta;
+                this.camera.position.x += (moveX / length) * distance;
+                this.camera.position.y += (moveY / length) * distance;
+                this.camera.position.z += (moveZ / length) * distance;
+            }
+            this.velocityY = 0;
+            this.onGround = false;
+            this.camera.rotation.order = 'YXZ';
+            this.camera.rotation.y = this.yaw;
+            this.camera.rotation.x = this.pitch;
+            return;
+        }
 
         const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
@@ -311,7 +355,7 @@ class CameraController {
         }
         
         if (!this.isOnLadder) {
-            this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
+            this.velocityY -= (this.isInWater ? 3.2 : 20 * this.gravityScale) * delta;
         }
         
         const newY = this.camera.position.y + this.velocityY * delta;

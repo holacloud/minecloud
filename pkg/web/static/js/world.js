@@ -1,6 +1,7 @@
 class WorldRenderer {
-    constructor(scene) {
+    constructor(scene, options = {}) {
         this.scene = scene;
+        this.dataOnly = !!options.dataOnly;
         this.chunks = new Map();
         this.chunkBlocks = new Map();
         this.generatedChunks = new Set();
@@ -14,7 +15,7 @@ class WorldRenderer {
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
         this.chunkSize = 16;
-        this.renderDistance = 4;
+        this.renderDistance = options.renderDistance ?? 4;
         this.rtxModeEnabled = false;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -27,6 +28,7 @@ class WorldRenderer {
         this.textureLoader = new THREE.TextureLoader();
         this.rtxAssetTextures = new Set(['grass', 'dirt', 'stone', 'sand', 'wood', 'planks', 'brick', 'glass', 'water', 'leaves']);
         this.tempMatrix = new THREE.Matrix4();
+        this.worldSeed = 1337;
 
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
@@ -46,6 +48,7 @@ class WorldRenderer {
             mushroom_brown: { color: 0x8A6541, name: 'Brown Mushroom', transparent: true, breakDuration: 0.08, solid: false },
             sand: { color: 0xE8D894, name: 'Sand', breakDuration: 0.4 },
             water: { color: 0x3D85C6, transparent: true, opacity: 0.7, fluid: true, breakDuration: 0.15 },
+            ice: { color: 0xA9D8F5, name: 'Ice', transparent: true, opacity: 0.72, breakDuration: 0.35 },
             bedrock: { color: 0x1A1A1A, name: 'Bedrock', unbreakable: true },
             coal_ore: { color: 0x808080, ore: 0x2D2D2D, name: 'Coal Ore', breakDuration: 1.05 },
             iron_ore: { color: 0x808080, ore: 0xB87E56, name: 'Iron Ore', breakDuration: 1.1 },
@@ -64,7 +67,9 @@ class WorldRenderer {
         };
         this.registerExpansionBlockTypes();
 
-        this.generateInitialChunks();
+        if (!this.dataOnly) {
+            this.generateInitialChunks();
+        }
     }
 
     registerExpansionBlockTypes() {
@@ -161,6 +166,260 @@ class WorldRenderer {
         const g = Math.max(0, Math.min(255, ((color >> 8) & 255) + amount));
         const b = Math.max(0, Math.min(255, (color & 255) + amount));
         return (r << 16) | (g << 8) | b;
+    }
+
+    getTerrainConfig() {
+        if (this.terrainConfig) return this.terrainConfig;
+        this.terrainConfig = {
+            seaLevel: 5,
+            beachBand: 2.2,
+            rockSlope: 0.46,
+            continentalScale: 2200,
+            erosionScale: 900,
+            climateScale: 520,
+            biomeScale: 420,
+            detailScale: 256,
+            continentalWeight: 12,
+            erosionWeight: 4,
+            hillsWeight: 5,
+            detailWeight: 1.35,
+            mountainWeight: 22,
+            riverScale: 900,
+            riverWidth: 0.08,
+            lakeScale: 420
+        };
+        return this.terrainConfig;
+    }
+
+    getBiomeDefinitions() {
+        if (this.biomeDefinitions) return this.biomeDefinitions;
+        this.biomeDefinitions = {
+            deep_ocean: { label: 'Deep Ocean', color: 0x1D4F86, temp: 0.48, humidity: 0.72, continentalness: 0.04, erosion: 0.65, minHeight: -20, maxHeight: 2, top: 'sand', filler: 'sand', sub: 'stone', treeChance: 0, decorChance: 0 },
+            ocean: { label: 'Ocean', color: 0x2F6FAE, temp: 0.5, humidity: 0.7, continentalness: 0.18, erosion: 0.7, minHeight: -12, maxHeight: 5, top: 'sand', filler: 'sand', sub: 'stone', treeChance: 0, decorChance: 0 },
+            beach: { label: 'Beach', color: 0xE5CD8A, temp: 0.58, humidity: 0.46, continentalness: 0.34, erosion: 0.72, minHeight: 3, maxHeight: 8, top: 'sand', filler: 'sand', sub: 'stone', treeChance: 0.001, decorChance: 0.006, trees: ['acacia_wood', 'birch_wood'] },
+            plains: { label: 'Plains', color: 0x74A94D, temp: 0.55, humidity: 0.42, continentalness: 0.56, erosion: 0.72, minHeight: 4, maxHeight: 18, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.01, decorChance: 0.085, trees: ['wood', 'birch_wood', 'maple_wood'] },
+            forest: { label: 'Forest', color: 0x2F7B3B, temp: 0.52, humidity: 0.68, continentalness: 0.58, erosion: 0.58, minHeight: 4, maxHeight: 22, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.04, decorChance: 0.075, trees: ['wood', 'birch_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood'] },
+            light_forest: { label: 'Light Forest', color: 0x4F9745, temp: 0.58, humidity: 0.58, continentalness: 0.54, erosion: 0.68, minHeight: 4, maxHeight: 20, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.024, decorChance: 0.09, trees: ['birch_wood', 'wood', 'maple_wood'] },
+            dark_forest: { label: 'Dark Forest', color: 0x204C2D, temp: 0.44, humidity: 0.78, continentalness: 0.62, erosion: 0.48, minHeight: 4, maxHeight: 22, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.05, decorChance: 0.07, trees: ['dark_oak_wood', 'spruce_wood'] },
+            taiga: { label: 'Taiga', color: 0x3E6E55, temp: 0.28, humidity: 0.58, continentalness: 0.6, erosion: 0.55, minHeight: 5, maxHeight: 24, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.036, decorChance: 0.04, trees: ['spruce_wood', 'birch_wood'] },
+            snowy_taiga: { label: 'Snowy Taiga', color: 0xB7D4CF, temp: 0.14, humidity: 0.58, continentalness: 0.62, erosion: 0.5, minHeight: 5, maxHeight: 24, top: 'white_wool', filler: 'dirt', sub: 'stone', treeChance: 0.032, decorChance: 0.022, trees: ['spruce_wood'] },
+            snowy_plains: { label: 'Snowy Plains', color: 0xDDE8E6, temp: 0.12, humidity: 0.36, continentalness: 0.55, erosion: 0.72, minHeight: 4, maxHeight: 18, top: 'white_wool', filler: 'dirt', sub: 'stone', treeChance: 0.004, decorChance: 0.018, trees: ['spruce_wood'] },
+            desert: { label: 'Desert', color: 0xD8BD6D, temp: 0.9, humidity: 0.14, continentalness: 0.6, erosion: 0.62, minHeight: 4, maxHeight: 20, top: 'sand', filler: 'sand', sub: 'stone', treeChance: 0, decorChance: 0.012, cactusChance: 0.028 },
+            savanna: { label: 'Savanna', color: 0xB4A64D, temp: 0.82, humidity: 0.34, continentalness: 0.58, erosion: 0.62, minHeight: 4, maxHeight: 22, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.012, decorChance: 0.05, trees: ['acacia_wood'] },
+            badlands: { label: 'Badlands', color: 0xB96B3A, temp: 0.82, humidity: 0.18, continentalness: 0.72, erosion: 0.24, minHeight: 8, maxHeight: 30, top: 'orange_brick', filler: 'red_brick', sub: 'stone', treeChance: 0.001, decorChance: 0.006, cactusChance: 0.012 },
+            jungle: { label: 'Jungle', color: 0x207F3B, temp: 0.82, humidity: 0.86, continentalness: 0.62, erosion: 0.46, minHeight: 4, maxHeight: 24, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.055, decorChance: 0.11, trees: ['jungle_wood', 'willow_wood'] },
+            swamp: { label: 'Swamp', color: 0x4E6F3B, temp: 0.62, humidity: 0.9, continentalness: 0.42, erosion: 0.82, minHeight: 2, maxHeight: 9, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.026, decorChance: 0.1, trees: ['willow_wood', 'dark_oak_wood'] },
+            meadow: { label: 'Meadow', color: 0x8CBF67, temp: 0.42, humidity: 0.5, continentalness: 0.66, erosion: 0.5, minHeight: 10, maxHeight: 26, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.006, decorChance: 0.12, trees: ['birch_wood', 'cherry_wood'] },
+            mountains: { label: 'Mountains', color: 0x7E9184, temp: 0.34, humidity: 0.44, continentalness: 0.72, erosion: 0.18, minHeight: 16, maxHeight: 42, top: 'stone', filler: 'cobblestone', sub: 'stone', treeChance: 0.006, decorChance: 0.018, trees: ['spruce_wood'] },
+            snowy_mountains: { label: 'Snowy Mountains', color: 0xD8E5E8, temp: 0.14, humidity: 0.42, continentalness: 0.7, erosion: 0.2, minHeight: 15, maxHeight: 44, top: 'white_wool', filler: 'stone', sub: 'stone', treeChance: 0.003, decorChance: 0.01, trees: ['spruce_wood'] },
+            stony_peaks: { label: 'Stony Peaks', color: 0x8A8D8F, temp: 0.5, humidity: 0.24, continentalness: 0.78, erosion: 0.12, minHeight: 18, maxHeight: 46, top: 'stone', filler: 'cobblestone', sub: 'stone', treeChance: 0, decorChance: 0.006 }
+        };
+        return this.biomeDefinitions;
+    }
+
+    seededRand(x, z, offset = 0) {
+        const n = Math.sin(x * 12.9898 + z * 78.233 + this.worldSeed + offset) * 43758.5453;
+        return n - Math.floor(n);
+    }
+
+    smoothstep(edge0, edge1, value) {
+        const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+    }
+
+    noise2D(x, z, scale = 0.05) {
+        const ix = Math.floor(x * scale);
+        const iz = Math.floor(z * scale);
+        const fx = (x * scale) - ix;
+        const fz = (z * scale) - iz;
+        const a = this.seededRand(ix, iz);
+        const b = this.seededRand(ix + 1, iz);
+        const c = this.seededRand(ix, iz + 1);
+        const d = this.seededRand(ix + 1, iz + 1);
+        const ux = fx * fx * (3 - 2 * fx);
+        const uz = fz * fz * (3 - 2 * fz);
+        return a * (1 - ux) * (1 - uz) + b * ux * (1 - uz) + c * (1 - ux) * uz + d * ux * uz;
+    }
+
+    getClimateAt(worldX, worldZ) {
+        const cfg = this.getTerrainConfig();
+        const warpX = (this.noise2D(worldX + 9000, worldZ - 3000, 1 / 760) - 0.5) * 120;
+        const warpZ = (this.noise2D(worldX - 4000, worldZ + 7400, 1 / 760) - 0.5) * 120;
+        const x = worldX + warpX;
+        const z = worldZ + warpZ;
+        return {
+            continentalness: this.noise2D(x + 8100, z - 4400, 1 / cfg.continentalScale),
+            erosion: this.noise2D(x - 2200, z + 1600, 1 / cfg.erosionScale),
+            temperature: this.noise2D(x + 1400, z - 200, 1 / cfg.climateScale),
+            humidity: this.noise2D(x - 930, z + 1180, 1 / cfg.climateScale),
+            weirdness: this.noise2D(x + 5200, z - 3100, 1 / cfg.biomeScale),
+            river: this.sampleRiver(worldX, worldZ),
+            lake: this.sampleLake(worldX, worldZ)
+        };
+    }
+
+    sampleRiver(worldX, worldZ) {
+        const cfg = this.getTerrainConfig();
+        const riverA = Math.abs(this.noise2D(worldX + 5200, worldZ - 3100, 1 / cfg.riverScale) - 0.5) * 2;
+        const riverB = Math.abs(this.noise2D(worldX - 2800, worldZ + 6100, 1 / (cfg.riverScale * 1.35)) - 0.5) * 2;
+        const main = 1 - this.smoothstep(cfg.riverWidth, cfg.riverWidth + 0.16, Math.min(riverA, riverB));
+        const tributary = 1 - this.smoothstep(cfg.riverWidth * 0.55, cfg.riverWidth + 0.1, Math.max(0, Math.min(riverA, riverB) - 0.04));
+        return Math.max(main, tributary * 0.55);
+    }
+
+    sampleLake(worldX, worldZ) {
+        const cfg = this.getTerrainConfig();
+        const basin = this.noise2D(worldX - 620, worldZ + 910, 1 / cfg.lakeScale);
+        const roundness = this.noise2D(worldX + 1800, worldZ - 1900, 1 / 180);
+        return this.smoothstep(0.76, 0.93, basin) * this.smoothstep(0.35, 0.72, roundness);
+    }
+
+    scoreBiome(def, climate) {
+        const tempScore = 1 - Math.abs(climate.temperature - def.temp);
+        const humidityScore = 1 - Math.abs(climate.humidity - def.humidity);
+        const continentalScore = 1 - Math.abs(climate.continentalness - def.continentalness);
+        const erosionScore = 1 - Math.abs(climate.erosion - def.erosion);
+        return Math.max(0.001, Math.pow(Math.max(0, tempScore * 0.28 + humidityScore * 0.24 + continentalScore * 0.3 + erosionScore * 0.18), 3));
+    }
+
+    sampleClimate(worldX, worldZ) {
+        return this.getClimateAt(worldX, worldZ);
+    }
+
+    sampleHeight(worldX, worldZ, climate) {
+        const cfg = this.getTerrainConfig();
+        const continentalCurve = (climate.continentalness - 0.44) * cfg.continentalWeight;
+        const oceanShelf = climate.continentalness < 0.28 ? (0.28 - climate.continentalness) * -34 : 0;
+        const coastLift = this.smoothstep(0.28, 0.42, climate.continentalness) * 3;
+        const largeLandVariation = (this.noise2D(worldX - 1700, worldZ + 900, 1 / 1800) - 0.5) * 8;
+        const hills = (this.noise2D(worldX + 2300, worldZ - 1300, 1 / 360) - 0.5) * cfg.hillsWeight * climate.erosion;
+        const mountainMask = this.smoothstep(0.5, 0.76, climate.continentalness) * this.smoothstep(0.0, 0.42, 1 - climate.erosion) * this.smoothstep(0.48, 0.72, climate.weirdness);
+        const mountainRidge = Math.pow(1 - Math.abs(this.noise2D(worldX + 2900, worldZ + 3700, 1 / 560) - 0.5) * 2, 1.8);
+        const mountains = mountainRidge * mountainMask * cfg.mountainWeight;
+        const valleyMask = 1 - this.smoothstep(0.12, 0.42, Math.abs(this.noise2D(worldX - 6300, worldZ - 2800, 1 / 760) - 0.5) * 2);
+        const valleys = valleyMask * (0.35 + (1 - climate.erosion) * 0.65) * -6;
+        const riverCut = climate.river * (6 + (1 - climate.erosion) * 5);
+        const lakeCut = climate.lake * 5.5;
+        const detail = (this.noise2D(worldX + 120, worldZ - 480, 1 / cfg.detailScale) - 0.5) * cfg.detailWeight;
+        return cfg.seaLevel + continentalCurve + oceanShelf + coastLift + largeLandVariation + hills + mountains + valleys + detail - riverCut - lakeCut;
+    }
+
+    sampleSlope(worldX, worldZ, climate = null) {
+        const c = climate || this.sampleClimate(worldX, worldZ);
+        const here = this.sampleHeight(worldX, worldZ, c);
+        const dx = this.sampleHeight(worldX + 4, worldZ, this.sampleClimate(worldX + 4, worldZ)) - here;
+        const dz = this.sampleHeight(worldX, worldZ + 4, this.sampleClimate(worldX, worldZ + 4)) - here;
+        return Math.min(1, Math.sqrt(dx * dx + dz * dz) / 10);
+    }
+
+    pickBiome(climate, height, slope) {
+        const cfg = this.getTerrainConfig();
+        const defs = this.getBiomeDefinitions();
+        if (height < cfg.seaLevel - 7) return 'deep_ocean';
+        if (height < cfg.seaLevel - 0.6) return 'ocean';
+        if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand && climate.continentalness < 0.52) return 'beach';
+        if (climate.lake > 0.65 && climate.humidity > 0.58 && height < cfg.seaLevel + 4) return climate.temperature < 0.22 ? 'snowy_plains' : 'swamp';
+        if (climate.weirdness > 0.78 && climate.continentalness > 0.5 && climate.erosion < 0.42) return climate.temperature < 0.24 ? 'snowy_mountains' : climate.humidity < 0.34 ? 'stony_peaks' : 'mountains';
+        if (height > cfg.seaLevel + 18 && climate.temperature < 0.22) return 'snowy_mountains';
+        if (height > cfg.seaLevel + 20 && climate.humidity < 0.38) return 'stony_peaks';
+        if (height > cfg.seaLevel + 14 || slope > 0.58) return climate.temperature < 0.32 ? 'snowy_mountains' : 'mountains';
+        if (climate.humidity > 0.82 && height < cfg.seaLevel + 5) return 'swamp';
+
+        let best = 'plains';
+        let bestScore = Infinity;
+        for (const [name, def] of Object.entries(defs)) {
+            if (['deep_ocean', 'ocean', 'beach', 'mountains', 'snowy_mountains', 'stony_peaks'].includes(name)) continue;
+            let score = Math.abs(climate.temperature - def.temp) * 1.15 +
+                Math.abs(climate.humidity - def.humidity) +
+                Math.abs(climate.continentalness - def.continentalness) * 0.55 +
+                Math.abs(climate.erosion - def.erosion) * 0.35;
+            if (height < def.minHeight || height > def.maxHeight) score += 0.45;
+            if (score < bestScore) {
+                best = name;
+                bestScore = score;
+            }
+        }
+        return best;
+    }
+
+    pickSurfaceBlock(biome, height, slope, climate) {
+        const cfg = this.getTerrainConfig();
+        const def = this.getBiomeDefinitions()[biome];
+        if (height < cfg.seaLevel) return climate.temperature < 0.18 ? 'ice' : 'water';
+        if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand) {
+            if (biome.startsWith('snowy')) return 'white_wool';
+            return biome === 'badlands' ? 'orange_brick' : 'sand';
+        }
+        if (slope > cfg.rockSlope) {
+            return biome.startsWith('snowy') ? 'white_wool' : 'stone';
+        }
+        if (!def) return 'grass';
+        return def.top;
+    }
+
+    sampleTerrainAt(worldX, worldZ) {
+        const climate = this.sampleClimate(worldX, worldZ);
+        const heightFloat = this.sampleHeight(worldX, worldZ, climate);
+        const slope = this.sampleSlope(worldX, worldZ, climate);
+        const biome = this.pickBiome(climate, heightFloat, slope);
+        const surfaceBlock = this.pickSurfaceBlock(biome, heightFloat, slope, climate);
+        const def = this.getBiomeDefinitions()[biome];
+        return {
+            x: worldX,
+            z: worldZ,
+            climate,
+            heightFloat,
+            height: Math.floor(heightFloat),
+            slope,
+            biome,
+            label: def ? def.label : biome,
+            def,
+            waterLevel: this.getTerrainConfig().seaLevel,
+            waterCarve: surfaceBlock === 'water' ? 1 : 0,
+            surfaceBlock
+        };
+    }
+
+    isCaveAt(worldX, y, worldZ, surfaceHeight) {
+        if (y >= surfaceHeight - 4 || y <= -5) return false;
+        const depth = surfaceHeight - y;
+        const depthMask = this.smoothstep(4, 11, depth);
+        const tunnelA = Math.abs(this.noise2D(worldX + y * 17 + 4100, worldZ - y * 13 - 2200, 1 / 84) - 0.5) * 2;
+        const tunnelB = Math.abs(this.noise2D(worldX - y * 11 - 7600, worldZ + y * 19 + 3300, 1 / 126) - 0.5) * 2;
+        const chamber = this.noise2D(worldX + y * 23 + 9100, worldZ - y * 7 - 5100, 1 / 54);
+        const tunnel = Math.min(tunnelA, tunnelB);
+        return depthMask > 0 && (tunnel < 0.09 || (tunnel < 0.18 && chamber > 0.72));
+    }
+
+    getBiomeProfileAt(worldX, worldZ) {
+        return this.sampleTerrainAt(worldX, worldZ);
+    }
+
+    getBiomeEnvironmentAt(worldX, worldZ) {
+        const profile = this.sampleTerrainAt(worldX, worldZ);
+        const env = { gravityScale: 1, breakMultiplier: 1, precipitation: 'normal', plantGrowthMultiplier: 1 };
+        if (profile.biome === 'snowy_plains' || profile.biome === 'snowy_taiga' || profile.biome === 'snowy_mountains') {
+            env.precipitation = 'snow';
+            env.gravityScale = profile.biome === 'snowy_mountains' ? 0.82 : 0.92;
+            env.breakMultiplier = 1.18;
+            env.plantGrowthMultiplier = 0.35;
+        } else if (profile.biome === 'jungle' || profile.biome === 'swamp') {
+            env.precipitation = 'rain';
+            env.gravityScale = 1.04;
+            env.breakMultiplier = 0.9;
+            env.plantGrowthMultiplier = 1.8;
+        } else if (profile.biome === 'badlands' || profile.biome === 'desert') {
+            env.precipitation = 'dry';
+            env.breakMultiplier = 1.1;
+            env.plantGrowthMultiplier = 0.45;
+        } else if (profile.biome === 'mountains' || profile.biome === 'stony_peaks') {
+            env.gravityScale = 0.86;
+            env.breakMultiplier = 1.25;
+            env.plantGrowthMultiplier = 0.65;
+        } else if (profile.biome === 'meadow' || profile.biome === 'forest' || profile.biome === 'light_forest') {
+            env.plantGrowthMultiplier = 1.25;
+        }
+        return { ...env, profile };
     }
 
     createCutoutGeometry(planes) {
@@ -1157,88 +1416,36 @@ class WorldRenderer {
 
         this.ensureChunkBlockSet(key);
 
-        const seed = chunkX * 5741 + chunkZ * 28657;
-        const rand = (x, z, offset = 0) => {
-            const n = Math.sin(x * 12.9898 + z * 78.233 + seed + offset) * 43758.5453;
-            return n - Math.floor(n);
-        };
-
-        const noise2D = (x, z, scale = 0.05) => {
-            const ix = Math.floor(x * scale);
-            const iz = Math.floor(z * scale);
-            const fx = (x * scale) - ix;
-            const fz = (z * scale) - iz;
-
-            const a = rand(ix, iz);
-            const b = rand(ix + 1, iz);
-            const c = rand(ix, iz + 1);
-            const d = rand(ix + 1, iz + 1);
-
-            const ux = fx * fx * (3 - 2 * fx);
-            const uz = fz * fz * (3 - 2 * fz);
-
-            return a * (1 - ux) * (1 - uz) + b * ux * (1 - uz) + c * (1 - ux) * uz + d * ux * uz;
-        };
-
-        const getBiomeAt = (worldX, worldZ) => {
-            const biomeNoise = noise2D(worldX + 420, worldZ - 310, 0.018);
-            const forestNoise = noise2D(worldX - 180, worldZ + 250, 0.03);
-
-            if (biomeNoise < 0.3) return 'desert';
-            if (biomeNoise > 0.72) return 'rocky';
-            if (forestNoise > 0.58) return 'forest';
-            return 'plains';
-        };
-
         for (let x = 0; x < this.chunkSize; x++) {
             for (let z = 0; z < this.chunkSize; z++) {
                 const worldX = chunkX * this.chunkSize + x;
                 const worldZ = chunkZ * this.chunkSize + z;
-                const biome = getBiomeAt(worldX, worldZ);
-                const waterLevel = 5;
-                const lakeNoise = noise2D(worldX - 620, worldZ + 910, 0.022);
-
-                let height;
-                if (biome === 'desert') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 5) + 2;
-                } else if (biome === 'rocky') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 10) + 4;
-                } else if (biome === 'forest') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 7) + 3;
-                } else {
-                    height = Math.floor(noise2D(worldX, worldZ) * 8) + 3;
-                }
-
-                if (biome !== 'rocky' && lakeNoise > 0.68) {
-                    const lakeDepth = 1 + Math.floor((lakeNoise - 0.68) * 18);
-                    height = Math.min(height, waterLevel - lakeDepth);
-                }
+                const profile = this.sampleTerrainAt(worldX, worldZ);
+                const biome = profile.biome;
+                const biomeDef = profile.def;
+                const waterLevel = profile.waterLevel;
+                const height = Math.max(-4, profile.height);
 
                 for (let y = -5; y <= height; y++) {
                     let blockType;
                     if (y === -5) {
                         blockType = 'bedrock';
-                    } else if (y < height - 3 || (biome === 'rocky' && y < height - 1)) {
-                        const oreRand = rand(worldX, worldZ, y * 100);
+                    } else if (this.isCaveAt(worldX, y, worldZ, height)) {
+                        continue;
+                    } else if (y < height - 3 || (profile.slope > 0.5 && y < height - 1)) {
+                        const oreRand = this.seededRand(worldX, worldZ, y * 100);
                         if (oreRand < 0.02) blockType = 'coal_ore';
                         else if (oreRand < 0.025) blockType = 'iron_ore';
                         else if (oreRand < 0.026) blockType = 'gold_ore';
-                        else blockType = 'stone';
-                    } else if (biome === 'desert' && y >= height - 2) {
-                        blockType = 'sand';
-                    } else if (biome === 'rocky' && y === height) {
-                        blockType = rand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
-                    } else if (y < height) {
-                        blockType = 'dirt';
-                    } else {
-                        if (biome === 'desert') {
-                            blockType = 'sand';
-                        } else if (biome === 'rocky') {
-                            blockType = rand(worldX, worldZ, 2200) < 0.2 ? 'cobblestone' : 'stone';
+                        else blockType = biomeDef.sub;
+                    } else if (y === height) {
+                        if (profile.surfaceBlock === 'stone' && biomeDef.filler === 'cobblestone') {
+                            blockType = this.seededRand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
                         } else {
-                            const sandHeight = Math.floor(noise2D(worldX + 100, worldZ + 100, 0.1) * 3);
-                            blockType = sandHeight <= 0 ? 'grass' : 'sand';
+                            blockType = profile.surfaceBlock === 'water' ? biomeDef.top : profile.surfaceBlock;
                         }
+                    } else if (y < height) {
+                        blockType = biomeDef.filler;
                     }
 
                     this.setBlockData(worldX, y, worldZ, blockType, key);
@@ -1246,30 +1453,37 @@ class WorldRenderer {
 
                 if (height < waterLevel) {
                     for (let y = height + 1; y <= waterLevel; y++) {
-                        this.setBlockData(worldX, y, worldZ, 'water', key);
+                        const frozenSurface = y === waterLevel && profile.climate.temperature < 0.18;
+                        this.setBlockData(worldX, y, worldZ, frozenSurface ? 'ice' : 'water', key);
                     }
                 }
 
-                const treeChance = biome === 'forest' ? 0.032 : biome === 'plains' ? 0.012 : biome === 'rocky' ? 0.0025 : 0;
-                const cactusChance = biome === 'desert' ? 0.022 : 0;
-                const decorRoll = rand(worldX, worldZ, 2048);
+                if (height <= waterLevel) continue;
 
-                if (treeChance > 0 && rand(worldX, worldZ, 999) < treeChance && height >= 3) {
-                    const treeTypes = biome === 'forest'
-                        ? ['wood', 'spruce_wood', 'birch_wood', 'jungle_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood']
-                        : ['wood', 'birch_wood', 'acacia_wood', 'maple_wood'];
-                    const treeIndex = Math.floor(rand(worldX, worldZ, 1777) * treeTypes.length);
-                    this.generateTree(worldX, height + 1, worldZ, rand, treeTypes[treeIndex]);
-                } else if (cactusChance > 0 && rand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
-                    this.generateCactus(worldX, height + 1, worldZ, rand);
-                } else if (biome === 'forest' && decorRoll < 0.06) {
-                    const plantType = decorRoll < 0.02 ? 'mushroom_red' : decorRoll < 0.035 ? 'mushroom_brown' : decorRoll < 0.048 ? 'flower_red' : decorRoll < 0.055 ? 'flower_yellow' : 'tall_grass';
+                const treeChance = biomeDef.treeChance || 0;
+                const cactusChance = biomeDef.cactusChance || 0;
+                const decorRoll = this.seededRand(worldX, worldZ, 2048);
+
+                if (treeChance > 0 && this.seededRand(worldX, worldZ, 999) < treeChance && height >= 3) {
+                    const treeTypes = biomeDef.trees || ['wood'];
+                    const treeIndex = Math.floor(this.seededRand(worldX, worldZ, 1777) * treeTypes.length);
+                    this.generateTree(worldX, height + 1, worldZ, (rx, rz, offset) => this.seededRand(rx, rz, offset), treeTypes[treeIndex]);
+                } else if (cactusChance > 0 && this.seededRand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
+                    this.generateCactus(worldX, height + 1, worldZ, (rx, rz, offset) => this.seededRand(rx, rz, offset));
+                } else if (decorRoll < (biomeDef.decorChance || 0)) {
+                    let plantType = 'tall_grass';
+                    if (biome === 'forest' || biome === 'dark_forest' || biome === 'jungle' || biome === 'swamp') {
+                        plantType = decorRoll < 0.025 ? 'mushroom_red' : decorRoll < 0.05 ? 'mushroom_brown' : decorRoll < 0.07 ? 'flower_yellow' : 'tall_grass';
+                    } else if (biome === 'desert') {
+                        plantType = this.seededRand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass';
+                    } else if (biome === 'mountains' || biome === 'stony_peaks') {
+                        plantType = this.seededRand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass';
+                    } else if (biome.startsWith('snowy')) {
+                        plantType = 'tall_grass';
+                    } else {
+                        plantType = decorRoll < 0.025 ? 'flower_red' : decorRoll < 0.05 ? 'flower_yellow' : 'tall_grass';
+                    }
                     this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
-                } else if (biome === 'plains' && decorRoll < 0.08) {
-                    const plantType = decorRoll < 0.02 ? 'flower_red' : decorRoll < 0.038 ? 'flower_yellow' : 'tall_grass';
-                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
-                } else if (biome === 'rocky' && decorRoll < 0.018) {
-                    this.generateDecorPlant(worldX, height + 1, worldZ, rand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass');
                 }
             }
         }
@@ -1776,7 +1990,10 @@ class WorldRenderer {
     }
 
     getBreakDurationAt(x, y, z) {
-        return this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
+        const duration = this.getBreakDurationForType(this.getBlockTypeAt(x, y, z));
+        if (!duration) return duration;
+        const env = this.getBiomeEnvironmentAt(x, z);
+        return duration * env.breakMultiplier;
     }
 
     getInteractableObjects(position, reach) {
@@ -1918,7 +2135,9 @@ class WorldRenderer {
             this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter);
         }
 
-        this.loadSprayPaints(sprayPaints);
+        if (!this.dataOnly) {
+            this.loadSprayPaints(sprayPaints);
+        }
     }
 
     removeBlockAt(x, y, z) {

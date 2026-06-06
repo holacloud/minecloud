@@ -215,7 +215,9 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 16px;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
             padding: 8px 12px;
             border-radius: 999px;
             background: rgba(0, 0, 0, 0.42);
@@ -223,6 +225,17 @@
             font: 12px/1 'Consolas', monospace;
             z-index: 120;
             pointer-events: none;
+        }
+        #nav-hud-main {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        #biome-value {
+            font-size: 11px;
+            color: #bfe5ff;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
         
         #debug {
@@ -977,8 +990,11 @@
     <div id="game-container"></div>
     <div id="underwater-overlay"></div>
     <div id="nav-hud">
-        <span id="compass-value">N</span>
-        <span id="clock-value">06:00</span>
+        <div id="nav-hud-main">
+            <span id="compass-value">N</span>
+            <span id="clock-value">06:00</span>
+        </div>
+        <span id="biome-value">Plains</span>
     </div>
     <div id="crosshair"></div>
     <div id="hit-indicator"></div>

@@ -1154,6 +1154,7 @@ class Game {
     updateNavigationHUD() {
         const compass = document.getElementById('compass-value');
         const clock = document.getElementById('clock-value');
+        const biome = document.getElementById('biome-value');
         if (compass) {
             const yaw = ((this.cameraController.yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
             const directions = ['N', 'E', 'S', 'W'];
@@ -1165,6 +1166,20 @@ class Game {
             const hours = Math.floor(dayHour).toString().padStart(2, '0');
             const minutes = Math.floor((dayHour % 1) * 60).toString().padStart(2, '0');
             clock.textContent = `${hours}:${minutes}`;
+        }
+        if (biome && this.world && typeof this.world.getBiomeProfileAt === 'function') {
+            const pos = this.playerAnchorPosition || this.cameraController.getPosition();
+            const profile = this.world.getBiomeProfileAt(pos.x, pos.z);
+            biome.textContent = profile.label || profile.biome;
+        }
+    }
+
+    updateBiomeEnvironment() {
+        if (!this.world || typeof this.world.getBiomeEnvironmentAt !== 'function') return;
+        const pos = this.playerAnchorPosition || this.cameraController.getPosition();
+        this.currentBiomeEnvironment = this.world.getBiomeEnvironmentAt(pos.x, pos.z);
+        if (this.cameraController && typeof this.cameraController.setGravityScale === 'function') {
+            this.cameraController.setGravityScale(this.currentBiomeEnvironment.gravityScale || 1);
         }
     }
 
@@ -1991,7 +2006,8 @@ class Game {
             this.weatherState = this.weatherState === 'clear' ? 'rain' : 'clear';
         }
 
-        const raining = this.weatherState === 'rain';
+        const localPrecipitation = this.currentBiomeEnvironment ? this.currentBiomeEnvironment.precipitation : 'normal';
+        const raining = localPrecipitation === 'rain' || localPrecipitation === 'snow' || (localPrecipitation !== 'dry' && this.weatherState === 'rain');
         this.rainSystem.visible = raining;
         if (!raining) {
             return;
@@ -3815,6 +3831,14 @@ class Game {
             return;
         }
 
+        if (event.code === 'KeyF' && event.ctrlKey && event.altKey && !event.repeat) {
+            event.preventDefault();
+            event.stopPropagation();
+            const enabled = this.cameraController.toggleSurveyMode();
+            this.receiveSystemMessage({ text: `Survey mode ${enabled ? 'enabled' : 'disabled'}` });
+            return;
+        }
+
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
             if (this.tryCycleSprayColor()) {
@@ -5445,6 +5469,7 @@ class Game {
 
         if (this.followTargetPlayerId) {
             this.updateDayNightCycle(delta);
+            this.updateBiomeEnvironment();
             this.updateWeather(delta);
             this.updateUnderwaterEffect();
             this.updateCaveLighting();
@@ -5464,6 +5489,7 @@ class Game {
             return;
         }
 
+        this.updateBiomeEnvironment();
         this.cameraController.update(delta);
         if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {
             this.playJumpSound();
