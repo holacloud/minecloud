@@ -332,6 +332,7 @@ class WorldRenderer {
     pickBiome(climate, height, slope) {
         const cfg = this.getTerrainConfig();
         const defs = this.getBiomeDefinitions();
+        if (climate.river > 0.65) return climate.temperature < 0.22 ? 'frozen_river' : 'river';
         if (height < cfg.seaLevel - 7) return 'deep_ocean';
         if (height < cfg.seaLevel - 0.6) return 'ocean';
         if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand && climate.continentalness < 0.52) return 'beach';

@@ -60,8 +60,8 @@ Change Y cut to inspect underground caves.</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const blockColors = { grass: 0x5B8C35, dirt: 0x8B5A2B, stone: 0x808080, cobblestone: 0x6E6E6E, sand: 0xE8D894, water: 0x3D85C6, ice: 0xA9D8F5, bedrock: 0x1A1A1A, coal_ore: 0x3d3d3d, iron_ore: 0xB87E56, gold_ore: 0xD4AF37, white_wool: 0xF4F4F0, orange_brick: 0xE88932, red_brick: 0xB93A32 };
-        const blockNames = { grass: 'Grass', dirt: 'Dirt', stone: 'Stone', cobblestone: 'Cobblestone', sand: 'Sand', water: 'Water', ice: 'Ice', bedrock: 'Bedrock', coal_ore: 'Coal Ore', iron_ore: 'Iron Ore', gold_ore: 'Gold Ore', white_wool: 'Snow', orange_brick: 'Orange Terracotta', red_brick: 'Red Terracotta' };
+        const blockColors = { grass: 0x5B8C35, dirt: 0x8B5A2B, stone: 0x808080, cobblestone: 0x6E6E6E, sand: 0xE8D894, water: 0x3D85C6, ice: 0xA9D8F5, bedrock: 0x1A1A1A, coal_ore: 0x3d3d3d, iron_ore: 0xB87E56, gold_ore: 0xD4AF37, white_wool: 0xF4F4F0, orange_brick: 0xE88932, red_brick: 0xB93A32, wood: 0x8B6914, leaves: 0x4E8F36, birch_wood: 0xD8C48F, birch_leaves: 0x4E8F36, spruce_wood: 0x5B3B24, spruce_leaves: 0x4E8F36, jungle_wood: 0xA7673A, jungle_leaves: 0x4E8F36, acacia_wood: 0xB85F33, acacia_leaves: 0x4E8F36, dark_oak_wood: 0x3F2818, dark_oak_leaves: 0x4E8F36, cherry_wood: 0xE6A0B6, cherry_leaves: 0xEAA3BE, maple_wood: 0xC47A2C, maple_leaves: 0x4E8F36, willow_wood: 0x8FA85A, willow_leaves: 0x7EA84E, cactus: 0x3F8D37, tall_grass: 0x76B54E, flower_red: 0xC94040, flower_yellow: 0xD8C245, mushroom_red: 0xB74B43, mushroom_brown: 0x8A6541 };
+        const blockNames = { grass: 'Grass', dirt: 'Dirt', stone: 'Stone', cobblestone: 'Cobblestone', sand: 'Sand', water: 'Water', ice: 'Ice', bedrock: 'Bedrock', coal_ore: 'Coal Ore', iron_ore: 'Iron Ore', gold_ore: 'Gold Ore', white_wool: 'Snow', orange_brick: 'Orange Terracotta', red_brick: 'Red Terracotta', wood: 'Oak Wood', leaves: 'Oak Leaves' };
         const viewport = document.getElementById('viewport');
         const statusEl = document.getElementById('status');
         const fpsEl = document.getElementById('fps');
@@ -252,10 +252,9 @@ Change Y cut to inspect underground caves.</div>
                         index++;
                     }
                 }
-            } else {
-                for (let i = 0; i < (tile.types || []).length; i++) {
-                    blocks.push({ x: tile.x[i], y: tile.y[i], z: tile.z[i], type: tile.palette[tile.types[i]] });
-                }
+            }
+            for (let i = 0; i < (tile.types || []).length; i++) {
+                blocks.push({ x: tile.x[i], y: tile.y[i], z: tile.z[i], type: tile.palette[tile.types[i]] });
             }
             return blocks;
         }

@@ -130,8 +130,8 @@ class NetworkClient {
             }
         }
         
-        if (payload.blocks || payload.removedBlocks || payload.sprayPaints) {
-            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {}, sprayPaints: payload.sprayPaints || {} });
+        if (payload.blocks || payload.removedBlocks || payload.chunkedBlocks || payload.sprayPaints) {
+            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {}, chunkedBlocks: payload.chunkedBlocks || {}, sprayPaints: payload.sprayPaints || {} });
         }
 
         if (typeof payload.timeOfDay === 'number') {

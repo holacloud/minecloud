@@ -2279,6 +2279,7 @@ class Game {
         group.userData.stepPhase = Math.random() * Math.PI * 2;
         group.userData.bounceVelocity = 0;
         group.userData.hostile = species === 'spider' || species === 'cave_monster';
+        group.userData.surfaceBound = !group.userData.hostile;
         group.userData.attackCooldown = 0;
         group.userData.defendCooldown = 0;
         group.userData.purrTimer = species === 'cat' ? 2 + Math.random() * 4 : 0;
@@ -2550,26 +2551,29 @@ class Game {
             }
         }
 
-        if (this.world && this.world.activeChunks && this.ambientMobs.length < 40) {
+        if (this.world && this.world.activeChunks && this.ambientMobs.length < 55) {
             for (const key of this.world.activeChunks) {
                 if (!this.spawnedChunks.has(key)) {
                     this.spawnedChunks.add(key);
-                    if (Math.random() < 0.3) {
+                    if (Math.random() < 0.5) {
                         const [cx, cz] = key.split(',').map(Number);
-                        const speciesList = ['sheep', 'duck', 'pig', 'dog', 'cat', 'spider', 'cave_monster', 'giraffe'];
-                        const species = speciesList[Math.floor(Math.random() * speciesList.length)];
                         const count = 1 + Math.floor(Math.random() * 3);
                         for (let i = 0; i < count; i++) {
                             const x = cx * 16 + (Math.random() - 0.5) * 16;
                             const z = cz * 16 + (Math.random() - 0.5) * 16;
+                            const profile = this.world.getBiomeProfileAt(Math.round(x), Math.round(z));
+                            const surfaceY = profile.height + 1;
                             const floorY = this.cameraController.getFloorY(x, z, 20);
-                            if (floorY > -20 && floorY < 60) {
-                                const isHostile = species === 'spider' || species === 'cave_monster';
-                                if (isHostile && floorY > 10) continue;
-                                if (!isHostile && floorY < 0) continue;
-                                const worldPos = new THREE.Vector3(x, floorY, z);
-                                this.ambientMobs.push(this.createMob(species, worldPos));
-                            }
+                            if (floorY <= -20 || floorY >= 60) continue;
+
+                            const speciesList = this.getAmbientSpeciesForBiome(profile, floorY, surfaceY);
+                            if (!speciesList.length) continue;
+
+                            const species = speciesList[Math.floor(Math.random() * speciesList.length)];
+                            const isHostile = species === 'spider' || species === 'cave_monster';
+                            const spawnY = isHostile ? floorY : surfaceY;
+                            const worldPos = new THREE.Vector3(x, spawnY, z);
+                            this.ambientMobs.push(this.createMob(species, worldPos));
                         }
                     }
                 }
@@ -2623,7 +2627,16 @@ class Game {
             const moveScale = (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             const candidate = mob.position.clone().add(move);
-            const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
+            let floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
+            if (mob.userData.surfaceBound && this.world && typeof this.world.getBiomeProfileAt === 'function') {
+                const profile = this.world.getBiomeProfileAt(Math.round(candidate.x), Math.round(candidate.z));
+                const surfaceY = profile.height + 1;
+                if (profile.height <= profile.waterLevel) {
+                    floorY = -Infinity;
+                } else if (Math.abs(floorY - surfaceY) > 2) {
+                    floorY = surfaceY;
+                }
+            }
             if (floorY > -20 && candidate.distanceTo(mob.userData.home) < 18) {
                 mob.position.x = candidate.x;
                 mob.position.z = candidate.z;
@@ -2691,6 +2704,23 @@ class Game {
                 mob.userData.wings[1].rotation.x = -flap;
             }
         }
+    }
+
+    getAmbientSpeciesForBiome(profile, floorY, surfaceY) {
+        const biome = profile && profile.biome ? profile.biome : 'plains';
+        const isUnderground = floorY < surfaceY - 3;
+        if (isUnderground) {
+            return floorY < 12 ? ['spider', 'cave_monster'] : ['spider'];
+        }
+        if (floorY < 0 || Math.abs(floorY - surfaceY) > 2 || profile.height <= profile.waterLevel) {
+            return [];
+        }
+        if (biome === 'savanna') return ['giraffe', 'giraffe', 'pig'];
+        if (biome === 'jungle') return ['macaw', 'pig', 'cat'];
+        if (biome === 'forest' || biome === 'light_forest' || biome === 'dark_forest' || biome === 'taiga') return ['sheep', 'pig', 'dog', 'cat'];
+        if (biome === 'swamp' || biome === 'river' || biome === 'frozen_river') return ['duck', 'duck', 'pig'];
+        if (biome === 'desert' || biome === 'badlands' || biome === 'ocean' || biome === 'deep_ocean' || biome === 'beach') return [];
+        return ['sheep', 'sheep', 'duck', 'pig', 'dog', 'cat'];
     }
 
     createNameTagSprite(name) {

@@ -282,7 +282,23 @@ func HandleTerrainTile(w http.ResponseWriter, r *http.Request) {
 				surfaceTypes = append(surfaceTypes, paletteID(blockType))
 			}
 		}
-		_ = json.NewEncoder(w).Encode(TileResponse{OriginX: originX, OriginZ: originZ, Size: size, Step: step, Vertical: vertical, ClipY: clipY, Mode: mode, Columns: columns, Rows: rows, Palette: palette, SurfaceY: surfaceY, SurfaceTypes: surfaceTypes})
+		xs := make([]int, 0)
+		ys := make([]int, 0)
+		zs := make([]int, 0)
+		types := make([]int, 0)
+		if step <= 4 && size <= 512 {
+			features := GenerateFeaturesForRegion(originX, originX+size, originZ, originZ+size)
+			for _, f := range features {
+				if f.X < originX || f.X > originX+size || f.Z < originZ || f.Z > originZ+size || f.Y > clipY {
+					continue
+				}
+				xs = append(xs, f.X)
+				ys = append(ys, f.Y)
+				zs = append(zs, f.Z)
+				types = append(types, paletteID(f.Type))
+			}
+		}
+		_ = json.NewEncoder(w).Encode(TileResponse{OriginX: originX, OriginZ: originZ, Size: size, Step: step, Vertical: vertical, ClipY: clipY, Mode: mode, Columns: columns, Rows: rows, Palette: palette, SurfaceY: surfaceY, SurfaceTypes: surfaceTypes, X: xs, Y: ys, Z: zs, Types: types})
 		return
 	}
 
@@ -662,14 +678,14 @@ func IsCaveAt(x, y, z, surfaceHeight int) bool {
 	}
 	depth := float64(surfaceHeight - y)
 	depthMask := smoothstep(8, 16, depth)
-	
+
 	tunnel1 := math.Abs(noise3D(float64(x), float64(y), float64(z), 1.0/36.0)-0.5) * 2
 	tunnel2 := math.Abs(noise3D(float64(x+4100), float64(y-1200), float64(z+2200), 1.0/36.0)-0.5) * 2
-	
+
 	thickness := 0.07 + 0.04*noise3D(float64(x-2100), float64(y+3300), float64(z-1700), 1.0/64.0)
-	
+
 	chamber := noise3D(float64(x+9100), float64(y-5100), float64(z+8600), 1.0/64.0)
-	
+
 	return depthMask > 0 && ((tunnel1 < thickness && tunnel2 < thickness) || (chamber > 0.75))
 }
 
