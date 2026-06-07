@@ -14,6 +14,7 @@ class WorldRenderer {
         this.sprayPaintsByKey = new Map();
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
+        this.userModifiedBlocks = new Set();
         this.chunkSize = 16;
         this.renderDistance = options.renderDistance ?? 4;
         this.rtxModeEnabled = false;
@@ -32,6 +33,10 @@ class WorldRenderer {
 
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
+
+        this.generatingChunks = new Set();
+        this.chunkProcessQueue = [];
+        this.isProcessingChunks = false;
 
         this.blockTypes = {
             air: { color: 0x000000, name: 'Air', breakDuration: 0 },
@@ -1401,9 +1406,9 @@ class WorldRenderer {
         let material = this.materials.get(type);
         if (material) return material;
 
-        const def = this.blockTypes[type];
+        const def = this.blockTypes[type] || {};
         const alphaCutout = this.isAlphaCutoutType(type);
-        const transparent = def.transparent && !alphaCutout;
+        const transparent = Boolean(def.transparent) && !alphaCutout;
         const depthWrite = type === 'water' ? true : (!transparent || alphaCutout);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
@@ -1446,76 +1451,69 @@ class WorldRenderer {
                 const key = this.chunkKey(x, z);
                 this.activeChunks.add(key);
                 this.generateChunkData(x, z);
-                initialChunks.push([x, z]);
             }
         }
+    }
 
-        for (let i = 0; i < initialChunks.length; i++) {
-            const [chunkX, chunkZ] = initialChunks[i];
+    processNextChunk() {
+        if (this.isProcessingChunks || this.chunkProcessQueue.length === 0) return;
+        this.isProcessingChunks = true;
+        
+        requestAnimationFrame(() => {
+            if (this.chunkProcessQueue.length === 0) {
+                this.isProcessingChunks = false;
+                return;
+            }
+            
+            const { chunkX, chunkZ, blocks } = this.chunkProcessQueue.shift();
+            const key = this.chunkKey(chunkX, chunkZ);
+            
+            for (let i = 0; i < blocks.length; i += 4) {
+                this.setBlockData(blocks[i], blocks[i+1], blocks[i+2], blocks[i+3], key);
+            }
+            this.generatedChunks.add(key);
+            this.generatingChunks.delete(key);
             this.rebuildChunk(chunkX, chunkZ);
-        }
+            
+            this.isProcessingChunks = false;
+            this.processNextChunk();
+        });
     }
 
     generateChunkData(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
-        if (this.generatedChunks.has(key)) return;
+        if (this.generatedChunks.has(key) || this.generatingChunks.has(key)) return;
 
-        const cfg = this.getTerrainConfig();
+        this.generatingChunks.add(key);
         this.ensureChunkBlockSet(key);
+        
+        const worldX = chunkX * this.chunkSize;
+        const worldZ = chunkZ * this.chunkSize;
 
-        for (let x = 0; x < this.chunkSize; x++) {
-            for (let z = 0; z < this.chunkSize; z++) {
-                const worldX = chunkX * this.chunkSize + x;
-                const worldZ = chunkZ * this.chunkSize + z;
-                const profile = this.sampleTerrainAt(worldX, worldZ);
-                const biomeDef = profile.def;
-                const waterLevel = profile.waterLevel;
-                const height = Math.max(cfg.minWorldY + cfg.bedrockThickness + 1, profile.height);
-
-                for (let y = cfg.minWorldY; y <= height; y++) {
-                    const blockType = this.getProceduralBlockTypeAt(worldX, y, worldZ, profile);
-                    if (blockType) this.setBlockData(worldX, y, worldZ, blockType, key);
-                }
-
-                if (height < waterLevel) {
-                    for (let y = height + 1; y <= waterLevel; y++) {
-                        const blockType = this.getProceduralBlockTypeAt(worldX, y, worldZ, profile);
-                        if (blockType) this.setBlockData(worldX, y, worldZ, blockType, key);
+        fetch(`/api/terrain/tile?x=${worldX}&z=${worldZ}&size=${this.chunkSize}&step=1&clipY=256&mode=full`, { cache: 'no-store' })
+            .then(res => res.json())
+            .then(data => {
+                const blocks = [];
+                if (data && data.types) {
+                    for (let i = 0; i < data.types.length; i++) {
+                        const bx = data.x[i];
+                        const by = data.y[i];
+                        const bz = data.z[i];
+                        if (bx >= worldX + this.chunkSize || bz >= worldZ + this.chunkSize) continue;
+                        
+                        const type = data.palette[data.types[i]];
+                        if (type && type !== 'air') {
+                            blocks.push(bx, by, bz, type);
+                        }
                     }
                 }
-
-                if (height <= waterLevel) continue;
-
-                const biome = profile.biome;
-                const treeChance = biomeDef.treeChance || 0;
-                const cactusChance = biomeDef.cactusChance || 0;
-                const decorRoll = this.seededRand(worldX, worldZ, 2048);
-
-                if (treeChance > 0 && this.seededRand(worldX, worldZ, 999) < treeChance && height >= 3) {
-                    const treeTypes = biomeDef.trees || ['wood'];
-                    const treeIndex = Math.floor(this.seededRand(worldX, worldZ, 1777) * treeTypes.length);
-                    this.generateTree(worldX, height + 1, worldZ, (rx, rz, offset) => this.seededRand(rx, rz, offset), treeTypes[treeIndex]);
-                } else if (cactusChance > 0 && this.seededRand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
-                    this.generateCactus(worldX, height + 1, worldZ, (rx, rz, offset) => this.seededRand(rx, rz, offset));
-                } else if (decorRoll < (biomeDef.decorChance || 0)) {
-                    let plantType = 'tall_grass';
-                    if (biome === 'forest' || biome === 'dark_forest' || biome === 'jungle' || biome === 'swamp') {
-                        plantType = decorRoll < 0.025 ? 'mushroom_red' : decorRoll < 0.05 ? 'mushroom_brown' : decorRoll < 0.07 ? 'flower_yellow' : 'tall_grass';
-                    } else if (biome === 'desert') {
-                        plantType = this.seededRand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass';
-                    } else if (biome === 'mountains' || biome === 'stony_peaks') {
-                        plantType = this.seededRand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass';
-                    } else if (biome.startsWith('snowy')) {
-                        plantType = 'tall_grass';
-                    } else {
-                        plantType = decorRoll < 0.025 ? 'flower_red' : decorRoll < 0.05 ? 'flower_yellow' : 'tall_grass';
-                    }
-                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
-                }
-            }
-        }
-
-        this.generatedChunks.add(key);
+                this.chunkProcessQueue.push({ chunkX, chunkZ, blocks });
+                this.processNextChunk();
+            })
+            .catch(err => {
+                console.error("Failed to load chunk terrain:", err);
+                this.generatingChunks.delete(key);
+            });
     }
 
     generateTree(x, y, z, rand, woodType = 'wood') {
@@ -1562,6 +1560,9 @@ class WorldRenderer {
 
         if (options.persisted || options.playerChange) {
             this.removedBlockKeys.delete(key);
+            this.userModifiedBlocks.add(key);
+        } else if (this.userModifiedBlocks.has(key)) {
+            return false;
         }
 
         if (currentType === type) {
@@ -2119,7 +2120,49 @@ class WorldRenderer {
         const blocks = state && state.blocks ? state.blocks : (state || {});
         const removedBlocks = state && state.removedBlocks ? state.removedBlocks : {};
         const sprayPaints = state && state.sprayPaints ? state.sprayPaints : {};
+        const chunkedBlocks = state && state.chunkedBlocks ? state.chunkedBlocks : {};
         const dirtyChunks = new Set();
+
+        for (const chunkKey in chunkedBlocks) {
+            const chunk = chunkedBlocks[chunkKey];
+            const [cx, cy, cz] = chunkKey.split(',').map(Number);
+            const palette = chunk.palette;
+            const binaryString = atob(chunk.blocks);
+            
+            let outIdx = 0;
+            for (let i = 0; i < binaryString.length; i += 2) {
+                const count = binaryString.charCodeAt(i);
+                const val = binaryString.charCodeAt(i + 1);
+                
+                if (val === 0) {
+                    outIdx += count;
+                    continue;
+                }
+                
+                for (let j = 0; j < count; j++) {
+                    const idx = outIdx++;
+                    const y = Math.floor(idx / 1024);
+                    const z = Math.floor((idx % 1024) / 32);
+                    const x = idx % 32;
+                    
+                    const worldX = cx * 32 + x;
+                    const worldY = cy * 32 + y;
+                    const worldZ = cz * 32 + z;
+                    
+                    if (val === 1) {
+                        this.removedBlockKeys.add(this.blockKey(worldX, worldY, worldZ));
+                        this.deleteBlockData(worldX, worldY, worldZ, false);
+                    } else if (val >= 2) {
+                        const type = palette[val - 2];
+                        this.setBlockData(worldX, worldY, worldZ, type, null, { persisted: true });
+                    }
+                }
+            }
+            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2));
+            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2));
+            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2 + 1));
+            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2 + 1));
+        }
 
         for (const key in removedBlocks) {
             if (!removedBlocks[key]) continue;
@@ -2188,6 +2231,7 @@ class WorldRenderer {
 
         if (recordRemoval) {
             this.removedBlockKeys.add(key);
+            this.userModifiedBlocks.delete(key);
         }
 
         this.blockData.delete(key);

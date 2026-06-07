@@ -3,7 +3,7 @@
 build:
 	go build -o bin/server ./cmd/server
 
-run:
+run: build
 	go run ./cmd/server -statics ./pkg/web/static/
 
 dev:

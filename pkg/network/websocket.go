@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -856,15 +857,104 @@ func removeSprayPaintsForBlockLocked(x, y, z int) {
 	}
 }
 
+type ChunkData struct {
+	Palette []string `json:"palette"`
+	Blocks  string   `json:"blocks"`
+}
+
+func getChunkIndex(x, y, z int) (string, int) {
+	chunkSize := 32
+	cx := int(math.Floor(float64(x) / float64(chunkSize)))
+	cy := int(math.Floor(float64(y) / float64(chunkSize)))
+	cz := int(math.Floor(float64(z) / float64(chunkSize)))
+
+	lx := ((x % chunkSize) + chunkSize) % chunkSize
+	ly := ((y % chunkSize) + chunkSize) % chunkSize
+	lz := ((z % chunkSize) + chunkSize) % chunkSize
+
+	idx := ly*chunkSize*chunkSize + lz*chunkSize + lx
+	return fmt.Sprintf("%d,%d,%d", cx, cy, cz), idx
+}
+
+func rleEncode(data []byte) []byte {
+	var encoded []byte
+	n := len(data)
+	for i := 0; i < n; {
+		val := data[i]
+		count := 1
+		for i+count < n && data[i+count] == val && count < 255 {
+			count++
+		}
+		encoded = append(encoded, byte(count), val)
+		i += count
+	}
+	return encoded
+}
+
 func sendInitialState(client *Client) {
 	stateMu.RLock()
 	defer stateMu.RUnlock()
 
+	type chunkBuilder struct {
+		PaletteMap map[string]byte
+		Palette    []string
+		Data       []byte
+	}
+	builders := make(map[string]*chunkBuilder)
+	complexBlocks := make(map[string]Block)
+
+	for key, isRemoved := range gameState.RemovedBlocks {
+		if !isRemoved {
+			continue
+		}
+		var x, y, z int
+		fmt.Sscanf(key, "%d,%d,%d", &x, &y, &z)
+		chunkKey, idx := getChunkIndex(x, y, z)
+		if builders[chunkKey] == nil {
+			builders[chunkKey] = &chunkBuilder{
+				PaletteMap: make(map[string]byte),
+				Data:       make([]byte, 32*32*32),
+			}
+		}
+		builders[chunkKey].Data[idx] = 1
+	}
+
+	for key, b := range gameState.Blocks {
+		if b.Text != "" || b.Votes != nil || b.Instrument != "" || b.Facing != "" {
+			complexBlocks[key] = b
+			continue
+		}
+		chunkKey, idx := getChunkIndex(b.X, b.Y, b.Z)
+		cb := builders[chunkKey]
+		if cb == nil {
+			cb = &chunkBuilder{
+				PaletteMap: make(map[string]byte),
+				Data:       make([]byte, 32*32*32),
+			}
+			builders[chunkKey] = cb
+		}
+		pidx, ok := cb.PaletteMap[b.BlockType]
+		if !ok {
+			cb.Palette = append(cb.Palette, b.BlockType)
+			pidx = byte(len(cb.Palette) + 1)
+			cb.PaletteMap[b.BlockType] = pidx
+		}
+		cb.Data[idx] = pidx
+	}
+
+	chunkedBlocks := make(map[string]ChunkData)
+	for chunkKey, cb := range builders {
+		chunkedBlocks[chunkKey] = ChunkData{
+			Palette: cb.Palette,
+			Blocks:  base64.StdEncoding.EncodeToString(rleEncode(cb.Data)),
+		}
+	}
+
 	initMsg := map[string]interface{}{
 		"type":          "init",
 		"players":       gameState.Players,
-		"blocks":        gameState.Blocks,
-		"removedBlocks": gameState.RemovedBlocks,
+		"blocks":        complexBlocks,
+		"chunkedBlocks": chunkedBlocks,
 		"sprayPaints":   gameState.SprayPaints,
 		"timeOfDay":     gameState.WorldTime,
 		"worldDay":      gameState.WorldDay,
