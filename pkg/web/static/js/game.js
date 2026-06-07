@@ -3745,7 +3745,11 @@ class Game {
     
     onMouseDown(event) {
         if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) return;
-        if (!this.cameraController.canInteract()) return;
+        
+        if (!this.cameraController.canInteract()) {
+            this.recapturePointerLockFromGesture();
+            return;
+        }
         
         if (event.button === 0) {
             const mobHit = this.raycastMob(5);
