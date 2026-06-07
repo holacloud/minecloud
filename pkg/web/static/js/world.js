@@ -183,10 +183,14 @@ class WorldRenderer {
             erosionWeight: 4,
             hillsWeight: 5,
             detailWeight: 1.35,
-            mountainWeight: 22,
+            mountainWeight: 32,
             riverScale: 900,
             riverWidth: 0.08,
-            lakeScale: 420
+            lakeScale: 420,
+            minWorldY: -59,
+            bedrockThickness: 2,
+            caveStartDepth: 8,
+            caveMaxDepth: 64
         };
         return this.terrainConfig;
     }
@@ -293,15 +297,21 @@ class WorldRenderer {
         const coastLift = this.smoothstep(0.28, 0.42, climate.continentalness) * 3;
         const largeLandVariation = (this.noise2D(worldX - 1700, worldZ + 900, 1 / 1800) - 0.5) * 8;
         const hills = (this.noise2D(worldX + 2300, worldZ - 1300, 1 / 360) - 0.5) * cfg.hillsWeight * climate.erosion;
-        const mountainMask = this.smoothstep(0.5, 0.76, climate.continentalness) * this.smoothstep(0.0, 0.42, 1 - climate.erosion) * this.smoothstep(0.48, 0.72, climate.weirdness);
-        const mountainRidge = Math.pow(1 - Math.abs(this.noise2D(worldX + 2900, worldZ + 3700, 1 / 560) - 0.5) * 2, 1.8);
-        const mountains = mountainRidge * mountainMask * cfg.mountainWeight;
+        const mountainMask = this.smoothstep(0.34, 0.54, climate.continentalness) * this.smoothstep(0.0, 0.72, 1 - climate.erosion) * this.smoothstep(0.28, 0.48, climate.weirdness);
+        const ridgeNoise = 1 - Math.abs(this.noise2D(worldX + 2900, worldZ + 3700, 1 / 460) - 0.5) * 2;
+        const mountainRidge = Math.pow(ridgeNoise, 0.92);
+        const cliffNoise = 1 - Math.abs(this.noise2D(worldX - 9400, worldZ + 2700, 1 / 180) - 0.5) * 2;
+        const cliffs = Math.pow(cliffNoise, 4.4) * this.smoothstep(0.42, 0.78, ridgeNoise) * mountainMask * 36;
+        const mountains = mountainRidge * mountainMask * 76 + cliffs;
         const valleyMask = 1 - this.smoothstep(0.12, 0.42, Math.abs(this.noise2D(worldX - 6300, worldZ - 2800, 1 / 760) - 0.5) * 2);
         const valleys = valleyMask * (0.35 + (1 - climate.erosion) * 0.65) * -6;
         const riverCut = climate.river * (6 + (1 - climate.erosion) * 5);
         const lakeCut = climate.lake * 5.5;
         const detail = (this.noise2D(worldX + 120, worldZ - 480, 1 / cfg.detailScale) - 0.5) * cfg.detailWeight;
-        return cfg.seaLevel + continentalCurve + oceanShelf + coastLift + largeLandVariation + hills + mountains + valleys + detail - riverCut - lakeCut;
+        const spawnDistance = Math.sqrt(worldX * worldX + worldZ * worldZ);
+        const spawnLift = (1 - this.smoothstep(90, 340, spawnDistance)) * 18;
+        const spawnCalm = (1 - this.smoothstep(120, 360, spawnDistance)) * -Math.abs(detail) * 0.8;
+        return cfg.seaLevel + continentalCurve + oceanShelf + coastLift + largeLandVariation + hills + mountains + valleys + detail + spawnLift + spawnCalm - riverCut - lakeCut;
     }
 
     sampleSlope(worldX, worldZ, climate = null) {
@@ -319,10 +329,10 @@ class WorldRenderer {
         if (height < cfg.seaLevel - 0.6) return 'ocean';
         if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand && climate.continentalness < 0.52) return 'beach';
         if (climate.lake > 0.65 && climate.humidity > 0.58 && height < cfg.seaLevel + 4) return climate.temperature < 0.22 ? 'snowy_plains' : 'swamp';
-        if (climate.weirdness > 0.78 && climate.continentalness > 0.5 && climate.erosion < 0.42) return climate.temperature < 0.24 ? 'snowy_mountains' : climate.humidity < 0.34 ? 'stony_peaks' : 'mountains';
-        if (height > cfg.seaLevel + 18 && climate.temperature < 0.22) return 'snowy_mountains';
-        if (height > cfg.seaLevel + 20 && climate.humidity < 0.38) return 'stony_peaks';
-        if (height > cfg.seaLevel + 14 || slope > 0.58) return climate.temperature < 0.32 ? 'snowy_mountains' : 'mountains';
+        if (climate.weirdness > 0.66 && climate.continentalness > 0.46 && climate.erosion < 0.55) return climate.temperature < 0.24 ? 'snowy_mountains' : climate.humidity < 0.34 ? 'stony_peaks' : 'mountains';
+        if (height > cfg.seaLevel + 14 && climate.temperature < 0.22) return 'snowy_mountains';
+        if (height > cfg.seaLevel + 16 && climate.humidity < 0.38) return 'stony_peaks';
+        if (height > cfg.seaLevel + 10 || slope > 0.45) return climate.temperature < 0.32 ? 'snowy_mountains' : 'mountains';
         if (climate.humidity > 0.82 && height < cfg.seaLevel + 5) return 'swamp';
 
         let best = 'plains';
@@ -381,14 +391,50 @@ class WorldRenderer {
     }
 
     isCaveAt(worldX, y, worldZ, surfaceHeight) {
-        if (y >= surfaceHeight - 4 || y <= -5) return false;
+        const cfg = this.getTerrainConfig();
+        if (y >= surfaceHeight - cfg.caveStartDepth) return false;
+        if (y <= cfg.minWorldY + cfg.bedrockThickness) return false;
+
         const depth = surfaceHeight - y;
-        const depthMask = this.smoothstep(4, 11, depth);
-        const tunnelA = Math.abs(this.noise2D(worldX + y * 17 + 4100, worldZ - y * 13 - 2200, 1 / 84) - 0.5) * 2;
-        const tunnelB = Math.abs(this.noise2D(worldX - y * 11 - 7600, worldZ + y * 19 + 3300, 1 / 126) - 0.5) * 2;
-        const chamber = this.noise2D(worldX + y * 23 + 9100, worldZ - y * 7 - 5100, 1 / 54);
-        const tunnel = Math.min(tunnelA, tunnelB);
-        return depthMask > 0 && (tunnel < 0.09 || (tunnel < 0.18 && chamber > 0.72));
+        const depthMask = this.smoothstep(cfg.caveStartDepth, cfg.caveStartDepth + 8, depth) * (1 - this.smoothstep(cfg.caveMaxDepth - 6, cfg.caveMaxDepth, depth));
+        const levelMask = Math.max(
+            1 - this.smoothstep(8, 18, Math.abs(depth - 18)),
+            1 - this.smoothstep(10, 22, Math.abs(depth - 36)),
+            1 - this.smoothstep(12, 26, Math.abs(depth - 54))
+        );
+        const tunnelA = Math.abs(this.noise2D(worldX + y * 17 + 4100, worldZ - y * 13 - 2200, 1 / 72) - 0.5) * 2;
+        const tunnelB = Math.abs(this.noise2D(worldX - y * 11 - 7600, worldZ + y * 19 + 3300, 1 / 110) - 0.5) * 2;
+        const tunnelC = Math.abs(this.noise2D(worldX + y * 29 + 1200, worldZ + y * 31 - 8800, 1 / 46) - 0.5) * 2;
+        const chamber = this.noise2D(worldX + y * 23 + 9100, worldZ - y * 7 - 5100, 1 / 86);
+        const chamberShape = this.noise2D(worldX - y * 5 + 3300, worldZ + y * 9 - 1700, 1 / 38);
+        const tunnel = Math.min(tunnelA, tunnelB, tunnelC);
+        return depthMask > 0 && levelMask > 0.15 && (tunnel < 0.11 + levelMask * 0.04 || (tunnel < 0.3 && chamber > 0.66 && chamberShape > 0.55));
+    }
+
+    getProceduralBlockTypeAt(worldX, y, worldZ, profile = null) {
+        profile = profile || this.sampleTerrainAt(worldX, worldZ);
+        const cfg = this.getTerrainConfig();
+        const height = Math.max(cfg.minWorldY + cfg.bedrockThickness + 1, profile.height);
+        const waterLevel = profile.waterLevel;
+        const biomeDef = profile.def;
+        if (y > height && y <= waterLevel) return y === waterLevel && profile.climate.temperature < 0.18 ? 'ice' : 'water';
+        if (y > height) return null;
+        if (y <= cfg.minWorldY + cfg.bedrockThickness - 1) return 'bedrock';
+        if (this.isCaveAt(worldX, y, worldZ, height)) return null;
+        if (y < height - 3 || (profile.slope > 0.5 && y < height - 1)) {
+            const oreRand = this.seededRand(worldX, worldZ, y * 100);
+            if (oreRand < 0.02) return 'coal_ore';
+            if (oreRand < 0.025) return 'iron_ore';
+            if (oreRand < 0.026) return 'gold_ore';
+            return biomeDef.sub;
+        }
+        if (y === height) {
+            if (profile.surfaceBlock === 'stone' && biomeDef.filler === 'cobblestone') {
+                return this.seededRand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
+            }
+            return profile.surfaceBlock === 'water' || profile.surfaceBlock === 'ice' ? biomeDef.top : profile.surfaceBlock;
+        }
+        return biomeDef.filler;
     }
 
     getBiomeProfileAt(worldX, worldZ) {
@@ -1414,6 +1460,7 @@ class WorldRenderer {
         const key = this.chunkKey(chunkX, chunkZ);
         if (this.generatedChunks.has(key)) return;
 
+        const cfg = this.getTerrainConfig();
         this.ensureChunkBlockSet(key);
 
         for (let x = 0; x < this.chunkSize; x++) {
@@ -1421,45 +1468,25 @@ class WorldRenderer {
                 const worldX = chunkX * this.chunkSize + x;
                 const worldZ = chunkZ * this.chunkSize + z;
                 const profile = this.sampleTerrainAt(worldX, worldZ);
-                const biome = profile.biome;
                 const biomeDef = profile.def;
                 const waterLevel = profile.waterLevel;
-                const height = Math.max(-4, profile.height);
+                const height = Math.max(cfg.minWorldY + cfg.bedrockThickness + 1, profile.height);
 
-                for (let y = -5; y <= height; y++) {
-                    let blockType;
-                    if (y === -5) {
-                        blockType = 'bedrock';
-                    } else if (this.isCaveAt(worldX, y, worldZ, height)) {
-                        continue;
-                    } else if (y < height - 3 || (profile.slope > 0.5 && y < height - 1)) {
-                        const oreRand = this.seededRand(worldX, worldZ, y * 100);
-                        if (oreRand < 0.02) blockType = 'coal_ore';
-                        else if (oreRand < 0.025) blockType = 'iron_ore';
-                        else if (oreRand < 0.026) blockType = 'gold_ore';
-                        else blockType = biomeDef.sub;
-                    } else if (y === height) {
-                        if (profile.surfaceBlock === 'stone' && biomeDef.filler === 'cobblestone') {
-                            blockType = this.seededRand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
-                        } else {
-                            blockType = profile.surfaceBlock === 'water' ? biomeDef.top : profile.surfaceBlock;
-                        }
-                    } else if (y < height) {
-                        blockType = biomeDef.filler;
-                    }
-
-                    this.setBlockData(worldX, y, worldZ, blockType, key);
+                for (let y = cfg.minWorldY; y <= height; y++) {
+                    const blockType = this.getProceduralBlockTypeAt(worldX, y, worldZ, profile);
+                    if (blockType) this.setBlockData(worldX, y, worldZ, blockType, key);
                 }
 
                 if (height < waterLevel) {
                     for (let y = height + 1; y <= waterLevel; y++) {
-                        const frozenSurface = y === waterLevel && profile.climate.temperature < 0.18;
-                        this.setBlockData(worldX, y, worldZ, frozenSurface ? 'ice' : 'water', key);
+                        const blockType = this.getProceduralBlockTypeAt(worldX, y, worldZ, profile);
+                        if (blockType) this.setBlockData(worldX, y, worldZ, blockType, key);
                     }
                 }
 
                 if (height <= waterLevel) continue;
 
+                const biome = profile.biome;
                 const treeChance = biomeDef.treeChance || 0;
                 const cactusChance = biomeDef.cactusChance || 0;
                 const decorRoll = this.seededRand(worldX, worldZ, 2048);

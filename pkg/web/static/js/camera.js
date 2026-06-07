@@ -216,7 +216,7 @@ class CameraController {
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
-        for (let y = Math.floor(startY); y >= -5; y--) {
+        for (let y = Math.floor(startY); y >= -80; y--) {
             if (this.hasBlock(ix, y, iz)) return y + 1;
         }
         return -100;

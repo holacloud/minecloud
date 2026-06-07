@@ -322,6 +322,7 @@ class Game {
         this.initWorld();
         this.initAmbientMobs();
         this.restoreLastSafePosition();
+        this.loadServerSpawn();
         this.applyRTXMode(this.rtxPreferred);
         this.initNetwork();
         this.initHotbar();
@@ -693,6 +694,26 @@ class Game {
         if (!this.lastSafePosition) return;
 
         window.localStorage.setItem('minecloud-last-safe-position', JSON.stringify(this.lastSafePosition));
+    }
+
+    async loadServerSpawn() {
+        if (this.lastSafePosition || this.respawnPoint || !this.cameraController) return;
+        try {
+            const response = await fetch('/api/terrain/spawn', { cache: 'no-store' });
+            if (!response.ok) return;
+            const spawn = await response.json();
+            if (typeof spawn.x !== 'number' || typeof spawn.y !== 'number' || typeof spawn.z !== 'number') return;
+            const position = {
+                x: spawn.x,
+                y: spawn.y,
+                z: spawn.z,
+                yaw: typeof spawn.yaw === 'number' ? spawn.yaw : 0,
+                pitch: typeof spawn.pitch === 'number' ? spawn.pitch : 0
+            };
+            this.cameraController.setPosition(position);
+            this.lastSafePosition = position;
+        } catch (_error) {
+        }
     }
 
     restoreInventoryState() {
@@ -4380,7 +4401,7 @@ class Game {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob giraffe, /mob macaw, /mob dog, /mob cat, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /goto x,z, /mob giraffe, /mob macaw, /mob dog, /mob cat, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -4400,6 +4421,9 @@ class Game {
                 this.receiveSystemMessage({ text: `Current world time: ${hours}:${minutes}` });
                 break;
             }
+            case 'goto':
+                this.gotoFromCommand(args);
+                break;
             case 'sayhere':
                 this.sendWorldNote(args.join(' '));
                 break;
@@ -4442,6 +4466,34 @@ class Game {
         mob.userData.direction = Math.atan2(player.z - mob.position.z, player.x - mob.position.x);
         this.ambientMobs.push(mob);
         this.receiveSystemMessage({ text: `Spawned an adorable ${species}` });
+    }
+
+    gotoFromCommand(args) {
+        if (!this.cameraController || !this.cameraController.surveyMode) {
+            this.receiveSystemMessage({ text: 'Enable admin travel mode first with Ctrl+F' });
+            return;
+        }
+
+        const raw = args.join(' ').trim();
+        const match = raw.match(/^(-?\d+(?:\.\d+)?)\s*,?\s*(-?\d+(?:\.\d+)?)$/);
+        if (!match) {
+            this.receiveSystemMessage({ text: 'Usage: /goto x,z (example: /goto 200,-150)' });
+            return;
+        }
+
+        const x = Number(match[1]);
+        const z = Number(match[2]);
+        if (!Number.isFinite(x) || !Number.isFinite(z)) {
+            this.receiveSystemMessage({ text: 'Invalid /goto coordinates' });
+            return;
+        }
+
+        this.world.update(x, z);
+        const floorY = this.cameraController.getFloorY(x, z, 260);
+        const y = floorY > -70 ? floorY + this.cameraController.eyeHeight + 0.2 : this.camera.position.y;
+        this.cameraController.setPosition({ x, y, z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch });
+        this.lastSafePosition = this.cameraController.getPosition();
+        this.receiveSystemMessage({ text: `Teleported to X ${Math.round(x)}, Z ${Math.round(z)}` });
     }
 
     tryUseSoundBlock(tune) {

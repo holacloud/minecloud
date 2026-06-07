@@ -12,6 +12,7 @@ import (
 
 	"minecloud/pkg/network"
 	"minecloud/pkg/web"
+	"minecloud/pkg/world"
 )
 
 type Config struct {
@@ -54,6 +55,10 @@ func main() {
 	http.HandleFunc("/voice-test", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/voice-test.html", http.StatusFound)
 	})
+	http.HandleFunc("/api/terrain/inspect", world.HandleTerrainInspect)
+	http.HandleFunc("/api/terrain/tile", world.HandleTerrainTile)
+	http.HandleFunc("/api/terrain/cube", world.HandleTerrainCube)
+	http.HandleFunc("/api/terrain/spawn", world.HandleTerrainSpawn)
 	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(web.MustStaticFS()))))
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
