@@ -39,13 +39,13 @@
             <div><label for="center-z">Center Z</label><input id="center-z" type="number" value="0" step="16"></div>
         </div>
         <div class="grid">
-            <div><label for="radius">Radius</label><select id="radius"><option value="80">80</option><option value="160" selected>160</option><option value="320">320</option><option value="640">640</option><option value="1200">1200</option><option value="2400">2400</option></select></div>
-            <div><label for="step">Sampling</label><select id="step"><option value="adaptive" selected>Adaptive distance LOD</option><option value="1">Fixed 1</option><option value="2">Fixed 2</option><option value="4">Fixed 4</option><option value="8">Fixed 8</option><option value="16">Fixed 16</option><option value="32">Fixed 32</option><option value="48">Fixed 48</option></select></div>
+            <div><label for="radius">Radius</label><select id="radius"><option value="80">80</option><option value="160" selected>160</option><option value="320">320</option><option value="640">640</option><option value="1200">1200</option><option value="2400">2400</option><option value="4800">4800</option><option value="9600">9600</option><option value="19200">19200</option></select></div>
+            <div><label for="step">Sampling</label><select id="step"><option value="adaptive" selected>Adaptive distance LOD</option><option value="1">Fixed 1</option><option value="2">Fixed 2</option><option value="4">Fixed 4</option><option value="8">Fixed 8</option><option value="16">Fixed 16</option><option value="32">Fixed 32</option><option value="48">Fixed 48</option><option value="64">Fixed 64</option><option value="128">Fixed 128</option><option value="256">Fixed 256</option></select></div>
         </div>
         <label for="clip-y">Y cut: show blocks at or below <span id="clip-y-value">256</span></label>
         <input id="clip-y" type="range" min="-59" max="256" value="256">
         <label for="camera-speed">Camera speed</label>
-        <input id="camera-speed" type="range" min="10" max="180" value="52">
+        <input id="camera-speed" type="range" min="10" max="3000" value="120">
         <label for="render-style">Render style</label>
         <select id="render-style"><option value="color" selected>Solid colors</option><option value="texture">Game-like textures</option></select>
         <label><input id="auto-stream" type="checkbox" checked> Auto stream while moving</label>
@@ -104,7 +104,7 @@ Change Y cut to inspect underground caves.</div>
         const payloadCache = new Map();
         const decodedCache = new Map();
         const cacheWeights = new Map();
-        const maxCachedVoxels = 40000000;
+        const maxCachedVoxels = 200000000;
         let cachedVoxels = 0;
 
         function materialFor(type) {
@@ -167,23 +167,32 @@ Change Y cut to inspect underground caves.</div>
             if (radius <= 320) return 4;
             if (radius <= 640) return 8;
             if (radius <= 1200) return 16;
-            return 32;
+            if (radius <= 2400) return 32;
+            if (radius <= 4800) return 64;
+            if (radius <= 9600) return 128;
+            return 256;
         }
         function isAdaptiveLod() {
             return document.getElementById('step').value === 'adaptive';
         }
         function tileSizeFor(radius, step) {
-            if (radius >= 640) return 256;
-            return Math.max(128, Math.min(256, step * 32));
+            const minStep = isAdaptiveLod() ? Math.max(1, Math.floor(step / 16)) : step;
+            return Math.max(256, Math.min(2048, minStep * 64));
         }
         function lodStepForRing(ring, baseStep) {
             if (!isAdaptiveLod()) return baseStep;
-            if (ring <= 1) return 1;
-            if (ring === 2) return 2;
-            if (ring === 3) return 4;
-            if (ring <= 5) return 8;
-            if (ring <= 8) return 16;
-            return 32;
+            const minStep = Math.max(1, Math.floor(baseStep / 16));
+            let s = baseStep;
+            if (ring <= 1) s = 1;
+            else if (ring === 2) s = 2;
+            else if (ring === 3) s = 4;
+            else if (ring <= 5) s = 8;
+            else if (ring <= 8) s = 16;
+            else if (ring <= 14) s = 32;
+            else if (ring <= 24) s = 64;
+            else if (ring <= 40) s = 128;
+            else s = 256;
+            return Math.max(s, minStep);
         }
         function appendBlocks(blocks, step, verticalStep) {
             return createMeshesForBlocks(blocks, step, verticalStep);
@@ -378,7 +387,7 @@ Change Y cut to inspect underground caves.</div>
             camera.updateProjectionMatrix();
             scene.fog.near = Math.max(140, radius * 0.42);
             scene.fog.far = Math.max(520, radius * 1.6);
-            const mode = isAdaptiveLod() && radius >= 640 ? 'surface' : 'visible';
+            const mode = isAdaptiveLod() || radius >= 160 ? 'surface' : 'visible';
             statusEl.textContent = `Loading server terrain...\nCenter: ${centerX}, ${centerZ}\nRadius: ${radius}, step: ${step}\nMode: ${mode}`;
             const tileSize = tileSizeFor(radius, step);
             const minX = centerX - radius;
@@ -436,7 +445,7 @@ Change Y cut to inspect underground caves.</div>
                 regionMeshes.delete(mappedKey); regionBlockCounts.delete(mappedKey); regionBounds.delete(mappedKey); regionBaseToKey.delete(baseKey);
             }
             lastStats = { centerX, centerZ, radius, step, clipY, mode, blocks: [] };
-            const concurrency = 4;
+            const concurrency = 12;
             let cursor = 0;
             const loadNext = async () => {
                 while (cursor < origins.length && token === loadToken) {
@@ -481,23 +490,25 @@ Change Y cut to inspect underground caves.</div>
             };
             await Promise.all(Array.from({ length: Math.min(concurrency, origins.length) }, loadNext));
             if (token === loadToken) reconcileRegions(wantedKeys);
+            lastAutoLoadAt = performance.now();
             loadingArea = false;
         }
         async function jumpCameraToCenter() {
             const centerX = Number(document.getElementById('center-x').value) || 0;
             const centerZ = Number(document.getElementById('center-z').value) || 0;
+            const radius = Number(document.getElementById('radius').value) || 160;
             const response = await fetch(`/api/terrain/inspect?x=${centerX}&z=${centerZ}&radius=16&step=16&clipY=256`, { cache: 'no-store' });
             const data = await response.json();
-            camera.position.set(centerX + 22, Math.max(data.center.height + 22, Number(clipInput.value) + 10), centerZ + 36);
+            camera.position.set(centerX + 22, Math.max(data.center.height + 22, Number(clipInput.value) + 10) + (radius >= 1200 ? radius * 0.3 : 0), centerZ + Math.max(36, radius * 0.4));
             yaw = -0.58;
-            pitch = -0.45;
+            pitch = radius >= 1200 ? -0.8 : -0.45;
         }
         function updateCamera(delta) {
             const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
             const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
             const move = new THREE.Vector3();
             if (keyState.KeyW) move.add(forward); if (keyState.KeyS) move.sub(forward); if (keyState.KeyD) move.add(right); if (keyState.KeyA) move.sub(right); if (keyState.Space) move.y += 1; if (keyState.ShiftLeft || keyState.ShiftRight) move.y -= 1;
-            if (move.lengthSq() > 0) { const speed = Number(document.getElementById('camera-speed').value) || 52; move.normalize().multiplyScalar(speed * (keyState.AltLeft || keyState.AltRight ? 3 : 1) * delta); camera.position.add(move); }
+            if (move.lengthSq() > 0) { const speed = Number(document.getElementById('camera-speed').value) || 120; move.normalize().multiplyScalar(speed * (keyState.AltLeft || keyState.AltRight ? 5 : 1) * delta); camera.position.add(move); }
             camera.rotation.y = yaw; camera.rotation.x = pitch;
         }
         function maybeAutoStream() {
@@ -542,7 +553,7 @@ Change Y cut to inspect underground caves.</div>
         clipInput.addEventListener('input', () => { clipValue.textContent = clipInput.value; });
         clipInput.addEventListener('change', () => loadArea());
         ['center-x', 'center-z', 'radius', 'step'].forEach((id) => document.getElementById(id).addEventListener('change', () => loadArea()));
-        loadArea(); jumpCameraToCenter(); animate();
+        jumpCameraToCenter().catch(() => {}).then(() => loadArea()); animate();
     </script>
 </body>
 </html>

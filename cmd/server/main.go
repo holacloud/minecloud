@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -17,6 +19,7 @@ import (
 
 type Config struct {
 	Addr              string `usage:"Port to listen on"`
+	Statics           string `usage:"Directory to serve static files from disk; empty uses embedded static files"`
 	STUNURLs          string `usage:"Comma-separated STUN URLs for WebRTC voice"`
 	TURNURLs          string `usage:"Comma-separated TURN URLs for WebRTC voice"`
 	TURNUsername      string `usage:"TURN username for WebRTC voice"`
@@ -59,7 +62,22 @@ func main() {
 	http.HandleFunc("/api/terrain/tile", world.HandleTerrainTile)
 	http.HandleFunc("/api/terrain/cube", world.HandleTerrainCube)
 	http.HandleFunc("/api/terrain/spawn", world.HandleTerrainSpawn)
-	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(web.MustStaticFS()))))
+	var staticFS fs.FS
+	if config.Statics != "" {
+		info, err := os.Stat(config.Statics)
+		if err != nil {
+			log.Fatalf("Statics directory %q is not available: %v", config.Statics, err)
+		}
+		if !info.IsDir() {
+			log.Fatalf("Statics path %q is not a directory", config.Statics)
+		}
+		log.Println("Serving static files from", config.Statics)
+		staticFS = os.DirFS(config.Statics)
+	} else {
+		log.Println("Serving embedded static files")
+		staticFS = web.MustStaticFS()
+	}
+	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(staticFS))))
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
 

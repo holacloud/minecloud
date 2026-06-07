@@ -140,13 +140,13 @@ func HandleTerrainInspect(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	centerX := queryInt(r, "x", 0)
 	centerZ := queryInt(r, "z", 0)
-	radius := clamp(queryInt(r, "radius", 160), 16, 2400)
+	radius := clamp(queryInt(r, "radius", 160), 16, 19200)
 	requestedStep := queryInt(r, "step", 0)
 	step := requestedStep
 	if requestedStep <= 0 {
 		step = autoStep(radius)
 	}
-	step = clamp(step, 1, 64)
+	step = clamp(step, 1, 256)
 	vertical := clamp(queryInt(r, "verticalStep", min(step, 16)), 1, 16)
 	clipY := clamp(queryInt(r, "clipY", 32), MinWorldY, 256)
 	mode := r.URL.Query().Get("mode")
@@ -220,8 +220,8 @@ func HandleTerrainTile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	originX := queryInt(r, "x", 0)
 	originZ := queryInt(r, "z", 0)
-	size := clamp(queryInt(r, "size", 256), 16, 512)
-	step := clamp(queryInt(r, "step", 8), 1, 64)
+	size := clamp(queryInt(r, "size", 256), 16, 2048)
+	step := clamp(queryInt(r, "step", 8), 1, 256)
 	vertical := clamp(queryInt(r, "verticalStep", min(step, 16)), 1, 16)
 	clipY := clamp(queryInt(r, "clipY", 32), MinWorldY, 256)
 	mode := r.URL.Query().Get("mode")
