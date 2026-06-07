@@ -95,7 +95,7 @@ class Game {
                 id: 'planks',
                 name: 'Saw Wood into Planks',
                 output: { type: 'planks', amount: 4 },
-                inputs: [{ type: 'wood', amount: 1 }]
+                inputs: [{ types: ['wood', 'birch_wood', 'spruce_wood', 'dark_oak_wood', 'acacia_wood', 'jungle_wood', 'cherry_wood', 'maple_wood', 'willow_wood'], amount: 1 }]
             },
             {
                 id: 'glass',
@@ -131,7 +131,7 @@ class Game {
                 id: 'torch',
                 name: 'Build Torch',
                 output: { type: 'torch', amount: 4 },
-                inputs: [{ type: 'wood', amount: 1 }, { type: 'coal_ore', amount: 1 }]
+                inputs: [{ types: ['wood', 'birch_wood', 'spruce_wood', 'dark_oak_wood', 'acacia_wood', 'jungle_wood', 'cherry_wood', 'maple_wood', 'willow_wood'], amount: 1 }, { type: 'coal_ore', amount: 1 }]
             },
             {
                 id: 'sound_block',
@@ -197,6 +197,7 @@ class Game {
         this.deathReason = 'Respawning soon...';
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
+        this.spawnInvincibilityTimer = 5.0;
         this.respawnPoint = this.loadRespawnPoint();
         this.lastSafePosition = null;
         this.lastSafePositionSaveTimer = 0;
@@ -1437,6 +1438,7 @@ class Game {
         this.respawnTimer = 0;
         this.airbornePeakFeetY = null;
         this.wasOnGroundForDamage = false;
+        this.spawnInvincibilityTimer = 5.0;
         this.updateDeathScreen();
     }
 
@@ -1498,16 +1500,24 @@ class Game {
             this.airbornePeakFeetY = this.airbornePeakFeetY === null ? feetY : Math.max(this.airbornePeakFeetY, feetY);
         }
 
+        if (this.spawnInvincibilityTimer > 0) {
+            this.spawnInvincibilityTimer -= delta;
+        }
+
         if (!this.wasOnGroundForDamage && this.cameraController.onGround && this.airbornePeakFeetY !== null) {
-            const fallDistance = this.airbornePeakFeetY - feetY;
-            if (fallDistance > 4.2) {
-                const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
-                this.applyDamage(damage, 'You died from fall damage');
+            if (this.spawnInvincibilityTimer > 0) {
+                // Ignore fall damage while invincible
+            } else {
+                const fallDistance = this.airbornePeakFeetY - feetY;
+                if (fallDistance > 4.2) {
+                    const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
+                    this.applyDamage(damage, 'You died from fall damage');
+                }
             }
             this.airbornePeakFeetY = null;
         }
 
-        if (this.camera.position.y < -35) {
+        if (this.camera.position.y < -65) {
             this.applyDamage(this.maxHealth, 'You fell into the void');
         }
 
@@ -2474,24 +2484,7 @@ class Game {
     }
 
     initAmbientMobs() {
-        const mobSetups = [
-            ['sheep', new THREE.Vector3(8, 0, 6)],
-            ['duck', new THREE.Vector3(-6, 0, 10)],
-            ['pig', new THREE.Vector3(12, 0, -8)],
-            ['giraffe', new THREE.Vector3(2, 0, 14)],
-            ['dog', new THREE.Vector3(-2, 0, 8)],
-            ['cat', new THREE.Vector3(6, 0, 3)],
-            ['sheep', new THREE.Vector3(-10, 0, -6)],
-            ['duck', new THREE.Vector3(4, 0, -12)],
-            ['spider', new THREE.Vector3(-14, 0, 14)],
-            ['cave_monster', new THREE.Vector3(18, 0, -18)]
-        ];
-
-        for (const [species, pos] of mobSetups) {
-            const ground = this.cameraController.getFloorY(pos.x, pos.z, 20);
-            const worldPos = new THREE.Vector3(pos.x, ground, pos.z);
-            this.ambientMobs.push(this.createMob(species, worldPos));
-        }
+        this.spawnedChunks = new Set();
     }
 
     raycastMob(maxDistance) {
@@ -2547,6 +2540,42 @@ class Game {
 
     updateAmbientMobs(delta) {
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
+
+        for (let i = this.ambientMobs.length - 1; i >= 0; i--) {
+            const mob = this.ambientMobs[i];
+            const mobFlatPos = new THREE.Vector3(mob.position.x, 0, mob.position.z);
+            if (mobFlatPos.distanceTo(playerPosition) > 120 && mob !== this.followingDog && mob !== this.followingCat) {
+                if (mob.parent) mob.parent.remove(mob);
+                this.ambientMobs.splice(i, 1);
+            }
+        }
+
+        if (this.world && this.world.activeChunks && this.ambientMobs.length < 40) {
+            for (const key of this.world.activeChunks) {
+                if (!this.spawnedChunks.has(key)) {
+                    this.spawnedChunks.add(key);
+                    if (Math.random() < 0.3) {
+                        const [cx, cz] = key.split(',').map(Number);
+                        const speciesList = ['sheep', 'duck', 'pig', 'dog', 'cat', 'spider', 'cave_monster', 'giraffe'];
+                        const species = speciesList[Math.floor(Math.random() * speciesList.length)];
+                        const count = 1 + Math.floor(Math.random() * 3);
+                        for (let i = 0; i < count; i++) {
+                            const x = cx * 16 + (Math.random() - 0.5) * 16;
+                            const z = cz * 16 + (Math.random() - 0.5) * 16;
+                            const floorY = this.cameraController.getFloorY(x, z, 20);
+                            if (floorY > -20 && floorY < 60) {
+                                const isHostile = species === 'spider' || species === 'cave_monster';
+                                if (isHostile && floorY > 10) continue;
+                                if (!isHostile && floorY < 0) continue;
+                                const worldPos = new THREE.Vector3(x, floorY, z);
+                                this.ambientMobs.push(this.createMob(species, worldPos));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (this.followingDog && !this.ambientMobs.includes(this.followingDog)) {
             this.followingDog = null;
         }
@@ -4081,7 +4110,13 @@ class Game {
     }
 
     canCraftRecipe(recipe) {
-        return recipe.inputs.every((input) => this.getInventoryCount(input.type) >= input.amount);
+        return recipe.inputs.every((input) => {
+            if (input.types) {
+                const total = input.types.reduce((sum, t) => sum + this.getInventoryCount(t), 0);
+                return total >= input.amount;
+            }
+            return this.getInventoryCount(input.type) >= input.amount;
+        });
     }
 
     renderCraftingPanel() {
@@ -4102,7 +4137,7 @@ class Game {
             const searchable = [
                 recipe.name,
                 this.getBlockDisplayName(recipe.output.type),
-                ...recipe.inputs.map((input) => this.getBlockDisplayName(input.type))
+                ...recipe.inputs.map((input) => input.types ? 'Any Wood' : this.getBlockDisplayName(input.type))
             ].join(' ').toLowerCase();
             return searchable.includes(query);
         });
@@ -4179,9 +4214,15 @@ class Game {
         const materials = document.createElement('div');
         materials.className = 'craft-detail-materials';
         materials.innerHTML = recipe.inputs.map((input) => {
-            const owned = this.getInventoryCount(input.type);
-            const missing = owned < input.amount;
-            return `<span class="${missing ? 'missing' : ''}">${input.amount} x ${this.getBlockDisplayName(input.type)} (${owned} owned)</span>`;
+            if (input.types) {
+                const owned = input.types.reduce((sum, t) => sum + this.getInventoryCount(t), 0);
+                const missing = owned < input.amount;
+                return `<span class="${missing ? 'missing' : ''}">${input.amount} x Any Wood (${owned} owned)</span>`;
+            } else {
+                const owned = this.getInventoryCount(input.type);
+                const missing = owned < input.amount;
+                return `<span class="${missing ? 'missing' : ''}">${input.amount} x ${this.getBlockDisplayName(input.type)} (${owned} owned)</span>`;
+            }
         }).join('<br>');
 
         const button = document.createElement('button');
@@ -4232,7 +4273,20 @@ class Game {
         if (!recipe || !this.canCraftRecipe(recipe)) return;
 
         recipe.inputs.forEach((input) => {
-            this.inventoryCounts[input.type] = Math.max(0, this.getInventoryCount(input.type) - input.amount);
+            if (input.types) {
+                let remaining = input.amount;
+                for (const t of input.types) {
+                    if (remaining <= 0) break;
+                    const count = this.getInventoryCount(t);
+                    if (count > 0) {
+                        const take = Math.min(count, remaining);
+                        this.inventoryCounts[t] -= take;
+                        remaining -= take;
+                    }
+                }
+            } else {
+                this.inventoryCounts[input.type] = Math.max(0, this.getInventoryCount(input.type) - input.amount);
+            }
         });
         this.addInventory(recipe.output.type, recipe.output.amount);
         this.promoteTypeToHotbar(recipe.output.type);
@@ -4461,12 +4515,12 @@ class Game {
         const z = player.z + forward.z * 3;
         const floorY = this.cameraController.getFloorY(x, z, player.y + 4);
 
+        let spawnY = floorY;
         if (floorY <= -20) {
-            this.receiveSystemMessage({ text: `Could not find safe ground for the ${species}` });
-            return;
+            spawnY = player.y;
         }
 
-        const mob = this.createMob(species, new THREE.Vector3(x, floorY, z));
+        const mob = this.createMob(species, new THREE.Vector3(x, spawnY, z));
         mob.userData.direction = Math.atan2(player.z - mob.position.z, player.x - mob.position.x);
         this.ambientMobs.push(mob);
         this.receiveSystemMessage({ text: `Spawned an adorable ${species}` });
@@ -5212,52 +5266,50 @@ class Game {
             z: Math.round(worldPos.z + normal.z)
         };
 
-        if (newPos.y >= 0) {
-            const blockType = this.getSelectedBlockType();
-            if (blockType === 'spray_paint') {
-                this.trySprayPaint(hit);
-                return;
-            }
-            if (!blockType || this.getInventoryCount(blockType) <= 0) return;
+        const blockType = this.getSelectedBlockType();
+        if (blockType === 'spray_paint') {
+            this.trySprayPaint(hit);
+            return;
+        }
+        if (!blockType || this.getInventoryCount(blockType) <= 0) return;
 
-            const itemDef = this.getItemDefinition(blockType);
-            if (itemDef && itemDef.eggSpecies) {
-                this.spawnAnimalFromEgg(itemDef.eggSpecies, newPos);
-                return;
-            }
-            if (itemDef && itemDef.saplingWood) {
-                this.plantSaplingTree(itemDef, newPos);
-                return;
-            }
-            if (itemDef && itemDef.itemOnly) return;
+        const itemDef = this.getItemDefinition(blockType);
+        if (itemDef && itemDef.eggSpecies) {
+            this.spawnAnimalFromEgg(itemDef.eggSpecies, newPos);
+            return;
+        }
+        if (itemDef && itemDef.saplingWood) {
+            this.plantSaplingTree(itemDef, newPos);
+            return;
+        }
+        if (itemDef && itemDef.itemOnly) return;
 
-            const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
-            if (blockType === 'sign') {
-                const text = this.promptSignText();
-                if (!text) return;
-                payload.text = text;
-            } else if (blockType === 'sound_block') {
-                payload.instrument = 'bell';
-                payload.note = 0;
-            } else if (blockType === 'ladder') {
-                if (normal.y !== 0) return;
-                payload.facing = this.getLadderFacingFromNormal(normal);
-            }
+        const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
+        if (blockType === 'sign') {
+            const text = this.promptSignText();
+            if (!text) return;
+            payload.text = text;
+        } else if (blockType === 'sound_block') {
+            payload.instrument = 'bell';
+            payload.note = 0;
+        } else if (blockType === 'ladder') {
+            if (normal.y !== 0) return;
+            payload.facing = this.getLadderFacingFromNormal(normal);
+        }
 
-            if (!this.world.addBlock(payload)) return;
-            this.consumeSelectedBlock();
-            if (blockType === 'bed') {
-                this.setRespawnPointFromBlock(newPos);
-            }
-            this.playPlaceSound(blockType);
-            this.placeActionTimer = 0.35;
+        if (!this.world.addBlock(payload)) return;
+        this.consumeSelectedBlock();
+        if (blockType === 'bed') {
+            this.setRespawnPointFromBlock(newPos);
+        }
+        this.playPlaceSound(blockType);
+        this.placeActionTimer = 0.35;
 
-            this.showHitIndicator();
-            this.lastSelectionUpdate = 0;
+        this.showHitIndicator();
+        this.lastSelectionUpdate = 0;
 
-            if (this.network.connected) {
-                this.network.send('blockPlace', payload);
-            }
+        if (this.network.connected) {
+            this.network.send('blockPlace', payload);
         }
     }
 

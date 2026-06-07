@@ -221,7 +221,9 @@ class WorldRenderer {
             meadow: { label: 'Meadow', color: 0x8CBF67, temp: 0.42, humidity: 0.5, continentalness: 0.66, erosion: 0.5, minHeight: 10, maxHeight: 26, top: 'grass', filler: 'dirt', sub: 'stone', treeChance: 0.006, decorChance: 0.12, trees: ['birch_wood', 'cherry_wood'] },
             mountains: { label: 'Mountains', color: 0x7E9184, temp: 0.34, humidity: 0.44, continentalness: 0.72, erosion: 0.18, minHeight: 16, maxHeight: 42, top: 'stone', filler: 'cobblestone', sub: 'stone', treeChance: 0.006, decorChance: 0.018, trees: ['spruce_wood'] },
             snowy_mountains: { label: 'Snowy Mountains', color: 0xD8E5E8, temp: 0.14, humidity: 0.42, continentalness: 0.7, erosion: 0.2, minHeight: 15, maxHeight: 44, top: 'white_wool', filler: 'stone', sub: 'stone', treeChance: 0.003, decorChance: 0.01, trees: ['spruce_wood'] },
-            stony_peaks: { label: 'Stony Peaks', color: 0x8A8D8F, temp: 0.5, humidity: 0.24, continentalness: 0.78, erosion: 0.12, minHeight: 18, maxHeight: 46, top: 'stone', filler: 'cobblestone', sub: 'stone', treeChance: 0, decorChance: 0.006 }
+            stony_peaks: { label: 'Stony Peaks', color: 0x8A8D8F, temp: 0.5, humidity: 0.24, continentalness: 0.78, erosion: 0.12, minHeight: 18, maxHeight: 46, top: 'stone', filler: 'cobblestone', sub: 'stone', treeChance: 0, decorChance: 0.006 },
+            river: { label: 'River', color: 0x2A5BA1, temp: 0.5, humidity: 0.5, continentalness: 0.5, erosion: 0.5, minHeight: -10, maxHeight: 5, top: 'sand', filler: 'dirt', sub: 'stone', treeChance: 0, decorChance: 0 },
+            frozen_river: { label: 'Frozen River', color: 0x76A4C2, temp: 0.1, humidity: 0.5, continentalness: 0.5, erosion: 0.5, minHeight: -10, maxHeight: 5, top: 'sand', filler: 'dirt', sub: 'stone', treeChance: 0, decorChance: 0 }
         };
         return this.biomeDefinitions;
     }
@@ -1490,7 +1492,7 @@ class WorldRenderer {
         const worldX = chunkX * this.chunkSize;
         const worldZ = chunkZ * this.chunkSize;
 
-        fetch(`/api/terrain/tile?x=${worldX}&z=${worldZ}&size=${this.chunkSize}&step=1&clipY=256&mode=full`, { cache: 'no-store' })
+        fetch(`/api/terrain/tile?x=${worldX}&z=${worldZ}&size=${this.chunkSize}&step=1&clipY=2048&mode=full`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 const blocks = [];
