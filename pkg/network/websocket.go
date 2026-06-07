@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -112,6 +113,11 @@ type persistedWorldState struct {
 	Blocks        map[string]Block      `json:"blocks"`
 	RemovedBlocks map[string]bool       `json:"removedBlocks"`
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
+}
+
+type WorldDeltasResponse struct {
+	Blocks        map[string]Block `json:"blocks"`
+	RemovedBlocks map[string]bool  `json:"removedBlocks"`
 }
 
 var (
@@ -340,6 +346,61 @@ func HandleICEServers(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"iceServers": servers}); err != nil {
 		log.Printf("Failed to encode ICE servers: %v", err)
 	}
+}
+
+func HandleWorldDeltas(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	x := queryInt(r, "x", 0)
+	z := queryInt(r, "z", 0)
+	size := queryInt(r, "size", 256)
+	yParam := r.URL.Query().Get("y")
+	hasY := yParam != ""
+	y := queryInt(r, "y", 0)
+	clipY := queryInt(r, "clipY", 1<<30)
+	maxX, maxZ := x+size, z+size
+	maxY := y + size
+	if hasY {
+		maxX, maxZ, maxY = x+size-1, z+size-1, y+size-1
+	}
+
+	response := WorldDeltasResponse{
+		Blocks:        make(map[string]Block),
+		RemovedBlocks: make(map[string]bool),
+	}
+
+	stateMu.RLock()
+	for key, block := range gameState.Blocks {
+		if block.X < x || block.X > maxX || block.Z < z || block.Z > maxZ || block.Y > clipY || (hasY && (block.Y < y || block.Y > maxY)) {
+			continue
+		}
+		response.Blocks[key] = block
+	}
+	for key, removed := range gameState.RemovedBlocks {
+		if !removed {
+			continue
+		}
+		var bx, by, bz int
+		if _, err := fmt.Sscanf(key, "%d,%d,%d", &bx, &by, &bz); err != nil {
+			continue
+		}
+		if bx < x || bx > maxX || bz < z || bz > maxZ || by > clipY || (hasY && (by < y || by > maxY)) {
+			continue
+		}
+		response.RemovedBlocks[key] = true
+	}
+	stateMu.RUnlock()
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Failed to encode world deltas: %v", err)
+	}
+}
+
+func queryInt(r *http.Request, name string, fallback int) int {
+	value, err := strconv.Atoi(r.URL.Query().Get(name))
+	if err != nil {
+		return fallback
+	}
+	return value
 }
 
 func fetchMeteredICEServers(r *http.Request) ([]iceServer, error) {

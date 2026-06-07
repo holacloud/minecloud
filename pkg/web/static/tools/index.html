@@ -369,6 +369,31 @@ Change Y cut to inspect underground caves.</div>
             touchDecodedCache(cacheKey, blocks);
             return blocks;
         }
+        function blockKey(x, y, z) {
+            return `${x},${y},${z}`;
+        }
+        async function getWorldDeltas(useCubes, origin, tileSize, clipY) {
+            const params = useCubes
+                ? `x=${origin[0]}&y=${origin[1]}&z=${origin[2]}&size=64&clipY=${clipY}`
+                : `x=${origin[0]}&z=${origin[1]}&size=${tileSize}&clipY=${clipY}`;
+            const response = await fetch(`/api/world/deltas?${params}`, { cache: 'no-store' });
+            if (!response.ok) return { blocks: {}, removedBlocks: {} };
+            return response.json();
+        }
+        function applyWorldDeltas(blocks, deltas) {
+            if (!deltas || (!deltas.blocks && !deltas.removedBlocks)) return blocks;
+            const byKey = new Map();
+            for (const block of blocks) byKey.set(blockKey(block.x, block.y, block.z), block);
+            for (const key in (deltas.removedBlocks || {})) {
+                if (deltas.removedBlocks[key]) byKey.delete(key);
+            }
+            for (const key in (deltas.blocks || {})) {
+                const block = deltas.blocks[key];
+                if (!block || !block.blockType) continue;
+                byKey.set(blockKey(block.x, block.y, block.z), { x: block.x, y: block.y, z: block.z, type: block.blockType });
+            }
+            return Array.from(byKey.values());
+        }
         async function loadArea(options = {}) {
             const token = ++loadToken;
             loadingArea = true;
@@ -459,9 +484,10 @@ Change Y cut to inspect underground caves.</div>
                     const cacheKey = cacheKeyFor(useCubes, origin, tileSize, useCubes ? 1 : origin[2], clipY, mode);
                     const baseKey = baseKeyFor(useCubes, origin, tileSize, clipY, mode);
                     if (regionMeshes.has(cacheKey)) {
-                        loaded++;
-                        drawn += regionBlockCounts.get(cacheKey) || 0;
-                        continue;
+                        removeMeshes(regionMeshes.get(cacheKey));
+                        regionMeshes.delete(cacheKey);
+                        regionBlockCounts.delete(cacheKey);
+                        regionBounds.delete(cacheKey);
                     }
                     replaceOverlappingRegion(baseKey, cacheKey);
                     let payload;
@@ -474,7 +500,8 @@ Change Y cut to inspect underground caves.</div>
                         continue;
                     }
                     if (token !== loadToken) return;
-                    const blocks = getDecodedBlocks(cacheKey, payload, useCubes);
+                    const deltas = await getWorldDeltas(useCubes, origin, tileSize, clipY).catch(() => ({ blocks: {}, removedBlocks: {} }));
+                    const blocks = applyWorldDeltas(getDecodedBlocks(cacheKey, payload, useCubes), deltas);
                     const meshes = createMeshesForBlocks(blocks, useCubes ? 1 : payload.step, useCubes ? 1 : payload.verticalStep);
                     regionMeshes.set(cacheKey, meshes);
                     regionBaseToKey.set(baseKey, cacheKey);

@@ -62,6 +62,7 @@ func main() {
 	http.HandleFunc("/api/terrain/tile", world.HandleTerrainTile)
 	http.HandleFunc("/api/terrain/cube", world.HandleTerrainCube)
 	http.HandleFunc("/api/terrain/spawn", world.HandleTerrainSpawn)
+	http.HandleFunc("/api/world/deltas", network.HandleWorldDeltas)
 	var staticFS fs.FS
 	if config.Statics != "" {
 		info, err := os.Stat(config.Statics)
