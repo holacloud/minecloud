@@ -13,6 +13,7 @@ class WorldRenderer {
         this.sprayPaintsByKey = new Map();
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
+        this.userModifiedBlocks = new Set();
         this.chunkSize = 16;
         this.renderDistance = 4;
         this.rtxModeEnabled = false;
@@ -30,6 +31,16 @@ class WorldRenderer {
 
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
+
+        this.generatingChunks = new Set();
+        this.chunkProcessQueue = [];
+        this.isProcessingChunks = false;
+        
+        this.chunkWorker = new Worker('/js/chunkWorker.js');
+        this.chunkWorker.onmessage = (e) => {
+            this.chunkProcessQueue.push(e.data);
+            this.processNextChunk();
+        };
 
         this.blockTypes = {
             air: { color: 0x000000, name: 'Air', breakDuration: 0 },
@@ -1096,9 +1107,9 @@ class WorldRenderer {
         let material = this.materials.get(type);
         if (material) return material;
 
-        const def = this.blockTypes[type];
+        const def = this.blockTypes[type] || {};
         const alphaCutout = this.isAlphaCutoutType(type);
-        const transparent = def.transparent && !alphaCutout;
+        const transparent = Boolean(def.transparent) && !alphaCutout;
         const depthWrite = type === 'water' ? true : (!transparent || alphaCutout);
         if (this.rtxModeEnabled) {
             const props = this.getRTXMaterialProps(type);
@@ -1141,140 +1152,42 @@ class WorldRenderer {
                 const key = this.chunkKey(x, z);
                 this.activeChunks.add(key);
                 this.generateChunkData(x, z);
-                initialChunks.push([x, z]);
             }
         }
+    }
 
-        for (let i = 0; i < initialChunks.length; i++) {
-            const [chunkX, chunkZ] = initialChunks[i];
+    processNextChunk() {
+        if (this.isProcessingChunks || this.chunkProcessQueue.length === 0) return;
+        this.isProcessingChunks = true;
+        
+        requestAnimationFrame(() => {
+            if (this.chunkProcessQueue.length === 0) {
+                this.isProcessingChunks = false;
+                return;
+            }
+            
+            const { chunkX, chunkZ, blocks } = this.chunkProcessQueue.shift();
+            const key = this.chunkKey(chunkX, chunkZ);
+            
+            for (let i = 0; i < blocks.length; i += 4) {
+                this.setBlockData(blocks[i], blocks[i+1], blocks[i+2], blocks[i+3], key);
+            }
+            this.generatedChunks.add(key);
+            this.generatingChunks.delete(key);
             this.rebuildChunk(chunkX, chunkZ);
-        }
+            
+            this.isProcessingChunks = false;
+            this.processNextChunk();
+        });
     }
 
     generateChunkData(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
-        if (this.generatedChunks.has(key)) return;
+        if (this.generatedChunks.has(key) || this.generatingChunks.has(key)) return;
 
+        this.generatingChunks.add(key);
         this.ensureChunkBlockSet(key);
-
-        const seed = chunkX * 5741 + chunkZ * 28657;
-        const rand = (x, z, offset = 0) => {
-            const n = Math.sin(x * 12.9898 + z * 78.233 + seed + offset) * 43758.5453;
-            return n - Math.floor(n);
-        };
-
-        const noise2D = (x, z, scale = 0.05) => {
-            const ix = Math.floor(x * scale);
-            const iz = Math.floor(z * scale);
-            const fx = (x * scale) - ix;
-            const fz = (z * scale) - iz;
-
-            const a = rand(ix, iz);
-            const b = rand(ix + 1, iz);
-            const c = rand(ix, iz + 1);
-            const d = rand(ix + 1, iz + 1);
-
-            const ux = fx * fx * (3 - 2 * fx);
-            const uz = fz * fz * (3 - 2 * fz);
-
-            return a * (1 - ux) * (1 - uz) + b * ux * (1 - uz) + c * (1 - ux) * uz + d * ux * uz;
-        };
-
-        const getBiomeAt = (worldX, worldZ) => {
-            const biomeNoise = noise2D(worldX + 420, worldZ - 310, 0.018);
-            const forestNoise = noise2D(worldX - 180, worldZ + 250, 0.03);
-
-            if (biomeNoise < 0.3) return 'desert';
-            if (biomeNoise > 0.72) return 'rocky';
-            if (forestNoise > 0.58) return 'forest';
-            return 'plains';
-        };
-
-        for (let x = 0; x < this.chunkSize; x++) {
-            for (let z = 0; z < this.chunkSize; z++) {
-                const worldX = chunkX * this.chunkSize + x;
-                const worldZ = chunkZ * this.chunkSize + z;
-                const biome = getBiomeAt(worldX, worldZ);
-                const waterLevel = 5;
-                const lakeNoise = noise2D(worldX - 620, worldZ + 910, 0.022);
-
-                let height;
-                if (biome === 'desert') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 5) + 2;
-                } else if (biome === 'rocky') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 10) + 4;
-                } else if (biome === 'forest') {
-                    height = Math.floor(noise2D(worldX, worldZ) * 7) + 3;
-                } else {
-                    height = Math.floor(noise2D(worldX, worldZ) * 8) + 3;
-                }
-
-                if (biome !== 'rocky' && lakeNoise > 0.68) {
-                    const lakeDepth = 1 + Math.floor((lakeNoise - 0.68) * 18);
-                    height = Math.min(height, waterLevel - lakeDepth);
-                }
-
-                for (let y = -5; y <= height; y++) {
-                    let blockType;
-                    if (y === -5) {
-                        blockType = 'bedrock';
-                    } else if (y < height - 3 || (biome === 'rocky' && y < height - 1)) {
-                        const oreRand = rand(worldX, worldZ, y * 100);
-                        if (oreRand < 0.02) blockType = 'coal_ore';
-                        else if (oreRand < 0.025) blockType = 'iron_ore';
-                        else if (oreRand < 0.026) blockType = 'gold_ore';
-                        else blockType = 'stone';
-                    } else if (biome === 'desert' && y >= height - 2) {
-                        blockType = 'sand';
-                    } else if (biome === 'rocky' && y === height) {
-                        blockType = rand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
-                    } else if (y < height) {
-                        blockType = 'dirt';
-                    } else {
-                        if (biome === 'desert') {
-                            blockType = 'sand';
-                        } else if (biome === 'rocky') {
-                            blockType = rand(worldX, worldZ, 2200) < 0.2 ? 'cobblestone' : 'stone';
-                        } else {
-                            const sandHeight = Math.floor(noise2D(worldX + 100, worldZ + 100, 0.1) * 3);
-                            blockType = sandHeight <= 0 ? 'grass' : 'sand';
-                        }
-                    }
-
-                    this.setBlockData(worldX, y, worldZ, blockType, key);
-                }
-
-                if (height < waterLevel) {
-                    for (let y = height + 1; y <= waterLevel; y++) {
-                        this.setBlockData(worldX, y, worldZ, 'water', key);
-                    }
-                }
-
-                const treeChance = biome === 'forest' ? 0.032 : biome === 'plains' ? 0.012 : biome === 'rocky' ? 0.0025 : 0;
-                const cactusChance = biome === 'desert' ? 0.022 : 0;
-                const decorRoll = rand(worldX, worldZ, 2048);
-
-                if (treeChance > 0 && rand(worldX, worldZ, 999) < treeChance && height >= 3) {
-                    const treeTypes = biome === 'forest'
-                        ? ['wood', 'spruce_wood', 'birch_wood', 'jungle_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood']
-                        : ['wood', 'birch_wood', 'acacia_wood', 'maple_wood'];
-                    const treeIndex = Math.floor(rand(worldX, worldZ, 1777) * treeTypes.length);
-                    this.generateTree(worldX, height + 1, worldZ, rand, treeTypes[treeIndex]);
-                } else if (cactusChance > 0 && rand(worldX, worldZ, 1499) < cactusChance && height >= 2) {
-                    this.generateCactus(worldX, height + 1, worldZ, rand);
-                } else if (biome === 'forest' && decorRoll < 0.06) {
-                    const plantType = decorRoll < 0.02 ? 'mushroom_red' : decorRoll < 0.035 ? 'mushroom_brown' : decorRoll < 0.048 ? 'flower_red' : decorRoll < 0.055 ? 'flower_yellow' : 'tall_grass';
-                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
-                } else if (biome === 'plains' && decorRoll < 0.08) {
-                    const plantType = decorRoll < 0.02 ? 'flower_red' : decorRoll < 0.038 ? 'flower_yellow' : 'tall_grass';
-                    this.generateDecorPlant(worldX, height + 1, worldZ, plantType);
-                } else if (biome === 'rocky' && decorRoll < 0.018) {
-                    this.generateDecorPlant(worldX, height + 1, worldZ, rand(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass');
-                }
-            }
-        }
-
-        this.generatedChunks.add(key);
+        this.chunkWorker.postMessage({ chunkX, chunkZ, chunkSize: this.chunkSize });
     }
 
     generateTree(x, y, z, rand, woodType = 'wood') {
@@ -1321,6 +1234,9 @@ class WorldRenderer {
 
         if (options.persisted || options.playerChange) {
             this.removedBlockKeys.delete(key);
+            this.userModifiedBlocks.add(key);
+        } else if (this.userModifiedBlocks.has(key)) {
+            return false;
         }
 
         if (currentType === type) {
@@ -1875,7 +1791,49 @@ class WorldRenderer {
         const blocks = state && state.blocks ? state.blocks : (state || {});
         const removedBlocks = state && state.removedBlocks ? state.removedBlocks : {};
         const sprayPaints = state && state.sprayPaints ? state.sprayPaints : {};
+        const chunkedBlocks = state && state.chunkedBlocks ? state.chunkedBlocks : {};
         const dirtyChunks = new Set();
+
+        for (const chunkKey in chunkedBlocks) {
+            const chunk = chunkedBlocks[chunkKey];
+            const [cx, cy, cz] = chunkKey.split(',').map(Number);
+            const palette = chunk.palette;
+            const binaryString = atob(chunk.blocks);
+            
+            let outIdx = 0;
+            for (let i = 0; i < binaryString.length; i += 2) {
+                const count = binaryString.charCodeAt(i);
+                const val = binaryString.charCodeAt(i + 1);
+                
+                if (val === 0) {
+                    outIdx += count;
+                    continue;
+                }
+                
+                for (let j = 0; j < count; j++) {
+                    const idx = outIdx++;
+                    const y = Math.floor(idx / 1024);
+                    const z = Math.floor((idx % 1024) / 32);
+                    const x = idx % 32;
+                    
+                    const worldX = cx * 32 + x;
+                    const worldY = cy * 32 + y;
+                    const worldZ = cz * 32 + z;
+                    
+                    if (val === 1) {
+                        this.removedBlockKeys.add(this.blockKey(worldX, worldY, worldZ));
+                        this.deleteBlockData(worldX, worldY, worldZ, false);
+                    } else if (val >= 2) {
+                        const type = palette[val - 2];
+                        this.setBlockData(worldX, worldY, worldZ, type, null, { persisted: true });
+                    }
+                }
+            }
+            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2));
+            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2));
+            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2 + 1));
+            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2 + 1));
+        }
 
         for (const key in removedBlocks) {
             if (!removedBlocks[key]) continue;
@@ -1942,6 +1900,7 @@ class WorldRenderer {
 
         if (recordRemoval) {
             this.removedBlockKeys.add(key);
+            this.userModifiedBlocks.delete(key);
         }
 
         this.blockData.delete(key);

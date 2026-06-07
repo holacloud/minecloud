@@ -4,7 +4,7 @@ build:
 	go build -o bin/server ./cmd/server
 
 run: build
-	./bin/server
+	go run ./cmd/server
 
 dev:
 	go run ./cmd/server
