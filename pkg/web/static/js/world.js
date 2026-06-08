@@ -15,6 +15,7 @@ class WorldRenderer {
         this.solidBlocks = new Set();
         this.removedBlockKeys = new Set();
         this.userModifiedBlocks = new Set();
+        this.workerChunkData = new Map();
         this.chunkSize = 16;
         this.renderDistance = options.renderDistance ?? 4;
         this.rtxModeEnabled = false;
@@ -37,6 +38,12 @@ class WorldRenderer {
         this.generatingChunks = new Set();
         this.chunkProcessQueue = [];
         this.isProcessingChunks = false;
+        this.currentChunkProcess = null;
+        this.terrainWorker = this.createTerrainWorker();
+        this.terrainJobId = 0;
+        this.terrainRequestQueue = [];
+        this.activeTerrainRequests = 0;
+        this.maxTerrainRequests = 3;
 
         this.blockTypes = {
             air: { color: 0x000000, name: 'Air', breakDuration: 0 },
@@ -1453,30 +1460,102 @@ class WorldRenderer {
             for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
                 const key = this.chunkKey(x, z);
                 this.activeChunks.add(key);
-                this.generateChunkData(x, z);
+                initialChunks.push([x, z]);
             }
+        }
+
+        initialChunks.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));
+        for (const [x, z] of initialChunks) {
+            this.generateChunkData(x, z);
+        }
+    }
+
+    createTerrainWorker() {
+        if (typeof Worker === 'undefined') return null;
+        try {
+            const worker = new Worker('js/terrain-worker.js');
+            worker.onmessage = (event) => this.handleTerrainWorkerMessage(event.data);
+            return worker;
+        } catch (error) {
+            console.warn('Terrain worker unavailable:', error);
+            return null;
+        }
+    }
+
+    handleTerrainWorkerMessage(payload) {
+        if (!payload || !Number.isInteger(payload.chunkX) || !Number.isInteger(payload.chunkZ)) return;
+        this.activeTerrainRequests = Math.max(0, this.activeTerrainRequests - 1);
+        this.pumpTerrainRequests();
+        if (payload.error) {
+            console.error('Failed to load chunk terrain:', payload.error);
+            this.generatingChunks.delete(this.chunkKey(payload.chunkX, payload.chunkZ));
+            return;
+        }
+        this.chunkProcessQueue.push({ chunkX: payload.chunkX, chunkZ: payload.chunkZ, positions: payload.positions, typeIds: payload.typeIds, palette: payload.palette, originY: payload.originY || 0, renderGroups: payload.renderGroups || [], waterPositions: payload.waterPositions || new Int16Array(0), offset: 0 });
+        this.processNextChunk();
+    }
+
+    enqueueTerrainRequest(job) {
+        this.terrainRequestQueue.push(job);
+        this.pumpTerrainRequests();
+    }
+
+    pumpTerrainRequests() {
+        if (!this.terrainWorker) return;
+        while (this.activeTerrainRequests < this.maxTerrainRequests && this.terrainRequestQueue.length > 0) {
+            const job = this.terrainRequestQueue.shift();
+            this.activeTerrainRequests++;
+            this.terrainWorker.postMessage(job);
         }
     }
 
     processNextChunk() {
-        if (this.isProcessingChunks || this.chunkProcessQueue.length === 0) return;
+        if (this.isProcessingChunks || (!this.currentChunkProcess && this.chunkProcessQueue.length === 0)) return;
         this.isProcessingChunks = true;
         
         requestAnimationFrame(() => {
-            if (this.chunkProcessQueue.length === 0) {
+            if (!this.currentChunkProcess && this.chunkProcessQueue.length === 0) {
                 this.isProcessingChunks = false;
                 return;
             }
-            
-            const { chunkX, chunkZ, blocks } = this.chunkProcessQueue.shift();
+
+            const job = this.currentChunkProcess || this.chunkProcessQueue.shift();
+            this.currentChunkProcess = job;
+            const { chunkX, chunkZ } = job;
             const key = this.chunkKey(chunkX, chunkZ);
-            
-            for (let i = 0; i < blocks.length; i += 4) {
-                this.setBlockData(blocks[i], blocks[i+1], blocks[i+2], blocks[i+3], key);
+
+            const start = performance.now();
+            if (job.positions && job.typeIds && job.palette) {
+                while (job.offset < job.typeIds.length && performance.now() - start < 2) {
+                    const positionIndex = job.offset * 3;
+                    const type = job.palette[job.typeIds[job.offset]];
+                    if (type && type !== 'air') {
+                        this.setBlockData(job.positions[positionIndex], job.positions[positionIndex + 1], job.positions[positionIndex + 2], type, key);
+                    }
+                    job.offset++;
+                }
+            } else {
+                while (job.offset < job.blocks.length && performance.now() - start < 2) {
+                    this.setBlockData(job.blocks[job.offset], job.blocks[job.offset + 1], job.blocks[job.offset + 2], job.blocks[job.offset + 3], key);
+                    job.offset += 4;
+                }
             }
+
+            if ((job.typeIds && job.offset < job.typeIds.length) || (job.blocks && job.offset < job.blocks.length)) {
+                this.isProcessingChunks = false;
+                this.processNextChunk();
+                return;
+            }
+
+            this.currentChunkProcess = null;
             this.generatedChunks.add(key);
             this.generatingChunks.delete(key);
-            this.rebuildChunk(chunkX, chunkZ);
+            if (job.renderGroups !== undefined) {
+                this.workerChunkData.set(key, job);
+                this.buildChunkFromWorkerData(job);
+            } else {
+                this.rebuildChunk(chunkX, chunkZ);
+            }
             
             this.isProcessingChunks = false;
             this.processNextChunk();
@@ -1493,30 +1572,200 @@ class WorldRenderer {
         const worldX = chunkX * this.chunkSize;
         const worldZ = chunkZ * this.chunkSize;
 
-        fetch(`/api/terrain/tile?x=${worldX}&z=${worldZ}&size=${this.chunkSize}&step=1&clipY=2048&mode=full`, { cache: 'no-store' })
+        const url = `/api/terrain/volume?x=${worldX}&z=${worldZ}&size=${this.chunkSize}`;
+        if (this.terrainWorker) {
+            this.enqueueTerrainRequest({ id: ++this.terrainJobId, chunkX, chunkZ, url });
+            return;
+        }
+
+        fetch(url, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
-                const blocks = [];
-                if (data && data.types) {
-                    for (let i = 0; i < data.types.length; i++) {
-                        const bx = data.x[i];
-                        const by = data.y[i];
-                        const bz = data.z[i];
-                        if (bx >= worldX + this.chunkSize || bz >= worldZ + this.chunkSize) continue;
-                        
-                        const type = data.palette[data.types[i]];
-                        if (type && type !== 'air') {
-                            blocks.push(bx, by, bz, type);
-                        }
-                    }
-                }
-                this.chunkProcessQueue.push({ chunkX, chunkZ, blocks });
+                const decoded = this.decodeTerrainVolume(data);
+                this.chunkProcessQueue.push({ chunkX, chunkZ, ...decoded, offset: 0 });
                 this.processNextChunk();
             })
             .catch(err => {
                 console.error("Failed to load chunk terrain:", err);
                 this.generatingChunks.delete(key);
             });
+    }
+
+    decodeTerrainVolume(payload) {
+        const binaryString = atob(payload.data || '');
+        const data = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) data[i] = binaryString.charCodeAt(i);
+        const palette = payload.palette || [];
+        const sizeX = payload.sizeX;
+        const sizeY = payload.sizeY;
+        const sizeZ = payload.sizeZ;
+        const keep = new Uint8Array(data.length);
+
+        const isOpaque = (type) => type && type !== 'air' && type !== 'water' && type !== 'ice' && type !== 'leaves' && !type.endsWith('_leaves') && type !== 'tall_grass' && type !== 'flower_red' && type !== 'flower_yellow' && type !== 'mushroom_red' && type !== 'mushroom_brown';
+        const isOpenNeighbor = (lx, ly, lz) => {
+            if (lx < 0 || ly < 0 || lz < 0 || lx >= sizeX || ly >= sizeY || lz >= sizeZ) return true;
+            return !isOpaque(palette[data[(ly * sizeZ + lz) * sizeX + lx]]);
+        };
+        const markIfSolid = (lx, ly, lz) => {
+            if (lx < 0 || ly < 0 || lz < 0 || lx >= sizeX || ly >= sizeY || lz >= sizeZ) return;
+            const idx = (ly * sizeZ + lz) * sizeX + lx;
+            if (data[idx] !== 0) keep[idx] = 1;
+        };
+
+        for (let ly = 0; ly < sizeY; ly++) {
+            for (let lz = 0; lz < sizeZ; lz++) {
+                for (let lx = 0; lx < sizeX; lx++) {
+                    const idx = (ly * sizeZ + lz) * sizeX + lx;
+                    if (data[idx] === 0) continue;
+                    const exposed = isOpenNeighbor(lx + 1, ly, lz) || isOpenNeighbor(lx - 1, ly, lz) || isOpenNeighbor(lx, ly + 1, lz) || isOpenNeighbor(lx, ly - 1, lz) || isOpenNeighbor(lx, ly, lz + 1) || isOpenNeighbor(lx, ly, lz - 1);
+                    if (!exposed) continue;
+                    keep[idx] = 1;
+                    markIfSolid(lx + 1, ly, lz);
+                    markIfSolid(lx - 1, ly, lz);
+                    markIfSolid(lx, ly + 1, lz);
+                    markIfSolid(lx, ly - 1, lz);
+                    markIfSolid(lx, ly, lz + 1);
+                    markIfSolid(lx, ly, lz - 1);
+                }
+            }
+        }
+
+        let solidCount = 0;
+        for (let i = 0; i < keep.length; i++) {
+            if (keep[i] !== 0) solidCount++;
+        }
+        const positions = new Int32Array(solidCount * 3);
+        const typeIds = new Uint8Array(solidCount);
+        let out = 0;
+        for (let idx = 0; idx < data.length; idx++) {
+            const typeId = data[idx];
+            if (typeId === 0 || keep[idx] === 0) continue;
+            const ly = Math.floor(idx / (sizeX * sizeZ));
+            const rem = idx - ly * sizeX * sizeZ;
+            const lz = Math.floor(rem / sizeX);
+            const lx = rem - lz * sizeX;
+            const p = out * 3;
+            positions[p] = payload.originX + lx;
+            positions[p + 1] = payload.originY + ly;
+            positions[p + 2] = payload.originZ + lz;
+            typeIds[out] = typeId;
+            out++;
+        }
+        return { positions, typeIds, palette };
+    }
+
+    shouldRenderWorkerBlock(worldX, worldY, worldZ, type) {
+        const key = this.blockKey(worldX, worldY, worldZ);
+        if (this.removedBlockKeys.has(key)) return false;
+        if (!this.userModifiedBlocks.has(key)) return true;
+        return this.blockData.get(key) === type;
+    }
+
+    writeTranslationMatrix(array, index, x, y, z) {
+        const offset = index * 16;
+        array[offset] = 1;
+        array[offset + 1] = 0;
+        array[offset + 2] = 0;
+        array[offset + 3] = 0;
+        array[offset + 4] = 0;
+        array[offset + 5] = 1;
+        array[offset + 6] = 0;
+        array[offset + 7] = 0;
+        array[offset + 8] = 0;
+        array[offset + 9] = 0;
+        array[offset + 10] = 1;
+        array[offset + 11] = 0;
+        array[offset + 12] = x;
+        array[offset + 13] = y;
+        array[offset + 14] = z;
+        array[offset + 15] = 1;
+    }
+
+    buildChunkFromWorkerData(job) {
+        const key = this.chunkKey(job.chunkX, job.chunkZ);
+        this.removeChunkMesh(key);
+        if (!this.activeChunks.has(key)) return;
+
+        const baseX = job.chunkX * this.chunkSize;
+        const baseZ = job.chunkZ * this.chunkSize;
+        const originY = job.originY || 0;
+        const chunk = new THREE.Group();
+        chunk.position.set(baseX, 0, baseZ);
+        chunk.updateMatrix();
+        chunk.matrixAutoUpdate = false;
+
+        for (const group of job.renderGroups || []) {
+            const type = job.palette[group.typeId];
+            if (!type || type === 'air') continue;
+            const positions = group.positions;
+            let count = 0;
+            for (let i = 0; i < positions.length; i += 3) {
+                if (this.shouldRenderWorkerBlock(baseX + positions[i], originY + positions[i + 1], baseZ + positions[i + 2], type)) count++;
+            }
+            if (count <= 0) continue;
+
+            const mesh = new THREE.InstancedMesh(this.getGeometry(type), this.getMaterial(type), count);
+            mesh.userData.blockType = type;
+            mesh.userData.instancePositions = positions;
+            mesh.userData.chunkBaseX = baseX;
+            mesh.userData.chunkBaseZ = baseZ;
+            mesh.userData.typedInstancePositions = true;
+            mesh.matrixAutoUpdate = false;
+            mesh.castShadow = this.rtxModeEnabled && type !== 'water';
+            mesh.receiveShadow = this.rtxModeEnabled;
+            if (THREE.StaticDrawUsage) mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+            let instanceIndex = 0;
+            const instancePositions = new Int16Array(count * 3);
+            const matrixArray = mesh.instanceMatrix.array;
+            for (let p = 0; p < positions.length; p += 3) {
+                const worldY = originY + positions[p + 1];
+                if (!this.shouldRenderWorkerBlock(baseX + positions[p], worldY, baseZ + positions[p + 2], type)) continue;
+                const out = instanceIndex * 3;
+                instancePositions[out] = positions[p];
+                instancePositions[out + 1] = worldY;
+                instancePositions[out + 2] = positions[p + 2];
+                this.writeTranslationMatrix(matrixArray, instanceIndex, positions[p] + 0.5, worldY + 0.5, positions[p + 2] + 0.5);
+                instanceIndex++;
+            }
+            mesh.userData.instancePositions = instancePositions;
+            mesh.instanceMatrix.needsUpdate = true;
+            chunk.add(mesh);
+        }
+
+        const waterPositions = job.waterPositions || new Int16Array(0);
+        let waterCount = 0;
+        for (let i = 0; i < waterPositions.length; i += 3) {
+            if (this.shouldRenderWorkerBlock(baseX + waterPositions[i], originY + waterPositions[i + 1], baseZ + waterPositions[i + 2], 'water')) waterCount++;
+        }
+        if (waterCount > 0) {
+            const waterMesh = new THREE.InstancedMesh(this.waterSurfaceGeometry, this.getMaterial('water'), waterCount);
+            waterMesh.userData.blockType = 'water';
+            waterMesh.userData.instancePositions = waterPositions;
+            waterMesh.userData.chunkBaseX = baseX;
+            waterMesh.userData.chunkBaseZ = baseZ;
+            waterMesh.userData.typedInstancePositions = true;
+            waterMesh.matrixAutoUpdate = false;
+            let instanceIndex = 0;
+            const instancePositions = new Int16Array(waterCount * 3);
+            const matrixArray = waterMesh.instanceMatrix.array;
+            for (let p = 0; p < waterPositions.length; p += 3) {
+                const worldY = originY + waterPositions[p + 1];
+                if (!this.shouldRenderWorkerBlock(baseX + waterPositions[p], worldY, baseZ + waterPositions[p + 2], 'water')) continue;
+                const out = instanceIndex * 3;
+                instancePositions[out] = waterPositions[p];
+                instancePositions[out + 1] = worldY;
+                instancePositions[out + 2] = waterPositions[p + 2];
+                this.writeTranslationMatrix(matrixArray, instanceIndex, waterPositions[p] + 0.5, worldY + 0.5, waterPositions[p + 2] + 0.5);
+                instanceIndex++;
+            }
+            waterMesh.userData.instancePositions = instancePositions;
+            waterMesh.instanceMatrix.needsUpdate = true;
+            chunk.add(waterMesh);
+        }
+
+        this.scene.add(chunk);
+        this.chunks.set(key, chunk);
     }
 
     generateTree(x, y, z, rand, woodType = 'wood') {
@@ -1641,16 +1890,17 @@ class WorldRenderer {
 
         for (let i = 0; i < chunk.children.length; i++) {
             const child = chunk.children[i];
-            if (typeof child.dispose === 'function') {
-                child.dispose();
-            }
-            if (child.material) {
+            if (child.isSprite && child.userData.isSignLabel && child.material) {
                 if (child.material.map) {
                     child.material.map.dispose();
                 }
                 if (typeof child.material.dispose === 'function') {
                     child.material.dispose();
                 }
+                continue;
+            }
+            if (child.userData && child.userData.blockType === 'ladder' && child.geometry && typeof child.geometry.dispose === 'function') {
+                child.geometry.dispose();
             }
         }
 
@@ -1659,6 +1909,12 @@ class WorldRenderer {
 
     rebuildChunk(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
+        const workerData = this.workerChunkData.get(key);
+        if (workerData) {
+            this.buildChunkFromWorkerData(workerData);
+            return;
+        }
+
         this.removeChunkMesh(key);
 
         if (!this.activeChunks.has(key)) return;
@@ -1875,11 +2131,24 @@ class WorldRenderer {
     }
 
     hasSolidBlock(x, y, z) {
-        return this.solidBlocks.has(this.blockKey(x, y, z));
+        const blockX = Math.round(x);
+        const blockY = Math.round(y);
+        const blockZ = Math.round(z);
+        const key = this.blockKey(blockX, blockY, blockZ);
+        if (this.solidBlocks.has(key)) return true;
+        if (this.blockData.has(key) || this.removedBlockKeys.has(key)) return false;
+
+        return this.isSolidType(this.getProceduralBlockTypeAt(blockX, blockY, blockZ));
     }
 
     getBlockTypeAt(x, y, z) {
-        return this.blockData.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || null;
+        const blockX = Math.round(x);
+        const blockY = Math.round(y);
+        const blockZ = Math.round(z);
+        const key = this.blockKey(blockX, blockY, blockZ);
+        if (this.blockData.has(key)) return this.blockData.get(key);
+        if (this.removedBlockKeys.has(key)) return null;
+        return this.getProceduralBlockTypeAt(blockX, blockY, blockZ) || null;
     }
 
     getBreakDurationForType(type) {
@@ -2053,6 +2322,17 @@ class WorldRenderer {
         if (!block) return null;
 
         if (block.isInstancedMesh) {
+            if (block.userData.typedInstancePositions) {
+                if (instanceId === null || instanceId === undefined) return null;
+                const offset = instanceId * 3;
+                if (offset + 2 >= block.userData.instancePositions.length) return null;
+                return {
+                    x: Math.round(block.userData.chunkBaseX + block.userData.instancePositions[offset]),
+                    y: Math.round(block.userData.instancePositions[offset + 1]),
+                    z: Math.round(block.userData.chunkBaseZ + block.userData.instancePositions[offset + 2])
+                };
+            }
+
             const position = block.userData.instancePositions[instanceId];
             if (!position) return null;
 

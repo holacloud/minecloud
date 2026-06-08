@@ -93,6 +93,18 @@ type CubeResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
+type VolumeResponse struct {
+	OriginX int      `json:"originX"`
+	OriginY int      `json:"originY"`
+	OriginZ int      `json:"originZ"`
+	SizeX   int      `json:"sizeX"`
+	SizeY   int      `json:"sizeY"`
+	SizeZ   int      `json:"sizeZ"`
+	Palette []string `json:"palette"`
+	Data    string   `json:"data"`
+	Error   string   `json:"error,omitempty"`
+}
+
 type SpawnResponse struct {
 	X      float64       `json:"x"`
 	Y      float64       `json:"y"`
@@ -409,6 +421,88 @@ func HandleTerrainCube(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = json.NewEncoder(w).Encode(CubeResponse{OriginX: originX, OriginY: originY, OriginZ: originZ, Size: size, Palette: palette, Data: base64.StdEncoding.EncodeToString(data)})
+}
+
+func HandleTerrainVolume(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	originX := queryInt(r, "x", 0)
+	originZ := queryInt(r, "z", 0)
+	sizeX := clamp(queryInt(r, "sizeX", queryInt(r, "size", 16)), 1, 64)
+	sizeZ := clamp(queryInt(r, "sizeZ", queryInt(r, "size", 16)), 1, 64)
+	originY := clamp(queryInt(r, "y", MinWorldY), MinWorldY, 2048)
+	maxY := clamp(queryInt(r, "maxY", autoVolumeMaxY(originX, originZ, sizeX, sizeZ)), originY, 2048)
+	sizeY := maxY - originY + 1
+
+	palette := []string{"air"}
+	paletteIndex := map[string]byte{"air": 0}
+	paletteID := func(blockType string) byte {
+		if blockType == "" {
+			blockType = "air"
+		}
+		if id, ok := paletteIndex[blockType]; ok {
+			return id
+		}
+		if len(palette) >= 256 {
+			return 0
+		}
+		id := byte(len(palette))
+		palette = append(palette, blockType)
+		paletteIndex[blockType] = id
+		return id
+	}
+
+	data := make([]byte, sizeX*sizeY*sizeZ)
+	profiles := make(map[[2]int]TerrainSample, sizeX*sizeZ)
+	for lx := 0; lx < sizeX; lx++ {
+		wx := originX + lx
+		for lz := 0; lz < sizeZ; lz++ {
+			wz := originZ + lz
+			profile := SampleTerrain(wx, wz)
+			profiles[[2]int{lx, lz}] = profile
+			for ly := 0; ly < sizeY; ly++ {
+				wy := originY + ly
+				idx := (ly*sizeZ+lz)*sizeX + lx
+				data[idx] = paletteID(ProceduralBlockTypeAt(wx, wy, wz, &profile))
+			}
+		}
+	}
+	_ = profiles
+
+	features := GenerateFeaturesForRegion(originX, originX+sizeX-1, originZ, originZ+sizeZ-1)
+	for _, f := range features {
+		if f.X < originX || f.X >= originX+sizeX || f.Z < originZ || f.Z >= originZ+sizeZ || f.Y < originY || f.Y > maxY {
+			continue
+		}
+		lx := f.X - originX
+		ly := f.Y - originY
+		lz := f.Z - originZ
+		idx := (ly*sizeZ+lz)*sizeX + lx
+		data[idx] = paletteID(f.Type)
+	}
+
+	_ = json.NewEncoder(w).Encode(VolumeResponse{OriginX: originX, OriginY: originY, OriginZ: originZ, SizeX: sizeX, SizeY: sizeY, SizeZ: sizeZ, Palette: palette, Data: base64.StdEncoding.EncodeToString(data)})
+}
+
+func autoVolumeMaxY(originX, originZ, sizeX, sizeZ int) int {
+	maxSurface := SeaLevel
+	for x := originX; x < originX+sizeX; x++ {
+		for z := originZ; z < originZ+sizeZ; z++ {
+			profile := SampleTerrain(x, z)
+			if profile.Height > maxSurface {
+				maxSurface = profile.Height
+			}
+			if profile.WaterLevel > maxSurface {
+				maxSurface = profile.WaterLevel
+			}
+		}
+	}
+	features := GenerateFeaturesForRegion(originX, originX+sizeX-1, originZ, originZ+sizeZ-1)
+	for _, f := range features {
+		if f.X >= originX && f.X < originX+sizeX && f.Z >= originZ && f.Z < originZ+sizeZ && f.Y > maxSurface {
+			maxSurface = f.Y
+		}
+	}
+	return max(MinWorldY, maxSurface)
 }
 
 func HandleTerrainSpawn(w http.ResponseWriter, r *http.Request) {
