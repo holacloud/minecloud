@@ -33,7 +33,21 @@ function markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx, ly, lz) {
     if (data[idx] !== 0) keep[idx] = 1;
 }
 
-function decodeVolume(payload) {
+function markSolidColumnBelow(data, keep, sizeX, sizeZ, lx, ly, lz) {
+    for (let y = ly - 1; y >= 0; y--) {
+        const idx = (y * sizeZ + lz) * sizeX + lx;
+        if (data[idx] === 0) break;
+        keep[idx] = 1;
+    }
+}
+
+function inInterior(job, worldX, worldY, worldZ) {
+    return worldX >= job.interiorX && worldX < job.interiorX + job.interiorSizeX &&
+        worldY >= job.interiorY && worldY < job.interiorY + job.interiorSizeY &&
+        worldZ >= job.interiorZ && worldZ < job.interiorZ + job.interiorSizeZ;
+}
+
+function decodeVolume(payload, job) {
     const data = decodeBase64Bytes(payload.data);
     const count = data.length;
     const palette = payload.palette || [];
@@ -60,28 +74,39 @@ function decodeVolume(payload) {
                 const typeId = data[idx];
                 if (typeId === 0) continue;
                 const type = palette[typeId];
+                const worldX = payload.originX + lx;
+                const worldY = payload.originY + ly;
+                const worldZ = payload.originZ + lz;
+                if (!inInterior(job, worldX, worldY, worldZ)) continue;
                 if (type === 'water') {
                     const aboveId = ly + 1 < sizeY ? data[((ly + 1) * sizeZ + lz) * sizeX + lx] : 0;
-                    if (palette[aboveId] !== 'water') waterPositions.push(lx, ly, lz);
+                    if (palette[aboveId] !== 'water') waterPositions.push(worldX - job.renderBaseX, worldY, worldZ - job.renderBaseZ);
                     keep[idx] = 1;
                     continue;
                 }
                 if (!isExposed(data, palette, sizeX, sizeY, sizeZ, lx, ly, lz)) continue;
                 keep[idx] = 1;
-                if (type !== 'ladder') addRenderPosition(typeId, lx, ly, lz);
+                if (type !== 'ladder') addRenderPosition(typeId, worldX - job.renderBaseX, worldY, worldZ - job.renderBaseZ);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx + 1, ly, lz);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx - 1, ly, lz);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx, ly + 1, lz);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx, ly - 1, lz);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx, ly, lz + 1);
                 markIfSolid(data, keep, sizeX, sizeY, sizeZ, lx, ly, lz - 1);
+                markSolidColumnBelow(data, keep, sizeX, sizeZ, lx, ly, lz);
             }
         }
     }
 
     let solidCount = 0;
-    for (let i = 0; i < count; i++) {
-        if (keep[i] !== 0) solidCount++;
+    for (let idx = 0; idx < count; idx++) {
+        const typeId = data[idx];
+        if (typeId === 0 || keep[idx] === 0) continue;
+        const ly = Math.floor(idx / (sizeX * sizeZ));
+        const rem = idx - ly * sizeX * sizeZ;
+        const lz = Math.floor(rem / sizeX);
+        const lx = rem - lz * sizeX;
+        if (inInterior(job, payload.originX + lx, payload.originY + ly, payload.originZ + lz)) solidCount++;
     }
 
     const positions = new Int32Array(solidCount * 3);
@@ -95,10 +120,14 @@ function decodeVolume(payload) {
         const rem = idx - ly * sizeX * sizeZ;
         const lz = Math.floor(rem / sizeX);
         const lx = rem - lz * sizeX;
+        const worldX = payload.originX + lx;
+        const worldY = payload.originY + ly;
+        const worldZ = payload.originZ + lz;
+        if (!inInterior(job, worldX, worldY, worldZ)) continue;
         const p = out * 3;
-        positions[p] = payload.originX + lx;
-        positions[p + 1] = payload.originY + ly;
-        positions[p + 2] = payload.originZ + lz;
+        positions[p] = worldX;
+        positions[p + 1] = worldY;
+        positions[p + 2] = worldZ;
         typeIds[out] = typeId;
         out++;
     }
@@ -108,7 +137,7 @@ function decodeVolume(payload) {
         packedRenderGroups.push({ typeId, positions: new Int16Array(values) });
     }
 
-    return { positions, typeIds, palette, originY: payload.originY, renderGroups: packedRenderGroups, waterPositions: new Int16Array(waterPositions) };
+    return { positions: positions.slice(0, out * 3), typeIds: typeIds.slice(0, out), palette, renderGroups: packedRenderGroups, waterPositions: new Int16Array(waterPositions) };
 }
 
 self.onmessage = async (event) => {
@@ -117,10 +146,10 @@ self.onmessage = async (event) => {
         const response = await fetch(job.url, { cache: 'no-store' });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || `${response.status} ${response.statusText}`);
-        const decoded = decodeVolume(payload);
+        const decoded = decodeVolume(payload, job);
         const transfers = [decoded.positions.buffer, decoded.typeIds.buffer, decoded.waterPositions.buffer];
         for (const group of decoded.renderGroups) transfers.push(group.positions.buffer);
-        self.postMessage({ id: job.id, chunkX: job.chunkX, chunkZ: job.chunkZ, ...decoded }, transfers);
+        self.postMessage({ id: job.id, chunkX: job.chunkX, chunkZ: job.chunkZ, volumeY: job.volumeY, ...decoded }, transfers);
     } catch (error) {
         self.postMessage({ id: job.id, chunkX: job.chunkX, chunkZ: job.chunkZ, error: error.message || String(error) });
     }

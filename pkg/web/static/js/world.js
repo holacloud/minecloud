@@ -16,8 +16,16 @@ class WorldRenderer {
         this.removedBlockKeys = new Set();
         this.userModifiedBlocks = new Set();
         this.workerChunkData = new Map();
+        this.dynamicChunks = new Set();
+        this.requestedVolumeChunks = new Set();
+        this.chunkPendingVolumes = new Map();
+        this.requestedLayerChunks = new Set();
         this.chunkSize = 16;
+        this.volumeHeight = 32;
+        this.minWorldY = -59;
+        this.surfaceBaseVolumeY = this.minWorldY + 64;
         this.renderDistance = options.renderDistance ?? 4;
+        this.verticalLoadDistance = Math.min(this.renderDistance, 2);
         this.rtxModeEnabled = false;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -44,6 +52,9 @@ class WorldRenderer {
         this.terrainRequestQueue = [];
         this.activeTerrainRequests = 0;
         this.maxTerrainRequests = 3;
+        this.loadCenterChunkX = 0;
+        this.loadCenterChunkZ = 0;
+        this.lastPlayerVolumeY = null;
 
         this.blockTypes = {
             air: { color: 0x000000, name: 'Air', breakDuration: 0 },
@@ -197,7 +208,7 @@ class WorldRenderer {
             detailWeight: 1.35,
             mountainWeight: 32,
             riverScale: 900,
-            riverWidth: 0.08,
+            riverWidth: 0.018,
             lakeScale: 420,
             minWorldY: -59,
             bedrockThickness: 2,
@@ -280,9 +291,9 @@ class WorldRenderer {
         const cfg = this.getTerrainConfig();
         const riverA = Math.abs(this.noise2D(worldX + 5200, worldZ - 3100, 1 / cfg.riverScale) - 0.5) * 2;
         const riverB = Math.abs(this.noise2D(worldX - 2800, worldZ + 6100, 1 / (cfg.riverScale * 1.35)) - 0.5) * 2;
-        const main = 1 - this.smoothstep(cfg.riverWidth, cfg.riverWidth + 0.16, Math.min(riverA, riverB));
-        const tributary = 1 - this.smoothstep(cfg.riverWidth * 0.55, cfg.riverWidth + 0.1, Math.max(0, Math.min(riverA, riverB) - 0.04));
-        return Math.max(main, tributary * 0.55);
+        const main = 1 - this.smoothstep(cfg.riverWidth, 0.055, Math.min(riverA, riverB));
+        const tributary = 1 - this.smoothstep(0.012, 0.04, Math.max(0, Math.min(riverA, riverB) - 0.012));
+        return Math.max(main, tributary * 0.35);
     }
 
     sampleLake(worldX, worldZ) {
@@ -319,7 +330,7 @@ class WorldRenderer {
         const mountains = mountainRidge * mountainMask * 76 + cliffs;
         const valleyMask = 1 - this.smoothstep(0.12, 0.42, Math.abs(this.noise2D(worldX - 6300, worldZ - 2800, 1 / 760) - 0.5) * 2);
         const valleys = valleyMask * (0.35 + (1 - climate.erosion) * 0.65) * -6;
-        const riverCut = climate.river * (6 + (1 - climate.erosion) * 5);
+        const riverCut = climate.river * (3.8 + (1 - climate.erosion) * 2.8);
         const lakeCut = climate.lake * 5.5;
         const detail = (this.noise2D(worldX + 120, worldZ - 480, 1 / cfg.detailScale) - 0.5) * cfg.detailWeight;
         const spawnDistance = Math.sqrt(worldX * worldX + worldZ * worldZ);
@@ -339,7 +350,7 @@ class WorldRenderer {
     pickBiome(climate, height, slope) {
         const cfg = this.getTerrainConfig();
         const defs = this.getBiomeDefinitions();
-        if (climate.river > 0.65) return climate.temperature < 0.22 ? 'frozen_river' : 'river';
+        if (climate.river > 0.72) return climate.temperature < 0.22 ? 'frozen_river' : 'river';
         if (height < cfg.seaLevel - 7) return 'deep_ocean';
         if (height < cfg.seaLevel - 0.6) return 'ocean';
         if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand && climate.continentalness < 0.52) return 'beach';
@@ -370,6 +381,7 @@ class WorldRenderer {
     pickSurfaceBlock(biome, height, slope, climate) {
         const cfg = this.getTerrainConfig();
         const def = this.getBiomeDefinitions()[biome];
+        if (biome === 'river' || biome === 'frozen_river') return 'water';
         if (height < cfg.seaLevel) return climate.temperature < 0.18 ? 'ice' : 'water';
         if (Math.abs(height - cfg.seaLevel) <= cfg.beachBand) {
             if (biome.startsWith('snowy')) return 'white_wool';
@@ -417,13 +429,23 @@ class WorldRenderer {
             1 - this.smoothstep(10, 22, Math.abs(depth - 36)),
             1 - this.smoothstep(12, 26, Math.abs(depth - 54))
         );
-        const tunnelA = Math.abs(this.noise2D(worldX + y * 17 + 4100, worldZ - y * 13 - 2200, 1 / 72) - 0.5) * 2;
-        const tunnelB = Math.abs(this.noise2D(worldX - y * 11 - 7600, worldZ + y * 19 + 3300, 1 / 110) - 0.5) * 2;
-        const tunnelC = Math.abs(this.noise2D(worldX + y * 29 + 1200, worldZ + y * 31 - 8800, 1 / 46) - 0.5) * 2;
+        const tunnelA = Math.abs(this.noise2D(worldX + y * 17 + 4100, worldZ - y * 13 - 2200, 1 / 68) - 0.5) * 2;
+        const tunnelB = Math.abs(this.noise2D(worldX - y * 11 - 7600, worldZ + y * 19 + 3300, 1 / 84) - 0.5) * 2;
         const chamber = this.noise2D(worldX + y * 23 + 9100, worldZ - y * 7 - 5100, 1 / 86);
-        const chamberShape = this.noise2D(worldX - y * 5 + 3300, worldZ + y * 9 - 1700, 1 / 38);
-        const tunnel = Math.min(tunnelA, tunnelB, tunnelC);
-        return depthMask > 0 && levelMask > 0.15 && (tunnel < 0.11 + levelMask * 0.04 || (tunnel < 0.3 && chamber > 0.66 && chamberShape > 0.55));
+        const tunnel = Math.min(tunnelA, tunnelB);
+        return depthMask > 0 && levelMask > 0.2 && (tunnel < 0.045 + levelMask * 0.025 || (tunnel < 0.18 && chamber > 0.88));
+    }
+
+    oreVeinBlockAt(worldX, y, worldZ, surfaceHeight) {
+        const depth = surfaceHeight - y;
+        if (depth < 4) return null;
+        const veinShape = this.noise2D(worldX + y * 2 + 1700, worldZ - y * 3 - 2300, 1 / 84);
+        const veinCore = this.noise2D(worldX - y * 5 - 3300, worldZ + y * 7 + 4200, 1 / 36);
+        if (veinShape < 0.72 || veinCore < 0.54) return null;
+        const roll = this.seededRand(Math.floor(worldX / 5), Math.floor(worldZ / 5), Math.floor(y / 3) + 5050);
+        if (depth > 30 && roll < 0.18) return 'gold_ore';
+        if (depth > 14 && roll < 0.42) return 'iron_ore';
+        return 'coal_ore';
     }
 
     getProceduralBlockTypeAt(worldX, y, worldZ, profile = null) {
@@ -437,13 +459,12 @@ class WorldRenderer {
         if (y <= cfg.minWorldY + cfg.bedrockThickness - 1) return 'bedrock';
         if (this.isCaveAt(worldX, y, worldZ, height)) return null;
         if (y < height - 3 || (profile.slope > 0.5 && y < height - 1)) {
-            const oreRand = this.seededRand(worldX, worldZ, y * 100);
-            if (oreRand < 0.02) return 'coal_ore';
-            if (oreRand < 0.025) return 'iron_ore';
-            if (oreRand < 0.026) return 'gold_ore';
+            const ore = this.oreVeinBlockAt(worldX, y, worldZ, height);
+            if (ore) return ore;
             return biomeDef.sub;
         }
         if (y === height) {
+            if (profile.biome === 'river' || profile.biome === 'frozen_river') return profile.climate.temperature < 0.18 ? 'ice' : 'water';
             if (profile.surfaceBlock === 'stone' && biomeDef.filler === 'cobblestone') {
                 return this.seededRand(worldX, worldZ, 1700) < 0.65 ? 'stone' : 'cobblestone';
             }
@@ -1488,15 +1509,16 @@ class WorldRenderer {
         this.pumpTerrainRequests();
         if (payload.error) {
             console.error('Failed to load chunk terrain:', payload.error);
-            this.generatingChunks.delete(this.chunkKey(payload.chunkX, payload.chunkZ));
+            this.finishFailedChunkVolume(this.chunkKey(payload.chunkX, payload.chunkZ));
             return;
         }
-        this.chunkProcessQueue.push({ chunkX: payload.chunkX, chunkZ: payload.chunkZ, positions: payload.positions, typeIds: payload.typeIds, palette: payload.palette, originY: payload.originY || 0, renderGroups: payload.renderGroups || [], waterPositions: payload.waterPositions || new Int16Array(0), offset: 0 });
+        this.chunkProcessQueue.push({ chunkX: payload.chunkX, chunkZ: payload.chunkZ, volumeY: payload.volumeY, positions: payload.positions, typeIds: payload.typeIds, palette: payload.palette, renderGroups: payload.renderGroups || [], waterPositions: payload.waterPositions || new Int16Array(0), offset: 0 });
         this.processNextChunk();
     }
 
     enqueueTerrainRequest(job) {
         this.terrainRequestQueue.push(job);
+        this.terrainRequestQueue.sort((a, b) => Math.hypot(a.chunkX - this.loadCenterChunkX, a.chunkZ - this.loadCenterChunkZ) - Math.hypot(b.chunkX - this.loadCenterChunkX, b.chunkZ - this.loadCenterChunkZ));
         this.pumpTerrainRequests();
     }
 
@@ -1530,7 +1552,7 @@ class WorldRenderer {
                     const positionIndex = job.offset * 3;
                     const type = job.palette[job.typeIds[job.offset]];
                     if (type && type !== 'air') {
-                        this.setBlockData(job.positions[positionIndex], job.positions[positionIndex + 1], job.positions[positionIndex + 2], type, key);
+                        this.setBlockData(job.positions[positionIndex], job.positions[positionIndex + 1], job.positions[positionIndex + 2], type);
                     }
                     job.offset++;
                 }
@@ -1548,11 +1570,32 @@ class WorldRenderer {
             }
 
             this.currentChunkProcess = null;
-            this.generatedChunks.add(key);
-            this.generatingChunks.delete(key);
+            const remainingVolumes = Math.max(0, (this.chunkPendingVolumes.get(key) || 1) - 1);
+            if (remainingVolumes === 0) {
+                this.chunkPendingVolumes.delete(key);
+                this.generatedChunks.add(key);
+                this.generatingChunks.delete(key);
+            } else {
+                this.chunkPendingVolumes.set(key, remainingVolumes);
+            }
             if (job.renderGroups !== undefined) {
-                this.workerChunkData.set(key, job);
-                this.buildChunkFromWorkerData(job);
+                let parts = this.workerChunkData.get(key);
+                if (!parts) {
+                    parts = [];
+                    this.workerChunkData.set(key, parts);
+                }
+                const existingIndex = parts.findIndex((part) => part.volumeY === job.volumeY);
+                if (existingIndex >= 0) {
+                    parts[existingIndex] = job;
+                } else {
+                    parts.push(job);
+                }
+                parts.sort((a, b) => a.volumeY - b.volumeY);
+                if (this.dynamicChunks.has(key)) {
+                    this.rebuildChunk(chunkX, chunkZ);
+                } else {
+                    this.buildChunkFromWorkerData({ chunkX, chunkZ, parts });
+                }
             } else {
                 this.rebuildChunk(chunkX, chunkZ);
             }
@@ -1568,30 +1611,98 @@ class WorldRenderer {
 
         this.generatingChunks.add(key);
         this.ensureChunkBlockSet(key);
-        
-        const worldX = chunkX * this.chunkSize;
-        const worldZ = chunkZ * this.chunkSize;
+        this.requestSurfaceVolumesForChunk(chunkX, chunkZ);
+    }
 
-        const url = `/api/terrain/volume?x=${worldX}&z=${worldZ}&size=${this.chunkSize}`;
-        if (this.terrainWorker) {
-            this.enqueueTerrainRequest({ id: ++this.terrainJobId, chunkX, chunkZ, url });
-            return;
-        }
+    requestSurfaceVolumesForChunk(chunkX, chunkZ) {
+        const key = this.chunkKey(chunkX, chunkZ);
+        if (this.requestedLayerChunks.has(key)) return;
+        this.requestedLayerChunks.add(key);
 
-        fetch(url, { cache: 'no-store' })
+        const fallback = () => {
+            if (!this.requestChunkVolume(chunkX, chunkZ, this.surfaceBaseVolumeY)) {
+                this.generatedChunks.add(key);
+                this.generatingChunks.delete(key);
+            }
+        };
+
+        fetch(`/api/terrain/layers?chunkX=${chunkX}&chunkZ=${chunkZ}&chunkSize=${this.chunkSize}&volumeHeight=${this.volumeHeight}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
-                const decoded = this.decodeTerrainVolume(data);
-                this.chunkProcessQueue.push({ chunkX, chunkZ, ...decoded, offset: 0 });
-                this.processNextChunk();
+                const origins = Array.isArray(data.origins) && data.origins.length > 0 ? data.origins : [this.surfaceBaseVolumeY];
+                let requested = 0;
+                for (const volumeY of origins) {
+                    if (Number.isInteger(volumeY) && this.requestChunkVolume(chunkX, chunkZ, volumeY)) requested++;
+                }
+                if (requested === 0) {
+                    this.generatedChunks.add(key);
+                    this.generatingChunks.delete(key);
+                }
             })
             .catch(err => {
-                console.error("Failed to load chunk terrain:", err);
-                this.generatingChunks.delete(key);
+                console.error("Failed to load terrain layers:", err);
+                fallback();
             });
     }
 
-    decodeTerrainVolume(payload) {
+    requestChunkVolume(chunkX, chunkZ, volumeY) {
+        const volumeKey = `${chunkX},${volumeY},${chunkZ}`;
+        if (this.requestedVolumeChunks.has(volumeKey)) return false;
+        this.requestedVolumeChunks.add(volumeKey);
+
+        const key = this.chunkKey(chunkX, chunkZ);
+        this.generatingChunks.add(key);
+        this.ensureChunkBlockSet(key);
+        this.chunkPendingVolumes.set(key, (this.chunkPendingVolumes.get(key) || 0) + 1);
+
+        const worldX = chunkX * this.chunkSize;
+        const worldZ = chunkZ * this.chunkSize;
+        const url = `/api/terrain/volume?x=${worldX}&y=${volumeY}&z=${worldZ}&sizeX=${this.chunkSize}&sizeY=${this.volumeHeight}&sizeZ=${this.chunkSize}`;
+        const job = {
+            id: ++this.terrainJobId,
+            chunkX,
+            chunkZ,
+            volumeY,
+            url,
+            interiorX: worldX,
+            interiorY: volumeY,
+            interiorZ: worldZ,
+            interiorSizeX: this.chunkSize,
+            interiorSizeY: this.volumeHeight,
+            interiorSizeZ: this.chunkSize,
+            renderBaseX: worldX,
+            renderBaseZ: worldZ
+        };
+
+        if (this.terrainWorker) {
+            this.enqueueTerrainRequest(job);
+        } else {
+            fetch(url, { cache: 'no-store' })
+                .then(res => res.json())
+                .then(data => {
+                    const decoded = this.decodeTerrainVolume(data, job);
+                    this.chunkProcessQueue.push({ chunkX, chunkZ, volumeY, ...decoded, offset: 0 });
+                    this.processNextChunk();
+                })
+                .catch(err => {
+                    console.error("Failed to load chunk terrain:", err);
+                    this.finishFailedChunkVolume(key);
+                });
+        }
+        return true;
+    }
+
+    finishFailedChunkVolume(key) {
+        const remainingVolumes = Math.max(0, (this.chunkPendingVolumes.get(key) || 1) - 1);
+        if (remainingVolumes === 0) {
+            this.chunkPendingVolumes.delete(key);
+            this.generatingChunks.delete(key);
+        } else {
+            this.chunkPendingVolumes.set(key, remainingVolumes);
+        }
+    }
+
+    decodeTerrainVolume(payload, job) {
         const binaryString = atob(payload.data || '');
         const data = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) data[i] = binaryString.charCodeAt(i);
@@ -1611,6 +1722,13 @@ class WorldRenderer {
             const idx = (ly * sizeZ + lz) * sizeX + lx;
             if (data[idx] !== 0) keep[idx] = 1;
         };
+        const markSolidColumnBelow = (lx, ly, lz) => {
+            for (let y = ly - 1; y >= 0; y--) {
+                const idx = (y * sizeZ + lz) * sizeX + lx;
+                if (data[idx] === 0) break;
+                keep[idx] = 1;
+            }
+        };
 
         for (let ly = 0; ly < sizeY; ly++) {
             for (let lz = 0; lz < sizeZ; lz++) {
@@ -1626,13 +1744,14 @@ class WorldRenderer {
                     markIfSolid(lx, ly - 1, lz);
                     markIfSolid(lx, ly, lz + 1);
                     markIfSolid(lx, ly, lz - 1);
+                    markSolidColumnBelow(lx, ly, lz);
                 }
             }
         }
 
         let solidCount = 0;
-        for (let i = 0; i < keep.length; i++) {
-            if (keep[i] !== 0) solidCount++;
+        for (let idx = 0; idx < data.length; idx++) {
+            if (data[idx] !== 0 && keep[idx] !== 0) solidCount++;
         }
         const positions = new Int32Array(solidCount * 3);
         const typeIds = new Uint8Array(solidCount);
@@ -1688,80 +1807,84 @@ class WorldRenderer {
 
         const baseX = job.chunkX * this.chunkSize;
         const baseZ = job.chunkZ * this.chunkSize;
-        const originY = job.originY || 0;
         const chunk = new THREE.Group();
         chunk.position.set(baseX, 0, baseZ);
         chunk.updateMatrix();
         chunk.matrixAutoUpdate = false;
 
-        for (const group of job.renderGroups || []) {
-            const type = job.palette[group.typeId];
-            if (!type || type === 'air') continue;
-            const positions = group.positions;
-            let count = 0;
-            for (let i = 0; i < positions.length; i += 3) {
-                if (this.shouldRenderWorkerBlock(baseX + positions[i], originY + positions[i + 1], baseZ + positions[i + 2], type)) count++;
-            }
-            if (count <= 0) continue;
+        const parts = job.parts || [job];
+        for (const part of parts) {
+            for (const group of part.renderGroups || []) {
+                const type = part.palette[group.typeId];
+                if (!type || type === 'air') continue;
+                const positions = group.positions;
+                let count = 0;
+                for (let i = 0; i < positions.length; i += 3) {
+                    if (this.shouldRenderWorkerBlock(baseX + positions[i], positions[i + 1], baseZ + positions[i + 2], type)) count++;
+                }
+                if (count <= 0) continue;
 
-            const mesh = new THREE.InstancedMesh(this.getGeometry(type), this.getMaterial(type), count);
-            mesh.userData.blockType = type;
-            mesh.userData.instancePositions = positions;
-            mesh.userData.chunkBaseX = baseX;
-            mesh.userData.chunkBaseZ = baseZ;
-            mesh.userData.typedInstancePositions = true;
-            mesh.matrixAutoUpdate = false;
-            mesh.castShadow = this.rtxModeEnabled && type !== 'water';
-            mesh.receiveShadow = this.rtxModeEnabled;
-            if (THREE.StaticDrawUsage) mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+                const mesh = new THREE.InstancedMesh(this.getGeometry(type), this.getMaterial(type), count);
+                mesh.userData.blockType = type;
+                mesh.userData.instancePositions = positions;
+                mesh.userData.chunkBaseX = baseX;
+                mesh.userData.chunkBaseZ = baseZ;
+                mesh.userData.typedInstancePositions = true;
+                mesh.matrixAutoUpdate = false;
+                mesh.castShadow = this.rtxModeEnabled && type !== 'water';
+                mesh.receiveShadow = this.rtxModeEnabled;
+                if (THREE.StaticDrawUsage) mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 
-            let instanceIndex = 0;
-            const instancePositions = new Int16Array(count * 3);
-            const matrixArray = mesh.instanceMatrix.array;
-            for (let p = 0; p < positions.length; p += 3) {
-                const worldY = originY + positions[p + 1];
-                if (!this.shouldRenderWorkerBlock(baseX + positions[p], worldY, baseZ + positions[p + 2], type)) continue;
-                const out = instanceIndex * 3;
-                instancePositions[out] = positions[p];
-                instancePositions[out + 1] = worldY;
-                instancePositions[out + 2] = positions[p + 2];
-                this.writeTranslationMatrix(matrixArray, instanceIndex, positions[p] + 0.5, worldY + 0.5, positions[p + 2] + 0.5);
-                instanceIndex++;
+                let instanceIndex = 0;
+                const instancePositions = new Int16Array(count * 3);
+                const matrixArray = mesh.instanceMatrix.array;
+                for (let p = 0; p < positions.length; p += 3) {
+                    const worldY = positions[p + 1];
+                    if (!this.shouldRenderWorkerBlock(baseX + positions[p], worldY, baseZ + positions[p + 2], type)) continue;
+                    const out = instanceIndex * 3;
+                    instancePositions[out] = positions[p];
+                    instancePositions[out + 1] = worldY;
+                    instancePositions[out + 2] = positions[p + 2];
+                    this.writeTranslationMatrix(matrixArray, instanceIndex, positions[p] + 0.5, worldY + 0.5, positions[p + 2] + 0.5);
+                    instanceIndex++;
+                }
+                mesh.userData.instancePositions = instancePositions;
+                mesh.instanceMatrix.needsUpdate = true;
+                chunk.add(mesh);
             }
-            mesh.userData.instancePositions = instancePositions;
-            mesh.instanceMatrix.needsUpdate = true;
-            chunk.add(mesh);
         }
 
-        const waterPositions = job.waterPositions || new Int16Array(0);
-        let waterCount = 0;
-        for (let i = 0; i < waterPositions.length; i += 3) {
-            if (this.shouldRenderWorkerBlock(baseX + waterPositions[i], originY + waterPositions[i + 1], baseZ + waterPositions[i + 2], 'water')) waterCount++;
-        }
-        if (waterCount > 0) {
-            const waterMesh = new THREE.InstancedMesh(this.waterSurfaceGeometry, this.getMaterial('water'), waterCount);
-            waterMesh.userData.blockType = 'water';
-            waterMesh.userData.instancePositions = waterPositions;
-            waterMesh.userData.chunkBaseX = baseX;
-            waterMesh.userData.chunkBaseZ = baseZ;
-            waterMesh.userData.typedInstancePositions = true;
-            waterMesh.matrixAutoUpdate = false;
-            let instanceIndex = 0;
-            const instancePositions = new Int16Array(waterCount * 3);
-            const matrixArray = waterMesh.instanceMatrix.array;
-            for (let p = 0; p < waterPositions.length; p += 3) {
-                const worldY = originY + waterPositions[p + 1];
-                if (!this.shouldRenderWorkerBlock(baseX + waterPositions[p], worldY, baseZ + waterPositions[p + 2], 'water')) continue;
-                const out = instanceIndex * 3;
-                instancePositions[out] = waterPositions[p];
-                instancePositions[out + 1] = worldY;
-                instancePositions[out + 2] = waterPositions[p + 2];
-                this.writeTranslationMatrix(matrixArray, instanceIndex, waterPositions[p] + 0.5, worldY + 0.5, waterPositions[p + 2] + 0.5);
-                instanceIndex++;
+        for (const part of parts) {
+            const waterPositions = part.waterPositions || new Int16Array(0);
+            let waterCount = 0;
+            for (let i = 0; i < waterPositions.length; i += 3) {
+                if (this.shouldRenderWorkerBlock(baseX + waterPositions[i], waterPositions[i + 1], baseZ + waterPositions[i + 2], 'water')) waterCount++;
             }
-            waterMesh.userData.instancePositions = instancePositions;
-            waterMesh.instanceMatrix.needsUpdate = true;
-            chunk.add(waterMesh);
+            if (waterCount > 0) {
+                const waterMesh = new THREE.InstancedMesh(this.waterSurfaceGeometry, this.getMaterial('water'), waterCount);
+                waterMesh.userData.blockType = 'water';
+                waterMesh.userData.instancePositions = waterPositions;
+                waterMesh.userData.chunkBaseX = baseX;
+                waterMesh.userData.chunkBaseZ = baseZ;
+                waterMesh.userData.typedInstancePositions = true;
+                waterMesh.matrixAutoUpdate = false;
+                let instanceIndex = 0;
+                const instancePositions = new Int16Array(waterCount * 3);
+                const matrixArray = waterMesh.instanceMatrix.array;
+                for (let p = 0; p < waterPositions.length; p += 3) {
+                    const worldY = waterPositions[p + 1];
+                    if (!this.shouldRenderWorkerBlock(baseX + waterPositions[p], worldY, baseZ + waterPositions[p + 2], 'water')) continue;
+                    const out = instanceIndex * 3;
+                    instancePositions[out] = waterPositions[p];
+                    instancePositions[out + 1] = worldY;
+                    instancePositions[out + 2] = waterPositions[p + 2];
+                    this.writeTranslationMatrix(matrixArray, instanceIndex, waterPositions[p] + 0.5, worldY + 0.5, waterPositions[p + 2] + 0.5);
+                    instanceIndex++;
+                }
+                waterMesh.userData.instancePositions = instancePositions;
+                waterMesh.instanceMatrix.needsUpdate = true;
+                chunk.add(waterMesh);
+            }
         }
 
         this.scene.add(chunk);
@@ -1813,6 +1936,7 @@ class WorldRenderer {
         if (options.persisted || options.playerChange) {
             this.removedBlockKeys.delete(key);
             this.userModifiedBlocks.add(key);
+            this.dynamicChunks.add(resolvedChunkKey);
         } else if (this.userModifiedBlocks.has(key)) {
             return false;
         }
@@ -1910,8 +2034,8 @@ class WorldRenderer {
     rebuildChunk(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
         const workerData = this.workerChunkData.get(key);
-        if (workerData) {
-            this.buildChunkFromWorkerData(workerData);
+        if (workerData && !this.dynamicChunks.has(key)) {
+            this.buildChunkFromWorkerData({ chunkX, chunkZ, parts: workerData });
             return;
         }
 
@@ -1951,7 +2075,7 @@ class WorldRenderer {
             positions.push({ x: x - baseX, y: y, z: z - baseZ });
         }
 
-        if (instancesByType.size === 0) return;
+        if (instancesByType.size === 0 && waterSurfacePositions.length === 0) return;
 
         const chunk = new THREE.Group();
         chunk.position.set(baseX, 0, baseZ);
@@ -2053,15 +2177,36 @@ class WorldRenderer {
         }
     }
 
-    update(playerX, playerZ) {
-        const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
+    getVolumeYForPosition(playerY) {
+        if (!Number.isFinite(playerY)) return null;
+        return this.minWorldY + Math.floor((Math.floor(playerY) - this.minWorldY) / this.volumeHeight) * this.volumeHeight;
+    }
 
-        if (playerChunkX === this.lastPlayerChunkX && playerChunkZ === this.lastPlayerChunkZ) {
+    getNearbyVolumeYOrigins(playerY) {
+        const centerY = this.getVolumeYForPosition(playerY);
+        if (centerY === null) return [];
+        const origins = [];
+        for (let offset = 0; offset <= 1; offset++) {
+            const volumeY = centerY + offset * this.volumeHeight;
+            if (volumeY >= this.minWorldY) origins.push(volumeY);
+        }
+        return origins;
+    }
+
+    update(playerX, playerZ, playerY = null) {
+        const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
+        const playerVolumeY = this.getVolumeYForPosition(playerY);
+
+        if (playerChunkX === this.lastPlayerChunkX && playerChunkZ === this.lastPlayerChunkZ && playerVolumeY === this.lastPlayerVolumeY) {
             return;
         }
 
+        const volumeYChanged = playerVolumeY !== this.lastPlayerVolumeY;
         this.lastPlayerChunkX = playerChunkX;
         this.lastPlayerChunkZ = playerChunkZ;
+        this.lastPlayerVolumeY = playerVolumeY;
+        this.loadCenterChunkX = playerChunkX;
+        this.loadCenterChunkZ = playerChunkZ;
 
         const desiredActiveChunks = new Set();
         const chunksToGenerate = [];
@@ -2073,7 +2218,6 @@ class WorldRenderer {
                 desiredActiveChunks.add(key);
 
                 if (!this.generatedChunks.has(key)) {
-                    this.generateChunkData(x, z);
                     chunksToGenerate.push([x, z]);
                 }
 
@@ -2081,6 +2225,11 @@ class WorldRenderer {
                     chunksToRender.push([x, z]);
                 }
             }
+        }
+
+        chunksToGenerate.sort((a, b) => Math.hypot(a[0] - playerChunkX, a[1] - playerChunkZ) - Math.hypot(b[0] - playerChunkX, b[1] - playerChunkZ));
+        for (const [x, z] of chunksToGenerate) {
+            this.generateChunkData(x, z);
         }
 
         const previousActiveChunks = this.activeChunks;
@@ -2128,6 +2277,18 @@ class WorldRenderer {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             this.rebuildChunk(chunkX, chunkZ);
         }
+
+        if (volumeYChanged && playerVolumeY !== null) {
+            const volumeYOrigins = this.getNearbyVolumeYOrigins(playerY);
+            for (let chunkX = playerChunkX - this.verticalLoadDistance; chunkX <= playerChunkX + this.verticalLoadDistance; chunkX++) {
+                for (let chunkZ = playerChunkZ - this.verticalLoadDistance; chunkZ <= playerChunkZ + this.verticalLoadDistance; chunkZ++) {
+                    if (!this.activeChunks.has(this.chunkKey(chunkX, chunkZ))) continue;
+                    for (const volumeY of volumeYOrigins) {
+                        this.requestChunkVolume(chunkX, chunkZ, volumeY);
+                    }
+                }
+            }
+        }
     }
 
     hasSolidBlock(x, y, z) {
@@ -2136,9 +2297,7 @@ class WorldRenderer {
         const blockZ = Math.round(z);
         const key = this.blockKey(blockX, blockY, blockZ);
         if (this.solidBlocks.has(key)) return true;
-        if (this.blockData.has(key) || this.removedBlockKeys.has(key)) return false;
-
-        return this.isSolidType(this.getProceduralBlockTypeAt(blockX, blockY, blockZ));
+        return false;
     }
 
     getBlockTypeAt(x, y, z) {
@@ -2147,8 +2306,7 @@ class WorldRenderer {
         const blockZ = Math.round(z);
         const key = this.blockKey(blockX, blockY, blockZ);
         if (this.blockData.has(key)) return this.blockData.get(key);
-        if (this.removedBlockKeys.has(key)) return null;
-        return this.getProceduralBlockTypeAt(blockX, blockY, blockZ) || null;
+        return null;
     }
 
     getBreakDurationForType(type) {
@@ -2434,10 +2592,12 @@ class WorldRenderer {
                     
                     if (val === 1) {
                         this.removedBlockKeys.add(this.blockKey(worldX, worldY, worldZ));
+                        this.dynamicChunks.add(this.chunkKey(Math.floor(worldX / this.chunkSize), Math.floor(worldZ / this.chunkSize)));
                         this.deleteBlockData(worldX, worldY, worldZ, false);
                     } else if (val >= 2) {
                         const type = palette[val - 2];
                         this.setBlockData(worldX, worldY, worldZ, type, null, { persisted: true });
+                        this.dynamicChunks.add(this.chunkKey(Math.floor(worldX / this.chunkSize), Math.floor(worldZ / this.chunkSize)));
                     }
                 }
             }
@@ -2451,8 +2611,9 @@ class WorldRenderer {
             if (!removedBlocks[key]) continue;
             this.removedBlockKeys.add(key);
             const { x, y, z } = this.parseBlockKey(key);
-            this.deleteBlockData(x, y, z, false);
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
+            this.dynamicChunks.add(this.chunkKey(chunkX, chunkZ));
+            this.deleteBlockData(x, y, z, false);
             dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
         }
 
@@ -2479,6 +2640,7 @@ class WorldRenderer {
             }
 
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
+            this.dynamicChunks.add(this.chunkKey(chunkX, chunkZ));
             dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
         }
 
@@ -2503,6 +2665,10 @@ class WorldRenderer {
 
         const { chunkX, chunkZ } = this.getChunkCoords(blockX, blockZ);
         const centerKey = this.chunkKey(chunkX, chunkZ);
+        const belowVolumeY = this.getVolumeYForPosition(blockY - 1);
+        if (belowVolumeY !== null) {
+            this.requestChunkVolume(chunkX, chunkZ, belowVolumeY);
+        }
         this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, this.activeChunks.has(centerKey));
 
         return true;
@@ -2512,9 +2678,12 @@ class WorldRenderer {
         const key = this.blockKey(x, y, z);
         if (!this.blockData.has(key)) return false;
 
+        const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
+
         if (recordRemoval) {
             this.removedBlockKeys.add(key);
             this.userModifiedBlocks.delete(key);
+            this.dynamicChunks.add(chunkKey);
         }
 
         this.blockData.delete(key);
@@ -2525,7 +2694,6 @@ class WorldRenderer {
         this.removeSprayPaintsForBlock(x, y, z);
         this.solidBlocks.delete(key);
 
-        const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
         const blockKeys = this.chunkBlocks.get(chunkKey);
         if (blockKeys) {
             blockKeys.delete(key);

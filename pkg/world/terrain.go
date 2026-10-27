@@ -105,6 +105,14 @@ type VolumeResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
+type TerrainLayersResponse struct {
+	ChunkX       int   `json:"chunkX"`
+	ChunkZ       int   `json:"chunkZ"`
+	MinWorldY    int   `json:"minWorldY"`
+	VolumeHeight int   `json:"volumeHeight"`
+	Origins      []int `json:"origins"`
+}
+
 type SpawnResponse struct {
 	X      float64       `json:"x"`
 	Y      float64       `json:"y"`
@@ -428,10 +436,10 @@ func HandleTerrainVolume(w http.ResponseWriter, r *http.Request) {
 	originX := queryInt(r, "x", 0)
 	originZ := queryInt(r, "z", 0)
 	sizeX := clamp(queryInt(r, "sizeX", queryInt(r, "size", 16)), 1, 64)
+	sizeY := clamp(queryInt(r, "sizeY", queryInt(r, "size", 32)), 1, 64)
 	sizeZ := clamp(queryInt(r, "sizeZ", queryInt(r, "size", 16)), 1, 64)
 	originY := clamp(queryInt(r, "y", MinWorldY), MinWorldY, 2048)
-	maxY := clamp(queryInt(r, "maxY", autoVolumeMaxY(originX, originZ, sizeX, sizeZ)), originY, 2048)
-	sizeY := maxY - originY + 1
+	maxY := originY + sizeY - 1
 
 	palette := []string{"air"}
 	paletteIndex := map[string]byte{"air": 0}
@@ -483,16 +491,49 @@ func HandleTerrainVolume(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(VolumeResponse{OriginX: originX, OriginY: originY, OriginZ: originZ, SizeX: sizeX, SizeY: sizeY, SizeZ: sizeZ, Palette: palette, Data: base64.StdEncoding.EncodeToString(data)})
 }
 
-func autoVolumeMaxY(originX, originZ, sizeX, sizeZ int) int {
+func HandleTerrainLayers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	chunkX := queryInt(r, "chunkX", 0)
+	chunkZ := queryInt(r, "chunkZ", 0)
+	chunkSize := clamp(queryInt(r, "chunkSize", 16), 1, 64)
+	volumeHeight := clamp(queryInt(r, "volumeHeight", 32), 1, 64)
+	minSurfaceY := 2048
+	maxY := MinWorldY + volumeHeight*2 + volumeHeight - 1
+	originX := chunkX * chunkSize
+	originZ := chunkZ * chunkSize
+
+	for x := originX; x < originX+chunkSize; x++ {
+		for z := originZ; z < originZ+chunkSize; z++ {
+			profile := SampleTerrain(x, z)
+			minSurfaceY = min(minSurfaceY, min(profile.Height, profile.WaterLevel))
+			maxY = max(maxY, max(profile.Height+10, profile.WaterLevel+1))
+		}
+	}
+	if minSurfaceY == 2048 {
+		minSurfaceY = MinWorldY + volumeHeight*2
+	}
+	startY := MinWorldY + ((max(MinWorldY, minSurfaceY-1) - MinWorldY) / volumeHeight * volumeHeight)
+
+	origins := []int{}
+	for y := startY; y <= maxY; y += volumeHeight {
+		origins = append(origins, y)
+	}
+
+	_ = json.NewEncoder(w).Encode(TerrainLayersResponse{ChunkX: chunkX, ChunkZ: chunkZ, MinWorldY: MinWorldY, VolumeHeight: volumeHeight, Origins: origins})
+}
+
+func autoVolumeYBounds(originX, originZ, sizeX, sizeZ, depth int) (int, int) {
+	minY := 2048
 	maxSurface := SeaLevel
 	for x := originX; x < originX+sizeX; x++ {
 		for z := originZ; z < originZ+sizeZ; z++ {
 			profile := SampleTerrain(x, z)
-			if profile.Height > maxSurface {
-				maxSurface = profile.Height
+			surface := max(profile.Height, profile.WaterLevel)
+			if surface-depth < minY {
+				minY = surface - depth
 			}
-			if profile.WaterLevel > maxSurface {
-				maxSurface = profile.WaterLevel
+			if surface > maxSurface {
+				maxSurface = surface
 			}
 		}
 	}
@@ -502,7 +543,7 @@ func autoVolumeMaxY(originX, originZ, sizeX, sizeZ int) int {
 			maxSurface = f.Y
 		}
 	}
-	return max(MinWorldY, maxSurface)
+	return max(MinWorldY, minY), max(MinWorldY, maxSurface)
 }
 
 func HandleTerrainSpawn(w http.ResponseWriter, r *http.Request) {
@@ -588,19 +629,18 @@ func ProceduralBlockTypeAt(x, y, z int, profile *TerrainSample) string {
 		return ""
 	}
 	if y < height-3 || (profile.Slope > 0.5 && y < height-1) {
-		ore := seededRand(float64(x), float64(z), float64(y*100))
-		if ore < 0.02 {
-			return "coal_ore"
-		}
-		if ore < 0.025 {
-			return "iron_ore"
-		}
-		if ore < 0.026 {
-			return "gold_ore"
+		if ore := OreVeinBlockAt(x, y, z, height); ore != "" {
+			return ore
 		}
 		return def.Sub
 	}
 	if y == height {
+		if profile.Biome == "river" || profile.Biome == "frozen_river" {
+			if profile.Climate.Temperature < 0.18 {
+				return "ice"
+			}
+			return "water"
+		}
 		if profile.SurfaceBlock == "stone" && def.Filler == "cobblestone" {
 			if seededRand(float64(x), float64(z), 1700) < 0.65 {
 				return "stone"
@@ -668,7 +708,7 @@ func SampleHeight(x, z float64, c Climate) float64 {
 	mountains := mountainRidge*mountainMask*76 + cliffs
 	valleyMask := 1 - smoothstep(0.12, 0.42, math.Abs(noise2D(x-6300, z-2800, 1.0/760.0)-0.5)*2)
 	valleys := valleyMask * (0.35 + (1-c.Erosion)*0.65) * -6
-	riverCut := c.River * (6 + (1-c.Erosion)*5)
+	riverCut := c.River * (3.8 + (1-c.Erosion)*2.8)
 	lakeCut := c.Lake * 5.5
 	detail := (noise2D(x+120, z-480, 1.0/256.0) - 0.5) * 1.35
 	spawnDistance := math.Sqrt(x*x + z*z)
@@ -685,7 +725,7 @@ func SampleSlope(x, z float64, c Climate) float64 {
 }
 
 func PickBiome(c Climate, height, slope float64) string {
-	if c.River > 0.65 {
+	if c.River > 0.72 {
 		if c.Temperature < 0.22 {
 			return "frozen_river"
 		}
@@ -742,6 +782,9 @@ func PickBiome(c Climate, height, slope float64) string {
 }
 
 func PickSurfaceBlock(biome string, height, slope float64, c Climate) string {
+	if biome == "river" || biome == "frozen_river" {
+		return "water"
+	}
 	if height < SeaLevel {
 		if c.Temperature < 0.18 {
 			return "ice"
@@ -773,22 +816,42 @@ func IsCaveAt(x, y, z, surfaceHeight int) bool {
 	depth := float64(surfaceHeight - y)
 	depthMask := smoothstep(8, 16, depth)
 
-	tunnel1 := math.Abs(noise3D(float64(x), float64(y), float64(z), 1.0/36.0)-0.5) * 2
-	tunnel2 := math.Abs(noise3D(float64(x+4100), float64(y-1200), float64(z+2200), 1.0/36.0)-0.5) * 2
+	tunnel1 := math.Abs(noise3D(float64(x), float64(y), float64(z), 1.0/34.0)-0.5) * 2
+	tunnel2 := math.Abs(noise3D(float64(x+4100), float64(y-1200), float64(z+2200), 1.0/42.0)-0.5) * 2
 
-	thickness := 0.07 + 0.04*noise3D(float64(x-2100), float64(y+3300), float64(z-1700), 1.0/64.0)
+	thickness := 0.035 + 0.025*noise3D(float64(x-2100), float64(y+3300), float64(z-1700), 1.0/64.0)
 
 	chamber := noise3D(float64(x+9100), float64(y-5100), float64(z+8600), 1.0/64.0)
 
-	return depthMask > 0 && ((tunnel1 < thickness && tunnel2 < thickness) || (chamber > 0.75))
+	return depthMask > 0 && ((tunnel1 < thickness && tunnel2 < thickness) || (chamber > 0.88 && tunnel1 < 0.18))
 }
 
 func sampleRiver(x, z float64) float64 {
 	riverA := math.Abs(noise2D(x+5200, z-3100, 1.0/900.0)-0.5) * 2
 	riverB := math.Abs(noise2D(x-2800, z+6100, 1.0/(900.0*1.35))-0.5) * 2
-	main := 1 - smoothstep(0.08, 0.24, math.Min(riverA, riverB))
-	tributary := 1 - smoothstep(0.044, 0.18, math.Max(0, math.Min(riverA, riverB)-0.04))
-	return math.Max(main, tributary*0.55)
+	main := 1 - smoothstep(0.018, 0.055, math.Min(riverA, riverB))
+	tributary := 1 - smoothstep(0.012, 0.04, math.Max(0, math.Min(riverA, riverB)-0.012))
+	return math.Max(main, tributary*0.35)
+}
+
+func OreVeinBlockAt(x, y, z, surfaceHeight int) string {
+	depth := surfaceHeight - y
+	if depth < 4 {
+		return ""
+	}
+	veinShape := noise3D(float64(x+1700), float64(y*2-900), float64(z-2300), 1.0/42.0)
+	veinCore := noise3D(float64(x-3300), float64(y+1100), float64(z+4200), 1.0/18.0)
+	if veinShape < 0.72 || veinCore < 0.54 {
+		return ""
+	}
+	roll := seededRand(float64(x/5), float64(z/5), float64(y/3)+5050)
+	if depth > 30 && roll < 0.18 {
+		return "gold_ore"
+	}
+	if depth > 14 && roll < 0.42 {
+		return "iron_ore"
+	}
+	return "coal_ore"
 }
 
 func sampleLake(x, z float64) float64 {

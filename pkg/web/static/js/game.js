@@ -197,6 +197,7 @@ class Game {
         this.deathReason = 'Respawning soon...';
         this.wasOnGroundForDamage = false;
         this.airbornePeakFeetY = null;
+        this.lastGroundFeetY = null;
         this.spawnInvincibilityTimer = 5.0;
         this.respawnPoint = this.loadRespawnPoint();
         this.lastSafePosition = null;
@@ -1438,6 +1439,7 @@ class Game {
         this.respawnTimer = 0;
         this.airbornePeakFeetY = null;
         this.wasOnGroundForDamage = false;
+        this.lastGroundFeetY = null;
         this.spawnInvincibilityTimer = 5.0;
         this.updateDeathScreen();
     }
@@ -1497,7 +1499,8 @@ class Game {
         const feetY = this.camera.position.y - this.cameraController.eyeHeight;
 
         if (!this.cameraController.onGround) {
-            this.airbornePeakFeetY = this.airbornePeakFeetY === null ? feetY : Math.max(this.airbornePeakFeetY, feetY);
+            const startingFeetY = this.wasOnGroundForDamage && this.lastGroundFeetY !== null ? this.lastGroundFeetY : feetY;
+            this.airbornePeakFeetY = this.airbornePeakFeetY === null ? startingFeetY : Math.max(this.airbornePeakFeetY, feetY);
         }
 
         if (this.spawnInvincibilityTimer > 0) {
@@ -1505,14 +1508,10 @@ class Game {
         }
 
         if (!this.wasOnGroundForDamage && this.cameraController.onGround && this.airbornePeakFeetY !== null) {
-            if (this.spawnInvincibilityTimer > 0) {
-                // Ignore fall damage while invincible
-            } else {
-                const fallDistance = this.airbornePeakFeetY - feetY;
-                if (fallDistance > 4.2) {
-                    const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
-                    this.applyDamage(damage, 'You died from fall damage');
-                }
+            const fallDistance = this.airbornePeakFeetY - feetY;
+            if (fallDistance > 4.2) {
+                const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
+                this.applyDamage(damage, 'You died from fall damage');
             }
             this.airbornePeakFeetY = null;
         }
@@ -1535,6 +1534,9 @@ class Game {
         }
 
         this.wasOnGroundForDamage = this.cameraController.onGround;
+        if (this.cameraController.onGround) {
+            this.lastGroundFeetY = feetY;
+        }
     }
 
     updateLocalMovementFeedback(delta) {
@@ -2540,7 +2542,8 @@ class Game {
     }
 
     updateAmbientMobs(delta) {
-        const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
+        const localPlayerPosition = this.getLocalPlayerPosition();
+        const playerPosition = new THREE.Vector3(localPlayerPosition.x, 0, localPlayerPosition.z);
 
         for (let i = this.ambientMobs.length - 1; i >= 0; i--) {
             const mob = this.ambientMobs[i];
@@ -2553,6 +2556,7 @@ class Game {
 
         if (this.world && this.world.activeChunks && this.ambientMobs.length < 55) {
             for (const key of this.world.activeChunks) {
+                if (!this.world.chunks || !this.world.chunks.has(key)) continue;
                 if (!this.spawnedChunks.has(key)) {
                     this.spawnedChunks.add(key);
                     if (Math.random() < 0.5) {
@@ -2595,9 +2599,12 @@ class Game {
 
             const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
             const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
+            const verticalDistanceToPlayer = Math.abs(mob.position.y - localPlayerPosition.y);
             const chaseDistance = mob.userData.species === 'cave_monster' ? 10 : 16;
+            const chaseVerticalDistance = mob.userData.species === 'cave_monster' ? 3.5 : 2.5;
+            const attackVerticalDistance = mob.userData.species === 'cave_monster' ? 2.2 : 1.4;
             const keepDistance = mob.userData.species === 'cave_monster' ? 4 : 0;
-            const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
+            const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance && verticalDistanceToPlayer <= chaseVerticalDistance;
             const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
             const isFollowingCat = mob.userData.species === 'cat' && this.followingCat === mob;
 
@@ -2645,7 +2652,7 @@ class Game {
                 mob.userData.direction += Math.PI * 0.75;
             }
 
-            if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
+            if (isChasing && distanceToPlayer < 1.2 && verticalDistanceToPlayer <= attackVerticalDistance && mob.userData.attackCooldown <= 0) {
                 this.applyDamage(mob.userData.species === 'spider' ? 2 : 4, `You were attacked by a ${mob.userData.species === 'spider' ? 'spider' : 'cave monster'}`);
                 mob.userData.attackCooldown = 1.2;
             }
@@ -4576,9 +4583,9 @@ class Game {
             return;
         }
 
-        this.world.update(x, z);
         const floorY = this.cameraController.getFloorY(x, z, 260);
         const y = floorY > -70 ? floorY + this.cameraController.eyeHeight + 0.2 : this.camera.position.y;
+        this.world.update(x, z, y);
         this.cameraController.setPosition({ x, y, z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch });
         this.lastSafePosition = this.cameraController.getPosition();
         this.receiveSystemMessage({ text: `Teleported to X ${Math.round(x)}, Z ${Math.round(z)}` });
@@ -4978,7 +4985,13 @@ class Game {
             this.resetMiningBlockVisual(true);
         }
 
-        const position = hit.object.userData.instancePositions[hit.instanceId];
+        let position = hit.object.userData.instancePositions[hit.instanceId];
+        if (hit.object.userData.typedInstancePositions) {
+            const offset = hit.instanceId * 3;
+            const positions = hit.object.userData.instancePositions;
+            if (offset + 2 >= positions.length) return;
+            position = { x: positions[offset], y: positions[offset + 1], z: positions[offset + 2] };
+        }
         if (!position) return;
 
         this.miningBlockVisual = {
@@ -5572,7 +5585,7 @@ class Game {
             this.updateDayNightCycle(delta);
             this.updateWeather(delta);
             this.updateUnderwaterEffect();
-            this.world.update(this.camera.position.x, this.camera.position.z);
+            this.world.update(this.camera.position.x, this.camera.position.z, this.camera.position.y);
             this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
@@ -5611,7 +5624,7 @@ class Game {
             this.updateWeather(delta);
             this.updateUnderwaterEffect();
             this.updateCaveLighting();
-            this.world.update(this.camera.position.x, this.camera.position.z);
+            this.world.update(this.camera.position.x, this.camera.position.z, this.camera.position.y);
             this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
             this.updateWorldNotes();
             this.updateWorldPings(delta);
@@ -5641,7 +5654,7 @@ class Game {
         this.updateCaveLighting();
         const playerAnchor = this.camera.position.clone();
         this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
-        this.world.update(this.camera.position.x, this.camera.position.z);
+        this.world.update(this.camera.position.x, this.camera.position.z, this.camera.position.y);
         this.world.updateSprayPaints(this.worldDay, this.timeOfDay);
         this.updateWorldNotes();
         this.updateWorldPings(delta);
