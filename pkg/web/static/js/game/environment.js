@@ -108,14 +108,28 @@ Object.assign(Game.prototype, {
         return colorA.clone().lerp(colorB, alpha);
     },
 
+    // True only when the rendered camera is below the visible water surface (not merely
+    // when the player's feet or body are in water).
+    isCameraUnderwater() {
+        const { x, y, z } = this.camera.position;
+        const blockX = Math.floor(x);
+        const blockY = Math.floor(y);
+        const blockZ = Math.floor(z);
+        if (this.world.getBlockTypeAt(blockX, blockY, blockZ) !== 'water') return false;
+        // A water cell with water above is full; the top one is drawn at WATER_SURFACE_HEIGHT.
+        if (this.world.getBlockTypeAt(blockX, blockY + 1, blockZ) === 'water') return true;
+        return y - blockY < WATER_SURFACE_HEIGHT;
+    },
+
     updateUnderwaterEffect() {
+        const underwater = this.isCameraUnderwater();
         const overlay = document.getElementById('underwater-overlay');
         if (overlay) {
-            overlay.style.opacity = this.cameraController.isInWater ? '1' : '0';
+            overlay.style.opacity = underwater ? '1' : '0';
         }
 
         if (!this.scene.fog) return;
-        if (this.cameraController.isInWater) {
+        if (underwater) {
             this.scene.fog.near = 3;
             this.scene.fog.far = this.rtxModeEnabled ? 24 : 18;
             this.scene.fog.color.copy(this.blendColors(this.scene.fog.color, new THREE.Color(0x356f9c), 0.6));
