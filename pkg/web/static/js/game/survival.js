@@ -160,7 +160,6 @@ Object.assign(Game.prototype, {
         this.healToFull();
         this.respawnPending = false;
         this.respawnTimer = 0;
-        this.airbornePeakFeetY = null;
         this.wasOnGroundForDamage = false;
         this.updateDeathScreen();
     },
@@ -212,26 +211,23 @@ Object.assign(Game.prototype, {
 
     updateSurvival(delta) {
         this.lastSafePositionSaveTimer += delta;
-        const feetY = this.camera.position.y - this.cameraController.eyeHeight;
 
         if (this.cameraController.spawnSettling) {
             // The join/respawn descent never counts as a fall.
-            this.airbornePeakFeetY = null;
+            this.cameraController.consumeLandingSpeed();
             this.wasOnGroundForDamage = true;
             return;
         }
 
-        if (!this.cameraController.onGround) {
-            this.airbornePeakFeetY = this.airbornePeakFeetY === null ? feetY : Math.max(this.airbornePeakFeetY, feetY);
-        }
-
-        if (!this.wasOnGroundForDamage && this.cameraController.onGround && this.airbornePeakFeetY !== null) {
-            const fallDistance = this.airbornePeakFeetY - feetY;
+        if (!this.wasOnGroundForDamage && this.cameraController.onGround) {
+            // Damage depends on impact speed, expressed as the equivalent free-fall height
+            // (v^2 / 2g). On land this matches the distance fallen; water braking reduces it.
+            const impactSpeed = this.cameraController.consumeLandingSpeed();
+            const fallDistance = (impactSpeed * impactSpeed) / (2 * 20);
             if (fallDistance > 4.2) {
                 const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
                 this.applyDamage(damage, 'You died from fall damage');
             }
-            this.airbornePeakFeetY = null;
         }
 
         if (this.camera.position.y < -35) {

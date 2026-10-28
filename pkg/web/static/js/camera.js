@@ -8,6 +8,10 @@ class CameraController {
         this.moveSpeed = 4.5;
         this.sprintSpeed = 6;
         this.jumpVelocity = 7.25;
+        // Downward speed (blocks/s) water removes per block of depth crossed on a fast entry.
+        this.waterDrag = 6;
+        // Downward speed at the last landing, consumed by fall damage.
+        this.landingSpeed = 0;
         this.lookSpeed = 0.002;
         // Walk up slabs automatically; full blocks still need a jump.
         this.stepHeight = 0.55;
@@ -336,7 +340,7 @@ class CameraController {
         
         if (feetY <= floorY + 0.001 && this.velocityY <= 0) {
             this.camera.position.y = floorY + this.eyeHeight;
-            this.velocityY = 0;
+            this.recordLanding();
             this.onGround = true;
         } else {
             this.onGround = false;
@@ -350,6 +354,9 @@ class CameraController {
         } else if (this.isInWater) {
             if (this.keys.jump || this.touchJump) {
                 this.velocityY = Math.min(4.8, this.velocityY + 0.85);
+            } else if (this.velocityY < -1.0) {
+                // Brake fast entries progressively, so deep water absorbs a long fall.
+                this.velocityY = Math.min(-1.0, this.velocityY - this.velocityY * this.waterDrag * delta);
             } else {
                 this.velocityY = Math.max(-1.0, this.velocityY - 0.04);
             }
@@ -369,7 +376,7 @@ class CameraController {
             const newFloorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, newFeetY);
             if (newFeetY <= newFloorY + 0.001) {
                 this.camera.position.y = newFloorY + this.eyeHeight;
-                this.velocityY = 0;
+                this.recordLanding();
                 this.onGround = true;
             } else {
                 this.camera.position.y = newY;
@@ -420,6 +427,18 @@ class CameraController {
         return false;
     }
 
+    recordLanding() {
+        if (!this.onGround) this.landingSpeed = Math.max(this.landingSpeed, -this.velocityY);
+        this.velocityY = 0;
+    }
+
+    // Returns the impact speed of the most recent landing once, then forgets it.
+    consumeLandingSpeed() {
+        const speed = this.landingSpeed;
+        this.landingSpeed = 0;
+        return speed;
+    }
+
     finishSpawnSettling() {
         this.spawnSettling = false;
         this.velocityY = 0;
@@ -432,6 +451,7 @@ class CameraController {
         this.pitch = position.pitch ?? this.pitch;
         this.velocityY = 0;
         this.onGround = false;
+        this.landingSpeed = 0;
         this.spawnSettling = true;
     }
     

@@ -197,7 +197,6 @@ class Game {
         this.respawnTimer = 0;
         this.deathReason = 'Respawning soon...';
         this.wasOnGroundForDamage = false;
-        this.airbornePeakFeetY = null;
         this.respawnPoint = this.loadRespawnPoint();
         this.lastSafePosition = null;
         this.lastSafePositionSaveTimer = 0;
@@ -1345,7 +1344,6 @@ class Game {
         this.updateLocalMovementFeedback(delta);
         this.updateDayNightCycle(delta);
         this.updateWeather(delta);
-        this.updateUnderwaterEffect();
         this.updateCaveLighting();
         const playerAnchor = this.camera.position.clone();
         this.playerAnchorPosition = { x: playerAnchor.x, y: playerAnchor.y, z: playerAnchor.z, yaw: this.cameraController.yaw, pitch: this.cameraController.pitch };
@@ -1371,6 +1369,8 @@ class Game {
         if (this.cameraViewMode !== 'first') {
             this.updateThirdPersonCamera(playerAnchor, delta);
         }
+        // Evaluated with the camera actually used for rendering (first or third person).
+        this.updateUnderwaterEffect();
         
         if (now - this.lastSelectionUpdate >= this.selectionUpdateInterval) {
             this.updateSelectionBox();
