@@ -65,6 +65,18 @@ class ChunkColumn {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.blocks = blocks || new Uint16Array(CHUNK_VOLUME);
+        // Indices of light-emitting blocks; rebuilt lazily after edits.
+        this.emitters = null;
+    }
+
+    getEmitters(emitterId) {
+        if (!this.emitters) {
+            this.emitters = [];
+            for (let index = 0; index < this.blocks.length; index++) {
+                if (this.blocks[index] === emitterId) this.emitters.push(index);
+            }
+        }
+        return this.emitters;
     }
 
     get(lx, y, lz) {
@@ -77,6 +89,7 @@ class ChunkColumn {
         const index = chunkIndex(lx, y, lz);
         if (this.blocks[index] === id) return false;
         this.blocks[index] = id;
+        this.emitters = null;
         return true;
     }
 }

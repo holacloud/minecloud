@@ -25,6 +25,8 @@ class WorldRenderer {
         // Variants of the block materials that multiply in per-vertex ambient occlusion.
         this.chunkMaterials = new Map();
         this.mesher = new ChunkMesher(this);
+        // 0 = torch light invisible (bright day) .. 1 = full strength (night, caves).
+        this.blockLightStrength = { value: 0.35 };
         this.hiddenBlock = null;
         this.textures = new Map();
         this.iconCache = new Map();
@@ -517,12 +519,6 @@ class WorldRenderer {
         return sprite;
     }
 
-    createTorchLight() {
-        const light = new THREE.PointLight(0xffd38a, this.rtxModeEnabled ? 3.4 : 2.2, this.rtxModeEnabled ? 16 : 13, 2);
-        light.castShadow = false;
-        return light;
-    }
-
     createLadderMesh(facing) {
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.92), this.getMaterial('ladder'));
         const offset = 0.492;
@@ -710,6 +706,26 @@ class WorldRenderer {
         return material;
     }
 
+    // Adds baked torch light (the `blockLight` vertex attribute) as warm emissive light,
+    // so lit blocks glow at night independently of the sun and ambient lights.
+    addBlockLight(material) {
+        const strength = this.blockLightStrength;
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.blockLightStrength = strength;
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', '#include <common>\nattribute float blockLight;\nvarying float vBlockLight;')
+                .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBlockLight = blockLight;');
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <common>', '#include <common>\nuniform float blockLightStrength;\nvarying float vBlockLight;')
+                .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.74, 0.45) * vBlockLight * blockLightStrength;');
+        };
+        material.customProgramCacheKey = () => 'block-light';
+    }
+
+    setBlockLightStrength(value) {
+        this.blockLightStrength.value = value;
+    }
+
     getChunkMaterial(type) {
         let material = this.chunkMaterials.get(type);
         if (material) return material;
@@ -717,6 +733,7 @@ class WorldRenderer {
         const withVertexColors = (base) => {
             const clone = base.clone();
             clone.vertexColors = true;
+            this.addBlockLight(clone);
             return clone;
         };
         const base = this.getMaterial(type);
@@ -821,7 +838,38 @@ class WorldRenderer {
         const column = this.columns.get(key);
         if (!column || column.blocks[index] === id) return false;
         column.blocks[index] = id;
+        column.emitters = null;
         return true;
+    }
+
+    // Whether a torch is close enough for a change at this block to alter its light.
+    hasLightEmitterNear(x, y, z) {
+        const torchId = this.registry.id('torch');
+        const { chunkX, chunkZ } = this.getChunkCoords(x, z);
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                const column = this.columns.get(this.chunkKey(chunkX + dx, chunkZ + dz));
+                if (!column) continue;
+                for (const index of column.getEmitters(torchId)) {
+                    const tx = (chunkX + dx) * CHUNK_SIZE + index % CHUNK_SIZE;
+                    const tz = (chunkZ + dz) * CHUNK_SIZE + Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
+                    const ty = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;
+                    if (Math.abs(tx - x) + Math.abs(ty - y) + Math.abs(tz - z) <= MAX_BLOCK_LIGHT) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Rebuilds the chunks affected by a change at (x, z). Light emitters reach one chunk in
+    // every direction (diagonals included); other changes only touch face neighbours.
+    rebuildAfterChange(x, z, affectsLight) {
+        const { chunkX, chunkZ } = this.getChunkCoords(x, z);
+        this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, this.activeChunks.has(this.chunkKey(chunkX, chunkZ)));
+        if (!affectsLight) return;
+        for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            if (this.activeChunks.has(this.chunkKey(chunkX + dx, chunkZ + dz))) this.rebuildChunk(chunkX + dx, chunkZ + dz);
+        }
     }
 
     removeChunkMesh(chunkKey) {
@@ -884,12 +932,6 @@ class WorldRenderer {
                     sprite.position.set(x - baseX + 0.5, y + 1.15, z - baseZ + 0.5);
                     chunk.add(sprite);
                 }
-            }
-
-            if (type === 'torch') {
-                const torchLight = this.createTorchLight();
-                torchLight.position.set(x - baseX + 0.5, y + 0.9, z - baseZ + 0.5);
-                chunk.add(torchLight);
             }
 
             if (type === 'ladder') {
@@ -1212,6 +1254,7 @@ class WorldRenderer {
         const x = Math.round(payload.x);
         const y = Math.round(payload.y);
         const z = Math.round(payload.z);
+        const previousType = this.getBlockTypeAt(x, y, z);
         const changed = this.setEditedBlock(x, y, z, payload.blockType);
         const key = this.blockKey(x, y, z);
         if (payload.blockType === 'sign' && Object.prototype.hasOwnProperty.call(payload, 'text')) {
@@ -1236,10 +1279,7 @@ class WorldRenderer {
 
         if (!changed) return false;
 
-        const { chunkX, chunkZ } = this.getChunkCoords(x, z);
-        const centerKey = this.chunkKey(chunkX, chunkZ);
-        this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, this.activeChunks.has(centerKey));
-
+        this.rebuildAfterChange(x, z, payload.blockType === 'torch' || previousType === 'torch' || this.hasLightEmitterNear(x, y, z));
         return true;
     }
 
@@ -1339,14 +1379,12 @@ class WorldRenderer {
         const blockX = Math.round(x);
         const blockY = Math.round(y);
         const blockZ = Math.round(z);
+        const previousType = this.getBlockTypeAt(blockX, blockY, blockZ);
         const changed = this.deleteBlockData(blockX, blockY, blockZ);
 
         if (!changed) return false;
 
-        const { chunkX, chunkZ } = this.getChunkCoords(blockX, blockZ);
-        const centerKey = this.chunkKey(chunkX, chunkZ);
-        this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, this.activeChunks.has(centerKey));
-
+        this.rebuildAfterChange(blockX, blockZ, previousType === 'torch' || this.hasLightEmitterNear(blockX, blockY, blockZ));
         return true;
     }
 
