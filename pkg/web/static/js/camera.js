@@ -196,6 +196,20 @@ class CameraController {
         return { x: resolvedX, z: resolvedZ, collided };
     }
 
+    // Whether a block of the given height placed at (x, y, z) would overlap the body of a
+    // player whose eyes are at `eye` (head included, so the camera never ends up in a block).
+    intersectsBody(eye, x, y, z, height = 1) {
+        const r = this.collisionRadius;
+        const px = eye.x;
+        const pz = eye.z;
+        const feetY = eye.y - this.eyeHeight;
+        const topY = Math.max(feetY + this.bodyHeight, eye.y + 0.15);
+        const epsilon = 0.001;
+        return px + r > x + epsilon && px - r < x + 1 - epsilon &&
+            pz + r > z + epsilon && pz - r < z + 1 - epsilon &&
+            topY > y + epsilon && feetY < y + height - epsilon;
+    }
+
     canStandAt(x, z, feetY) {
         return this.getCollisionBlocks(x, z, feetY).length === 0;
     }

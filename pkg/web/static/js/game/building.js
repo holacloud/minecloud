@@ -501,6 +501,10 @@ Object.assign(Game.prototype, {
             }
             if (itemDef && itemDef.itemOnly) return;
 
+            // Solid blocks may not be placed where the player stands (it would trap the camera).
+            const collisionHeight = this.world.registry.height[this.world.registry.id(blockType)];
+            if (collisionHeight > 0 && this.cameraController.intersectsBody(this.getLocalPlayerPosition(), newPos.x, newPos.y, newPos.z, collisionHeight)) return;
+
             const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
             if (blockType === 'sign') {
                 const text = this.promptSignText();
