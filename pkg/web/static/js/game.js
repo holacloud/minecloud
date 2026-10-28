@@ -1150,18 +1150,36 @@ class Game {
     }
 
     onWheel(event) {
+        // ?debugInput in the URL logs every wheel event and why it was (not) used.
+        const debug = this.debugInput ?? (this.debugInput = new URLSearchParams(location.search).has('debugInput'));
+        const log = (outcome) => {
+            if (debug) console.info('[wheel]', outcome, { deltaX: event.deltaX, deltaY: event.deltaY, deltaMode: event.deltaMode, shift: event.shiftKey, locked: document.pointerLockElement === this.renderer.domElement });
+        };
+
         // Gameplay state rather than the lock flag, so a lagging lock state never eats the wheel.
-        if (this.touchControlsEnabled || !this.isGameplayActive()) return;
-        if (event.deltaY === 0) return;
+        if (this.touchControlsEnabled || !this.isGameplayActive()) {
+            log('ignored: menu or overlay open');
+            return;
+        }
+        // With Shift held (crouching) browsers turn vertical wheel motion into deltaX.
+        const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+        if (delta === 0) {
+            log('ignored: no motion');
+            return;
+        }
 
         event.preventDefault();
 
         // Normalise lines/pages to pixels and accumulate, so touchpads and smooth-scrolling
         // wheels (many tiny deltas) step too; one mouse notch (~100 px) steps immediately.
         const scale = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 300 : 1;
-        this.wheelAccumulator = (this.wheelAccumulator || 0) + event.deltaY * scale;
+        this.wheelAccumulator = (this.wheelAccumulator || 0) + delta * scale;
         const now = performance.now();
-        if (Math.abs(this.wheelAccumulator) < 50 || now - (this.lastWheelStepAt || 0) < 60) return;
+        if (Math.abs(this.wheelAccumulator) < 50 || now - (this.lastWheelStepAt || 0) < 60) {
+            log('accumulating');
+            return;
+        }
+        log('step');
 
         const direction = this.wheelAccumulator > 0 ? 1 : -1;
         this.wheelAccumulator = 0;
