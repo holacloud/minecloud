@@ -4,6 +4,7 @@ class WorldRenderer {
         this.chunks = new Map();
         this.chunkBlocks = new Map();
         this.generatedChunks = new Set();
+        this.chunkBiomes = new Map();
         this.activeChunks = new Set();
         this.blockData = new Map();
         this.signTextByKey = new Map();
@@ -25,8 +26,7 @@ class WorldRenderer {
         this.materials = new Map();
         this.textures = new Map();
         this.iconCache = new Map();
-        this.textureLoader = new THREE.TextureLoader();
-        this.rtxAssetTextures = new Set(['grass', 'dirt', 'stone', 'sand', 'wood', 'planks', 'brick', 'glass', 'water', 'leaves']);
+        this.textureFactory = new BlockTextureFactory();
         this.tempMatrix = new THREE.Matrix4();
 
         this.lastPlayerChunkX = null;
@@ -112,7 +112,7 @@ class WorldRenderer {
         for (const source of slabSources) {
             const def = this.blockTypes[source];
             if (!def) continue;
-            this.blockTypes[`${source}_slab`] = { color: def.color, name: `${def.name} Slab`, breakDuration: Math.max(0.2, (def.breakDuration || 0.6) * 0.6), category: def.category || (source.includes('planks') ? 'wood' : 'stone') };
+            this.blockTypes[`${source}_slab`] = { color: def.color, name: `${def.name} Slab`, slabSource: source, breakDuration: Math.max(0.2, (def.breakDuration || 0.6) * 0.6), category: def.category || (source.includes('planks') ? 'wood' : 'stone') };
         }
 
         const materials = {
@@ -136,7 +136,7 @@ class WorldRenderer {
             ['pt', 'Platinum', 0xD7D2C4], ['au', 'Gold Element', 0xE4B83F], ['hg', 'Mercury', 0xB7C7D7], ['pb', 'Lead', 0x59616A]
         ];
         for (const [symbol, label, color] of elements) {
-            this.blockTypes[`element_${symbol}`] = { color, name: `${label} Block`, breakDuration: 0.9, category: 'element' };
+            this.blockTypes[`element_${symbol}`] = { color, name: `${label} Block`, breakDuration: 0.9, category: 'element', elementSymbol: symbol.charAt(0).toUpperCase() + symbol.slice(1) };
         }
 
         const toolMaterials = { wood: 0x8B6914, stone: 0x808080, iron: 0xC8CDD2, gold: 0xE4B83F };
@@ -200,7 +200,8 @@ class WorldRenderer {
             for (let j = 0; j < corners.length; j++) {
                 const [x, y, z, u, v] = corners[j];
                 positions.push(x * cos + z * sin, y, -x * sin + z * cos);
-                normals.push(sin, 0, cos);
+                // Upward normals light cross-planes like the ground they stand on.
+                normals.push(0, 1, 0);
                 uvs.push(u, v);
             }
 
@@ -368,9 +369,12 @@ class WorldRenderer {
     }
 
     disposeCache(cache) {
+        const disposed = new Set();
         for (const value of cache.values()) {
-            if (value && typeof value.dispose === 'function') {
-                value.dispose();
+            for (const item of Array.isArray(value) ? value : [value]) {
+                if (!item || disposed.has(item) || typeof item.dispose !== 'function') continue;
+                disposed.add(item);
+                item.dispose();
             }
         }
         cache.clear();
@@ -403,40 +407,28 @@ class WorldRenderer {
         }
     }
 
-    getAssetTexture(type) {
-        const cacheKey = `asset:${type}`;
-        let texture = this.textures.get(cacheKey);
-        if (texture) return texture;
-
-        texture = this.textureLoader.load(`textures/rtx/${type}.svg`);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.anisotropy = 4;
-        texture.magFilter = THREE.LinearFilter;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        if (THREE.sRGBEncoding) {
-            texture.encoding = THREE.sRGBEncoding;
-        }
-        this.textures.set(cacheKey, texture);
-        return texture;
-    }
-
     getInventoryIconUrl(type) {
         const cacheKey = `${this.rtxModeEnabled ? 'rtx' : 'base'}:icon:${type}`;
         let icon = this.iconCache.get(cacheKey);
         if (icon) return icon;
 
-        if (this.rtxModeEnabled && this.rtxAssetTextures.has(type)) {
-            icon = `textures/rtx/${type}.svg`;
-            this.iconCache.set(cacheKey, icon);
-            return icon;
+        const size = 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        const def = this.blockTypes[type] || {};
+        const faces = this.getFaceTextureSpecs(type);
+
+        if (def.itemOnly) {
+            this.textureFactory.drawItemIcon(ctx, size, def);
+        } else if (this.isAlphaCutoutType(type) && type !== 'leaves' && !type.endsWith('_leaves') || type === 'spray_paint') {
+            ctx.drawImage(this.generateFaceCanvas(faces.side), size * 0.1, size * 0.1, size * 0.8, size * 0.8);
+        } else {
+            this.textureFactory.drawCubeIcon(ctx, size, this.generateFaceCanvas(faces.top), this.generateFaceCanvas(faces.side), this.generateFaceCanvas(faces.side));
         }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 48;
-        canvas.height = 48;
-        const ctx = canvas.getContext('2d');
-        this.paintTexture(ctx, type, canvas.width);
         icon = canvas.toDataURL();
         this.iconCache.set(cacheKey, icon);
         return icon;
@@ -542,6 +534,7 @@ class WorldRenderer {
         }
         mesh.position.y = 0.5;
         mesh.userData.blockType = 'ladder';
+        mesh.userData.ownsGeometry = true;
         return mesh;
     }
 
@@ -550,500 +543,83 @@ class WorldRenderer {
         return def ? !def.fluid && def.solid !== false : false;
     }
 
-    textureNoise(x, y, seed) {
-        const n = Math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453;
-        return n - Math.floor(n);
-    }
+    // Which procedural pattern (and tint) each face of a block uses.
+    // Returns { top, side, bottom }, each { pattern, tint, label }.
+    getFaceTextureSpecs(type) {
+        const def = this.blockTypes[type] || {};
+        if (def.slabSource) return this.getFaceTextureSpecs(def.slabSource);
 
-    hexToRgb(hex) {
-        return {
-            r: (hex >> 16) & 255,
-            g: (hex >> 8) & 255,
-            b: hex & 255
-        };
-    }
+        const spec = (pattern, tint = null, label = null) => ({ pattern, tint, label });
+        const uniform = (face) => ({ top: face, side: face, bottom: face });
+        const category = def.category;
 
-    shadeColor(hex, amount) {
-        const rgb = this.hexToRgb(hex);
-        const clamp = (value) => Math.max(0, Math.min(255, Math.round(value)));
-
-        return `rgb(${clamp(rgb.r + amount)}, ${clamp(rgb.g + amount)}, ${clamp(rgb.b + amount)})`;
-    }
-
-    paintPaletteTexture(ctx, size, palette, seed, alpha = 1) {
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-                const noise = this.textureNoise(x, y, seed);
-                const color = palette[Math.min(palette.length - 1, Math.floor(noise * palette.length))];
-                ctx.fillStyle = alpha === 1 ? this.shadeColor(color, 0) : this.shadeColor(color, 0).replace('rgb', 'rgba').replace(')', `, ${alpha})`);
-                ctx.fillRect(x, y, 1, 1);
-            }
-        }
-    }
-
-    paintHeightTexture(ctx, type, size) {
-        const patternType = this.getTexturePatternType(type);
-        const seed = type.length * 23;
-
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-                let noise = this.textureNoise(x, y, seed);
-
-                if (patternType === 'wood' || patternType === 'planks') {
-                    noise = (noise * 0.38) + ((Math.sin((x / size) * Math.PI * 8) * 0.5 + 0.5) * 0.48) + ((y % 6) / 6) * 0.08;
-                } else if (patternType === 'stone' || patternType === 'cobblestone' || patternType.endsWith('_ore')) {
-                    noise = (noise * 0.55) + this.textureNoise(x * 0.7, y * 0.7, seed + 7) * 0.25 + this.textureNoise(x * 0.18, y * 0.18, seed + 17) * 0.2;
-                } else if (patternType === 'grass' || patternType === 'leaves') {
-                    noise = (noise * 0.46) + this.textureNoise(x * 1.2, y * 1.2, seed + 13) * 0.3 + ((1 - y / size) * 0.24);
-                } else if (patternType === 'sand') {
-                    noise = (noise * 0.5) + ((Math.sin((x / size) * Math.PI * 10 + y * 0.15) * 0.5 + 0.5) * 0.22) + this.textureNoise(x * 0.9, y * 0.9, seed + 31) * 0.28;
-                } else if (patternType === 'brick' || patternType === 'stone_bricks') {
-                    noise = (noise * 0.42) + ((x % 8) / 8) * 0.12 + ((y % 5) / 5) * 0.16 + this.textureNoise(x * 0.4, y * 0.4, seed + 21) * 0.3;
-                } else if (patternType === 'glass') {
-                    noise = 0.18 + this.textureNoise(x * 0.2, y * 0.2, seed + 11) * 0.08 + ((x + y) % 13) / 13 * 0.04;
-                } else if (patternType === 'water') {
-                    noise = 0.15 + this.textureNoise(x * 0.4, y * 0.4, seed + 19) * 0.1 + ((Math.sin((x + y) * 0.25) * 0.5 + 0.5) * 0.07);
-                } else if (patternType === 'bed') {
-                    noise = (y < size * 0.48 ? 0.45 : 0.72) + this.textureNoise(x * 0.6, y * 0.6, seed + 15) * 0.12;
-                } else if (patternType === 'cactus') {
-                    noise = (noise * 0.38) + ((x % 5) / 5) * 0.42 + ((y % 7) / 7) * 0.08;
-                }
-
-                const value = Math.max(0, Math.min(255, Math.round(noise * 255)));
-                ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
-                ctx.fillRect(x, y, 1, 1);
-            }
-        }
-    }
-
-    applyRTXSurfaceDetail(ctx, type, size, seed) {
-        type = this.getTexturePatternType(type);
-        const overlay = (strength, colorFn, threshold = 0.58, scale = 1.7) => {
-            ctx.globalAlpha = strength;
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    const noise = this.textureNoise(x * scale, y * scale, seed + 101);
-                    if (noise < threshold) continue;
-                    ctx.fillStyle = colorFn(noise, x, y);
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
-            ctx.globalAlpha = 1;
-        };
-
-        const linePass = (strength, spacing, colorFn, vertical = true, wave = 0) => {
-            ctx.globalAlpha = strength;
-            if (vertical) {
-                for (let x = 0; x < size; x += spacing) {
-                    for (let y = 0; y < size; y++) {
-                        const xx = Math.max(0, Math.min(size - 1, Math.round(x + Math.sin(y * 0.18 + x * 0.07) * wave)));
-                        ctx.fillStyle = colorFn(xx, y);
-                        ctx.fillRect(xx, y, 1, 1);
-                    }
-                }
-            } else {
-                for (let y = 0; y < size; y += spacing) {
-                    for (let x = 0; x < size; x++) {
-                        const yy = Math.max(0, Math.min(size - 1, Math.round(y + Math.sin(x * 0.18 + y * 0.09) * wave)));
-                        ctx.fillStyle = colorFn(x, yy);
-                        ctx.fillRect(x, yy, 1, 1);
-                    }
-                }
-            }
-            ctx.globalAlpha = 1;
-        };
-
-        if (type === 'grass') {
-            overlay(0.18, (_noise, _x, y) => y < size * 0.45 ? '#8fbe52' : '#4f7627', 0.48, 1.35);
-            linePass(0.12, Math.max(2, Math.floor(size / 20)), (_x, _y) => '#5f8f30', false, 1);
-        } else if (type === 'dirt' || type === 'sand') {
-            if (type === 'sand') {
-                overlay(0.16, (noise) => noise > 0.8 ? '#f3e6b0' : '#cdb46e', 0.5, 0.95);
-                linePass(0.1, Math.max(3, Math.floor(size / 16)), (_x, _y) => '#dec98a', false, 1.4);
-            } else {
-                overlay(0.18, (noise) => noise > 0.8 ? '#a46d38' : '#5d3417', 0.54, 1.1);
-            }
-        } else if (type === 'stone' || type === 'cobblestone') {
-            overlay(0.16, (noise) => noise > 0.82 ? '#bdbdbd' : '#4f4f4f', 0.52, 1);
-            overlay(0.1, (noise, x, y) => (x + y) % 17 < 3 ? '#8d8d8d' : '#595959', 0.62, 0.55);
-        } else if (type === 'wood' || type === 'planks') {
-            overlay(0.14, (noise) => noise > 0.84 ? '#b8874d' : '#5f3d12', 0.55, 0.9);
-            linePass(0.16, Math.max(3, Math.floor(size / 18)), (x, _y) => x % 14 < 2 ? '#4a2e12' : '#a06d34', true, 0.9);
-        } else if (type === 'water') {
-            overlay(0.1, (_noise, x, y) => ((x + y) % 13) < 4 ? '#cbe6ff' : '#275d93', 0.5, 0.7);
-            linePass(0.07, Math.max(4, Math.floor(size / 14)), (_x, _y) => '#d8efff', false, 1.8);
-        } else if (type === 'leaves') {
-            overlay(0.18, (noise) => noise > 0.8 ? '#7fb656' : '#355c24', 0.5, 1.25);
-        } else if (type === 'brick' || type === 'stone_bricks') {
-            overlay(0.12, (noise) => noise > 0.82 ? '#d9cdb5' : '#5e5e5e', 0.58, 0.8);
-            linePass(0.08, type === 'brick' ? Math.max(4, Math.floor(size / 12)) : Math.max(5, Math.floor(size / 11)), (_x, _y) => type === 'brick' ? '#5e2f27' : '#5d5d5d', false, 0);
-        } else if (type === 'glass') {
-            overlay(0.08, (_noise, x, y) => (x + y) % 21 < 2 ? '#ffffff' : '#9dd7f4', 0.64, 0.45);
-            linePass(0.06, Math.max(7, Math.floor(size / 10)), (_x, _y) => '#dff7ff', true, 0);
-        } else if (type === 'bed') {
-            overlay(0.1, (_noise, _x, y) => y < size * 0.5 ? '#8a3030' : '#f4eee1', 0.56, 1);
-        } else if (type === 'cactus') {
-            linePass(0.18, Math.max(3, Math.floor(size / 16)), (_x, _y) => '#275f25', true, 0.2);
-            overlay(0.08, (_noise) => '#82c469', 0.74, 0.8);
-        } else if (type === 'ladder') {
-            ctx.clearRect(0, 0, size, size);
-            const railWidth = Math.max(5, Math.round(size * 0.12));
-            const rungHeight = Math.max(5, Math.round(size * 0.085));
-            const leftRail = Math.round(size * 0.18);
-            const rightRail = Math.round(size * 0.7);
-            const rungLeft = Math.round(size * 0.18);
-            const rungWidth = Math.round(size * 0.64);
-            ctx.fillStyle = '#5f3518';
-            ctx.fillRect(leftRail - 2, 0, railWidth + 4, size);
-            ctx.fillRect(rightRail - 2, 0, railWidth + 4, size);
-            ctx.fillStyle = '#9b632e';
-            ctx.fillRect(leftRail, 0, railWidth, size);
-            ctx.fillRect(rightRail, 0, railWidth, size);
-            ctx.fillStyle = '#d49a55';
-            ctx.fillRect(leftRail + 2, 0, 2, size);
-            ctx.fillRect(rightRail + 2, 0, 2, size);
-            for (let y = Math.round(size * 0.16); y < size * 0.9; y += Math.round(size * 0.22)) {
-                ctx.fillStyle = '#5f3518';
-                ctx.fillRect(rungLeft - 2, y + 2, rungWidth + 4, rungHeight + 2);
-                ctx.fillStyle = '#9b632e';
-                ctx.fillRect(rungLeft, y, rungWidth, rungHeight);
-                ctx.fillStyle = '#d49a55';
-                ctx.fillRect(rungLeft + 2, y, rungWidth - 4, 2);
-            }
-        } else {
-            overlay(0.14, (noise) => noise > 0.82 ? '#f0e6d2' : '#2d2d2d', 0.58, 1);
-        }
-    }
-
-    paintTexture(ctx, type, size) {
-        const def = this.blockTypes[type];
-        const patternType = this.getTexturePatternType(type);
-        const seed = type.length * 17;
-
-        ctx.clearRect(0, 0, size, size);
-
-        if (patternType !== type) {
-            if (patternType === 'leaves' && type.endsWith('_leaves')) {
-                for (let y = 0; y < size; y++) {
-                    for (let x = 0; x < size; x++) {
-                        const noise = this.textureNoise(x, y, seed);
-                        if (noise < 0.18) continue;
-                        const color = noise > 0.7 ? this.offsetHex(def.color, 26) : def.color;
-                        ctx.fillStyle = this.shadeColor(color, 0);
-                        ctx.fillRect(x, y, 1, 1);
-                    }
-                }
-                return;
-            }
-            this.paintPaletteTexture(ctx, size, [this.offsetHex(def.color, -24), def.color, this.offsetHex(def.color, 24)], seed, def.transparent ? 0.82 : 1);
-            ctx.fillStyle = this.shadeColor(this.offsetHex(def.color, -42), 0);
-            if (patternType === 'brick' || patternType === 'stone_bricks') {
-                for (let y = 0; y < size; y += 5) ctx.fillRect(0, y, size, 1);
-                for (let y = 1; y < size; y += 5) {
-                    const offset = (Math.floor(y / 5) % 2) * 4;
-                    for (let x = -offset; x < size; x += 8) ctx.fillRect(x, y, 1, 4);
-                }
-            } else if (patternType === 'wood') {
-                for (let x = 2; x < size; x += 5) ctx.fillRect(x, 0, 1, size);
-            } else if (patternType === 'planks') {
-                for (let y = 0; y < size; y += 4) ctx.fillRect(0, y, size, 1);
-                for (let x = 2; x < size; x += 6) ctx.fillRect(x, 0, 1, size);
-            }
-            return;
+        switch (type) {
+            case 'grass': return { top: spec('grass_top'), side: spec('grass_side'), bottom: spec('dirt') };
+            case 'wood': return { top: spec('log_top', 0x7a5a32), side: spec('log_side', 0x7a5a32), bottom: spec('log_top', 0x7a5a32) };
+            case 'cactus': return { top: spec('cactus_top'), side: spec('cactus_side'), bottom: spec('cactus_top') };
+            case 'coal_ore': return uniform(spec('ore', 0x2a2a2c));
+            case 'iron_ore': return uniform(spec('ore', 0xd2a27c));
+            case 'gold_ore': return uniform(spec('ore', 0xf2cc48));
+            case 'planks': return uniform(spec('planks', 0xb48a56));
+            case 'leaves': return uniform(spec('leaves', 0x4a8a34));
+            case 'brick': return uniform(spec('brick', 0x9c4a36));
+            case 'flower_red': return uniform(spec('flower', 0xd04848));
+            case 'flower_yellow': return uniform(spec('flower', 0xe8c840));
+            case 'mushroom_red': return uniform(spec('mushroom', 0xb74b43));
+            case 'mushroom_brown': return uniform(spec('mushroom', 0x8b6540));
+            case 'obsidian': return uniform(spec('obsidian'));
+            case 'marble': case 'limestone': case 'concrete': case 'slate': case 'basalt': case 'granite':
+                return uniform(spec('smooth', def.color));
+            case 'copper_block': case 'iron_block': case 'gold_block':
+                return uniform(spec('metal', def.color));
+            case 'dirt': case 'stone': case 'cobblestone': case 'sand': case 'bedrock': case 'stone_bricks':
+            case 'glass': case 'water': case 'bed': case 'sign': case 'sound_block': case 'torch':
+            case 'ladder': case 'tall_grass': case 'spray_paint':
+                return uniform(spec(type));
         }
 
-        switch (patternType) {
-            case 'grass':
-                this.paintPaletteTexture(ctx, size, [0x3E6B24, 0x4C7E2C, 0x5B8C35, 0x6C9D3F], seed);
-                break;
-            case 'tall_grass':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#74b64b';
-                for (let i = 0; i < 7; i++) {
-                    const px = 2 + i * 2;
-                    const height = 6 + (i % 3) * 3;
-                    ctx.fillRect(px, size - height, 2, height);
-                }
-                break;
-            case 'flower_red':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#4d8f37';
-                ctx.fillRect(size * 0.45, size * 0.35, size * 0.1, size * 0.65);
-                ctx.fillStyle = '#cc4747';
-                ctx.fillRect(size * 0.2, size * 0.08, size * 0.6, size * 0.24);
-                ctx.fillRect(size * 0.36, 0, size * 0.28, size * 0.44);
-                break;
-            case 'flower_yellow':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#4d8f37';
-                ctx.fillRect(size * 0.45, size * 0.35, size * 0.1, size * 0.65);
-                ctx.fillStyle = '#e3cf5b';
-                ctx.fillRect(size * 0.2, size * 0.08, size * 0.6, size * 0.24);
-                ctx.fillRect(size * 0.36, 0, size * 0.28, size * 0.44);
-                break;
-            case 'mushroom_red':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#f4e7cf';
-                ctx.fillRect(size * 0.43, size * 0.4, size * 0.14, size * 0.6);
-                ctx.fillStyle = '#bf4a42';
-                ctx.fillRect(size * 0.18, size * 0.08, size * 0.64, size * 0.34);
-                ctx.fillStyle = '#f4e7cf';
-                ctx.fillRect(size * 0.3, size * 0.18, size * 0.12, size * 0.08);
-                ctx.fillRect(size * 0.58, size * 0.16, size * 0.1, size * 0.08);
-                break;
-            case 'mushroom_brown':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#f4e7cf';
-                ctx.fillRect(size * 0.43, size * 0.4, size * 0.14, size * 0.6);
-                ctx.fillStyle = '#8b6540';
-                ctx.fillRect(size * 0.18, size * 0.08, size * 0.64, size * 0.34);
-                break;
-            case 'torch':
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = '#6b4a2b';
-                ctx.fillRect(size * 0.44, size * 0.28, size * 0.12, size * 0.7);
-                ctx.fillStyle = '#f4c54d';
-                ctx.fillRect(size * 0.34, size * 0.06, size * 0.32, size * 0.28);
-                ctx.fillStyle = '#fff0a6';
-                ctx.fillRect(size * 0.4, 0, size * 0.2, size * 0.12);
-                break;
-            case 'ladder': {
-                ctx.fillStyle = 'rgba(0,0,0,0)';
-                ctx.fillRect(0, 0, size, size);
-
-                const railWidth = Math.max(2, Math.round(size * 0.13));
-                const rungHeight = Math.max(2, Math.round(size * 0.1));
-                const leftRail = Math.round(size * 0.18);
-                const rightRail = Math.round(size * 0.69);
-                const rungLeft = Math.round(size * 0.18);
-                const rungWidth = Math.round(size * 0.64);
-                const wood = '#9b632e';
-                const light = '#d49a55';
-                const dark = '#5f3518';
-
-                ctx.fillStyle = dark;
-                ctx.fillRect(leftRail - 1, 1, railWidth + 2, size - 2);
-                ctx.fillRect(rightRail - 1, 1, railWidth + 2, size - 2);
-                ctx.fillStyle = wood;
-                ctx.fillRect(leftRail, 0, railWidth, size);
-                ctx.fillRect(rightRail, 0, railWidth, size);
-                ctx.fillStyle = light;
-                ctx.fillRect(leftRail + 1, 0, 1, size);
-                ctx.fillRect(rightRail + 1, 0, 1, size);
-
-                for (let y = Math.round(size * 0.16); y < size * 0.9; y += Math.round(size * 0.22)) {
-                    ctx.fillStyle = dark;
-                    ctx.fillRect(rungLeft - 1, y + 1, rungWidth + 2, rungHeight + 1);
-                    ctx.fillStyle = wood;
-                    ctx.fillRect(rungLeft, y, rungWidth, rungHeight);
-                    ctx.fillStyle = light;
-                    ctx.fillRect(rungLeft + 1, y, rungWidth - 2, 1);
-                }
-                break;
-            }
-            case 'dirt':
-                this.paintPaletteTexture(ctx, size, [0x6E431D, 0x7A4A22, 0x8B5A2B, 0x9D6832], seed);
-                break;
-            case 'stone':
-                this.paintPaletteTexture(ctx, size, [0x666666, 0x787878, 0x808080, 0x909090], seed);
-                break;
-            case 'sand':
-                this.paintPaletteTexture(ctx, size, [0xD9C67E, 0xE2CF88, 0xE8D894, 0xF0E1A5], seed);
-                break;
-            case 'bedrock':
-                this.paintPaletteTexture(ctx, size, [0x0F0F0F, 0x171717, 0x1A1A1A, 0x242424], seed);
-                break;
-            case 'coal_ore':
-                this.paintPaletteTexture(ctx, size, [0x6C6C6C, 0x808080, 0x8C8C8C], seed);
-                ctx.fillStyle = this.shadeColor(0x2D2D2D, 0);
-                for (let i = 0; i < 18; i++) {
-                    const px = Math.floor(this.textureNoise(i, 2, seed) * size);
-                    const py = Math.floor(this.textureNoise(i, 5, seed) * size);
-                    ctx.fillRect(px, py, 2, 2);
-                }
-                break;
-            case 'iron_ore':
-                this.paintPaletteTexture(ctx, size, [0x6C6C6C, 0x808080, 0x8C8C8C], seed);
-                ctx.fillStyle = this.shadeColor(0xB87E56, 0);
-                for (let i = 0; i < 16; i++) {
-                    const px = Math.floor(this.textureNoise(i, 7, seed) * size);
-                    const py = Math.floor(this.textureNoise(i, 11, seed) * size);
-                    ctx.fillRect(px, py, 2, 2);
-                }
-                break;
-            case 'gold_ore':
-                this.paintPaletteTexture(ctx, size, [0x6C6C6C, 0x808080, 0x8C8C8C], seed);
-                ctx.fillStyle = this.shadeColor(0xD4AF37, 0);
-                for (let i = 0; i < 14; i++) {
-                    const px = Math.floor(this.textureNoise(i, 13, seed) * size);
-                    const py = Math.floor(this.textureNoise(i, 17, seed) * size);
-                    ctx.fillRect(px, py, 2, 2);
-                }
-                break;
-            case 'wood':
-                this.paintPaletteTexture(ctx, size, [0x6D4C16, 0x7B5718, 0x8B6914, 0x9A741C], seed);
-                ctx.fillStyle = this.shadeColor(0x5B3E12, 0);
-                for (let x = 0; x < size; x += 4) {
-                    ctx.fillRect(x, 0, 1, size);
-                }
-                break;
-            case 'planks':
-                this.paintPaletteTexture(ctx, size, [0xB88F5D, 0xC09A68, 0xC8A675, 0xD2B181], seed);
-                ctx.fillStyle = this.shadeColor(0x8F6B3E, 0);
-                for (let y = 0; y < size; y += 4) {
-                    ctx.fillRect(0, y, size, 1);
-                }
-                ctx.fillStyle = this.shadeColor(0x7B5B34, 0);
-                for (let x = 2; x < size; x += 6) {
-                    ctx.fillRect(x, 0, 1, size);
-                }
-                break;
-            case 'cactus':
-                this.paintPaletteTexture(ctx, size, [0x2F6E29, 0x3A7E31, 0x3F8D37, 0x5AA34A], seed);
-                ctx.fillStyle = this.shadeColor(0x2A5D25, 0);
-                for (let x = 1; x < size; x += 4) {
-                    ctx.fillRect(x, 0, 1, size);
-                }
-                ctx.fillStyle = this.shadeColor(0x7DBD63, 0);
-                for (let y = 1; y < size; y += 5) {
-                    ctx.fillRect(0, y, size, 1);
-                }
-                break;
-            case 'bed':
-                ctx.fillStyle = this.shadeColor(0xEEE7D2, 0);
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = this.shadeColor(0xC05050, 0);
-                ctx.fillRect(0, 0, size, size * 0.48);
-                ctx.fillStyle = this.shadeColor(0x6B3F21, 0);
-                ctx.fillRect(0, size * 0.7, size, size * 0.18);
-                ctx.fillStyle = this.shadeColor(0x8B5A2B, 0);
-                ctx.fillRect(0, size * 0.52, size, size * 0.14);
-                ctx.fillStyle = this.shadeColor(0xFFF6E0, 0);
-                ctx.fillRect(size * 0.1, size * 0.08, size * 0.3, size * 0.18);
-                break;
-            case 'sign':
-                ctx.fillStyle = this.shadeColor(0xC79A62, 0);
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = this.shadeColor(0x8A5E2F, 0);
-                for (let y = 0; y < size; y += 5) {
-                    ctx.fillRect(0, y, size, 1);
-                }
-                ctx.fillStyle = this.shadeColor(0x6D4820, 0);
-                ctx.fillRect(size * 0.45, size * 0.65, size * 0.1, size * 0.35);
-                ctx.fillStyle = this.shadeColor(0xEAD4AF, 0);
-                ctx.fillRect(size * 0.14, size * 0.16, size * 0.72, size * 0.28);
-                break;
-            case 'brick':
-                ctx.fillStyle = this.shadeColor(0x864030, 0);
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = this.shadeColor(0xA03020, 0);
-                for (let y = 1; y < size; y += 4) {
-                    const offset = (Math.floor(y / 4) % 2) * 3;
-                    for (let x = -offset; x < size; x += 6) {
-                        ctx.fillRect(x + 1, y, 5, 3);
-                    }
-                }
-                break;
-            case 'stone_bricks':
-                ctx.fillStyle = this.shadeColor(0x7B7B7B, 0);
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = this.shadeColor(0x999999, 0);
-                for (let y = 1; y < size; y += 5) {
-                    const offset = (Math.floor(y / 5) % 2) * 4;
-                    for (let x = -offset; x < size; x += 8) {
-                        ctx.fillRect(x + 1, y, 7, 4);
-                    }
-                }
-                ctx.fillStyle = this.shadeColor(0x666666, 0);
-                for (let y = 0; y < size; y += 5) {
-                    ctx.fillRect(0, y, size, 1);
-                }
-                for (let x = 0; x < size; x += 8) {
-                    ctx.fillRect(x, 0, 1, size);
-                }
-                break;
-            case 'cobblestone':
-                ctx.fillStyle = this.shadeColor(0x5A5A5A, 0);
-                ctx.fillRect(0, 0, size, size);
-                ctx.fillStyle = this.shadeColor(0x808080, 0);
-                for (let y = 0; y < size; y += 4) {
-                    const offset = (Math.floor(y / 4) % 2) * 2;
-                    for (let x = -offset; x < size; x += 5) {
-                        ctx.fillRect(x + 1, y + 1, 4, 3);
-                    }
-                }
-                break;
-            case 'glass':
-                ctx.fillStyle = 'rgba(195, 235, 247, 0.38)';
-                ctx.fillRect(0, 0, size, size);
-                ctx.strokeStyle = 'rgba(230, 250, 255, 0.45)';
-                ctx.lineWidth = Math.max(1, size / 18);
-                ctx.strokeRect(1, 1, size - 2, size - 2);
-                ctx.strokeRect(size * 0.25, size * 0.25, size * 0.5, size * 0.5);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-                ctx.fillRect(size * 0.16, size * 0.12, size * 0.22, size * 0.6);
-                break;
-            case 'leaves':
-                for (let y = 0; y < size; y++) {
-                    for (let x = 0; x < size; x++) {
-                        const noise = this.textureNoise(x, y, seed);
-                        if (noise < 0.18) continue;
-                        const color = noise > 0.7 ? 0x62A043 : 0x4E8F36;
-                        ctx.fillStyle = this.shadeColor(color, 0);
-                        ctx.fillRect(x, y, 1, 1);
-                    }
-                }
-                break;
-            case 'water':
-                for (let y = 0; y < size; y++) {
-                    for (let x = 0; x < size; x++) {
-                        const ripple = (x + y + Math.floor(this.textureNoise(x, y, seed) * 3)) % 5 === 0;
-                        const color = ripple ? 0x6DA8E0 : 0x3D85C6;
-                        ctx.fillStyle = `rgba(${this.hexToRgb(color).r}, ${this.hexToRgb(color).g}, ${this.hexToRgb(color).b}, 0.75)`;
-                        ctx.fillRect(x, y, 1, 1);
-                    }
-                }
-                break;
-            default:
-                this.paintPaletteTexture(ctx, size, [def.color - 0x111111, def.color, def.color + 0x111111], seed);
-                break;
-        }
-
-        if (this.rtxModeEnabled) {
-            this.applyRTXSurfaceDetail(ctx, type, size, seed);
-        }
+        if (def.elementSymbol) return uniform(spec('element', def.color, def.elementSymbol));
+        if (type.endsWith('_wood')) return { top: spec('log_top', def.color), side: spec('log_side', def.color), bottom: spec('log_top', def.color) };
+        if (type.endsWith('_planks')) return uniform(spec('planks', def.color));
+        if (type.endsWith('_leaves')) return uniform(spec('leaves', def.color));
+        if (type.endsWith('_brick')) return uniform(spec('brick', def.color));
+        if (category === 'wool') return uniform(spec('wool', def.color));
+        return uniform(spec('generic', def.color));
     }
 
-    getTexture(type, kind = 'albedo') {
-        const cacheKey = `${this.rtxModeEnabled ? 'rtx' : 'base'}:${kind}:${type}`;
+    textureSize() {
+        return this.rtxModeEnabled ? 128 : 16;
+    }
+
+    generateFaceTextures(faceSpec) {
+        return this.textureFactory.generate(faceSpec.pattern, {
+            tint: faceSpec.tint,
+            label: faceSpec.label,
+            // Labels (element symbols) need a few more pixels to stay legible.
+            size: faceSpec.label ? Math.max(32, this.textureSize()) : this.textureSize(),
+            hd: this.rtxModeEnabled
+        });
+    }
+
+    generateFaceCanvas(faceSpec) {
+        return this.generateFaceTextures(faceSpec).albedo;
+    }
+
+    getTexture(faceSpec, kind = 'albedo') {
+        const cacheKey = `${this.rtxModeEnabled ? 'rtx' : 'base'}:${kind}:${faceSpec.pattern}:${faceSpec.tint}:${faceSpec.label || ''}`;
         let texture = this.textures.get(cacheKey);
         if (texture) return texture;
 
-        const canvas = document.createElement('canvas');
-        const textureSize = this.rtxModeEnabled ? 96 : 16;
-        canvas.width = textureSize;
-        canvas.height = textureSize;
-
-        const ctx = canvas.getContext('2d');
-        if (kind === 'height') {
-            this.paintHeightTexture(ctx, type, canvas.width);
-        } else if (this.rtxModeEnabled && kind === 'albedo' && this.rtxAssetTextures.has(type)) {
-            return this.getAssetTexture(type);
-        } else {
-            this.paintTexture(ctx, type, canvas.width);
-        }
-
-        texture = new THREE.CanvasTexture(canvas);
+        const generated = this.generateFaceTextures(faceSpec);
+        texture = new THREE.CanvasTexture(kind === 'normal' ? generated.normal : generated.albedo);
+        // Sprites must not wrap, or filtering bleeds the bottom row into the top edge.
+        const sprite = ['tall_grass', 'flower', 'mushroom', 'torch', 'ladder', 'spray_paint'].includes(faceSpec.pattern);
+        texture.wrapS = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+        texture.wrapT = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
         texture.magFilter = this.rtxModeEnabled ? THREE.LinearFilter : THREE.NearestFilter;
         texture.minFilter = this.rtxModeEnabled ? THREE.LinearMipmapLinearFilter : THREE.NearestFilter;
         texture.generateMipmaps = this.rtxModeEnabled;
-
+        texture.anisotropy = this.rtxModeEnabled ? 8 : 1;
         if (kind === 'albedo' && THREE.sRGBEncoding) {
             texture.encoding = THREE.sRGBEncoding;
         }
@@ -1053,91 +629,80 @@ class WorldRenderer {
         return texture;
     }
 
-    getTexturePatternType(type) {
-        const def = this.blockTypes[type];
-        if (!def) return type;
-        if (type.endsWith('_brick')) return 'brick';
-        if (type.endsWith('_wool')) return 'leaves';
-        if (type.endsWith('_planks') || type.endsWith('_planks_slab')) return 'planks';
-        if (type.endsWith('_wood')) return 'wood';
-        if (type.endsWith('_leaves')) return 'leaves';
-        if (type.endsWith('_slab')) return type.includes('planks') ? 'planks' : 'stone_bricks';
-        if (type.startsWith('element_')) return 'stone_bricks';
-        return type;
-    }
-
     isAlphaCutoutType(type) {
         return type === 'leaves' || type.endsWith('_leaves') ||
             type === 'tall_grass' || type === 'flower_red' || type === 'flower_yellow' ||
             type === 'mushroom_red' || type === 'mushroom_brown' || type === 'torch' || type === 'ladder';
     }
 
-    getRTXMaterialProps(type) {
-        switch (type) {
-            case 'grass': return { roughness: 0.92, metalness: 0.02, bumpScale: 0.08, envMapIntensity: 0.35 };
-            case 'tall_grass': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.03, envMapIntensity: 0.18 };
-            case 'flower_red':
-            case 'flower_yellow':
-            case 'mushroom_red':
-            case 'mushroom_brown':
-            case 'torch':
-                return { roughness: 0.9, metalness: 0.01, bumpScale: 0.02, envMapIntensity: 0.16 };
-            case 'dirt': return { roughness: 0.97, metalness: 0.01, bumpScale: 0.1, envMapIntensity: 0.2 };
-            case 'sand': return { roughness: 0.95, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.28 };
-            case 'stone': return { roughness: 0.82, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.45 };
-            case 'stone_bricks': return { roughness: 0.8, metalness: 0.05, bumpScale: 0.12, envMapIntensity: 0.46 };
-            case 'cobblestone': return { roughness: 0.84, metalness: 0.06, bumpScale: 0.15, envMapIntensity: 0.42 };
-            case 'wood': return { roughness: 0.8, metalness: 0.02, bumpScale: 0.09, envMapIntensity: 0.3 };
-            case 'planks': return { roughness: 0.74, metalness: 0.02, bumpScale: 0.07, envMapIntensity: 0.34 };
-            case 'bed': return { roughness: 0.78, metalness: 0.01, bumpScale: 0.04, envMapIntensity: 0.25 };
-            case 'sign': return { roughness: 0.8, metalness: 0.01, bumpScale: 0.06, envMapIntensity: 0.2 };
-            case 'cactus': return { roughness: 0.88, metalness: 0.01, bumpScale: 0.08, envMapIntensity: 0.22 };
-            case 'brick': return { roughness: 0.87, metalness: 0.03, bumpScale: 0.09, envMapIntensity: 0.25 };
-            case 'glass': return { roughness: 0.14, metalness: 0.08, bumpScale: 0.01, envMapIntensity: 1.05 };
-            case 'coal_ore': return { roughness: 0.7, metalness: 0.12, bumpScale: 0.14, envMapIntensity: 0.55 };
-            case 'iron_ore': return { roughness: 0.64, metalness: 0.16, bumpScale: 0.14, envMapIntensity: 0.62 };
-            case 'gold_ore': return { roughness: 0.5, metalness: 0.32, bumpScale: 0.14, envMapIntensity: 0.8 };
-            case 'leaves': return { roughness: 0.94, metalness: 0.01, bumpScale: 0.04, envMapIntensity: 0.18 };
-            case 'water': return { roughness: 0.08, metalness: 0.12, bumpScale: 0.02, envMapIntensity: 1.15, emissive: 0x103050 };
-            default: return { roughness: 0.86, metalness: 0.03, bumpScale: 0.07, envMapIntensity: 0.28 };
+    getRTXMaterialProps(pattern) {
+        switch (pattern) {
+            case 'grass_top': case 'grass_side': return { roughness: 0.9, metalness: 0, normalScale: 0.8 };
+            case 'dirt': return { roughness: 0.96, metalness: 0, normalScale: 0.9 };
+            case 'sand': return { roughness: 0.94, metalness: 0, normalScale: 0.5 };
+            case 'stone': case 'ore': return { roughness: 0.78, metalness: 0, normalScale: 1.0 };
+            case 'cobblestone': case 'bedrock': return { roughness: 0.84, metalness: 0, normalScale: 1.6 };
+            case 'stone_bricks': case 'brick': return { roughness: 0.82, metalness: 0, normalScale: 1.4 };
+            case 'log_side': return { roughness: 0.86, metalness: 0, normalScale: 1.4 };
+            case 'log_top': case 'planks': case 'sign': case 'sound_block': return { roughness: 0.7, metalness: 0, normalScale: 0.8 };
+            case 'leaves': return { roughness: 0.8, metalness: 0, normalScale: 0.8 };
+            case 'smooth': case 'element': return { roughness: 0.35, metalness: 0, normalScale: 0.3 };
+            case 'metal': return { roughness: 0.32, metalness: 0.85, normalScale: 0.5 };
+            case 'obsidian': return { roughness: 0.18, metalness: 0.1, normalScale: 0.6 };
+            case 'glass': return { roughness: 0.05, metalness: 0, normalScale: 0.1 };
+            case 'water': return { roughness: 0.04, metalness: 0, normalScale: 0.6, emissive: 0x0a2440 };
+            case 'wool': return { roughness: 1, metalness: 0, normalScale: 0.6 };
+            case 'torch': return { roughness: 0.8, metalness: 0, normalScale: 0.2, emissive: 0x6b3a08 };
+            default: return { roughness: 0.85, metalness: 0, normalScale: 0.6 };
         }
     }
 
-    getMaterial(type) {
-        let material = this.materials.get(type);
-        if (material) return material;
-
+    createFaceMaterial(type, faceSpec) {
         const def = this.blockTypes[type] || {};
         const alphaCutout = this.isAlphaCutoutType(type);
         const transparent = Boolean(def.transparent) && !alphaCutout;
         const depthWrite = type === 'water' ? true : (!transparent || alphaCutout);
-        if (this.rtxModeEnabled) {
-            const props = this.getRTXMaterialProps(type);
-            material = new THREE.MeshStandardMaterial({
-                color: 0xFFFFFF,
-                map: this.getTexture(type, 'albedo'),
-                bumpMap: this.getTexture(type, 'height'),
-                bumpScale: props.bumpScale,
-                roughness: props.roughness,
-                metalness: props.metalness,
-                envMapIntensity: props.envMapIntensity,
-                emissive: props.emissive || 0x000000,
-                transparent,
-                opacity: def.opacity || 1,
-                alphaTest: alphaCutout ? 0.28 : 0,
-                depthWrite,
-                side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
-            });
+        const common = {
+            map: this.getTexture(faceSpec, 'albedo'),
+            transparent,
+            opacity: def.opacity || 1,
+            alphaTest: alphaCutout ? 0.4 : 0,
+            depthWrite,
+            side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
+        };
+
+        if (!this.rtxModeEnabled) {
+            return new THREE.MeshLambertMaterial(common);
+        }
+
+        const props = this.getRTXMaterialProps(faceSpec.pattern);
+        return new THREE.MeshStandardMaterial({
+            ...common,
+            normalMap: this.getTexture(faceSpec, 'normal'),
+            normalScale: new THREE.Vector2(props.normalScale, props.normalScale),
+            roughness: props.roughness,
+            metalness: props.metalness,
+            envMapIntensity: props.metalness > 0.5 || props.roughness < 0.2 ? 1 : 0.45,
+            emissive: props.emissive || 0x000000,
+            emissiveMap: props.emissive ? common.map : null
+        });
+    }
+
+    // Returns a single material, or an array in BoxGeometry face order
+    // (+x, -x, +y, -y, +z, -z) when the block has distinct top/side/bottom faces.
+    getMaterial(type) {
+        let material = this.materials.get(type);
+        if (material) return material;
+
+        const faces = this.getFaceTextureSpecs(type);
+        const key = (face) => `${face.pattern}:${face.tint}:${face.label || ''}`;
+        if (key(faces.top) === key(faces.side) && key(faces.bottom) === key(faces.side)) {
+            material = this.createFaceMaterial(type, faces.side);
         } else {
-            material = new THREE.MeshLambertMaterial({
-                color: 0xFFFFFF,
-                map: this.getTexture(type, 'albedo'),
-                transparent,
-                opacity: def.opacity || 1,
-                alphaTest: alphaCutout ? 0.35 : 0,
-                depthWrite,
-                side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
-            });
+            const side = this.createFaceMaterial(type, faces.side);
+            const top = this.createFaceMaterial(type, faces.top);
+            const bottom = key(faces.bottom) === key(faces.top) ? top : this.createFaceMaterial(type, faces.bottom);
+            material = [side, side, top, bottom, side, side];
         }
 
         this.materials.set(type, material);
@@ -1166,15 +731,29 @@ class WorldRenderer {
                 return;
             }
             
-            const { chunkX, chunkZ, blocks } = this.chunkProcessQueue.shift();
+            const { chunkX, chunkZ, blocks, biome } = this.chunkProcessQueue.shift();
             const key = this.chunkKey(chunkX, chunkZ);
+            this.chunkBiomes.set(key, biome);
             
+            // Trees may spill over chunk borders, so each block is filed under its own chunk.
+            const spilledInto = new Set();
             for (let i = 0; i < blocks.length; i += 4) {
-                this.setBlockData(blocks[i], blocks[i+1], blocks[i+2], blocks[i+3], key);
+                const x = blocks[i];
+                const z = blocks[i + 2];
+                const blockChunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
+                if (this.setBlockData(x, blocks[i + 1], z, blocks[i + 3], blockChunkKey) && blockChunkKey !== key) {
+                    spilledInto.add(blockChunkKey);
+                }
             }
             this.generatedChunks.add(key);
             this.generatingChunks.delete(key);
-            this.rebuildChunk(chunkX, chunkZ);
+            this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ);
+            for (const neighborKey of spilledInto) {
+                if (!this.chunks.has(neighborKey)) continue;
+                const [neighborX, neighborZ] = neighborKey.split(',').map(Number);
+                if (Math.abs(neighborX - chunkX) + Math.abs(neighborZ - chunkZ) === 1) continue;
+                this.rebuildChunk(neighborX, neighborZ);
+            }
             
             this.isProcessingChunks = false;
             this.processNextChunk();
@@ -1188,39 +767,6 @@ class WorldRenderer {
         this.generatingChunks.add(key);
         this.ensureChunkBlockSet(key);
         this.chunkWorker.postMessage({ chunkX, chunkZ, chunkSize: this.chunkSize });
-    }
-
-    generateTree(x, y, z, rand, woodType = 'wood') {
-        const leavesType = woodType === 'wood' ? 'leaves' : woodType.replace('_wood', '_leaves');
-        const trunkHeight = 4 + Math.floor(rand(x, z, 2024) * (woodType === 'dark_oak_wood' ? 3 : 2));
-
-        for (let ty = 0; ty < trunkHeight; ty++) {
-            this.setBlockData(x, y + ty, z, woodType);
-        }
-
-        const leavesStart = y + trunkHeight - 2;
-        for (let ly = 0; ly < 3; ly++) {
-            const radius = ly === 2 ? 1 : 2;
-            for (let lx = -radius; lx <= radius; lx++) {
-                for (let lz = -radius; lz <= radius; lz++) {
-                    if (lx === 0 && lz === 0 && ly < 2) continue;
-                    if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
-
-                    this.setBlockData(x + lx, leavesStart + ly, z + lz, leavesType);
-                }
-            }
-        }
-    }
-
-    generateCactus(x, y, z, rand) {
-        const cactusHeight = 2 + Math.floor(rand(x, z, 3030) * 3);
-        for (let cy = 0; cy < cactusHeight; cy++) {
-            this.setBlockData(x, y + cy, z, 'cactus');
-        }
-    }
-
-    generateDecorPlant(x, y, z, type) {
-        this.setBlockData(x, y, z, type);
     }
 
     setBlockData(x, y, z, type, chunkKey = null, options = {}) {
@@ -1310,18 +856,18 @@ class WorldRenderer {
 
         this.scene.remove(chunk);
 
+        // Block materials and textures are shared caches; only free what this chunk owns.
         for (let i = 0; i < chunk.children.length; i++) {
             const child = chunk.children[i];
-            if (typeof child.dispose === 'function') {
+            if (child.isInstancedMesh && typeof child.dispose === 'function') {
                 child.dispose();
             }
-            if (child.material) {
-                if (child.material.map) {
-                    child.material.map.dispose();
-                }
-                if (typeof child.material.dispose === 'function') {
-                    child.material.dispose();
-                }
+            if (child.isSprite && child.material) {
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose();
+            }
+            if (child.userData.ownsGeometry && child.geometry) {
+                child.geometry.dispose();
             }
         }
 
@@ -1479,7 +1025,6 @@ class WorldRenderer {
         this.lastPlayerChunkZ = playerChunkZ;
 
         const desiredActiveChunks = new Set();
-        const chunksToGenerate = [];
         const chunksToRender = [];
 
         for (let x = playerChunkX - this.renderDistance; x <= playerChunkX + this.renderDistance; x++) {
@@ -1489,7 +1034,7 @@ class WorldRenderer {
 
                 if (!this.generatedChunks.has(key)) {
                     this.generateChunkData(x, z);
-                    chunksToGenerate.push([x, z]);
+                    continue;
                 }
 
                 if (!this.chunks.has(key)) {
@@ -1523,15 +1068,7 @@ class WorldRenderer {
             }
         }
 
-        for (let i = 0; i < chunksToGenerate.length; i++) {
-            const [chunkX, chunkZ] = chunksToGenerate[i];
-            chunksToRefresh.add(this.chunkKey(chunkX, chunkZ));
-            chunksToRefresh.add(this.chunkKey(chunkX + 1, chunkZ));
-            chunksToRefresh.add(this.chunkKey(chunkX - 1, chunkZ));
-            chunksToRefresh.add(this.chunkKey(chunkX, chunkZ + 1));
-            chunksToRefresh.add(this.chunkKey(chunkX, chunkZ - 1));
-        }
-
+        // Chunks still generating are rebuilt (with their neighbours) when the worker replies.
         for (let i = 0; i < chunksToRender.length; i++) {
             const [chunkX, chunkZ] = chunksToRender[i];
             chunksToRefresh.add(this.chunkKey(chunkX, chunkZ));
@@ -1585,7 +1122,8 @@ class WorldRenderer {
         if (def && def.eggSpecies) return this.createEggDisplayMesh(type, def, scale);
         if (def && def.saplingWood) return this.createSaplingDisplayMesh(type, def, scale);
 
-        const material = this.getMaterial(type).clone();
+        const shared = this.getMaterial(type);
+        const material = Array.isArray(shared) ? shared.map((m) => m.clone()) : shared.clone();
         const mesh = new THREE.Mesh(this.getGeometry(type), material);
         mesh.scale.setScalar(scale);
         mesh.castShadow = this.rtxModeEnabled && type !== 'water';

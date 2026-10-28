@@ -168,6 +168,7 @@ class Game {
         this.followReturnPosition = null;
         this.followCameraAngle = 0;
         this.ambientMobs = [];
+        this.mobTextureCache = new Map();
         this.followingDog = null;
         this.followingCat = null;
         this.voiceChat = null;
@@ -1245,7 +1246,7 @@ class Game {
         if (avatar.userData.heldItemType === type) return;
 
         const parts = avatar.userData.avatarParts;
-        const heldArm = parts && (parts.leftArm || parts.rightArm);
+        const heldArm = parts && (parts.rightArm || parts.leftArm);
         if (!parts || !heldArm) return;
 
         if (avatar.userData.heldItemMesh) {
@@ -1261,11 +1262,12 @@ class Game {
 
         const item = this.world.createDisplayMesh(type, 0.18);
         const def = this.world.blockTypes[type];
+        // Arm pivots sit at the shoulder; the hand is ~0.6 below it, facing +z.
         if (def && def.itemOnly) {
-            item.position.set(0.22, -0.1, -0.2);
-            item.rotation.set(0.3, 0.08, 0.12);
+            item.position.set(0, -0.56, 0.12);
+            item.rotation.set(-Math.PI / 2 + 0.3, 0.08, 0.12);
         } else {
-            item.position.set(0, -0.44, -0.14);
+            item.position.set(0, -0.62, 0.14);
             item.rotation.set(0.4, 0.2, 0.15);
         }
         item.frustumCulled = false;
@@ -1972,7 +1974,7 @@ class Game {
         this.sunLight.color.copy(this.blendColors(new THREE.Color(0x8AA6D8), new THREE.Color(0xFFD7A8), sunset + daylight * 0.2));
 
         this.ambientLight.intensity = THREE.MathUtils.lerp(this.rtxModeEnabled ? 0.03 : 0.08, this.rtxModeEnabled ? 0.22 : 0.6, daylight);
-        this.hemiLight.intensity = THREE.MathUtils.lerp(this.rtxModeEnabled ? 0.14 : 0.16, this.rtxModeEnabled ? 0.92 : 0.45, daylight);
+        this.hemiLight.intensity = THREE.MathUtils.lerp(this.rtxModeEnabled ? 0.14 : 0.16, this.rtxModeEnabled ? 0.55 : 0.45, daylight);
         this.hemiLight.color.copy(this.blendColors(new THREE.Color(0x445B8A), new THREE.Color(0xBFD7FF), daylight));
         this.hemiLight.groundColor.copy(this.blendColors(new THREE.Color(0x171718), new THREE.Color(0x4C4336), daylight));
 
@@ -2049,12 +2051,6 @@ class Game {
         }
     }
 
-    createPlayerAvatarMaterial(color) {
-        return this.rtxModeEnabled
-            ? new THREE.MeshStandardMaterial({ color: color, roughness: 0.72, metalness: 0.03 })
-            : new THREE.MeshLambertMaterial({ color: color });
-    }
-
     hashString(value) {
         let hash = 0;
         for (let i = 0; i < value.length; i++) {
@@ -2083,35 +2079,33 @@ class Game {
         };
     }
 
+    createModelMaterial(texture) {
+        return this.rtxModeEnabled
+            ? new THREE.MeshStandardMaterial({ map: texture, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.45 })
+            : new THREE.MeshLambertMaterial({ map: texture });
+    }
+
+    tagModelMeshes(root, key, value) {
+        root.traverse((node) => {
+            if (!node.isMesh) return;
+            node.userData[key] = value;
+            node.castShadow = this.rtxModeEnabled;
+            node.receiveShadow = this.rtxModeEnabled;
+        });
+    }
+
     createOtherPlayerAvatar(playerId, playerName = 'Player', shirtColor = null, hairStyle = 'short', hairColor = null) {
-        const group = new THREE.Group();
-        group.userData.playerId = playerId;
         const appearance = this.getPlayerAppearance(playerName, shirtColor, hairStyle, hairColor);
+        const model = VoxelModels.createPlayer(
+            { ...appearance, seed: this.hashString(appearance.key) % 997 },
+            (texture) => this.createModelMaterial(texture)
+        );
+        const group = model.root;
+        group.userData.playerId = playerId;
         group.userData.appearanceKey = appearance.key;
-        const createPart = (geometry, color, x, y, z) => {
-            const mesh = new THREE.Mesh(geometry, this.createPlayerAvatarMaterial(color));
-            mesh.position.set(x, y, z);
-            mesh.castShadow = this.rtxModeEnabled;
-            mesh.receiveShadow = this.rtxModeEnabled;
-            mesh.userData.baseColor = color;
-            mesh.userData.avatarRoot = group;
-            group.add(mesh);
-            return mesh;
-        };
+        this.tagModelMeshes(group, 'avatarRoot', group);
 
-        const head = createPart(new THREE.BoxGeometry(0.48, 0.48, 0.48), appearance.skin, 0, 1.55, 0);
-        const torso = createPart(new THREE.BoxGeometry(0.56, 0.72, 0.28), appearance.shirt, 0, 1.03, 0);
-        const leftArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, -0.38, 1.03, 0);
-        const rightArm = createPart(new THREE.BoxGeometry(0.18, 0.68, 0.18), appearance.skin, 0.38, 1.03, 0);
-        const leftLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, -0.14, 0.34, 0);
-        const rightLeg = createPart(new THREE.BoxGeometry(0.22, 0.72, 0.22), appearance.pants, 0.14, 0.34, 0);
-        const hair = this.createAvatarHairGroup(appearance.hairStyle, appearance.hair);
-        head.add(hair);
-
-        const face = this.createAvatarFaceMesh();
-        face.position.set(0, 0.02, 0.245);
-        head.add(face);
-
+        const { head, torso, leftArm, rightArm, leftLeg, rightLeg, hair } = model.parts;
         group.userData.avatarParts = { head, torso, leftArm, rightArm, leftLeg, rightLeg, hair };
         group.userData.heldItemMesh = null;
         group.userData.heldItemType = null;
@@ -2131,98 +2125,6 @@ class Game {
         return group;
     }
 
-    createAvatarHairGroup(style, color) {
-        const hair = new THREE.Group();
-        hair.userData.avatarHair = true;
-        const addPiece = (width, height, depth, x, y, z) => {
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.createPlayerAvatarMaterial(color));
-            mesh.position.set(x, y, z);
-            mesh.castShadow = this.rtxModeEnabled;
-            mesh.receiveShadow = this.rtxModeEnabled;
-            mesh.userData.baseColor = color;
-            hair.add(mesh);
-            return mesh;
-        };
-
-        if (style === 'bald') {
-            return hair;
-        }
-
-        if (style === 'mohawk') {
-            addPiece(0.16, 0.22, 0.54, 0, 0.32, 0);
-            addPiece(0.12, 0.12, 0.5, 0, 0.18, -0.02);
-            return hair;
-        }
-
-        addPiece(0.54, 0.12, 0.54, 0, 0.28, 0);
-
-        if (style === 'short') {
-            addPiece(0.5, 0.12, 0.1, 0, 0.2, 0.23);
-            addPiece(0.08, 0.28, 0.48, -0.27, 0.08, 0);
-            addPiece(0.08, 0.28, 0.48, 0.27, 0.08, 0);
-        } else if (style === 'sidepart') {
-            addPiece(0.34, 0.16, 0.16, -0.12, 0.2, 0.2);
-            addPiece(0.18, 0.12, 0.42, 0.2, 0.18, 0.02);
-            addPiece(0.08, 0.24, 0.48, -0.27, 0.08, 0);
-        } else if (style === 'pixie') {
-            addPiece(0.44, 0.16, 0.18, 0, 0.2, 0.18);
-            addPiece(0.1, 0.2, 0.42, -0.25, 0.08, 0);
-            addPiece(0.1, 0.16, 0.36, 0.25, 0.1, 0.02);
-        } else if (style === 'bob') {
-            addPiece(0.08, 0.48, 0.5, -0.29, -0.04, 0);
-            addPiece(0.08, 0.48, 0.5, 0.29, -0.04, 0);
-            addPiece(0.48, 0.34, 0.08, 0, -0.02, -0.29);
-            addPiece(0.46, 0.12, 0.1, 0, 0.15, 0.25);
-        } else if (style === 'long') {
-            addPiece(0.09, 0.72, 0.5, -0.3, -0.16, 0);
-            addPiece(0.09, 0.72, 0.5, 0.3, -0.16, 0);
-            addPiece(0.48, 0.72, 0.1, 0, -0.16, -0.3);
-            addPiece(0.46, 0.16, 0.12, 0, 0.15, 0.25);
-        } else if (style === 'ponytail') {
-            addPiece(0.48, 0.16, 0.1, 0, 0.14, -0.26);
-            addPiece(0.18, 0.24, 0.18, 0, 0.05, -0.43);
-            addPiece(0.14, 0.56, 0.14, 0, -0.24, -0.48);
-            addPiece(0.42, 0.12, 0.1, 0, 0.14, 0.25);
-        }
-
-        return hair;
-    }
-
-    createAvatarFaceMesh() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-
-        ctx.clearRect(0, 0, 64, 64);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-        ctx.fillRect(0, 0, 64, 64);
-
-        ctx.fillStyle = '#2b1b11';
-        ctx.fillRect(14, 18, 10, 10);
-        ctx.fillRect(40, 18, 10, 10);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(16, 20, 4, 4);
-        ctx.fillRect(42, 20, 4, 4);
-
-        ctx.fillStyle = '#804830';
-        ctx.fillRect(22, 40, 20, 4);
-        ctx.fillRect(26, 44, 12, 2);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        if (THREE.sRGBEncoding) {
-            texture.encoding = THREE.sRGBEncoding;
-        }
-        texture.needsUpdate = true;
-
-        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-        const face = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), material);
-        face.renderOrder = 1200;
-        face.frustumCulled = false;
-        return face;
-    }
-
     createMob(species, position) {
         const group = new THREE.Group();
         group.userData.species = species;
@@ -2239,152 +2141,19 @@ class Game {
         group.userData.maxHealth = species === 'cave_monster' ? 16 : species === 'spider' ? 8 : 1;
         group.userData.health = group.userData.maxHealth;
 
-        const createPart = (geometry, color, x, y, z) => {
-            const material = this.rtxModeEnabled
-                ? new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.01 })
-                : new THREE.MeshLambertMaterial({ color });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(x, y, z);
-            mesh.castShadow = this.rtxModeEnabled;
-            mesh.receiveShadow = this.rtxModeEnabled;
-            mesh.userData.mobRoot = group;
-            group.add(mesh);
-            return mesh;
-        };
-
-        if (species === 'spider') {
-            createPart(new THREE.BoxGeometry(0.72, 0.28, 0.56), 0x17121d, 0, 0.34, 0);
-            createPart(new THREE.BoxGeometry(0.34, 0.22, 0.34), 0x24192c, 0.44, 0.38, 0);
-            createPart(new THREE.BoxGeometry(0.06, 0.04, 0.06), 0xe03b3b, 0.58, 0.43, -0.08);
-            createPart(new THREE.BoxGeometry(0.06, 0.04, 0.06), 0xe03b3b, 0.58, 0.43, 0.08);
-        } else if (species === 'cave_monster') {
-            createPart(new THREE.BoxGeometry(0.82, 1.08, 0.5), 0x2f5270, 0, 1.08, 0);
-            createPart(new THREE.BoxGeometry(0.58, 0.5, 0.5), 0x477599, 0, 1.86, 0);
-            createPart(new THREE.BoxGeometry(0.12, 0.12, 0.08), 0xa7f3d0, 0.18, 1.92, 0.28);
-            createPart(new THREE.BoxGeometry(0.12, 0.12, 0.08), 0xa7f3d0, -0.18, 1.92, 0.28);
-            createPart(new THREE.BoxGeometry(0.18, 0.06, 0.08), 0xffb1a7, 0, 1.74, 0.29);
-            createPart(new THREE.BoxGeometry(0.16, 0.14, 0.1), 0x8ecae6, -0.24, 2.16, 0);
-            createPart(new THREE.BoxGeometry(0.16, 0.14, 0.1), 0x8ecae6, 0.24, 2.16, 0);
-            createPart(new THREE.BoxGeometry(0.22, 0.78, 0.2), 0x24384d, -0.56, 1.08, 0);
-            createPart(new THREE.BoxGeometry(0.22, 0.78, 0.2), 0x24384d, 0.56, 1.08, 0);
-        } else if (species === 'sheep') {
-            createPart(new THREE.BoxGeometry(0.8, 0.52, 0.5), 0xf1efe6, 0, 0.56, 0);
-            createPart(new THREE.BoxGeometry(0.32, 0.28, 0.24), 0x1b1b1b, 0.46, 0.62, 0);
-        } else if (species === 'duck') {
-            createPart(new THREE.BoxGeometry(0.5, 0.32, 0.34), 0xf4f0d8, 0, 0.4, 0);
-            createPart(new THREE.BoxGeometry(0.18, 0.18, 0.18), 0xf4f0d8, 0.32, 0.5, 0);
-            createPart(new THREE.BoxGeometry(0.16, 0.06, 0.12), 0xe1a53b, 0.42, 0.46, 0);
-        } else if (species === 'giraffe') {
-            createPart(new THREE.BoxGeometry(0.92, 0.62, 0.46), 0xf4a12c, 0, 1.5, 0);
-            createPart(new THREE.BoxGeometry(0.2, 1.68, 0.2), 0xf4a12c, 0.32, 2.55, 0);
-            createPart(new THREE.BoxGeometry(0.48, 0.38, 0.34), 0xf4a12c, 0.55, 3.48, 0);
-            createPart(new THREE.BoxGeometry(0.2, 0.14, 0.24), 0xf0c47d, 0.82, 3.42, 0);
-            createPart(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0x1f160f, 0.8, 3.54, -0.1);
-            createPart(new THREE.BoxGeometry(0.08, 0.1, 0.04), 0x1f160f, 0.8, 3.54, 0.1);
-            createPart(new THREE.BoxGeometry(0.014, 0.035, 0.16), 0x6d3a1a, 0.928, 3.38, 0);
-            createPart(new THREE.BoxGeometry(0.014, 0.055, 0.055), 0xffb1a7, 0.928, 3.45, -0.12);
-            createPart(new THREE.BoxGeometry(0.014, 0.055, 0.055), 0xffb1a7, 0.928, 3.45, 0.12);
-            createPart(new THREE.BoxGeometry(0.08, 0.16, 0.08), 0xc87821, 0.45, 3.78, -0.1);
-            createPart(new THREE.BoxGeometry(0.08, 0.16, 0.08), 0xc87821, 0.45, 3.78, 0.1);
-            createPart(new THREE.BoxGeometry(0.1, 0.06, 0.14), 0xf6b650, 0.38, 3.62, -0.22);
-            createPart(new THREE.BoxGeometry(0.1, 0.06, 0.14), 0xf6b650, 0.38, 3.62, 0.22);
-
-            const spots = [
-                [-0.28, 1.66, -0.236, 0.18, 0.18], [0.1, 1.34, -0.236, 0.2, 0.16], [0.34, 1.64, -0.236, 0.14, 0.2],
-                [-0.18, 1.34, 0.236, 0.16, 0.2], [0.18, 1.7, 0.236, 0.22, 0.16], [-0.4, 1.48, 0.236, 0.14, 0.14],
-                [0.316, 2.0, -0.106, 0.11, 0.18], [0.316, 2.42, 0.106, 0.12, 0.2], [0.316, 2.86, -0.106, 0.1, 0.18],
-                [0.58, 3.56, -0.176, 0.12, 0.1], [0.48, 3.38, 0.176, 0.1, 0.1]
-            ];
-            for (const [x, y, z, width, height] of spots) {
-                createPart(new THREE.BoxGeometry(width, height, 0.012), 0x8b4a1d, x, y, z);
-            }
-        } else if (species === 'macaw') {
-            const palettes = [
-                { body: 0x24b45a, wing: 0x178f48, head: 0xffd43b, tail: 0x1f7ae0 },
-                { body: 0xffd43b, wing: 0xff8c1a, head: 0x24b45a, tail: 0x1f7ae0 },
-                { body: 0xe3362d, wing: 0xffd43b, head: 0x1f7ae0, tail: 0x24b45a },
-                { body: 0x1f7ae0, wing: 0x174cbf, head: 0xffd43b, tail: 0xe3362d }
-            ];
-            const palette = palettes[Math.floor(Math.random() * palettes.length)];
-            createPart(new THREE.BoxGeometry(0.34, 0.36, 0.3), palette.body, 0, 0.62, 0);
-            createPart(new THREE.BoxGeometry(0.24, 0.24, 0.24), palette.head, 0.28, 0.82, 0);
-            createPart(new THREE.BoxGeometry(0.12, 0.08, 0.14), 0xf5efe6, 0.45, 0.8, 0);
-            createPart(new THREE.BoxGeometry(0.05, 0.05, 0.04), 0x17120f, 0.37, 0.88, -0.08);
-            createPart(new THREE.BoxGeometry(0.05, 0.05, 0.04), 0x17120f, 0.37, 0.88, 0.08);
-            const leftWing = createPart(new THREE.BoxGeometry(0.34, 0.08, 0.12), palette.wing, 0.02, 0.64, -0.26);
-            const rightWing = createPart(new THREE.BoxGeometry(0.34, 0.08, 0.12), palette.wing, 0.02, 0.64, 0.26);
-            createPart(new THREE.BoxGeometry(0.36, 0.08, 0.12), palette.tail, -0.34, 0.56, 0);
-            group.userData.wings = [leftWing, rightWing];
-        } else if (species === 'dog') {
-            createPart(new THREE.BoxGeometry(0.7, 0.38, 0.36), 0xc89058, 0, 0.5, 0);
-            createPart(new THREE.BoxGeometry(0.32, 0.28, 0.3), 0xd9a86f, 0.45, 0.62, 0);
-            createPart(new THREE.BoxGeometry(0.14, 0.1, 0.16), 0x5a3522, 0.62, 0.58, 0);
-            createPart(new THREE.BoxGeometry(0.06, 0.06, 0.04), 0x17120f, 0.55, 0.68, -0.1);
-            createPart(new THREE.BoxGeometry(0.06, 0.06, 0.04), 0x17120f, 0.55, 0.68, 0.1);
-            createPart(new THREE.BoxGeometry(0.1, 0.2, 0.08), 0x8a5a35, 0.38, 0.74, -0.18);
-            createPart(new THREE.BoxGeometry(0.1, 0.2, 0.08), 0x8a5a35, 0.38, 0.74, 0.18);
-            createPart(new THREE.BoxGeometry(0.28, 0.1, 0.1), 0xd9a86f, -0.46, 0.62, 0);
-        } else if (species === 'cat') {
-            const palettes = [
-                { fur: 0xf2c36b, belly: 0xfff0d0, stripe: 0xd48333, ear: 0xffb6c8, collar: 0xe84f7a },
-                { fur: 0x7b6a5a, belly: 0xf2eee7, stripe: 0x4f443a, ear: 0xffa9bd, collar: 0x64b5f6 },
-                { fur: 0xf5f1e7, belly: 0xffffff, stripe: 0xd7c7a7, ear: 0xffb6c8, collar: 0xf2c94c }
-            ];
-            const palette = palettes[Math.floor(Math.random() * palettes.length)];
-            group.userData.legColor = palette.fur;
-            createPart(new THREE.BoxGeometry(0.58, 0.34, 0.32), palette.fur, 0, 0.4, 0);
-            createPart(new THREE.BoxGeometry(0.28, 0.2, 0.22), palette.belly, 0.05, 0.35, 0);
-            createPart(new THREE.BoxGeometry(0.34, 0.3, 0.3), palette.fur, 0.42, 0.52, 0);
-            createPart(new THREE.BoxGeometry(0.18, 0.12, 0.16), palette.belly, 0.58, 0.48, 0);
-            createPart(new THREE.BoxGeometry(0.05, 0.05, 0.035), 0x17120f, 0.6, 0.58, -0.09);
-            createPart(new THREE.BoxGeometry(0.05, 0.05, 0.035), 0x17120f, 0.6, 0.58, 0.09);
-            createPart(new THREE.BoxGeometry(0.04, 0.035, 0.04), 0xff8aae, 0.68, 0.5, 0);
-            createPart(new THREE.BoxGeometry(0.05, 0.08, 0.025), 0xffc5d2, 0.62, 0.43, -0.1);
-            createPart(new THREE.BoxGeometry(0.05, 0.08, 0.025), 0xffc5d2, 0.62, 0.43, 0.1);
-            createPart(new THREE.BoxGeometry(0.014, 0.012, 0.24), 0xfff7df, 0.66, 0.51, -0.18);
-            createPart(new THREE.BoxGeometry(0.014, 0.012, 0.24), 0xfff7df, 0.66, 0.51, 0.18);
-            createPart(new THREE.BoxGeometry(0.014, 0.012, 0.2), 0xfff7df, 0.66, 0.46, -0.17);
-            createPart(new THREE.BoxGeometry(0.014, 0.012, 0.2), 0xfff7df, 0.66, 0.46, 0.17);
-            createPart(new THREE.BoxGeometry(0.08, 0.045, 0.34), palette.collar, 0.28, 0.52, 0);
-            createPart(new THREE.BoxGeometry(0.12, 0.08, 0.012), palette.stripe, -0.16, 0.58, 0.166);
-            createPart(new THREE.BoxGeometry(0.12, 0.08, 0.012), palette.stripe, 0.08, 0.58, 0.166);
-            createPart(new THREE.BoxGeometry(0.12, 0.08, 0.012), palette.stripe, -0.16, 0.58, -0.166);
-            createPart(new THREE.BoxGeometry(0.12, 0.08, 0.012), palette.stripe, 0.08, 0.58, -0.166);
-            createPart(new THREE.ConeGeometry(0.1, 0.18, 3), palette.fur, 0.35, 0.73, -0.11);
-            createPart(new THREE.ConeGeometry(0.1, 0.18, 3), palette.fur, 0.35, 0.73, 0.11);
-            createPart(new THREE.BoxGeometry(0.035, 0.06, 0.035), palette.ear, 0.43, 0.7, -0.11);
-            createPart(new THREE.BoxGeometry(0.035, 0.06, 0.035), palette.ear, 0.43, 0.7, 0.11);
-
-            const tailBase = createPart(new THREE.BoxGeometry(0.1, 0.44, 0.1), palette.fur, -0.42, 0.62, 0);
-            tailBase.rotation.z = -0.58;
-            tailBase.userData.baseRotationZ = tailBase.rotation.z;
-            const tailTip = createPart(new THREE.BoxGeometry(0.1, 0.32, 0.1), palette.fur, -0.58, 0.86, 0);
-            tailTip.rotation.z = -0.96;
-            tailTip.userData.baseRotationZ = tailTip.rotation.z;
-            group.userData.tail = [tailBase, tailTip];
-        } else {
-            createPart(new THREE.BoxGeometry(0.72, 0.42, 0.4), 0xd89aa3, 0, 0.5, 0);
-            createPart(new THREE.BoxGeometry(0.28, 0.22, 0.24), 0xd89aa3, 0.4, 0.56, 0);
-        }
-
-        const legOffsets = species === 'giraffe'
-            ? [[-0.32, 0.7, -0.14], [-0.32, 0.7, 0.14], [0.32, 0.7, -0.14], [0.32, 0.7, 0.14]]
-            : species === 'cave_monster'
-                ? [[-0.26, 0.34, -0.14], [-0.26, 0.34, 0.14], [0.26, 0.34, -0.14], [0.26, 0.34, 0.14]]
-            : species === 'macaw'
-                ? [[0.04, 0.36, -0.06], [0.04, 0.36, 0.06], [0.14, 0.36, -0.06], [0.14, 0.36, 0.06]]
-            : species === 'dog'
-                ? [[-0.2, 0.2, -0.11], [-0.2, 0.2, 0.11], [0.26, 0.2, -0.11], [0.26, 0.2, 0.11]]
-            : species === 'cat'
-                ? [[-0.2, 0.16, -0.1], [-0.2, 0.16, 0.1], [0.22, 0.16, -0.1], [0.22, 0.16, 0.1]]
-            : [[-0.22, 0.2, -0.12], [-0.22, 0.2, 0.12], [0.22, 0.2, -0.12], [0.22, 0.2, 0.12]];
-        const legColor = species === 'spider' ? 0x0d0b12 : species === 'cave_monster' ? 0x182433 : species === 'duck' || species === 'macaw' ? 0xe1a53b : species === 'sheep' ? 0x2d2d2d : species === 'giraffe' ? 0xf6b650 : species === 'dog' ? 0x8a5a35 : species === 'cat' ? group.userData.legColor : 0xb87683;
-        const legSize = species === 'spider' ? [0.08, 0.16, 0.46] : species === 'duck' ? [0.06, 0.22, 0.06] : species === 'macaw' ? [0.035, 0.16, 0.035] : species === 'giraffe' ? [0.12, 1.4, 0.12] : species === 'cave_monster' ? [0.16, 0.68, 0.16] : species === 'cat' ? [0.07, 0.24, 0.07] : [0.1, 0.32, 0.1];
-        group.userData.legs = legOffsets.map(([x, y, z]) => createPart(new THREE.BoxGeometry(...legSize), legColor, x, y, z));
+        const variant = species === 'cat' ? Math.floor(Math.random() * 3) : species === 'macaw' ? Math.floor(Math.random() * 4) : 0;
+        const model = VoxelModels.createMob(species, (texture) => this.createModelMaterial(texture), this.mobTextureCache, variant);
+        group.add(model.root);
+        this.tagModelMeshes(model.root, 'mobRoot', group);
+        group.userData.legs = model.legs;
+        group.userData.arms = model.arms;
+        group.userData.wings = model.wings;
+        group.userData.tail = model.tail;
+        group.userData.legAxis = model.legAxis;
 
         if (group.userData.maxHealth > 1) {
             group.userData.healthBar = this.createMobHealthBar();
-            group.userData.healthBar.position.set(0, species === 'spider' ? 0.86 : 2.5, 0);
+            group.userData.healthBar.position.set(0, model.height + 0.35, 0);
             group.add(group.userData.healthBar);
             this.updateMobHealthBar(group);
         }
@@ -2437,23 +2206,110 @@ class Game {
     }
 
     initAmbientMobs() {
-        const mobSetups = [
-            ['sheep', new THREE.Vector3(8, 0, 6)],
-            ['duck', new THREE.Vector3(-6, 0, 10)],
-            ['pig', new THREE.Vector3(12, 0, -8)],
-            ['giraffe', new THREE.Vector3(2, 0, 14)],
-            ['dog', new THREE.Vector3(-2, 0, 8)],
-            ['cat', new THREE.Vector3(6, 0, 3)],
-            ['sheep', new THREE.Vector3(-10, 0, -6)],
-            ['duck', new THREE.Vector3(4, 0, -12)],
-            ['spider', new THREE.Vector3(-14, 0, 14)],
-            ['cave_monster', new THREE.Vector3(18, 0, -18)]
-        ];
+        // Animals spawn naturally per chunk (see updateNaturalSpawning) once terrain exists.
+        this.mobSpawnedChunks = new Set();
+        this.mobSpawnTimer = 0;
+    }
 
-        for (const [species, pos] of mobSetups) {
-            const ground = this.cameraController.getFloorY(pos.x, pos.z, 20);
-            const worldPos = new THREE.Vector3(pos.x, ground, pos.z);
-            this.ambientMobs.push(this.createMob(species, worldPos));
+    // Species that can appear in each biome, with relative weights.
+    getBiomeSpawnTable(biome) {
+        switch (biome) {
+            case 'desert': return [['giraffe', 3], ['duck', 1]];
+            case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
+            case 'rocky': return [['sheep', 2], ['spider', 1], ['cave_monster', 1]];
+            default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
+        }
+    }
+
+    chunkRandom(chunkX, chunkZ, salt) {
+        let h = Math.imul(chunkX, 73856093) ^ Math.imul(chunkZ, 19349663) ^ Math.imul(salt, 83492791);
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+
+    spawnMobsForChunk(chunkX, chunkZ) {
+        const size = this.world.chunkSize;
+        const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
+        if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
+
+        const table = this.getBiomeSpawnTable(biome);
+        const total = table.reduce((sum, [, weight]) => sum + weight, 0);
+        let pick = this.chunkRandom(chunkX, chunkZ, 2) * total;
+        let species = table[0][0];
+        for (const [candidate, weight] of table) {
+            pick -= weight;
+            if (pick <= 0) { species = candidate; break; }
+        }
+
+        const hostile = species === 'spider' || species === 'cave_monster';
+        const groupSize = hostile || species === 'giraffe' ? 1 : 1 + Math.floor(this.chunkRandom(chunkX, chunkZ, 3) * 3);
+        for (let i = 0; i < groupSize; i++) {
+            const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, 10 + i) * (size - 4);
+            const z = chunkZ * size + 2 + this.chunkRandom(chunkX, chunkZ, 20 + i) * (size - 4);
+            const ground = this.cameraController.getFloorY(x, z, 64);
+            if (ground <= -20) continue;
+            const surface = this.world.getBlockTypeAt(Math.floor(x), ground - 1, Math.floor(z));
+            const above = this.world.getBlockTypeAt(Math.floor(x), ground, Math.floor(z));
+            if (!surface || above === 'water' || surface.endsWith('leaves') || surface === 'cactus') continue;
+
+            const mob = this.createMob(species, new THREE.Vector3(x, ground, z));
+            mob.userData.natural = true;
+            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.ambientMobs.push(mob);
+        }
+    }
+
+    removeMob(mob) {
+        this.scene.remove(mob);
+        this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== mob);
+        // Textures are shared per species; geometries and materials belong to this mob.
+        mob.traverse((node) => {
+            if (node.isMesh && node.userData.disposeGeometry) node.geometry.dispose();
+            if (node.isMesh && node.material && node.userData.modelMap) node.material.dispose();
+            if (node.isSprite && node.material) {
+                if (node.material.map) node.material.map.dispose();
+                node.material.dispose();
+            }
+        });
+    }
+
+    updateNaturalSpawning(delta) {
+        this.mobSpawnTimer -= delta;
+        if (this.mobSpawnTimer > 0 || !this.world) return;
+        this.mobSpawnTimer = 1;
+
+        const size = this.world.chunkSize;
+        const player = this.getLocalPlayerPosition();
+        const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.world.getChunkCoords(player.x, player.z);
+        const spawnRadius = Math.min(3, this.world.renderDistance);
+        const despawnDistance = (spawnRadius + 2) * size;
+
+        // Despawn wild mobs that are far away; their chunk may spawn again when revisited.
+        for (const mob of [...this.ambientMobs]) {
+            if (!mob.userData.natural || mob === this.followingDog || mob === this.followingCat) continue;
+            if (Math.hypot(mob.position.x - player.x, mob.position.z - player.z) < despawnDistance) continue;
+            this.mobSpawnedChunks.delete(mob.userData.spawnChunk);
+            this.removeMob(mob);
+        }
+        for (const key of this.mobSpawnedChunks) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            if (Math.max(Math.abs(chunkX - playerChunkX), Math.abs(chunkZ - playerChunkZ)) > spawnRadius + 1) {
+                this.mobSpawnedChunks.delete(key);
+            }
+        }
+
+        if (this.ambientMobs.length >= 40) return;
+        for (let dx = -spawnRadius; dx <= spawnRadius; dx++) {
+            for (let dz = -spawnRadius; dz <= spawnRadius; dz++) {
+                // Never pop mobs into existence right next to the player.
+                if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && this.mobSpawnedChunks.size > 0) continue;
+                const chunkX = playerChunkX + dx;
+                const chunkZ = playerChunkZ + dz;
+                const key = this.world.chunkKey(chunkX, chunkZ);
+                if (this.mobSpawnedChunks.has(key) || !this.world.generatedChunks.has(key)) continue;
+                this.mobSpawnedChunks.add(key);
+                this.spawnMobsForChunk(chunkX, chunkZ);
+            }
         }
     }
 
@@ -2484,8 +2340,7 @@ class Game {
             mob.userData.health -= 4;
             this.updateMobHealthBar(mob);
             if (mob.userData.health <= 0) {
-                this.scene.remove(mob);
-                this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== mob);
+                this.removeMob(mob);
                 this.receiveSystemMessage({ text: `You defeated the ${mob.userData.species.replace('_', ' ')}` });
                 return;
             }
@@ -2509,6 +2364,7 @@ class Game {
     }
 
     updateAmbientMobs(delta) {
+        this.updateNaturalSpawning(delta);
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
         if (this.followingDog && !this.ambientMobs.includes(this.followingDog)) {
             this.followingDog = null;
@@ -2556,15 +2412,35 @@ class Game {
             const moveSpeed = isChasing ? (mob.userData.species === 'spider' ? 1.25 : 0.9) : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : mob.userData.species === 'macaw' ? 0.85 : mob.userData.species === 'duck' ? 0.55 : mob.userData.species === 'cat' ? 0.5 : 0.38;
             const moveScale = (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
+            if (mob.position.y - mob.userData.flyHeight < -20) {
+                // Spawned before its chunk was generated: drop it onto the terrain once it exists.
+                const ground = this.cameraController.getFloorY(mob.position.x, mob.position.z, 64);
+                if (ground > -20) {
+                    mob.position.y = ground + mob.userData.flyHeight;
+                    mob.userData.home.y = ground;
+                }
+            }
             const candidate = mob.position.clone().add(move);
-            const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, 20);
-            if (floorY > -20 && candidate.distanceTo(mob.userData.home) < 18) {
+            const feetY = mob.position.y - mob.userData.flyHeight;
+            // Search from just above the feet so mobs can climb one block but not tunnel into hills.
+            const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, feetY + 1);
+            const homeDistance = Math.hypot(candidate.x - mob.userData.home.x, candidate.z - mob.userData.home.z);
+            const leashed = !isChasing && !isFollowingDog && !isFollowingCat;
+            const walkable = floorY > -20 && floorY - feetY <= 1.01 && feetY - floorY <= 3;
+            if (walkable && (!leashed || homeDistance < 18 || homeDistance < Math.hypot(mob.position.x - mob.userData.home.x, mob.position.z - mob.userData.home.z))) {
                 mob.position.x = candidate.x;
                 mob.position.z = candidate.z;
                 mob.position.y = floorY + mob.userData.flyHeight + Math.sin(mob.userData.stepPhase * 0.7) * (mob.userData.flyHeight ? 0.18 : 0);
-            } else {
-                mob.userData.direction += Math.PI * 0.75;
+            } else if (leashed && mob.userData.blockedCooldown <= 0) {
+                // Turn once and commit to the new heading for a while (instead of re-turning every
+                // frame, which made blocked mobs spin forever). Outside the leash, head home.
+                mob.userData.direction = homeDistance >= 18
+                    ? Math.atan2(mob.userData.home.z - mob.position.z, mob.userData.home.x - mob.position.x)
+                    : mob.userData.direction + Math.PI * (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1);
+                mob.userData.moveTimer = 1.5 + Math.random() * 2;
+                mob.userData.blockedCooldown = 0.6;
             }
+            mob.userData.blockedCooldown = Math.max(0, (mob.userData.blockedCooldown || 0) - delta);
 
             if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
                 this.applyDamage(mob.userData.species === 'spider' ? 2 : 4, `You were attacked by a ${mob.userData.species === 'spider' ? 'spider' : 'cave monster'}`);
@@ -2579,8 +2455,7 @@ class Game {
                     enemy.userData.direction = Math.atan2(enemy.position.z - mob.position.z, enemy.position.x - mob.position.x);
                     mob.userData.defendCooldown = 0.8;
                     if (enemy.userData.health <= 0) {
-                        this.scene.remove(enemy);
-                        this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== enemy);
+                        this.removeMob(enemy);
                         this.receiveSystemMessage({ text: 'Your dog defended you from the cave monster' });
                     }
                 }
@@ -2591,8 +2466,9 @@ class Game {
                 this.playTone({ frequency: 880, duration: 0.06, type: 'sine', volume: 0.012, release: 0.06, detune: (Math.random() - 0.5) * 70 });
             }
 
-            mob.userData.stepPhase += delta * 7;
-            mob.rotation.y = mob.userData.direction;
+            mob.userData.stepPhase += delta * 7 * moveScale;
+            // Models face +z; movement direction is measured from +x towards +z. Turn smoothly.
+            mob.rotation.y = this.lerpAngle(mob.rotation.y, Math.PI / 2 - mob.userData.direction, Math.min(1, delta * 8));
 
             if (mob.userData.bounceVelocity !== 0) {
                 mob.userData.bounceVelocity -= 9 * delta;
@@ -2603,27 +2479,44 @@ class Game {
                 }
             }
 
-            if (mob.userData.legs) {
-                const swing = Math.sin(mob.userData.stepPhase) * 0.25;
-                mob.userData.legs[0].rotation.x = swing;
-                mob.userData.legs[1].rotation.x = -swing;
-                mob.userData.legs[2].rotation.x = -swing;
-                mob.userData.legs[3].rotation.x = swing;
-            }
+            this.animateMobRig(mob, moveScale);
+        }
+    }
 
-            if (mob.userData.tail) {
-                const wag = Math.sin(mob.userData.stepPhase * 0.75) * 0.12;
-                mob.userData.tail.forEach((tailSegment, index) => {
-                    tailSegment.rotation.z = tailSegment.userData.baseRotationZ + wag * (index + 1);
-                    tailSegment.rotation.y = Math.sin(mob.userData.stepPhase * 0.5 + index) * 0.08;
-                });
-            }
+    animateMobRig(mob, moveScale) {
+        const phase = mob.userData.stepPhase;
+        const walking = moveScale > 0 ? 1 : 0.15;
+        const swing = Math.sin(phase) * 0.5 * walking;
+        const axis = mob.userData.legAxis;
 
-            if (mob.userData.wings) {
-                const flap = Math.sin(mob.userData.stepPhase * 2.2) * 0.6;
-                mob.userData.wings[0].rotation.x = flap;
-                mob.userData.wings[1].rotation.x = -flap;
+        mob.userData.legs.forEach((leg, index) => {
+            // Diagonal gait: front-left with back-right, alternating sides.
+            const side = index % 2 === 0 ? 1 : -1;
+            const pair = Math.floor(index / 2) % 2 === 0 ? 1 : -1;
+            const base = leg.userData.baseRotation;
+            if (axis === 'y') {
+                leg.rotation.y = base.y + swing * 0.5 * side * pair;
+                leg.rotation.z = base.z + Math.abs(Math.sin(phase + index)) * 0.12 * side;
+            } else {
+                leg.rotation.x = base.x + swing * side * pair;
             }
+        });
+
+        mob.userData.arms.forEach((arm, index) => {
+            arm.rotation.x = arm.userData.baseRotation.x - swing * (index % 2 === 0 ? 1 : -1) * 0.8;
+        });
+
+        mob.userData.tail.forEach((segment, index) => {
+            const base = segment.userData.baseRotation;
+            segment.rotation.y = base.y + Math.sin(phase * 0.75 + index * 0.6) * 0.35;
+        });
+
+        if (mob.userData.wings.length === 2) {
+            const flap = mob.userData.flyHeight
+                ? Math.abs(Math.sin(phase * 2.2)) * 1.1
+                : Math.max(0, Math.sin(phase * 0.4)) * 0.25;
+            mob.userData.wings[0].rotation.z = flap;
+            mob.userData.wings[1].rotation.z = -flap;
         }
     }
 
@@ -2776,7 +2669,13 @@ class Game {
             this.voiceChat.removePeer(avatar.userData.playerId);
         }
 
+        if (avatar.userData.modelTexture) {
+            avatar.userData.modelTexture.dispose();
+        }
         avatar.traverse((node) => {
+            if (node instanceof THREE.Mesh && node.userData.disposeGeometry) {
+                node.geometry.dispose();
+            }
             if (node instanceof THREE.Mesh && node.material) {
                 node.material.dispose();
             }
@@ -2812,6 +2711,9 @@ class Game {
 
         parts.leftArm.rotation.x = swing;
         parts.rightArm.rotation.x = -swing;
+        // Arms hang slightly away from the torso; actions may override this afterwards.
+        parts.leftArm.rotation.z = 0.05;
+        parts.rightArm.rotation.z = -0.05;
         parts.leftLeg.rotation.x = -swing;
         parts.rightLeg.rotation.x = swing;
 
@@ -2900,13 +2802,19 @@ class Game {
     }
 
     refreshOtherPlayerAvatarMaterials() {
-        for (const avatar of this.otherPlayerMeshes.values()) {
-            avatar.traverse((node) => {
-                if (!(node instanceof THREE.Mesh)) return;
-                const baseColor = node.userData.baseColor;
-                if (baseColor === undefined) return;
-                node.material.dispose();
-                node.material = this.createPlayerAvatarMaterial(baseColor);
+        const roots = [...this.otherPlayerMeshes.values(), ...this.ambientMobs];
+        if (this.localPlayerAvatar) roots.push(this.localPlayerAvatar);
+        for (const root of roots) {
+            const replaced = new Map();
+            root.traverse((node) => {
+                if (!node.isMesh || !node.userData.modelMap) return;
+                let material = replaced.get(node.material);
+                if (!material) {
+                    material = this.createModelMaterial(node.userData.modelMap);
+                    replaced.set(node.material, material);
+                    node.material.dispose();
+                }
+                node.material = material;
                 node.castShadow = this.rtxModeEnabled;
                 node.receiveShadow = this.rtxModeEnabled;
             });
@@ -2942,10 +2850,12 @@ class Game {
             this.renderer.outputEncoding = THREE.sRGBEncoding;
         }
 
+        this.scene.environment = enabled ? this.getSkyEnvironment() : null;
+
         this.ambientLight.intensity = enabled ? 0.18 : 0.6;
         this.ambientLight.color.setHex(enabled ? 0xC8D6E5 : 0xFFFFFF);
 
-        this.hemiLight.intensity = enabled ? 0.9 : 0.4;
+        this.hemiLight.intensity = enabled ? 0.5 : 0.4;
         this.hemiLight.color.setHex(enabled ? 0xBFD7FF : 0x87CEEB);
         this.hemiLight.groundColor.setHex(enabled ? 0x4C4336 : 0x3D5C3D);
 
@@ -2970,6 +2880,37 @@ class Game {
         this.updateSettingsUI();
         this.lastSelectionUpdate = 0;
         this.updateDayNightCycle(0);
+    }
+
+    // Image-based lighting for RTX mode: a prefiltered sky gradient so PBR materials
+    // (water, glass, metals, polished stone) have something to reflect.
+    getSkyEnvironment() {
+        if (this.skyEnvironment) return this.skyEnvironment;
+
+        const envScene = new THREE.Scene();
+        const geometry = new THREE.SphereGeometry(10, 32, 16);
+        const zenith = new THREE.Color(0x4f86c6);
+        const horizon = new THREE.Color(0xd8e6f0);
+        const ground = new THREE.Color(0x4d4637);
+        const colors = [];
+        const position = geometry.attributes.position;
+        for (let i = 0; i < position.count; i++) {
+            const t = position.getY(i) / 10;
+            const color = t >= 0 ? horizon.clone().lerp(zenith, Math.pow(t, 0.6)) : horizon.clone().lerp(ground, Math.min(1, -t * 3));
+            colors.push(color.r, color.g, color.b);
+        }
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        envScene.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff1d0 }));
+        sun.position.set(5, 7, 3);
+        envScene.add(sun);
+
+        const generator = new THREE.PMREMGenerator(this.renderer);
+        this.skyEnvironment = generator.fromScene(envScene, 0.02).texture;
+        generator.dispose();
+        geometry.dispose();
+        return this.skyEnvironment;
     }
 
     toggleRTXMode() {
@@ -3539,10 +3480,13 @@ class Game {
             if (node.material) {
                 node.renderOrder = 10001;
                 node.frustumCulled = false;
-                node.material.transparent = true;
-                node.material.opacity = 1;
-                node.material.depthTest = false;
-                node.material.depthWrite = false;
+                const materials = Array.isArray(node.material) ? node.material : [node.material];
+                materials.forEach((material) => {
+                    material.transparent = true;
+                    material.opacity = 1;
+                    material.depthTest = false;
+                    material.depthWrite = false;
+                });
             }
         });
 
