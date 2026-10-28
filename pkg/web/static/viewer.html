@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MineCloud Terrain Viewer</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%2367a83f' d='M8 1l7 3.5-7 3.5-7-3.5z'/%3E%3Cpath fill='%237a5233' d='M1 4.5l7 3.5v7l-7-3.5z'/%3E%3Cpath fill='%235e3f27' d='M15 4.5l-7 3.5v7l7-3.5z'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --panel-bg: rgba(18, 22, 28, 0.82);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text: #e8edf2;
+            --muted: #9aa6b2;
+            --accent: #7fc35a;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; overflow: hidden; background: #9ec8ea; color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+        #viewport { position: fixed; inset: 0; }
+        .panel {
+            position: fixed; top: 16px; left: 16px; width: 270px; padding: 14px 16px;
+            background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px;
+            backdrop-filter: blur(8px);
+        }
+        h1 { margin: 0 0 2px; font-size: 15px; letter-spacing: 0.02em; }
+        .subtitle { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+        label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+        input[type="range"], select { width: 100%; accent-color: var(--accent); }
+        select, input[type="number"] {
+            background: rgba(255, 255, 255, 0.07); color: var(--text); border: 1px solid var(--panel-border);
+            border-radius: 6px; padding: 5px 6px; font: inherit;
+        }
+        .row { display: flex; gap: 14px; margin-top: 10px; }
+        .row label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); }
+        form { display: flex; gap: 6px; margin-top: 4px; }
+        form input { width: 0; flex: 1; }
+        button {
+            background: var(--accent); color: #102008; border: 0; border-radius: 6px; padding: 5px 10px;
+            font: inherit; font-weight: 600; cursor: pointer;
+        }
+        #stats { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--panel-border); color: var(--muted); font-size: 12px; }
+        #stats b { color: var(--text); font-weight: 600; }
+        #probe {
+            position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+            padding: 6px 12px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 8px;
+            font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap;
+        }
+        .help { position: fixed; right: 16px; bottom: 16px; color: rgba(16, 32, 48, 0.75); font-size: 12px; text-align: right; }
+        @media (max-width: 640px) {
+            .panel { left: 16px; right: 16px; width: auto; }
+            .help { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+
+    <div class="panel">
+        <h1>Terrain viewer</h1>
+        <p class="subtitle">Same generator as the game · level-of-detail tiles</p>
+
+        <label for="detail">Detail</label>
+        <input id="detail" type="range" min="0.8" max="3" step="0.1">
+
+        <label for="radius">View distance</label>
+        <input id="radius" type="range" min="1000" max="30000" step="500">
+
+        <label for="colors">Colours</label>
+        <select id="colors">
+            <option value="blocks">Surface blocks</option>
+            <option value="biome">Biomes</option>
+            <option value="height">Height</option>
+        </select>
+
+        <div class="row">
+            <label><input id="water" type="checkbox" checked> Water</label>
+            <label><input id="trees" type="checkbox" checked> Trees (close up)</label>
+        </div>
+
+        <label>Go to</label>
+        <form id="goto">
+            <input id="goto-x" type="number" placeholder="x" value="0">
+            <input id="goto-z" type="number" placeholder="z" value="0">
+            <button type="submit">Go</button>
+        </form>
+
+        <div id="stats"></div>
+    </div>
+
+    <div id="probe">—</div>
+    <div class="help">Left drag: pan · Right drag: rotate · Wheel: zoom · Arrow keys: move</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/terrainGen.js"></script>
+    <script src="js/viewer/terrainViewer.js"></script>
+</body>
+</html>
