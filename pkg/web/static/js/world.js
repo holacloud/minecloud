@@ -1234,32 +1234,31 @@ class WorldRenderer {
         const chunkedBlocks = state && state.chunkedBlocks ? state.chunkedBlocks : {};
         const dirtyChunks = new Set();
 
-        for (const chunkKey in chunkedBlocks) {
-            const chunk = chunkedBlocks[chunkKey];
-            const [cx, cy, cz] = chunkKey.split(',').map(Number);
-            const palette = chunk.palette;
-            const binaryString = atob(chunk.blocks);
-            
+        // Persisted blocks arrive as cubic, palette + RLE encoded sections. Older servers
+        // used 32-block sections and did not send their size.
+        const sectionSize = state && state.chunkSize ? state.chunkSize : 32;
+        for (const sectionKey in chunkedBlocks) {
+            const section = chunkedBlocks[sectionKey];
+            const [sx, sy, sz] = sectionKey.split(',').map(Number);
+            const palette = section.palette;
+            const binaryString = atob(section.blocks);
+
             let outIdx = 0;
             for (let i = 0; i < binaryString.length; i += 2) {
                 const count = binaryString.charCodeAt(i);
                 const val = binaryString.charCodeAt(i + 1);
-                
+
                 if (val === 0) {
                     outIdx += count;
                     continue;
                 }
-                
+
                 for (let j = 0; j < count; j++) {
                     const idx = outIdx++;
-                    const y = Math.floor(idx / 1024);
-                    const z = Math.floor((idx % 1024) / 32);
-                    const x = idx % 32;
-                    
-                    const worldX = cx * 32 + x;
-                    const worldY = cy * 32 + y;
-                    const worldZ = cz * 32 + z;
-                    
+                    const worldX = sx * sectionSize + idx % sectionSize;
+                    const worldY = sy * sectionSize + Math.floor(idx / (sectionSize * sectionSize));
+                    const worldZ = sz * sectionSize + Math.floor(idx / sectionSize) % sectionSize;
+
                     if (val === 1) {
                         this.deleteBlockData(worldX, worldY, worldZ);
                     } else if (val >= 2) {
@@ -1267,10 +1266,13 @@ class WorldRenderer {
                     }
                 }
             }
-            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2));
-            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2));
-            dirtyChunks.add(this.chunkKey(cx * 2, cz * 2 + 1));
-            dirtyChunks.add(this.chunkKey(cx * 2 + 1, cz * 2 + 1));
+
+            const spanned = Math.max(1, sectionSize / CHUNK_SIZE);
+            for (let dx = 0; dx < spanned; dx++) {
+                for (let dz = 0; dz < spanned; dz++) {
+                    dirtyChunks.add(this.chunkKey(floorDiv(sx * sectionSize, CHUNK_SIZE) + dx, floorDiv(sz * sectionSize, CHUNK_SIZE) + dz));
+                }
+            }
         }
 
         for (const key in removedBlocks) {

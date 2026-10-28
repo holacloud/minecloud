@@ -862,8 +862,12 @@ type ChunkData struct {
 	Blocks  string   `json:"blocks"`
 }
 
+// ChunkSize is the edge of the cubic sections used to ship persisted blocks to clients.
+// It matches the client's chunk width so a section maps onto exactly one client chunk.
+const ChunkSize = 16
+
 func getChunkIndex(x, y, z int) (string, int) {
-	chunkSize := 32
+	chunkSize := ChunkSize
 	cx := int(math.Floor(float64(x) / float64(chunkSize)))
 	cy := int(math.Floor(float64(y) / float64(chunkSize)))
 	cz := int(math.Floor(float64(z) / float64(chunkSize)))
@@ -913,7 +917,7 @@ func sendInitialState(client *Client) {
 		if builders[chunkKey] == nil {
 			builders[chunkKey] = &chunkBuilder{
 				PaletteMap: make(map[string]byte),
-				Data:       make([]byte, 32*32*32),
+				Data:       make([]byte, ChunkSize*ChunkSize*ChunkSize),
 			}
 		}
 		builders[chunkKey].Data[idx] = 1
@@ -929,7 +933,7 @@ func sendInitialState(client *Client) {
 		if cb == nil {
 			cb = &chunkBuilder{
 				PaletteMap: make(map[string]byte),
-				Data:       make([]byte, 32*32*32),
+				Data:       make([]byte, ChunkSize*ChunkSize*ChunkSize),
 			}
 			builders[chunkKey] = cb
 		}
@@ -955,6 +959,7 @@ func sendInitialState(client *Client) {
 		"players":       gameState.Players,
 		"blocks":        complexBlocks,
 		"chunkedBlocks": chunkedBlocks,
+		"chunkSize":     ChunkSize,
 		"sprayPaints":   gameState.SprayPaints,
 		"timeOfDay":     gameState.WorldTime,
 		"worldDay":      gameState.WorldDay,
