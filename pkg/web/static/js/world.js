@@ -777,7 +777,8 @@ class WorldRenderer {
             Object.assign(shader.uniforms, uniforms);
             if (water) {
                 shader.vertexShader = shader.vertexShader
-                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;\nuniform float windTime;')
+                    // windTime is declared by the shared vertex patch below.
+                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;')
                     .replace('#include <begin_vertex>', [
                         '#include <begin_vertex>',
                         'vec3 waterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
