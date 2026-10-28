@@ -428,15 +428,9 @@ class WorldRenderer {
         }
     }
 
-    // Per-frame material animation (ultra only): wind phase and drifting water.
+    // Per-frame material animation: drives wind (ultra) and water waves (RTX and ultra).
     animateMaterials(time) {
         this.windUniforms.windTime.value = time;
-        if (!this.ultraModeEnabled) return;
-        const water = this.chunkMaterials.get('water');
-        if (water && water.map) {
-            water.map.offset.set(time * 0.018, time * 0.011);
-            if (water.normalMap) water.normalMap.offset.set(-time * 0.025, time * 0.017);
-        }
     }
 
     setRenderDistance(distance, playerPosition = null) {
@@ -685,7 +679,7 @@ class WorldRenderer {
             case 'metal': return { roughness: 0.32, metalness: 0.85, normalScale: 0.5 };
             case 'obsidian': return { roughness: 0.18, metalness: 0.1, normalScale: 0.6 };
             case 'glass': return { roughness: 0.05, metalness: 0, normalScale: 0.1 };
-            case 'water': return { roughness: 0.04, metalness: 0, normalScale: 0.6, emissive: 0x0a2440 };
+            case 'water': return { roughness: 0.03, metalness: 0, normalScale: 0.45, emissive: 0x061a26 };
             case 'wool': return { roughness: 1, metalness: 0, normalScale: 0.6 };
             case 'torch': return { roughness: 0.8, metalness: 0, normalScale: 0.2, emissive: 0x6b3a08 };
             default: return { roughness: 0.85, metalness: 0, normalScale: 0.6 };
@@ -764,8 +758,29 @@ class WorldRenderer {
             : foliage === 'plant'
                 ? 'transformed.xz += vec2(sin(windTime * 2.3 + windWorld.x * 0.8), cos(windTime * 1.9 + windWorld.z * 0.8)) * 0.12 * windStrength * clamp(uv.y, 0.0, 1.0);'
                 : '';
+        // PBR water: two wave samples in world space (no per-block repetition) drifting in
+        // different directions, and Fresnel opacity (see-through from above, mirror-like at
+        // grazing angles).
+        const water = foliage === 'water' && material.isMeshStandardMaterial;
         material.onBeforeCompile = (shader) => {
             Object.assign(shader.uniforms, uniforms);
+            if (water) {
+                shader.vertexShader = shader.vertexShader
+                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;')
+                    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xz;');
+                shader.fragmentShader = shader.fragmentShader
+                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;\nuniform float windTime;')
+                    .replace('vec3 mapN = texture2D( normalMap, vUv ).xyz * 2.0 - 1.0;', [
+                        'vec2 waveUvA = vWaterWorld * 0.19 + vec2(windTime * 0.035, windTime * 0.022);',
+                        'vec2 waveUvB = vWaterWorld * 0.071 + vec2(-windTime * 0.018, windTime * 0.029);',
+                        'vec3 mapN = normalize((texture2D(normalMap, waveUvA).xyz * 2.0 - 1.0) + (texture2D(normalMap, waveUvB).xyz * 2.0 - 1.0));'
+                    ].join('\n'))
+                    .replace('#include <normal_fragment_maps>', [
+                        '#include <normal_fragment_maps>',
+                        'float waterFresnel = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 3.0);',
+                        'diffuseColor.a = mix(0.55, 0.96, waterFresnel);'
+                    ].join('\n'));
+            }
             shader.vertexShader = shader.vertexShader
                 .replace('#include <common>', [
                     '#include <common>',
@@ -828,7 +843,8 @@ class WorldRenderer {
 
         // Leaves sway as a whole; plants bend from the ground up.
         const foliage = type === 'leaves' || type.endsWith('_leaves') ? 'leaves'
-            : this.isCrossGeometry(type) && type !== 'torch' ? 'plant' : null;
+            : this.isCrossGeometry(type) && type !== 'torch' ? 'plant'
+                : type === 'water' ? 'water' : null;
         const withVertexColors = (base) => {
             const clone = base.clone();
             clone.vertexColors = true;

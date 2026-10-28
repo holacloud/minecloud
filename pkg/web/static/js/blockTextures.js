@@ -353,6 +353,10 @@ class BlockTextureFactory {
             },
 
             leaves(s, tint, seed) {
+                if (s.hd) {
+                    f.paintLeafCanopy(s, f.rgb(tint ?? 0x4a8a34), seed);
+                    return;
+                }
                 const base = f.rgb(tint ?? 0x4a8a34);
                 f.each(s, (x, y, u, v) => {
                     const cluster = f.worley(u, v, 5, seed);
@@ -500,6 +504,15 @@ class BlockTextureFactory {
             },
 
             water(s, tint, seed) {
+                if (s.hd) {
+                    // Nearly uniform deep colour; realism comes from the wave normals and reflections.
+                    const deepHd = f.rgb(0x15506a);
+                    const shallowHd = f.rgb(0x2a7487);
+                    f.each(s, (x, y, u, v) => {
+                        f.put(s, x, y, f.mix(deepHd, shallowHd, f.fbm(u, v, 2, 3, seed) * 0.6), f.waveHeight(u, v, seed), 0.8);
+                    });
+                    return;
+                }
                 const deep = f.rgb(0x2a64a8);
                 const light = f.rgb(0x5aa0d8);
                 f.each(s, (x, y, u, v) => {
@@ -583,6 +596,10 @@ class BlockTextureFactory {
             tall_grass(s, tint, seed) {
                 const base = f.rgb(0x6aa944);
                 f.each(s, (x, y, u, v) => f.put(s, x, y, base, 0, 0));
+                if (s.hd) {
+                    f.paintGrassBlades(s, base, seed);
+                    return;
+                }
                 const blades = 9;
                 for (let i = 0; i < blades; i++) {
                     const x0 = 0.08 + (i / (blades - 1)) * 0.84 + (f.hash(i, 0, seed) - 0.5) * 0.06;
@@ -604,6 +621,10 @@ class BlockTextureFactory {
                 const stem = f.rgb(0x4f8f37);
                 const petal = f.rgb(tint ?? 0xd04848);
                 const heart = f.rgb(0xf3d36b);
+                if (s.hd) {
+                    f.paintFlower(s, stem, petal, heart, seed);
+                    return;
+                }
                 f.each(s, (x, y, u, v) => {
                     f.put(s, x, y, stem, 0, 0);
                     const dx = u - 0.5;
@@ -702,6 +723,140 @@ class BlockTextureFactory {
             }
         };
         return this._patterns;
+    }
+
+    // ---------------------------------------------------------------- hd vegetation & water
+
+    // Tileable wave height: directional waves with integer wave vectors (so they repeat
+    // seamlessly) plus fine fbm ripples.
+    waveHeight(u, v, seed) {
+        const waves = [[3, 1, 0.32], [-2, 3, 0.24], [5, -2, 0.16], [1, 6, 0.12], [-7, -4, 0.08]];
+        let h = 0;
+        waves.forEach(([kx, ky, amp], i) => {
+            const phase = this.hash(i, 7, seed) * Math.PI * 2;
+            h += Math.sin((u * kx + v * ky) * Math.PI * 2 + phase) * amp;
+        });
+        h += (this.fbm(u, v, 8, 3, seed + 3) - 0.5) * 0.45;
+        return this.clamp01(0.5 + h * 0.5);
+    }
+
+    // Writes a pixel with wrap-around (so stamped shapes tile seamlessly).
+    putWrapped(s, x, y, color, height, alpha) {
+        const size = s.size;
+        this.put(s, ((x % size) + size) % size, ((y % size) + size) % size, color, height, alpha);
+    }
+
+    // Canopy of individually drawn lanceolate leaves: a darker under-layer then lit leaves,
+    // each with a gradient, a midrib and darker edges. Uncovered texels stay transparent.
+    paintLeafCanopy(s, base, seed) {
+        const size = s.size;
+        this.each(s, (x, y) => this.put(s, x, y, this.shade(base, -0.55), 0, 0));
+        const layers = [{ count: 70, tone: -0.32, height: 0.35 }, { count: 95, tone: 0.02, height: 0.75 }];
+        layers.forEach((layer, layerIndex) => {
+            for (let i = 0; i < layer.count; i++) {
+                const r = (k) => this.hash(i * 13 + layerIndex * 1009, k, seed);
+                const cx = r(1) * size;
+                const cy = r(2) * size;
+                const length = size * (0.07 + r(3) * 0.06);
+                const width = length * (0.32 + r(4) * 0.12);
+                const angle = r(5) * Math.PI * 2;
+                const hue = (r(6) - 0.5) * 0.22;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                const reach = Math.ceil(length);
+                for (let dy = -reach; dy <= reach; dy++) {
+                    for (let dx = -reach; dx <= reach; dx++) {
+                        // Leaf-local coordinates: lx along the blade (-1 stem .. 1 tip), ly across.
+                        const lx = (dx * cos + dy * sin) / length;
+                        const ly = (-dx * sin + dy * cos) / width;
+                        if (lx < -1 || lx > 1) continue;
+                        const halfWidth = Math.pow(1 - lx * lx, 0.75) * (lx < 0 ? 0.85 : 1);
+                        if (Math.abs(ly) > halfWidth) continue;
+                        const edge = Math.abs(ly) / Math.max(halfWidth, 0.001);
+                        let k = layer.tone + hue + (lx * 0.12) - edge * edge * 0.18;
+                        if (Math.abs(ly) < 0.07 && lx < 0.9) k -= 0.14; // midrib
+                        if (ly > 0) k += 0.05; // one half catches more light
+                        const height = layer.height + (1 - edge) * 0.2;
+                        this.putWrapped(s, Math.round(cx + dx), Math.round(cy + dy), this.tone(s, base, k), height, 1);
+                    }
+                }
+            }
+        });
+    }
+
+    // Dense tuft: curved, tapering blades darker at the base, a few with seed heads.
+    paintGrassBlades(s, base, seed) {
+        const size = s.size;
+        const blades = 28;
+        for (let i = 0; i < blades; i++) {
+            const r = (k) => this.hash(i, k, seed);
+            const rootU = 0.08 + r(1) * 0.84;
+            const height = 0.4 + r(2) * 0.58;
+            const bend = (r(3) - 0.5) * 0.5;
+            const width = 0.018 + r(4) * 0.022;
+            const tone = (r(5) - 0.5) * 0.3;
+            const steps = Math.ceil(height * size * 2);
+            for (let step = 0; step <= steps; step++) {
+                const t = step / steps;
+                const cu = rootU + bend * t * t;
+                const cv = 1 - t * height;
+                const halfWidth = Math.max(width * (1 - t * 0.9), 0.6 / size);
+                const k = tone - (1 - t) * 0.3 + t * 0.12;
+                for (let du = -halfWidth; du <= halfWidth; du += 0.5 / size) {
+                    const x = Math.round((cu + du) * size);
+                    const y = Math.round(cv * size);
+                    if (x < 0 || x >= size || y < 0 || y >= size) continue;
+                    const highlight = Math.abs(du) < halfWidth * 0.3 ? 0.06 : 0;
+                    this.put(s, x, y, this.tone(s, base, k + highlight), t, 1);
+                }
+            }
+            if (r(6) > 0.82) {
+                // Seed head at the tip.
+                const tipU = rootU + bend;
+                const tipV = 1 - height;
+                this.each(s, (x, y, u, v) => {
+                    if (Math.hypot((u - tipU) * 2.2, v - tipV - 0.04) < 0.05) this.put(s, x, y, this.tone(s, this.rgb(0xc9b77a), (this.hash(x, y, seed) - 0.5) * 0.2), 1, 1);
+                });
+            }
+        }
+    }
+
+    // Flower with five shaped petals (gradient, veins), textured centre, stem and two leaves.
+    paintFlower(s, stem, petal, heart, seed) {
+        const petals = 5;
+        const centerV = 0.3;
+        this.each(s, (x, y, u, v) => {
+            this.put(s, x, y, stem, 0, 0);
+            const dx = u - 0.5;
+            const dy = v - centerV;
+            const r = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+            const petalPhase = Math.abs(Math.cos(angle * petals / 2));
+            const petalEdge = 0.075 + 0.17 * Math.pow(petalPhase, 0.6);
+            if (r < 0.065) {
+                const speck = this.hash(x, y, seed) > 0.75 ? -0.25 : 0;
+                this.put(s, x, y, this.tone(s, heart, speck - r * 2), 1, 1);
+                return;
+            }
+            if (r < petalEdge) {
+                const t = r / petalEdge;
+                const vein = Math.abs(Math.sin(angle * petals * 3)) < 0.12 ? -0.1 : 0;
+                this.put(s, x, y, this.tone(s, petal, (t - 0.5) * 0.35 - (1 - petalPhase) * 0.15 + vein), 0.6 + (1 - t) * 0.4, 1);
+                return;
+            }
+            if (Math.abs(dx) < Math.max(0.018, 0.6 / s.size) && v > centerV) {
+                this.put(s, x, y, this.tone(s, stem, (dx > 0 ? -0.12 : 0.05)), 0.5, 1);
+                return;
+            }
+            const leaf = (cx, cy, dir) => {
+                const lu = (u - cx) * dir;
+                const lv = v - cy + lu * 0.55;
+                return lu > 0 && lu < 0.2 && Math.abs(lv) < 0.045 * Math.sin(Math.PI * lu / 0.2);
+            };
+            if (leaf(0.5, 0.7, -1) || leaf(0.5, 0.6, 1)) {
+                this.put(s, x, y, this.tone(s, stem, 0.06 + (this.hash(x, y, seed) - 0.5) * 0.06), 0.6, 1);
+            }
+        });
     }
 
     // ---------------------------------------------------------------- output
