@@ -234,14 +234,15 @@ class CameraController {
     }
     
     // Highest floor under any part of the player's footprint, so the player is supported
-    // as long as some of it overlaps a block (edges, slabs, steps).
-    getSupportFloorY(x, z, startY) {
+    // as long as some of it overlaps a block (edges, slabs, steps). Corner floors above
+    // `maxFloorY` are walls the footprint pokes into, not support. While falling, pass the
+    // feet height before the move so the floor being stood on is not mistaken for a wall.
+    getSupportFloorY(x, z, startY, maxFloorY = startY) {
         const r = this.collisionRadius - 0.01;
         let floor = this.getFloorY(x, z, startY);
         for (const [dx, dz] of [[-r, -r], [r, -r], [-r, r], [r, r]]) {
-            // A corner poking into a wall is not support.
             const cornerFloor = this.getFloorY(x + dx, z + dz, startY);
-            if (cornerFloor <= startY + 0.001) floor = Math.max(floor, cornerFloor);
+            if (cornerFloor <= maxFloorY + 0.001) floor = Math.max(floor, cornerFloor);
         }
         return floor;
     }
@@ -314,11 +315,16 @@ class CameraController {
             const py = this.camera.position.y - this.eyeHeight;
             const currentFloorY = this.getSupportFloorY(px, pz, py);
 
-            const targetX = px + moveX;
-            const targetZ = pz + moveZ;
+            let targetX = px + moveX;
+            let targetZ = pz + moveZ;
+            let blockedByLedge = false;
             if (this.isCrouching && this.onGround && this.wouldStepOffLedge(targetX, targetZ, currentFloorY)) {
-                // Sneak movement prevents falling off ledges.
-            } else {
+                // Sneaking never walks off a ledge; slide along it on whichever axis stays supported.
+                if (!this.wouldStepOffLedge(targetX, pz, currentFloorY)) targetZ = pz;
+                else if (!this.wouldStepOffLedge(px, targetZ, currentFloorY)) targetX = px;
+                else blockedByLedge = true;
+            }
+            if (!blockedByLedge) {
                 const resolved = this.resolveHorizontalPosition(targetX, targetZ, py);
                 if (resolved.collided && this.onGround) {
                     const stepFeetY = py + this.stepHeight;
@@ -382,11 +388,12 @@ class CameraController {
             this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
         }
         
+        const currentFeetY = this.camera.position.y - this.eyeHeight;
         const newY = this.camera.position.y + this.velocityY * delta;
         const newFeetY = newY - this.eyeHeight;
         
         if (this.velocityY < 0) {
-            const newFloorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, newFeetY);
+            const newFloorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, newFeetY, currentFeetY);
             if (newFeetY <= newFloorY + 0.001) {
                 this.camera.position.y = newFloorY + this.eyeHeight;
                 this.recordLanding();
