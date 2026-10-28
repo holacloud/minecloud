@@ -406,17 +406,31 @@ class ChunkMesher {
             if (hidden && hidden.x === worldX && hidden.y === y && hidden.z === worldZ) continue;
 
             if (id === waterId) {
-                if (this.idAt(px, y + 1, pz) === waterId) continue;
                 if (!water) water = new MeshBucket(world.getChunkMaterial('water'));
-                const top = y + WATER_SURFACE_HEIGHT;
-                const lit = cellLight(worldX, y, worldZ);
-                const sky = cellSky(lx, y + 1, lz);
-                const a = water.addVertex(lx, top, lz + 1, 0, 1, 0, 0, 0, 1, lit, sky);
-                const b = water.addVertex(lx + 1, top, lz + 1, 0, 1, 0, 1, 0, 1, lit, sky);
-                const c = water.addVertex(lx + 1, top, lz, 0, 1, 0, 1, 1, 1, lit, sky);
-                const d = water.addVertex(lx, top, lz, 0, 1, 0, 0, 1, 1, lit, sky);
-                water.addTriangle(a, b, c, worldX, y, worldZ);
-                water.addTriangle(a, c, d, worldX, y, worldZ);
+                // The topmost water cell is drawn slightly lowered; cells below it are full.
+                const surface = this.idAt(px, y + 1, pz) !== waterId;
+                const height = surface ? WATER_SURFACE_HEIGHT : 1;
+                for (let f = 0; f < 6; f++) {
+                    const face = MESH_FACES[f];
+                    const [nx, ny, nz] = face.normal;
+                    const neighborId = this.idAt(px + nx, y + ny, pz + nz);
+                    if (f === 2) {
+                        if (!surface) continue;
+                    } else if (neighborId === waterId || registry.fullCube[neighborId]) {
+                        continue;
+                    }
+                    const lit = cellLight(worldX + nx, y + ny, worldZ + nz);
+                    const sky = cellSky(lx + nx, y + ny, lz + nz);
+                    const sideFace = ny === 0;
+                    const v = face.corners.map((corner, i) => water.addVertex(
+                        lx + corner[0], y + corner[1] * height, lz + corner[2],
+                        nx, ny, nz,
+                        MESH_FACE_UVS[i][0], sideFace ? MESH_FACE_UVS[i][1] * height : MESH_FACE_UVS[i][1],
+                        1, lit, sky
+                    ));
+                    water.addTriangle(v[0], v[1], v[2], worldX, y, worldZ);
+                    water.addTriangle(v[0], v[2], v[3], worldX, y, worldZ);
+                }
                 continue;
             }
 
