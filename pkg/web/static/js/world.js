@@ -25,6 +25,9 @@ class WorldRenderer {
         // Variants of the block materials that multiply in per-vertex ambient occlusion.
         this.chunkMaterials = new Map();
         this.mesher = new ChunkMesher(this);
+        // Chunks waiting to be (re)meshed, drained a few per frame nearest-first.
+        this.rebuildQueue = new Set();
+        this.rebuildBudgetMs = 6;
         // 0 = torch light invisible (bright day) .. 1 = full strength (night, caves).
         this.blockLightStrength = { value: 0.6 };
         // The torch held by the local player, applied to terrain like placed torches.
@@ -401,7 +404,7 @@ class WorldRenderer {
 
         for (const key of this.activeChunks) {
             const [chunkX, chunkZ] = key.split(',').map(Number);
-            this.rebuildChunk(chunkX, chunkZ);
+            this.requestRebuild(chunkX, chunkZ);
         }
     }
 
@@ -831,7 +834,8 @@ class WorldRenderer {
                 this.columns.set(key, column);
                 this.chunkBiomes.set(key, biome);
                 this.generatedChunks.add(key);
-                this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ);
+                // Neighbours may now hide faces along the shared border.
+                this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, true, true);
             }
 
             this.isProcessingChunks = false;
@@ -884,7 +888,7 @@ class WorldRenderer {
         const column = this.columns.get(key);
         if (!column || column.blocks[index] === id) return false;
         column.blocks[index] = id;
-        column.emitters = null;
+        column.invalidate();
         return true;
     }
 
@@ -907,14 +911,47 @@ class WorldRenderer {
         return false;
     }
 
-    // Rebuilds the chunks affected by a change at (x, z). Light emitters reach one chunk in
-    // every direction (diagonals included); other changes only touch face neighbours.
+    // Rebuilds the chunks affected by a change at (x, z): its own chunk right away, neighbours
+    // through the queue only when the block touches them (border faces, AO) or, for light
+    // changes, the whole 3x3 neighbourhood a torch can reach.
     rebuildAfterChange(x, z, affectsLight) {
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
-        this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, this.activeChunks.has(this.chunkKey(chunkX, chunkZ)));
-        if (!affectsLight) return;
-        for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-            if (this.activeChunks.has(this.chunkKey(chunkX + dx, chunkZ + dz))) this.rebuildChunk(chunkX + dx, chunkZ + dz);
+        this.rebuildChunk(chunkX, chunkZ);
+        this.rebuildQueue.delete(this.chunkKey(chunkX, chunkZ));
+
+        const lx = localCoord(x);
+        const lz = localCoord(z);
+        for (const dx of [-1, 0, 1]) {
+            for (const dz of [-1, 0, 1]) {
+                if (dx === 0 && dz === 0) continue;
+                const touchesX = dx === 0 || (dx < 0 ? lx === 0 : lx === CHUNK_SIZE - 1);
+                const touchesZ = dz === 0 || (dz < 0 ? lz === 0 : lz === CHUNK_SIZE - 1);
+                if (affectsLight || (touchesX && touchesZ)) this.requestRebuild(chunkX + dx, chunkZ + dz);
+            }
+        }
+    }
+
+    requestRebuild(chunkX, chunkZ) {
+        const key = this.chunkKey(chunkX, chunkZ);
+        if (this.activeChunks.has(key) && this.columns.has(key)) this.rebuildQueue.add(key);
+    }
+
+    // Meshes queued chunks nearest to the player first, within a per-frame time budget
+    // (always at least one, so the queue keeps draining).
+    processRebuildQueue() {
+        if (this.rebuildQueue.size === 0) return;
+        const start = performance.now();
+        const px = this.lastPlayerChunkX ?? 0;
+        const pz = this.lastPlayerChunkZ ?? 0;
+        const ordered = Array.from(this.rebuildQueue, (key) => {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            return { key, chunkX, chunkZ, distance: Math.max(Math.abs(chunkX - px), Math.abs(chunkZ - pz)) };
+        }).sort((a, b) => a.distance - b.distance);
+
+        for (const { key, chunkX, chunkZ } of ordered) {
+            if (performance.now() - start > this.rebuildBudgetMs) break;
+            this.rebuildQueue.delete(key);
+            this.rebuildChunk(chunkX, chunkZ);
         }
     }
 
@@ -1016,7 +1053,7 @@ class WorldRenderer {
         }
     }
 
-    rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter = true) {
+    rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter = true, deferred = false) {
         const offsets = [
             [0, 0],
             [1, 0],
@@ -1035,11 +1072,13 @@ class WorldRenderer {
             if (!shouldRebuild) continue;
             if (!this.columns.has(key)) continue;
 
-            this.rebuildChunk(x, z);
+            if (deferred) this.requestRebuild(x, z);
+            else this.rebuildChunk(x, z);
         }
     }
 
     update(playerX, playerZ) {
+        this.processRebuildQueue();
         const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
 
         if (playerChunkX === this.lastPlayerChunkX && playerChunkZ === this.lastPlayerChunkZ) {
@@ -1071,39 +1110,15 @@ class WorldRenderer {
         const previousActiveChunks = this.activeChunks;
         this.activeChunks = desiredActiveChunks;
 
-        const chunksToRefresh = new Set();
-
+        // Columns stay loaded beyond the render distance, so dropping a mesh never changes
+        // its neighbours' faces; only the chunks entering the view need meshing.
         for (const key of previousActiveChunks) {
-            if (desiredActiveChunks.has(key)) continue;
-
-            this.removeChunkMesh(key);
-
-            const [chunkX, chunkZ] = key.split(',').map(Number);
-            const neighborKeys = [
-                this.chunkKey(chunkX + 1, chunkZ),
-                this.chunkKey(chunkX - 1, chunkZ),
-                this.chunkKey(chunkX, chunkZ + 1),
-                this.chunkKey(chunkX, chunkZ - 1)
-            ];
-
-            for (let i = 0; i < neighborKeys.length; i++) {
-                if (desiredActiveChunks.has(neighborKeys[i])) {
-                    chunksToRefresh.add(neighborKeys[i]);
-                }
-            }
+            if (!desiredActiveChunks.has(key)) this.removeChunkMesh(key);
         }
 
-        // Chunks still generating are rebuilt (with their neighbours) when the worker replies.
-        for (let i = 0; i < chunksToRender.length; i++) {
-            const [chunkX, chunkZ] = chunksToRender[i];
-            chunksToRefresh.add(this.chunkKey(chunkX, chunkZ));
-        }
-
-        for (const key of chunksToRefresh) {
-            if (!this.activeChunks.has(key)) continue;
-
-            const [chunkX, chunkZ] = key.split(',').map(Number);
-            this.rebuildChunk(chunkX, chunkZ);
+        // Chunks still generating are meshed (with their neighbours) when the worker replies.
+        for (const [chunkX, chunkZ] of chunksToRender) {
+            this.requestRebuild(chunkX, chunkZ);
         }
 
         // Free terrain far away; it is regenerated deterministically (plus edits) on return.
@@ -1425,7 +1440,7 @@ class WorldRenderer {
         for (const key of dirtyChunks) {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             const includeCenter = this.activeChunks.has(key);
-            this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter);
+            this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter, true);
         }
 
         this.loadSprayPaints(sprayPaints);

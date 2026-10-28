@@ -175,7 +175,7 @@ class ChunkMesher {
                 if (column) {
                     const lx = localCoord(minX + hx);
                     const lz = localCoord(minZ + hz);
-                    for (let y = WORLD_MAX_Y; y >= WORLD_MIN_Y; y--) {
+                    for (let y = column.maxY; y >= WORLD_MIN_Y; y--) {
                         if (this.blocksSky(column.blocks[chunkIndex(lx, y, lz)])) {
                             top = y;
                             break;
@@ -221,6 +221,15 @@ class ChunkMesher {
         const minX = chunkX * CHUNK_SIZE - 1;
         const minZ = chunkZ * CHUNK_SIZE - 1;
         this.padded.fill(AIR_ID);
+        // Nothing above the tallest of the 3x3 columns needs copying.
+        let top = WORLD_MIN_Y - 1;
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                const column = world.columns.get(world.chunkKey(chunkX + dx, chunkZ + dz));
+                if (column) top = Math.max(top, column.maxY);
+            }
+        }
+        this.topY = top;
 
         for (let pz = 0; pz < size; pz++) {
             for (let px = 0; px < size; px++) {
@@ -230,7 +239,7 @@ class ChunkMesher {
                 if (!column) continue;
                 const lx = localCoord(worldX);
                 const lz = localCoord(worldZ);
-                for (let y = WORLD_MIN_Y; y <= WORLD_MAX_Y; y++) {
+                for (let y = WORLD_MIN_Y; y <= top; y++) {
                     this.padded[this.paddedIndex(px, y, pz)] = column.blocks[chunkIndex(lx, y, lz)];
                 }
             }
@@ -386,7 +395,8 @@ class ChunkMesher {
         };
 
         const blocks = column.blocks;
-        for (let index = 0; index < blocks.length; index++) {
+        const end = Math.min(blocks.length, chunkIndex(0, column.maxY + 1, 0));
+        for (let index = 0; index < end; index++) {
             const id = blocks[index];
             if (id === AIR_ID) continue;
 

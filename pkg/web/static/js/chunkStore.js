@@ -67,6 +67,29 @@ class ChunkColumn {
         this.blocks = blocks || new Uint16Array(CHUNK_VOLUME);
         // Indices of light-emitting blocks; rebuilt lazily after edits.
         this.emitters = null;
+        // Highest non-air y; recomputed lazily after edits (null = unknown).
+        this.cachedMaxY = null;
+    }
+
+    // Marks derived data stale after the block array changed.
+    invalidate() {
+        this.emitters = null;
+        this.cachedMaxY = null;
+    }
+
+    get maxY() {
+        if (this.cachedMaxY === null) {
+            const layer = CHUNK_SIZE * CHUNK_SIZE;
+            let top = WORLD_MIN_Y - 1;
+            for (let index = this.blocks.length - 1; index >= 0; index--) {
+                if (this.blocks[index] !== AIR_ID) {
+                    top = Math.floor(index / layer) + WORLD_MIN_Y;
+                    break;
+                }
+            }
+            this.cachedMaxY = top;
+        }
+        return this.cachedMaxY;
     }
 
     getEmitters(emitterId) {
@@ -89,7 +112,7 @@ class ChunkColumn {
         const index = chunkIndex(lx, y, lz);
         if (this.blocks[index] === id) return false;
         this.blocks[index] = id;
-        this.emitters = null;
+        this.invalidate();
         return true;
     }
 }
