@@ -1460,6 +1460,13 @@ class Game {
         this.lastSafePositionSaveTimer += delta;
         const feetY = this.camera.position.y - this.cameraController.eyeHeight;
 
+        if (this.cameraController.spawnSettling) {
+            // The join/respawn descent never counts as a fall.
+            this.airbornePeakFeetY = null;
+            this.wasOnGroundForDamage = true;
+            return;
+        }
+
         if (!this.cameraController.onGround) {
             this.airbornePeakFeetY = this.airbornePeakFeetY === null ? feetY : Math.max(this.airbornePeakFeetY, feetY);
         }

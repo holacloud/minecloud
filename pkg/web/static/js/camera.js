@@ -28,6 +28,8 @@ class CameraController {
         this.velocityY = 0;
         this.isLocked = false;
         this.onGround = false;
+        // After joining or respawning the player waits for terrain and then floats down gently.
+        this.spawnSettling = true;
         this.blockTypeGetter = null;
         this.isInWater = false;
         
@@ -224,6 +226,13 @@ class CameraController {
         this.lookInput.deltaX = 0;
         this.lookInput.deltaY = 0;
 
+        if (this.spawnSettling && !this.updateSpawnSettling(delta)) {
+            this.camera.rotation.order = 'YXZ';
+            this.camera.rotation.y = this.yaw;
+            this.camera.rotation.x = this.pitch;
+            return;
+        }
+
         const isSprinting = this.keys.sprint || this.touchSprint || (this.sprintLatch && this.keys.forward && !this.keys.backward);
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
@@ -337,12 +346,54 @@ class CameraController {
         this.camera.rotation.x = this.pitch;
     }
 
+    // Returns true once normal physics should take over. Until then the player hangs in place
+    // while the chunk below is generated, is lifted out if the spawn point ended up inside
+    // terrain, and otherwise descends at a gentle, damage-free speed.
+    updateSpawnSettling(delta) {
+        const x = this.camera.position.x;
+        const z = this.camera.position.z;
+        const feetY = this.camera.position.y - this.eyeHeight;
+        this.velocityY = 0;
+        this.onGround = false;
+
+        const surfaceY = this.getFloorY(x, z, 256);
+        if (surfaceY < -50) return false;
+
+        if (this.hasBlock(Math.floor(x), Math.floor(feetY), Math.floor(z)) ||
+            this.hasBlock(Math.floor(x), Math.floor(feetY + 1), Math.floor(z))) {
+            this.camera.position.y = surfaceY + this.eyeHeight;
+            this.finishSpawnSettling();
+            return false;
+        }
+
+        const floorY = this.getFloorY(x, z, feetY);
+        const gap = feetY - floorY;
+        if (gap <= 0.001) {
+            this.finishSpawnSettling();
+            return true;
+        }
+
+        const descent = Math.min(gap, Math.max(6, gap * 2.5) * delta);
+        this.camera.position.y -= descent;
+        if (descent >= gap) {
+            this.finishSpawnSettling();
+        }
+        return false;
+    }
+
+    finishSpawnSettling() {
+        this.spawnSettling = false;
+        this.velocityY = 0;
+        this.onGround = true;
+    }
+
     setPosition(position) {
         this.camera.position.set(position.x, position.y, position.z);
         this.yaw = position.yaw ?? this.yaw;
         this.pitch = position.pitch ?? this.pitch;
         this.velocityY = 0;
         this.onGround = false;
+        this.spawnSettling = true;
     }
     
     getPosition() {
