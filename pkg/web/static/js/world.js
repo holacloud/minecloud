@@ -2,20 +2,20 @@ class WorldRenderer {
     constructor(scene) {
         this.scene = scene;
         this.chunks = new Map();
-        this.chunkBlocks = new Map();
+        // Generated terrain, one typed column per chunk. Columns far from the player are
+        // dropped and regenerated on demand; player edits live separately in `edits`.
+        this.columns = new Map();
+        // chunkKey -> Map<column index, block id> (AIR_ID records a removal).
+        this.edits = new Map();
         this.generatedChunks = new Set();
         this.chunkBiomes = new Map();
         this.activeChunks = new Set();
-        this.blockData = new Map();
         this.signTextByKey = new Map();
         this.signVotesByKey = new Map();
         this.soundBlockStateByKey = new Map();
         this.ladderFacingByKey = new Map();
         this.sprayPaintsByKey = new Map();
-        this.solidBlocks = new Set();
-        this.removedBlockKeys = new Set();
-        this.userModifiedBlocks = new Set();
-        this.chunkSize = 16;
+        this.chunkSize = CHUNK_SIZE;
         this.renderDistance = 4;
         this.rtxModeEnabled = false;
 
@@ -74,6 +74,8 @@ class WorldRenderer {
             ladder: { color: 0xB98548, name: 'Ladder', transparent: true, breakDuration: 0.25, solid: false },
         };
         this.registerExpansionBlockTypes();
+        this.registry = new BlockRegistry(this.blockTypes);
+        this.chunkWorker.postMessage({ type: 'init', ids: this.registry.ids });
 
         this.generateInitialChunks();
     }
@@ -359,15 +361,6 @@ class WorldRenderer {
         };
     }
 
-    ensureChunkBlockSet(chunkKey) {
-        let blockKeys = this.chunkBlocks.get(chunkKey);
-        if (!blockKeys) {
-            blockKeys = new Set();
-            this.chunkBlocks.set(chunkKey, blockKeys);
-        }
-        return blockKeys;
-    }
-
     disposeCache(cache) {
         const disposed = new Set();
         for (const value of cache.values()) {
@@ -538,11 +531,6 @@ class WorldRenderer {
         return mesh;
     }
 
-    isSolidType(type) {
-        const def = this.blockTypes[type];
-        return def ? !def.fluid && def.solid !== false : false;
-    }
-
     // Which procedural pattern (and tint) each face of a block uses.
     // Returns { top, side, bottom }, each { pattern, tint, label }.
     getFaceTextureSpecs(type) {
@@ -710,12 +698,9 @@ class WorldRenderer {
     }
 
     generateInitialChunks() {
-        const initialChunks = [];
-
         for (let x = -this.renderDistance; x <= this.renderDistance; x++) {
             for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
-                const key = this.chunkKey(x, z);
-                this.activeChunks.add(key);
+                this.activeChunks.add(this.chunkKey(x, z));
                 this.generateChunkData(x, z);
             }
         }
@@ -724,37 +709,30 @@ class WorldRenderer {
     processNextChunk() {
         if (this.isProcessingChunks || this.chunkProcessQueue.length === 0) return;
         this.isProcessingChunks = true;
-        
+
         requestAnimationFrame(() => {
             if (this.chunkProcessQueue.length === 0) {
                 this.isProcessingChunks = false;
                 return;
             }
-            
+
             const { chunkX, chunkZ, blocks, biome } = this.chunkProcessQueue.shift();
             const key = this.chunkKey(chunkX, chunkZ);
-            this.chunkBiomes.set(key, biome);
-            
-            // Trees may spill over chunk borders, so each block is filed under its own chunk.
-            const spilledInto = new Set();
-            for (let i = 0; i < blocks.length; i += 4) {
-                const x = blocks[i];
-                const z = blocks[i + 2];
-                const blockChunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
-                if (this.setBlockData(x, blocks[i + 1], z, blocks[i + 3], blockChunkKey) && blockChunkKey !== key) {
-                    spilledInto.add(blockChunkKey);
-                }
-            }
-            this.generatedChunks.add(key);
             this.generatingChunks.delete(key);
-            this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ);
-            for (const neighborKey of spilledInto) {
-                if (!this.chunks.has(neighborKey)) continue;
-                const [neighborX, neighborZ] = neighborKey.split(',').map(Number);
-                if (Math.abs(neighborX - chunkX) + Math.abs(neighborZ - chunkZ) === 1) continue;
-                this.rebuildChunk(neighborX, neighborZ);
+
+            // The player may have moved away while the worker was busy.
+            if (this.isWithinRetention(chunkX, chunkZ)) {
+                const column = new ChunkColumn(chunkX, chunkZ, blocks);
+                const edits = this.edits.get(key);
+                if (edits) {
+                    for (const [index, id] of edits) column.blocks[index] = id;
+                }
+                this.columns.set(key, column);
+                this.chunkBiomes.set(key, biome);
+                this.generatedChunks.add(key);
+                this.rebuildChunkAndActiveNeighbors(chunkX, chunkZ);
             }
-            
+
             this.isProcessingChunks = false;
             this.processNextChunk();
         });
@@ -765,89 +743,47 @@ class WorldRenderer {
         if (this.generatedChunks.has(key) || this.generatingChunks.has(key)) return;
 
         this.generatingChunks.add(key);
-        this.ensureChunkBlockSet(key);
-        this.chunkWorker.postMessage({ chunkX, chunkZ, chunkSize: this.chunkSize });
+        this.chunkWorker.postMessage({ chunkX, chunkZ });
     }
 
-    setBlockData(x, y, z, type, chunkKey = null, options = {}) {
-        const key = this.blockKey(x, y, z);
-        const resolvedChunkKey = chunkKey || this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
-        const currentType = this.blockData.get(key);
+    // Columns are kept a little beyond the render distance so turning around is cheap.
+    isWithinRetention(chunkX, chunkZ) {
+        if (this.lastPlayerChunkX === null) return true;
+        const margin = this.renderDistance + 2;
+        return Math.abs(chunkX - this.lastPlayerChunkX) <= margin && Math.abs(chunkZ - this.lastPlayerChunkZ) <= margin;
+    }
 
-        if (this.removedBlockKeys.has(key) && !options.persisted && !options.playerChange) {
-            return false;
+    getColumnAt(x, z) {
+        return this.columns.get(this.chunkKey(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)));
+    }
+
+    // Block id at integer world coordinates; AIR_ID when the chunk is not loaded.
+    getBlockId(x, y, z) {
+        const column = this.getColumnAt(x, z);
+        return column ? column.get(localCoord(x), y, localCoord(z)) : AIR_ID;
+    }
+
+    // Records a player/persisted change and applies it to the loaded column, if any.
+    // Returns true when the visible world changed.
+    setEditedBlock(x, y, z, type) {
+        if (y < WORLD_MIN_Y || y > WORLD_MAX_Y) return false;
+        const id = type ? this.registry.id(type) : AIR_ID;
+        const chunkX = floorDiv(x, CHUNK_SIZE);
+        const chunkZ = floorDiv(z, CHUNK_SIZE);
+        const key = this.chunkKey(chunkX, chunkZ);
+        const index = chunkIndex(localCoord(x), y, localCoord(z));
+
+        let edits = this.edits.get(key);
+        if (!edits) {
+            edits = new Map();
+            this.edits.set(key, edits);
         }
+        edits.set(index, id);
 
-        if (options.persisted || options.playerChange) {
-            this.removedBlockKeys.delete(key);
-            this.userModifiedBlocks.add(key);
-        } else if (this.userModifiedBlocks.has(key)) {
-            return false;
-        }
-
-        if (currentType === type) {
-            this.ensureChunkBlockSet(resolvedChunkKey).add(key);
-            if (this.isSolidType(type)) {
-                this.solidBlocks.add(key);
-            } else {
-                this.solidBlocks.delete(key);
-            }
-            return false;
-        }
-
-        this.blockData.set(key, type);
-        this.ensureChunkBlockSet(resolvedChunkKey).add(key);
-
-        if (this.isSolidType(type)) {
-            this.solidBlocks.add(key);
-        } else {
-            this.solidBlocks.delete(key);
-        }
-
+        const column = this.columns.get(key);
+        if (!column || column.blocks[index] === id) return false;
+        column.blocks[index] = id;
         return true;
-    }
-
-    isBlockVisible(x, y, z, type) {
-        const currentChunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
-        const def = this.blockTypes[type];
-        const neighbors = [
-            [1, 0, 0],
-            [-1, 0, 0],
-            [0, 1, 0],
-            [0, -1, 0],
-            [0, 0, 1],
-            [0, 0, -1]
-        ];
-
-        for (let i = 0; i < neighbors.length; i++) {
-            const [dx, dy, dz] = neighbors[i];
-            const nx = x + dx;
-            const ny = y + dy;
-            const nz = z + dz;
-
-            const neighborType = this.blockData.get(this.blockKey(nx, ny, nz));
-            if (!neighborType) return true;
-
-            const neighborChunkKey = this.chunkKey(Math.floor(nx / this.chunkSize), Math.floor(nz / this.chunkSize));
-            if (neighborChunkKey !== currentChunkKey && !this.activeChunks.has(neighborChunkKey)) {
-                return true;
-            }
-
-            const neighborDef = this.blockTypes[neighborType];
-            if (type === 'water') {
-                if (neighborType !== 'water') return true;
-                continue;
-            }
-
-            if (def.transparent) {
-                if (!neighborDef.transparent || neighborType !== type) return true;
-                continue;
-            }
-
-            if (neighborDef.transparent) return true;
-        }
-
-        return false;
     }
 
     removeChunkMesh(chunkKey) {
@@ -874,34 +810,70 @@ class WorldRenderer {
         this.chunks.delete(chunkKey);
     }
 
+    // A face is drawn when the neighbouring block does not hide it.
+    isBlockVisible(x, y, z, id) {
+        const registry = this.registry;
+        const transparent = registry.transparent[id];
+        const neighbors = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+        for (let i = 0; i < neighbors.length; i++) {
+            const [dx, dy, dz] = neighbors[i];
+            const nx = x + dx;
+            const nz = z + dz;
+            const column = this.getColumnAt(nx, nz);
+            if (!column) return true;
+
+            const neighborId = column.get(localCoord(nx), y + dy, localCoord(nz));
+            if (neighborId === AIR_ID || registry.fluid[neighborId]) return true;
+            if (transparent) {
+                if (!registry.transparent[neighborId] || neighborId !== id) return true;
+                continue;
+            }
+            if (registry.transparent[neighborId]) return true;
+        }
+
+        return false;
+    }
+
     rebuildChunk(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
         this.removeChunkMesh(key);
 
         if (!this.activeChunks.has(key)) return;
 
-        const blockKeys = this.chunkBlocks.get(key);
-        if (!blockKeys || blockKeys.size === 0) return;
+        const column = this.columns.get(key);
+        if (!column) return;
 
+        const registry = this.registry;
+        const waterId = registry.id('water');
+        const ladderId = registry.id('ladder');
         const baseX = chunkX * this.chunkSize;
         const baseZ = chunkZ * this.chunkSize;
         const instancesByType = new Map();
         const waterSurfacePositions = [];
+        const specialBlocks = [];
+        const blocks = column.blocks;
 
-        for (const blockKey of blockKeys) {
-            const type = this.blockData.get(blockKey);
-            if (!type) continue;
+        for (let index = 0; index < blocks.length; index++) {
+            const id = blocks[index];
+            if (id === AIR_ID) continue;
 
-            const { x, y, z } = this.parseBlockKey(blockKey);
-            if (type === 'water') {
-                const aboveType = this.blockData.get(this.blockKey(x, y + 1, z));
-                if (aboveType !== 'water') {
-                    waterSurfacePositions.push({ x: x - baseX, y: y + 0.5, z: z - baseZ });
+            const lx = index % CHUNK_SIZE;
+            const lz = Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
+            const y = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;
+            const type = registry.names[id];
+
+            if (id === waterId) {
+                if (column.get(lx, y + 1, lz) !== waterId) {
+                    waterSurfacePositions.push({ x: lx, y: y + 0.5, z: lz });
                 }
                 continue;
             }
-            if (type === 'ladder') continue;
-            if (!this.isBlockVisible(x, y, z, type)) continue;
+            if (type === 'sign' || type === 'torch' || id === ladderId) {
+                specialBlocks.push({ type, x: baseX + lx, y, z: baseZ + lz });
+            }
+            if (id === ladderId) continue;
+            if (!this.isBlockVisible(baseX + lx, y, baseZ + lz, id)) continue;
 
             let positions = instancesByType.get(type);
             if (!positions) {
@@ -909,10 +881,10 @@ class WorldRenderer {
                 instancesByType.set(type, positions);
             }
 
-            positions.push({ x: x - baseX, y: y, z: z - baseZ });
+            positions.push({ x: lx, y, z: lz });
         }
 
-        if (instancesByType.size === 0) return;
+        if (instancesByType.size === 0 && waterSurfacePositions.length === 0 && specialBlocks.length === 0) return;
 
         const chunk = new THREE.Group();
         chunk.position.set(baseX, 0, baseZ);
@@ -959,9 +931,8 @@ class WorldRenderer {
             chunk.add(waterMesh);
         }
 
-        for (const blockKey of blockKeys) {
-            const type = this.blockData.get(blockKey);
-            const { x, y, z } = this.parseBlockKey(blockKey);
+        for (const { type, x, y, z } of specialBlocks) {
+            const blockKey = this.blockKey(x, y, z);
 
             if (type === 'sign') {
                 const text = this.signTextByKey.get(blockKey);
@@ -1008,7 +979,7 @@ class WorldRenderer {
             const shouldRebuild = dx === 0 && dz === 0 ? includeCenter : this.activeChunks.has(key);
 
             if (!shouldRebuild) continue;
-            if (!this.chunkBlocks.has(key) && !this.generatedChunks.has(key)) continue;
+            if (!this.columns.has(key)) continue;
 
             this.rebuildChunk(x, z);
         }
@@ -1080,14 +1051,23 @@ class WorldRenderer {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             this.rebuildChunk(chunkX, chunkZ);
         }
+
+        // Free terrain far away; it is regenerated deterministically (plus edits) on return.
+        for (const key of Array.from(this.columns.keys())) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            if (this.isWithinRetention(chunkX, chunkZ)) continue;
+            this.columns.delete(key);
+            this.generatedChunks.delete(key);
+            this.chunkBiomes.delete(key);
+        }
     }
 
     hasSolidBlock(x, y, z) {
-        return this.solidBlocks.has(this.blockKey(x, y, z));
+        return this.registry.solid[this.getBlockId(Math.round(x), Math.round(y), Math.round(z))] === 1;
     }
 
     getBlockTypeAt(x, y, z) {
-        return this.blockData.get(this.blockKey(Math.round(x), Math.round(y), Math.round(z))) || null;
+        return this.registry.name(this.getBlockId(Math.round(x), Math.round(y), Math.round(z)));
     }
 
     getBreakDurationForType(type) {
@@ -1294,7 +1274,7 @@ class WorldRenderer {
         const x = Math.round(payload.x);
         const y = Math.round(payload.y);
         const z = Math.round(payload.z);
-        const changed = this.setBlockData(x, y, z, payload.blockType, null, { playerChange: true });
+        const changed = this.setEditedBlock(x, y, z, payload.blockType);
         const key = this.blockKey(x, y, z);
         if (payload.blockType === 'sign' && Object.prototype.hasOwnProperty.call(payload, 'text')) {
             this.signTextByKey.set(key, payload.text || '');
@@ -1359,11 +1339,9 @@ class WorldRenderer {
                     const worldZ = cz * 32 + z;
                     
                     if (val === 1) {
-                        this.removedBlockKeys.add(this.blockKey(worldX, worldY, worldZ));
-                        this.deleteBlockData(worldX, worldY, worldZ, false);
+                        this.deleteBlockData(worldX, worldY, worldZ);
                     } else if (val >= 2) {
-                        const type = palette[val - 2];
-                        this.setBlockData(worldX, worldY, worldZ, type, null, { persisted: true });
+                        this.setEditedBlock(worldX, worldY, worldZ, palette[val - 2]);
                     }
                 }
             }
@@ -1375,9 +1353,8 @@ class WorldRenderer {
 
         for (const key in removedBlocks) {
             if (!removedBlocks[key]) continue;
-            this.removedBlockKeys.add(key);
             const { x, y, z } = this.parseBlockKey(key);
-            this.deleteBlockData(x, y, z, false);
+            this.deleteBlockData(x, y, z);
             const { chunkX, chunkZ } = this.getChunkCoords(x, z);
             dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
         }
@@ -1387,7 +1364,8 @@ class WorldRenderer {
             const x = Math.round(block.x);
             const y = Math.round(block.y);
             const z = Math.round(block.z);
-            if (!this.setBlockData(x, y, z, block.blockType, null, { persisted: true })) continue;
+            // Metadata is kept even when the chunk is not loaded yet.
+            this.setEditedBlock(x, y, z, block.blockType);
 
             const blockKey = this.blockKey(x, y, z);
             if (block.blockType === 'sign' && block.text) {
@@ -1432,32 +1410,14 @@ class WorldRenderer {
         return true;
     }
 
-    deleteBlockData(x, y, z, recordRemoval = true) {
+    // Records the removal as an edit; returns true if a loaded block actually disappeared.
+    deleteBlockData(x, y, z) {
         const key = this.blockKey(x, y, z);
-        if (!this.blockData.has(key)) return false;
-
-        if (recordRemoval) {
-            this.removedBlockKeys.add(key);
-            this.userModifiedBlocks.delete(key);
-        }
-
-        this.blockData.delete(key);
         this.signTextByKey.delete(key);
         this.signVotesByKey.delete(key);
         this.soundBlockStateByKey.delete(key);
         this.ladderFacingByKey.delete(key);
         this.removeSprayPaintsForBlock(x, y, z);
-        this.solidBlocks.delete(key);
-
-        const chunkKey = this.chunkKey(Math.floor(x / this.chunkSize), Math.floor(z / this.chunkSize));
-        const blockKeys = this.chunkBlocks.get(chunkKey);
-        if (blockKeys) {
-            blockKeys.delete(key);
-            if (blockKeys.size === 0 && !this.generatedChunks.has(chunkKey)) {
-                this.chunkBlocks.delete(chunkKey);
-            }
-        }
-
-        return true;
+        return this.setEditedBlock(x, y, z, null);
     }
 }

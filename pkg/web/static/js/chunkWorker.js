@@ -1,12 +1,16 @@
 // Terrain generation worker.
 //
 // All noise is a pure function of world coordinates and WORLD_SEED, so neighbouring
-// chunks agree on the shared border (no seams) and structures such as trees may spill
-// over into the next chunk.
+// chunks agree on the shared border (no seams). Each chunk is generated self-contained:
+// trees rooted in the surrounding margin are evaluated too, and only their blocks that
+// fall inside this chunk are written. The result is a transferable Uint16Array column.
+
+importScripts('/js/chunkStore.js');
 
 const WORLD_SEED = 20240611;
 const WATER_LEVEL = 5;
 const BEDROCK_Y = -5;
+const TREE_MARGIN = 3;
 
 function hash2(x, z, seed) {
     let h = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263) ^ Math.imul((seed + WORLD_SEED) | 0, 1274126177);
@@ -118,12 +122,45 @@ const TREE_SHAPES = {
     willow_wood: { trunk: [5, 7], canopy: 'willow' }
 };
 
-self.onmessage = function(e) {
-    const { chunkX, chunkZ, chunkSize } = e.data;
-    const blocks = [];
+let ids = null;
 
-    const setBlockData = (x, y, z, type) => {
-        blocks.push(x, y, z, type);
+function columnSurface(worldX, worldZ) {
+    const climate = sampleClimate(worldX, worldZ);
+    const biome = dominantBiome(climate);
+    const height = terrainHeight(worldX, worldZ, climate);
+    const beach = biome !== 'rocky' && height <= WATER_LEVEL + 1 && fbm(worldX, worldZ, 40, 2, 131) > 0.35;
+    return { climate, biome, height, beach };
+}
+
+function treeAt(worldX, worldZ, surface) {
+    const { climate, biome, height, beach } = surface;
+    if (height < WATER_LEVEL || beach || biome === 'desert') return null;
+    const treeChance = climate.forest * 0.045 + climate.plains * 0.006 + climate.mountain * 0.004;
+    if (hash2(worldX, worldZ, 999) >= treeChance) return null;
+    const treeTypes = biome === 'forest'
+        ? ['wood', 'spruce_wood', 'birch_wood', 'jungle_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood']
+        : biome === 'rocky' ? ['spruce_wood'] : ['wood', 'birch_wood', 'acacia_wood', 'maple_wood'];
+    // Neighbouring trees tend to share a species, which reads as groves.
+    const grove = fbm(worldX, worldZ, 24, 1, 1777);
+    return treeTypes[Math.floor(grove * treeTypes.length * 0.999)];
+}
+
+function generateChunk(chunkX, chunkZ) {
+    const column = new Uint16Array(CHUNK_VOLUME);
+    const minX = chunkX * CHUNK_SIZE;
+    const minZ = chunkZ * CHUNK_SIZE;
+    const id = (type) => ids[type] ?? AIR_ID;
+    const plantIds = new Set(['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown'].map(id));
+
+    // Writes a block if it lies inside this chunk. `replace` controls what may be overwritten.
+    const put = (x, y, z, type, replace = 'all') => {
+        const lx = x - minX;
+        const lz = z - minZ;
+        if (lx < 0 || lz < 0 || lx >= CHUNK_SIZE || lz >= CHUNK_SIZE || y < WORLD_MIN_Y || y > WORLD_MAX_Y) return;
+        const index = chunkIndex(lx, y, lz);
+        const current = column[index];
+        if (replace === 'air' && current !== AIR_ID && !plantIds.has(current)) return;
+        column[index] = id(type);
     };
 
     function generateTree(x, y, z, woodType) {
@@ -132,11 +169,11 @@ self.onmessage = function(e) {
         const [minTrunk, maxTrunk] = shape.trunk;
         const trunkHeight = minTrunk + Math.floor(hash2(x, z, 2024) * (maxTrunk - minTrunk + 1));
         const top = y + trunkHeight;
-
+        const solidLeaf = (lx, ly, lz) => put(lx, ly, lz, leavesType, 'air');
+        // Ragged edges: drop a few outer leaves deterministically.
         const leaf = (lx, ly, lz) => {
-            // Ragged edges: drop a few outer leaves deterministically.
             if (hash3(lx, ly, lz, 4242) < 0.12) return;
-            setBlockData(lx, ly, lz, leavesType);
+            solidLeaf(lx, ly, lz);
         };
 
         if (shape.canopy === 'cone') {
@@ -147,7 +184,7 @@ self.onmessage = function(e) {
                     for (let dz = -radius; dz <= radius; dz++) {
                         if (Math.abs(dx) + Math.abs(dz) > radius + 0.5) continue;
                         if (dx === 0 && dz === 0 && ly < top) continue;
-                        setBlockData(x + dx, ly, z + dz, leavesType);
+                        solidLeaf(x + dx, ly, z + dz);
                     }
                 }
             }
@@ -171,38 +208,29 @@ self.onmessage = function(e) {
                         if (d > radius) continue;
                         if (dx === 0 && dz === 0 && dy < 1) continue;
                         if (d > radius - 0.8) leaf(x + dx, Math.round(centerY + dy), z + dz);
-                        else setBlockData(x + dx, Math.round(centerY + dy), z + dz, leavesType);
+                        else solidLeaf(x + dx, Math.round(centerY + dy), z + dz);
                     }
                 }
             }
             if (shape.canopy === 'willow') {
                 for (const [dx, dz] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]]) {
                     const length = 2 + Math.floor(hash2(x + dx, z + dz, 77) * 3);
-                    for (let i = 0; i < length; i++) setBlockData(x + dx, top - 1 - i, z + dz, leavesType);
+                    for (let i = 0; i < length; i++) solidLeaf(x + dx, top - 1 - i, z + dz);
                 }
             }
         }
 
         for (let ty = 0; ty < trunkHeight; ty++) {
-            setBlockData(x, y + ty, z, woodType);
+            put(x, y + ty, z, woodType);
         }
     }
 
-    function generateCactus(x, y, z) {
-        const cactusHeight = 2 + Math.floor(hash2(x, z, 3030) * 3);
-        for (let cy = 0; cy < cactusHeight; cy++) {
-            setBlockData(x, y + cy, z, 'cactus');
-        }
-    }
-
-    for (let x = 0; x < chunkSize; x++) {
-        for (let z = 0; z < chunkSize; z++) {
-            const worldX = chunkX * chunkSize + x;
-            const worldZ = chunkZ * chunkSize + z;
-            const climate = sampleClimate(worldX, worldZ);
-            const biome = dominantBiome(climate);
-            const height = terrainHeight(worldX, worldZ, climate);
-            const beach = biome !== 'rocky' && height <= WATER_LEVEL + 1 && fbm(worldX, worldZ, 40, 2, 131) > 0.35;
+    // 1. Terrain, water and single-column decoration inside the chunk.
+    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+            const worldX = minX + lx;
+            const worldZ = minZ + lz;
+            const { climate, biome, height, beach } = columnSurface(worldX, worldZ);
             const soilDepth = biome === 'rocky' ? 1 : 3 + Math.floor(hash2(worldX, worldZ, 141) * 2);
 
             for (let y = BEDROCK_Y; y <= height; y++) {
@@ -225,45 +253,60 @@ self.onmessage = function(e) {
                 } else {
                     blockType = 'dirt';
                 }
-                setBlockData(worldX, y, worldZ, blockType);
+                put(worldX, y, worldZ, blockType);
             }
 
             for (let y = height + 1; y <= WATER_LEVEL; y++) {
-                setBlockData(worldX, y, worldZ, 'water');
+                put(worldX, y, worldZ, 'water');
             }
 
             if (height < WATER_LEVEL) continue;
 
             const roll = hash2(worldX, worldZ, 999);
-            const treeChance = climate.forest * 0.045 + climate.plains * 0.006 + climate.mountain * 0.004;
             const decorRoll = hash2(worldX, worldZ, 2048);
+            const hasTree = treeAt(worldX, worldZ, { climate, biome, height, beach });
+            if (hasTree) continue;
 
-            if (!beach && biome !== 'desert' && roll < treeChance) {
-                const treeTypes = biome === 'forest'
-                    ? ['wood', 'spruce_wood', 'birch_wood', 'jungle_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood']
-                    : biome === 'rocky' ? ['spruce_wood'] : ['wood', 'birch_wood', 'acacia_wood', 'maple_wood'];
-                // Neighbouring trees tend to share a species, which reads as groves.
-                const grove = fbm(worldX, worldZ, 24, 1, 1777);
-                const treeIndex = Math.floor(grove * treeTypes.length * 0.999);
-                generateTree(worldX, height + 1, worldZ, treeTypes[treeIndex]);
-            } else if (biome === 'desert' && roll < 0.012) {
-                generateCactus(worldX, height + 1, worldZ);
+            if (biome === 'desert' && roll < 0.012) {
+                const cactusHeight = 2 + Math.floor(hash2(worldX, worldZ, 3030) * 3);
+                for (let cy = 0; cy < cactusHeight; cy++) put(worldX, height + 1 + cy, worldZ, 'cactus');
             } else if (biome === 'forest' && decorRoll < 0.08) {
                 const plantType = decorRoll < 0.015 ? 'mushroom_red' : decorRoll < 0.03 ? 'mushroom_brown' : decorRoll < 0.04 ? 'flower_red' : decorRoll < 0.045 ? 'flower_yellow' : 'tall_grass';
-                setBlockData(worldX, height + 1, worldZ, plantType);
+                put(worldX, height + 1, worldZ, plantType);
             } else if (biome === 'plains' && !beach && decorRoll < 0.14) {
                 // Flowers cluster in meadows instead of being sprinkled uniformly.
                 const meadow = fbm(worldX, worldZ, 20, 2, 303);
                 const plantType = meadow > 0.62 && decorRoll < 0.06 ? (decorRoll < 0.03 ? 'flower_red' : 'flower_yellow') : 'tall_grass';
-                setBlockData(worldX, height + 1, worldZ, plantType);
+                put(worldX, height + 1, worldZ, plantType);
             } else if (biome === 'rocky' && decorRoll < 0.012) {
-                setBlockData(worldX, height + 1, worldZ, hash2(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass');
+                put(worldX, height + 1, worldZ, hash2(worldX, worldZ, 1888) < 0.5 ? 'mushroom_brown' : 'tall_grass');
             }
         }
     }
 
-    const centerX = chunkX * chunkSize + chunkSize / 2;
-    const centerZ = chunkZ * chunkSize + chunkSize / 2;
+    // 2. Trees rooted inside the chunk or in its margin. Iterating in global (x, z) order keeps
+    //    overlapping canopies consistent between the two chunks that share them.
+    for (let worldX = minX - TREE_MARGIN; worldX < minX + CHUNK_SIZE + TREE_MARGIN; worldX++) {
+        for (let worldZ = minZ - TREE_MARGIN; worldZ < minZ + CHUNK_SIZE + TREE_MARGIN; worldZ++) {
+            const surface = columnSurface(worldX, worldZ);
+            const woodType = treeAt(worldX, worldZ, surface);
+            if (woodType) generateTree(worldX, surface.height + 1, worldZ, woodType);
+        }
+    }
+
+    return column;
+}
+
+self.onmessage = function(e) {
+    if (e.data.type === 'init') {
+        ids = e.data.ids;
+        return;
+    }
+
+    const { chunkX, chunkZ } = e.data;
+    const blocks = generateChunk(chunkX, chunkZ);
+    const centerX = chunkX * CHUNK_SIZE + CHUNK_SIZE / 2;
+    const centerZ = chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2;
     const biome = dominantBiome(sampleClimate(centerX, centerZ));
-    self.postMessage({ chunkX, chunkZ, blocks, biome });
+    self.postMessage({ chunkX, chunkZ, blocks, biome }, [blocks.buffer]);
 };
