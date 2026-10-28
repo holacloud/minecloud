@@ -47,6 +47,10 @@ class WorldRenderer {
         
         this.chunkWorker = new Worker('/js/chunkWorker.js');
         this.chunkWorker.onmessage = (e) => {
+            if (e.data.type === 'dropped') {
+                this.generatingChunks.delete(this.chunkKey(e.data.chunkX, e.data.chunkZ));
+                return;
+            }
             this.chunkProcessQueue.push(e.data);
             this.processNextChunk();
         };
@@ -85,8 +89,7 @@ class WorldRenderer {
         this.registerExpansionBlockTypes();
         this.registry = new BlockRegistry(this.blockTypes);
         this.chunkWorker.postMessage({ type: 'init', ids: this.registry.ids });
-
-        this.generateInitialChunks();
+        // Chunks are requested by update() around the player's actual position.
     }
 
     registerExpansionBlockTypes() {
@@ -801,15 +804,6 @@ class WorldRenderer {
         return material;
     }
 
-    generateInitialChunks() {
-        for (let x = -this.renderDistance; x <= this.renderDistance; x++) {
-            for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
-                this.activeChunks.add(this.chunkKey(x, z));
-                this.generateChunkData(x, z);
-            }
-        }
-    }
-
     processNextChunk() {
         if (this.isProcessingChunks || this.chunkProcessQueue.length === 0) return;
         this.isProcessingChunks = true;
@@ -848,7 +842,7 @@ class WorldRenderer {
         if (this.generatedChunks.has(key) || this.generatingChunks.has(key)) return;
 
         this.generatingChunks.add(key);
-        this.chunkWorker.postMessage({ chunkX, chunkZ });
+        this.chunkWorker.postMessage({ type: 'generate', chunkX, chunkZ });
     }
 
     // Columns are kept a little beyond the render distance so turning around is cheap.
@@ -1087,6 +1081,8 @@ class WorldRenderer {
 
         this.lastPlayerChunkX = playerChunkX;
         this.lastPlayerChunkZ = playerChunkZ;
+        // The worker serves pending chunks nearest to this point first and drops far ones.
+        this.chunkWorker.postMessage({ type: 'focus', chunkX: playerChunkX, chunkZ: playerChunkZ, radius: this.renderDistance + 2 });
 
         const desiredActiveChunks = new Set();
         const chunksToRender = [];

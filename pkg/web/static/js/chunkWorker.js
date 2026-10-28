@@ -297,16 +297,57 @@ function generateChunk(chunkX, chunkZ) {
     return column;
 }
 
-self.onmessage = function(e) {
-    if (e.data.type === 'init') {
-        ids = e.data.ids;
-        return;
-    }
+// Requests are queued and always served nearest-to-the-player first; chunks that fell out
+// of range before being generated are dropped (and reported, so they can be requested again).
+const pending = new Map();
+let focus = { chunkX: 0, chunkZ: 0, radius: Infinity };
+let scheduled = false;
+// Zero-delay yield (nested setTimeout(0) calls get clamped to 4 ms).
+const yieldChannel = new MessageChannel();
+yieldChannel.port1.onmessage = () => processNext();
 
-    const { chunkX, chunkZ } = e.data;
+function distanceToFocus(request) {
+    return Math.max(Math.abs(request.chunkX - focus.chunkX), Math.abs(request.chunkZ - focus.chunkZ));
+}
+
+function scheduleNext() {
+    if (scheduled || pending.size === 0) return;
+    scheduled = true;
+    // Yield between chunks so focus updates arriving meanwhile reorder the queue.
+    yieldChannel.port2.postMessage(null);
+}
+
+function processNext() {
+    scheduled = false;
+    let next = null;
+    for (const request of pending.values()) {
+        if (!next || distanceToFocus(request) < distanceToFocus(next)) next = request;
+    }
+    if (!next) return;
+    pending.delete(`${next.chunkX},${next.chunkZ}`);
+
+    const { chunkX, chunkZ } = next;
     const blocks = generateChunk(chunkX, chunkZ);
     const centerX = chunkX * CHUNK_SIZE + CHUNK_SIZE / 2;
     const centerZ = chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2;
     const biome = dominantBiome(sampleClimate(centerX, centerZ));
-    self.postMessage({ chunkX, chunkZ, blocks, biome }, [blocks.buffer]);
+    self.postMessage({ type: 'chunk', chunkX, chunkZ, blocks, biome }, [blocks.buffer]);
+    scheduleNext();
+}
+
+self.onmessage = function(e) {
+    const message = e.data;
+    if (message.type === 'init') {
+        ids = message.ids;
+    } else if (message.type === 'focus') {
+        focus = message;
+        for (const [key, request] of pending) {
+            if (distanceToFocus(request) <= focus.radius) continue;
+            pending.delete(key);
+            self.postMessage({ type: 'dropped', chunkX: request.chunkX, chunkZ: request.chunkZ });
+        }
+    } else if (message.type === 'generate') {
+        pending.set(`${message.chunkX},${message.chunkZ}`, { chunkX: message.chunkX, chunkZ: message.chunkZ });
+    }
+    scheduleNext();
 };
