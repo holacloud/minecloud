@@ -2,7 +2,6 @@ package network
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,6 +26,9 @@ type Client struct {
 	ID           string
 	conn         *websocket.Conn
 	send         chan []byte
+	chunks       chan []byte // binary chunk frames, written after regular messages
+	done         chan struct{}
+	stream       *chunkStream
 	username     string
 	voiceEnabled bool
 	sessionID    string
@@ -144,6 +146,9 @@ func Initialize() error {
 	if err := loadWorldState(); err != nil {
 		return err
 	}
+	if err := initChunkStore(); err != nil {
+		return err
+	}
 
 	go runWorldClock()
 	return nil
@@ -231,7 +236,11 @@ func loadWorldState() error {
 	return nil
 }
 
+var saveMu sync.Mutex
+
 func saveWorldState() {
+	saveMu.Lock()
+	defer saveMu.Unlock()
 	stateMu.RLock()
 	persisted := persistedWorldState{
 		Blocks:        make(map[string]Block, len(gameState.Blocks)),
@@ -297,10 +306,13 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		conn:      conn,
 		send:      make(chan []byte, 256),
+		chunks:    make(chan []byte, 4),
+		done:      make(chan struct{}),
 		sessionID: sessionID,
 		ip:        clientIP(r),
 		userAgent: r.UserAgent(),
 	}
+	client.stream = newChunkStream(client)
 
 	clientsMu.Lock()
 	clients[client] = true
@@ -308,6 +320,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	go client.writePump()
 	go client.readPump()
+	go client.stream.run()
 }
 
 func HandleICEServers(w http.ResponseWriter, r *http.Request) {
@@ -392,6 +405,7 @@ func splitConfigList(value string) []string {
 
 func (c *Client) readPump() {
 	defer func() {
+		close(c.done)
 		log.Println("Client disconnected:", c.ID)
 		leftName := c.username
 		if leftName == "" {
@@ -423,13 +437,17 @@ func (c *Client) readPump() {
 			break
 		}
 
-		log.Printf("Received message: %s", message)
 		var msg Message
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Println("JSON unmarshal error:", err)
 			continue
 		}
+		if msg.Type == "chunkRequest" || msg.Type == "chunkFocus" {
+			handleChunkMessage(c, msg)
+			continue
+		}
 
+		log.Printf("Received message: %s", message)
 		handleMessage(c, msg)
 	}
 }
@@ -437,14 +455,35 @@ func (c *Client) readPump() {
 func (c *Client) writePump() {
 	defer c.conn.Close()
 
-	for {
-		message, ok := <-c.send
+	writeText := func(message []byte, ok bool) bool {
 		if !ok {
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			return
+			return false
+		}
+		return c.conn.WriteMessage(websocket.TextMessage, message) == nil
+	}
+
+	for {
+		// Regular messages always go first; chunk frames fill the gaps.
+		select {
+		case message, ok := <-c.send:
+			if !writeText(message, ok) {
+				return
+			}
+			continue
+		default:
 		}
 
-		if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+		select {
+		case message, ok := <-c.send:
+			if !writeText(message, ok) {
+				return
+			}
+		case data := <-c.chunks:
+			if err := c.conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+				return
+			}
+		case <-c.done:
 			return
 		}
 	}
@@ -523,13 +562,20 @@ func handleMessage(client *Client, msg Message) {
 		}
 		json.Unmarshal(msg.Payload, &payload)
 
+		// The chunk store is the source of truth; never call it while holding stateMu.
+		if err := chunkStore.SetBlock(payload.X, payload.Y, payload.Z, ""); err != nil {
+			log.Printf("blockBreak: %v", err)
+			return
+		}
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
+		_, hadMetadata := gameState.Blocks[key]
 		delete(gameState.Blocks, key)
-		gameState.RemovedBlocks[key] = true
 		removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
 		stateMu.Unlock()
-		saveWorldState()
+		if hadMetadata {
+			saveWorldState()
+		}
 
 		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
 		broadcastToAll(createMessage("blockBreak", payload))
@@ -569,12 +615,26 @@ func handleMessage(client *Client, msg Message) {
 			payload.Facing = ""
 		}
 
+		if payload.BlockType == "" {
+			return
+		}
+		if err := chunkStore.SetBlock(payload.X, payload.Y, payload.Z, payload.BlockType); err != nil {
+			log.Printf("blockPlace: %v", err)
+			return
+		}
+		// Only blocks with metadata (signs, sound blocks, ladders) are kept in world.json.
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
-		gameState.Blocks[key] = payload
-		delete(gameState.RemovedBlocks, key)
+		_, hadMetadata := gameState.Blocks[key]
+		if hasBlockMetadata(payload) {
+			gameState.Blocks[key] = payload
+		} else {
+			delete(gameState.Blocks, key)
+		}
 		stateMu.Unlock()
-		saveWorldState()
+		if hadMetadata || hasBlockMetadata(payload) {
+			saveWorldState()
+		}
 		recordSignMessage(client, payload)
 
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
@@ -857,112 +917,26 @@ func removeSprayPaintsForBlockLocked(x, y, z int) {
 	}
 }
 
-type ChunkData struct {
-	Palette []string `json:"palette"`
-	Blocks  string   `json:"blocks"`
-}
-
-// ChunkSize is the edge of the cubic sections used to ship persisted blocks to clients.
-// It matches the client's chunk width so a section maps onto exactly one client chunk.
-const ChunkSize = 16
-
-func getChunkIndex(x, y, z int) (string, int) {
-	chunkSize := ChunkSize
-	cx := int(math.Floor(float64(x) / float64(chunkSize)))
-	cy := int(math.Floor(float64(y) / float64(chunkSize)))
-	cz := int(math.Floor(float64(z) / float64(chunkSize)))
-
-	lx := ((x % chunkSize) + chunkSize) % chunkSize
-	ly := ((y % chunkSize) + chunkSize) % chunkSize
-	lz := ((z % chunkSize) + chunkSize) % chunkSize
-
-	idx := ly*chunkSize*chunkSize + lz*chunkSize + lx
-	return fmt.Sprintf("%d,%d,%d", cx, cy, cz), idx
-}
-
-func rleEncode(data []byte) []byte {
-	var encoded []byte
-	n := len(data)
-	for i := 0; i < n; {
-		val := data[i]
-		count := 1
-		for i+count < n && data[i+count] == val && count < 255 {
-			count++
-		}
-		encoded = append(encoded, byte(count), val)
-		i += count
-	}
-	return encoded
-}
-
 func sendInitialState(client *Client) {
 	stateMu.RLock()
 	defer stateMu.RUnlock()
 
-	type chunkBuilder struct {
-		PaletteMap map[string]byte
-		Palette    []string
-		Data       []byte
-	}
-	builders := make(map[string]*chunkBuilder)
-	complexBlocks := make(map[string]Block)
-
-	for key, isRemoved := range gameState.RemovedBlocks {
-		if !isRemoved {
-			continue
-		}
-		var x, y, z int
-		fmt.Sscanf(key, "%d,%d,%d", &x, &y, &z)
-		chunkKey, idx := getChunkIndex(x, y, z)
-		if builders[chunkKey] == nil {
-			builders[chunkKey] = &chunkBuilder{
-				PaletteMap: make(map[string]byte),
-				Data:       make([]byte, ChunkSize*ChunkSize*ChunkSize),
-			}
-		}
-		builders[chunkKey].Data[idx] = 1
-	}
-
+	// Terrain (with every edit) is streamed per chunk on request; the init message only
+	// carries block metadata such as sign texts.
+	blockMetadata := make(map[string]Block)
 	for key, b := range gameState.Blocks {
-		if b.Text != "" || b.Votes != nil || b.Instrument != "" || b.Facing != "" {
-			complexBlocks[key] = b
-			continue
-		}
-		chunkKey, idx := getChunkIndex(b.X, b.Y, b.Z)
-		cb := builders[chunkKey]
-		if cb == nil {
-			cb = &chunkBuilder{
-				PaletteMap: make(map[string]byte),
-				Data:       make([]byte, ChunkSize*ChunkSize*ChunkSize),
-			}
-			builders[chunkKey] = cb
-		}
-		pidx, ok := cb.PaletteMap[b.BlockType]
-		if !ok {
-			cb.Palette = append(cb.Palette, b.BlockType)
-			pidx = byte(len(cb.Palette) + 1)
-			cb.PaletteMap[b.BlockType] = pidx
-		}
-		cb.Data[idx] = pidx
-	}
-
-	chunkedBlocks := make(map[string]ChunkData)
-	for chunkKey, cb := range builders {
-		chunkedBlocks[chunkKey] = ChunkData{
-			Palette: cb.Palette,
-			Blocks:  base64.StdEncoding.EncodeToString(rleEncode(cb.Data)),
+		if hasBlockMetadata(b) {
+			blockMetadata[key] = b
 		}
 	}
 
 	initMsg := map[string]interface{}{
-		"type":          "init",
-		"players":       gameState.Players,
-		"blocks":        complexBlocks,
-		"chunkedBlocks": chunkedBlocks,
-		"chunkSize":     ChunkSize,
-		"sprayPaints":   gameState.SprayPaints,
-		"timeOfDay":     gameState.WorldTime,
-		"worldDay":      gameState.WorldDay,
+		"type":        "init",
+		"players":     gameState.Players,
+		"blocks":      blockMetadata,
+		"sprayPaints": gameState.SprayPaints,
+		"timeOfDay":   gameState.WorldTime,
+		"worldDay":    gameState.WorldDay,
 	}
 
 	data, _ := json.Marshal(initMsg)

@@ -19,10 +19,13 @@ class NetworkClient {
     connect(url) {
         console.log('WebSocket: Connecting to', url);
         this.ws = new WebSocket(url);
-        
+        // Chunk data arrives as binary frames.
+        this.ws.binaryType = 'arraybuffer';
+
         this.ws.onopen = () => {
             console.log('WebSocket: Connected to server');
             this.connected = true;
+            this.emit('connected');
             this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor, hairStyle: this.hairStyle, hairColor: this.hairColor });
             this.updateStatus('Connected');
         };
@@ -40,6 +43,10 @@ class NetworkClient {
         };
         
         this.ws.onmessage = (event) => {
+            if (event.data instanceof ArrayBuffer) {
+                this.emit('chunkData', event.data);
+                return;
+            }
             this.handleMessage(JSON.parse(event.data));
         };
     }
@@ -53,6 +60,15 @@ class NetworkClient {
         };
         
         this.ws.send(JSON.stringify(message));
+    }
+
+    // Asks the server for chunks; it answers nearest to the last focus first.
+    requestChunks(chunks) {
+        this.send('chunkRequest', { chunks });
+    }
+
+    sendChunkFocus(chunkX, chunkZ, radius) {
+        this.send('chunkFocus', { chunkX, chunkZ, radius });
     }
 
     emit(type, payload) {
@@ -130,15 +146,9 @@ class NetworkClient {
             }
         }
         
-        if (payload.blocks || payload.removedBlocks || payload.chunkedBlocks || payload.sprayPaints) {
-            this.emit('worldInit', {
-                blocks: payload.blocks || {},
-                removedBlocks: payload.removedBlocks || {},
-                // Plain placed/removed blocks travel palette + RLE encoded per section.
-                chunkedBlocks: payload.chunkedBlocks || {},
-                chunkSize: payload.chunkSize,
-                sprayPaints: payload.sprayPaints || {}
-            });
+        if (payload.blocks || payload.sprayPaints) {
+            // Terrain streams per chunk; init only carries block metadata and spray paints.
+            this.emit('worldInit', { blocks: payload.blocks || {}, sprayPaints: payload.sprayPaints || {} });
         }
 
         if (typeof payload.timeOfDay === 'number') {

@@ -41,16 +41,16 @@ class WorldRenderer {
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
 
+        // Terrain comes from the server: chunks are requested through `chunkSource`
+        // (set by the game once the network exists) and decoded off the main thread.
+        this.chunkSource = null;
         this.generatingChunks = new Set();
+        this.chunkRequestBatch = [];
         this.chunkProcessQueue = [];
         this.isProcessingChunks = false;
-        
-        this.chunkWorker = new Worker('/js/chunkWorker.js');
-        this.chunkWorker.onmessage = (e) => {
-            if (e.data.type === 'dropped') {
-                this.generatingChunks.delete(this.chunkKey(e.data.chunkX, e.data.chunkZ));
-                return;
-            }
+
+        this.chunkDecoder = new Worker('/js/chunkDecoder.js');
+        this.chunkDecoder.onmessage = (e) => {
             this.chunkProcessQueue.push(e.data);
             this.processNextChunk();
         };
@@ -88,7 +88,7 @@ class WorldRenderer {
         };
         this.registerExpansionBlockTypes();
         this.registry = new BlockRegistry(this.blockTypes);
-        this.chunkWorker.postMessage({ type: 'init', ids: this.registry.ids });
+        this.chunkDecoder.postMessage({ type: 'init', ids: this.registry.ids });
         // Chunks are requested by update() around the player's actual position.
     }
 
@@ -842,7 +842,43 @@ class WorldRenderer {
         if (this.generatedChunks.has(key) || this.generatingChunks.has(key)) return;
 
         this.generatingChunks.add(key);
-        this.chunkWorker.postMessage({ type: 'generate', chunkX, chunkZ });
+        this.chunkRequestBatch.push([chunkX, chunkZ]);
+    }
+
+    // source: { connected(): bool, request([[chunkX, chunkZ], ...]), focus(chunkX, chunkZ, radius) }
+    setChunkSource(source) {
+        this.chunkSource = source;
+    }
+
+    flushChunkRequests() {
+        if (this.chunkRequestBatch.length === 0 || !this.chunkSource || !this.chunkSource.connected()) return;
+        // The server answers nearest-to-focus first, so order does not matter here.
+        for (let i = 0; i < this.chunkRequestBatch.length; i += 512) {
+            this.chunkSource.request(this.chunkRequestBatch.slice(i, i + 512));
+        }
+        this.chunkRequestBatch = [];
+    }
+
+    // Binary chunk frame from the server.
+    receiveChunkFrame(buffer) {
+        this.chunkDecoder.postMessage({ type: 'decode', buffer }, [buffer]);
+    }
+
+    // After (re)connecting, the server may hold a newer world than what is loaded:
+    // drop everything client-side and request it again.
+    resetFromServer() {
+        for (const key of Array.from(this.chunks.keys())) this.removeChunkMesh(key);
+        this.columns.clear();
+        this.edits.clear();
+        this.generatedChunks.clear();
+        this.generatingChunks.clear();
+        this.chunkBiomes.clear();
+        this.chunkRequestBatch = [];
+        this.chunkProcessQueue = [];
+        this.rebuildQueue.clear();
+        this.activeChunks = new Set();
+        this.lastPlayerChunkX = null;
+        this.lastPlayerChunkZ = null;
     }
 
     // Columns are kept a little beyond the render distance so turning around is cheap.
@@ -1073,6 +1109,7 @@ class WorldRenderer {
 
     update(playerX, playerZ) {
         this.processRebuildQueue();
+        this.flushChunkRequests();
         const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
 
         if (playerChunkX === this.lastPlayerChunkX && playerChunkZ === this.lastPlayerChunkZ) {
@@ -1081,8 +1118,15 @@ class WorldRenderer {
 
         this.lastPlayerChunkX = playerChunkX;
         this.lastPlayerChunkZ = playerChunkZ;
-        // The worker serves pending chunks nearest to this point first and drops far ones.
-        this.chunkWorker.postMessage({ type: 'focus', chunkX: playerChunkX, chunkZ: playerChunkZ, radius: this.renderDistance + 2 });
+        // The server serves pending chunks nearest to this point first and forgets requests
+        // beyond the retention radius; mirror that so they are requested again on return.
+        if (this.chunkSource && this.chunkSource.connected()) {
+            this.chunkSource.focus(playerChunkX, playerChunkZ, this.renderDistance + 2);
+        }
+        for (const key of Array.from(this.generatingChunks)) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            if (!this.isWithinRetention(chunkX, chunkZ)) this.generatingChunks.delete(key);
+        }
 
         const desiredActiveChunks = new Set();
         const chunksToRender = [];
@@ -1124,6 +1168,8 @@ class WorldRenderer {
             this.columns.delete(key);
             this.generatedChunks.delete(key);
             this.chunkBiomes.delete(key);
+            // The server's copy includes these edits; only in-flight chunks need the overlay.
+            this.edits.delete(key);
         }
     }
 
@@ -1352,60 +1398,10 @@ class WorldRenderer {
 
     loadBlocks(state) {
         const blocks = state && state.blocks ? state.blocks : (state || {});
-        const removedBlocks = state && state.removedBlocks ? state.removedBlocks : {};
         const sprayPaints = state && state.sprayPaints ? state.sprayPaints : {};
-        const chunkedBlocks = state && state.chunkedBlocks ? state.chunkedBlocks : {};
         const dirtyChunks = new Set();
 
-        // Persisted blocks arrive as cubic, palette + RLE encoded sections. Older servers
-        // used 32-block sections and did not send their size.
-        const sectionSize = state && state.chunkSize ? state.chunkSize : 32;
-        for (const sectionKey in chunkedBlocks) {
-            const section = chunkedBlocks[sectionKey];
-            const [sx, sy, sz] = sectionKey.split(',').map(Number);
-            const palette = section.palette;
-            const binaryString = atob(section.blocks);
-
-            let outIdx = 0;
-            for (let i = 0; i < binaryString.length; i += 2) {
-                const count = binaryString.charCodeAt(i);
-                const val = binaryString.charCodeAt(i + 1);
-
-                if (val === 0) {
-                    outIdx += count;
-                    continue;
-                }
-
-                for (let j = 0; j < count; j++) {
-                    const idx = outIdx++;
-                    const worldX = sx * sectionSize + idx % sectionSize;
-                    const worldY = sy * sectionSize + Math.floor(idx / (sectionSize * sectionSize));
-                    const worldZ = sz * sectionSize + Math.floor(idx / sectionSize) % sectionSize;
-
-                    if (val === 1) {
-                        this.deleteBlockData(worldX, worldY, worldZ);
-                    } else if (val >= 2) {
-                        this.setEditedBlock(worldX, worldY, worldZ, palette[val - 2]);
-                    }
-                }
-            }
-
-            const spanned = Math.max(1, sectionSize / CHUNK_SIZE);
-            for (let dx = 0; dx < spanned; dx++) {
-                for (let dz = 0; dz < spanned; dz++) {
-                    dirtyChunks.add(this.chunkKey(floorDiv(sx * sectionSize, CHUNK_SIZE) + dx, floorDiv(sz * sectionSize, CHUNK_SIZE) + dz));
-                }
-            }
-        }
-
-        for (const key in removedBlocks) {
-            if (!removedBlocks[key]) continue;
-            const { x, y, z } = this.parseBlockKey(key);
-            this.deleteBlockData(x, y, z);
-            const { chunkX, chunkZ } = this.getChunkCoords(x, z);
-            dirtyChunks.add(this.chunkKey(chunkX, chunkZ));
-        }
-
+        // Terrain and plain edits arrive with each chunk; this only restores block metadata.
         for (const key in blocks) {
             const block = blocks[key];
             const x = Math.round(block.x);

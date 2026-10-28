@@ -68,6 +68,9 @@ func main() {
 		if err := network.SavePlayerStates(); err != nil {
 			log.Printf("Failed to save player states: %v", err)
 		}
+		if err := network.FlushWorld(); err != nil {
+			log.Printf("Failed to save world chunks: %v", err)
+		}
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

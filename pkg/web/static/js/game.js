@@ -736,6 +736,14 @@ class Game {
         this.network.setUsername(this.playerName);
         this.network.setShirtColor(this.playerShirtColor);
         this.network.setHair(this.playerHairStyle, this.playerHairColor);
+        this.world.setChunkSource({
+            connected: () => this.network.connected,
+            request: (chunks) => this.network.requestChunks(chunks),
+            focus: (chunkX, chunkZ, radius) => this.network.sendChunkFocus(chunkX, chunkZ, radius)
+        });
+        // A (re)connection may bring a newer world: reload all terrain from the server.
+        this.network.on('connected', () => this.world.resetFromServer());
+        this.network.on('chunkData', (buffer) => this.world.receiveChunkFrame(buffer));
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
