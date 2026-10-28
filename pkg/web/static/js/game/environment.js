@@ -332,6 +332,8 @@ Object.assign(Game.prototype, {
             ? new THREE.MeshStandardMaterial({ color: 0xFFCC00, roughness: 0.45, metalness: 0.05 })
             : new THREE.MeshLambertMaterial({ color: 0xFFCC00 });
         this.refreshOtherPlayerAvatarMaterials();
+        // Mobs switch between pixel-art and high-resolution fur/feather models.
+        this.rebuildMobModels();
 
         this.world.setRTXMode(enabled);
         this.rebuildPickupMeshes();

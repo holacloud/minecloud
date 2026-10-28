@@ -72,6 +72,84 @@ class FacePainter {
         this.rect(0, 0, this.w, this.h, color, noise);
     }
 
+    // Multiplies one texel's colour by a shade factor (see shadeRgb).
+    shadeTexel(tx, ty, k) {
+        const i = ((this.y0 + ty) * this.atlasWidth + this.x0 + tx) * 4;
+        const shaded = shadeRgb([this.data[i], this.data[i + 1], this.data[i + 2]], k);
+        this.data[i] = shaded[0];
+        this.data[i + 1] = shaded[1];
+        this.data[i + 2] = shaded[2];
+    }
+
+    // High-resolution surface detail over the base colour (texel space, so it scales with
+    // texelsPerUnit): 'fur' strands, 'feather' scales, 'skin' mottling, 'cloth' weave.
+    surface(style) {
+        const tw = Math.round(this.w * this.scale);
+        const th = Math.round(this.h * this.scale);
+        const seed = this.seed;
+        const strand = Math.max(3, Math.round(this.scale * 0.9));
+        const cell = Math.max(4, Math.round(this.scale * 1.1));
+        for (let ty = 0; ty < th; ty++) {
+            for (let tx = 0; tx < tw; tx++) {
+                const gx = this.x0 + tx;
+                const gy = this.y0 + ty;
+                let k = 0;
+                if (style === 'fur') {
+                    // Vertical strands of varying length and tone, lighter towards their tips.
+                    const offset = hashNoise(gx, 3, seed) * strand;
+                    const segment = Math.floor((ty + offset) / strand);
+                    const along = ((ty + offset) % strand) / strand;
+                    k = (hashNoise(gx, segment, seed) - 0.5) * 0.3 + (along - 0.5) * 0.1;
+                } else if (style === 'feather') {
+                    // Overlapping rows of rounded scales, each lighter at its free edge.
+                    const row = Math.floor(ty / cell);
+                    const shifted = tx + (row % 2) * cell / 2;
+                    const lx = (shifted % cell) / cell - 0.5;
+                    const ly = (ty % cell) / cell;
+                    const rim = Math.hypot(lx * 1.6, ly - 1) > 0.95 ? -0.18 : 0;
+                    k = ly * 0.16 - 0.06 + rim + (hashNoise(Math.floor(shifted / cell), row, seed) - 0.5) * 0.12;
+                } else if (style === 'wool') {
+                    // Tight curls: each cell is a small rounded tuft, bright at its centre.
+                    const cx = Math.floor(gx / cell);
+                    const cy = Math.floor(gy / cell);
+                    const px = (gx % cell) / cell - hashNoise(cx, cy, seed) * 0.4 - 0.3;
+                    const py = (gy % cell) / cell - hashNoise(cy, cx, seed + 1) * 0.4 - 0.3;
+                    k = (0.35 - Math.hypot(px, py)) * 0.45 + (hashNoise(gx, gy, seed + 2) - 0.5) * 0.06;
+                } else if (style === 'skin') {
+                    const blotch = hashNoise(Math.floor(gx / cell), Math.floor(gy / cell), seed) - 0.5;
+                    k = blotch * 0.08 + (hashNoise(gx, gy, seed + 5) - 0.5) * 0.05;
+                } else if (style === 'cloth') {
+                    k = ((tx + ty) % 2 ? 0.03 : -0.03) + (hashNoise(gx >> 1, gy >> 1, seed) - 0.5) * 0.06;
+                }
+                if (k) this.shadeTexel(tx, ty, k);
+            }
+        }
+    }
+
+    // Soft ambient occlusion: sides darken towards the bottom, undersides are darker.
+    ambientGradient(face) {
+        const tw = Math.round(this.w * this.scale);
+        const th = Math.round(this.h * this.scale);
+        for (let ty = 0; ty < th; ty++) {
+            const k = face === 'bottom' ? -0.22 : face === 'top' ? 0.05 : 0.04 - (ty / Math.max(1, th - 1)) * 0.2;
+            for (let tx = 0; tx < tw; tx++) this.shadeTexel(tx, ty, k);
+        }
+    }
+
+    // Wider, smoother edge darkening than bevel() for high-resolution atlases.
+    softBevel(amount = 0.14) {
+        const tw = Math.round(this.w * this.scale);
+        const th = Math.round(this.h * this.scale);
+        const ramp = Math.max(2, Math.round(this.scale * 0.6));
+        for (let ty = 0; ty < th; ty++) {
+            for (let tx = 0; tx < tw; tx++) {
+                const edge = Math.min(tx, ty, tw - 1 - tx, th - 1 - ty);
+                if (edge >= ramp) continue;
+                this.shadeTexel(tx, ty, -amount * (1 - edge / ramp));
+            }
+        }
+    }
+
     // Darkens the outer ring of texels to give each part a soft bevel.
     bevel(amount = 0.1) {
         const tw = this.w * this.scale;
@@ -102,9 +180,13 @@ class FacePainter {
 }
 
 class VoxelModelBuilder {
-    constructor({ unit = 1 / 16, texelsPerUnit = 2, seed = 1 } = {}) {
+    // hd: high-resolution atlas with surface detail and a normal map (RTX/Ultra);
+    // defaultSurface applies to parts without their own paint.surface.
+    constructor({ unit = 1 / 16, texelsPerUnit = 2, seed = 1, hd = false, defaultSurface = 'fur' } = {}) {
         this.unit = unit;
-        this.texelsPerUnit = texelsPerUnit;
+        this.hd = hd;
+        this.defaultSurface = defaultSurface;
+        this.texelsPerUnit = hd ? texelsPerUnit * 3 : texelsPerUnit;
         this.seed = seed;
         this.parts = [];
         this.byName = new Map();
@@ -182,10 +264,20 @@ class VoxelModelBuilder {
                 const rect = part.atlas[face];
                 const [fw, fh] = this.faceSize(part.size, face);
                 const painter = new FacePainter(image.data, width, rect.x, rect.y, fw, fh, this.texelsPerUnit, this.seed * 31 + partIndex * 7);
-                painter.fill(paint.color ?? 0xff00ff, paint.noise ?? 0.05);
+                painter.fill(paint.color ?? 0xff00ff, this.hd ? (paint.noise ?? 0.05) * 0.5 : (paint.noise ?? 0.05));
+                if (this.hd) {
+                    // Small hard parts (beaks, claws, horns, eyes) stay smooth.
+                    const smallPart = Math.min(...part.size) <= 1.5;
+                    const style = paint.surface ?? (smallPart ? 'smooth' : this.defaultSurface);
+                    if (style !== 'smooth') painter.surface(style);
+                    painter.ambientGradient(face);
+                }
                 if (paint.all) paint.all(painter, face);
                 if (paint.faces && paint.faces[face]) paint.faces[face](painter);
-                if (paint.bevel !== 0) painter.bevel(paint.bevel ?? 0.1);
+                if (paint.bevel !== 0) {
+                    if (this.hd) painter.softBevel((paint.bevel ?? 0.1) * 1.4);
+                    else painter.bevel(paint.bevel ?? 0.1);
+                }
             }
         });
 
@@ -228,19 +320,34 @@ class VoxelModelBuilder {
         const { width, height } = this.packAtlas();
 
         let texture = textureCache && cacheKey ? textureCache.get(cacheKey) : null;
+        let normalMap = textureCache && cacheKey ? textureCache.get(`${cacheKey}:normal`) || null : null;
         if (!texture) {
-            texture = new THREE.CanvasTexture(this.paintAtlas(width, height));
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            texture.generateMipmaps = false;
+            const canvas = this.paintAtlas(width, height);
+            texture = new THREE.CanvasTexture(canvas);
+            if (this.hd) {
+                // Fine detail reads better filtered than as hard texels.
+                texture.magFilter = THREE.LinearFilter;
+                texture.minFilter = THREE.LinearMipmapLinearFilter;
+                texture.anisotropy = 4;
+                normalMap = new THREE.CanvasTexture(this.normalCanvas(canvas));
+                normalMap.magFilter = THREE.LinearFilter;
+                normalMap.minFilter = THREE.LinearMipmapLinearFilter;
+            } else {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                texture.generateMipmaps = false;
+            }
             if (THREE.sRGBEncoding) texture.encoding = THREE.sRGBEncoding;
             texture.userData = { shared: Boolean(textureCache && cacheKey) };
-            if (textureCache && cacheKey) textureCache.set(cacheKey, texture);
+            if (textureCache && cacheKey) {
+                textureCache.set(cacheKey, texture);
+                if (normalMap) textureCache.set(`${cacheKey}:normal`, normalMap);
+            }
         }
 
         const root = new THREE.Group();
         const parts = {};
-        const material = createMaterial(texture);
+        const material = createMaterial(texture, normalMap);
         const u = this.unit;
 
         for (const part of this.parts) {
@@ -251,6 +358,7 @@ class VoxelModelBuilder {
 
             const mesh = new THREE.Mesh(this.createGeometry(part, width, height), material);
             mesh.userData.modelMap = texture;
+            mesh.userData.modelNormalMap = normalMap;
             mesh.userData.disposeGeometry = true;
             pivot.add(mesh);
             pivot.userData.mesh = mesh;
@@ -261,8 +369,42 @@ class VoxelModelBuilder {
         }
 
         root.userData.modelTexture = texture;
+        root.userData.modelNormalMap = normalMap;
         root.userData.modelHeight = Math.max(...this.parts.map((part) => this.absoluteTop(part))) * u;
         return { root, parts, texture, material };
+    }
+
+    // Normal map from the painted atlas' luminance: fur strands, feather rims and bevels
+    // become relief under the scene lights.
+    normalCanvas(source) {
+        const width = source.width;
+        const height = source.height;
+        const pixels = source.getContext('2d').getImageData(0, 0, width, height).data;
+        const luma = new Float32Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            luma[i] = (pixels[i * 4] * 0.299 + pixels[i * 4 + 1] * 0.587 + pixels[i * 4 + 2] * 0.114) / 255;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const out = ctx.createImageData(width, height);
+        const at = (x, y) => luma[Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))];
+        const strength = 2.2;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
+                const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
+                const len = Math.hypot(dx, dy, 1);
+                const i = (y * width + x) * 4;
+                out.data[i] = (-dx / len * 0.5 + 0.5) * 255;
+                out.data[i + 1] = (dy / len * 0.5 + 0.5) * 255;
+                out.data[i + 2] = (1 / len * 0.5 + 0.5) * 255;
+                out.data[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(out, 0, 0);
+        return canvas;
     }
 
     absoluteTop(part) {
@@ -437,11 +579,17 @@ const VoxelModels = {
     },
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
-    createMob(species, createMaterial, textureCache, variant = 0) {
+    // Surface used for most parts of each species in high-resolution mode.
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin' },
+
+    createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
-        const b = new VoxelModelBuilder({ unit: 1 / 16, texelsPerUnit: 2, seed: species.length * 13 + variant });
+        const b = new VoxelModelBuilder({
+            unit: 1 / 16, texelsPerUnit: 2, seed: species.length * 13 + variant,
+            hd, defaultSurface: this.MOB_SURFACES[species] || 'fur'
+        });
         const rig = builder.call(this, b, variant) || {};
-        const model = b.build(createMaterial, { textureCache, cacheKey: `${species}:${variant}` });
+        const model = b.build(createMaterial, { textureCache, cacheKey: `${species}:${variant}:${hd ? 'hd' : 'sd'}` });
         const pick = (names) => (names || []).map((name) => model.parts[name]).filter(Boolean);
         return {
             root: model.root,
@@ -478,7 +626,7 @@ const VoxelModels = {
     mobBuilders: {
         sheep(b) {
             const wool = 0xeeebe1;
-            const woolPaint = { color: wool, noise: 0.09, all: (p) => p.spots(0xdcd8cc, 10, 1, 2) };
+            const woolPaint = { color: wool, noise: 0.09, surface: 'wool', all: (p) => p.spots(0xdcd8cc, 10, 1, 2) };
             b.part('body', { pivot: [0, 0, 0], from: [-5, 6, -7], size: [10, 8, 14], paint: woolPaint });
             b.part('head', {
                 parent: 'body', pivot: [0, 12, 6], from: [-3, -3, 0], size: [6, 6, 6],

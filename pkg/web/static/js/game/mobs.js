@@ -18,15 +18,14 @@ Object.assign(Game.prototype, {
         group.userData.maxHealth = species === 'cave_monster' ? 16 : species === 'spider' ? 8 : 1;
         group.userData.health = group.userData.maxHealth;
 
-        const variant = species === 'cat' ? Math.floor(Math.random() * 3) : species === 'macaw' ? Math.floor(Math.random() * 4) : 0;
-        const model = VoxelModels.createMob(species, (texture) => this.createModelMaterial(texture), this.mobTextureCache, variant);
-        group.add(model.root);
-        this.tagModelMeshes(model.root, 'mobRoot', group);
-        group.userData.legs = model.legs;
-        group.userData.arms = model.arms;
-        group.userData.wings = model.wings;
-        group.userData.tail = model.tail;
-        group.userData.legAxis = model.legAxis;
+        group.userData.variant = species === 'cat' ? Math.floor(Math.random() * 3) : species === 'macaw' ? Math.floor(Math.random() * 4) : 0;
+        // Idle behaviour state (see animateMobRig).
+        group.userData.life = Math.random() * 100;
+        group.userData.gait = 0;
+        group.userData.lookTimer = 0;
+        group.userData.lookYaw = 0;
+        group.userData.lookPitch = 0;
+        const model = this.attachMobModel(group);
 
         if (group.userData.maxHealth > 1) {
             group.userData.healthBar = this.createMobHealthBar();
@@ -39,6 +38,34 @@ Object.assign(Game.prototype, {
         group.position.y += group.userData.flyHeight;
         this.scene.add(group);
         return group;
+    },
+
+    // Builds (or rebuilds, e.g. after a graphics quality change) the model of a mob group.
+    attachMobModel(group) {
+        if (group.userData.modelRoot) {
+            group.remove(group.userData.modelRoot);
+            group.userData.modelRoot.traverse((node) => {
+                if (node.isMesh && node.userData.disposeGeometry) node.geometry.dispose();
+                if (node.isMesh && node.material) node.material.dispose();
+            });
+        }
+        const species = group.userData.species;
+        const model = VoxelModels.createMob(species, (texture, normalMap) => this.createModelMaterial(texture, normalMap), this.mobTextureCache, group.userData.variant, this.rtxModeEnabled);
+        group.add(model.root);
+        this.tagModelMeshes(model.root, 'mobRoot', group);
+        group.userData.modelRoot = model.root;
+        group.userData.modelParts = model.parts;
+        group.userData.legs = model.legs;
+        group.userData.arms = model.arms;
+        group.userData.wings = model.wings;
+        group.userData.tail = model.tail;
+        group.userData.head = model.head;
+        group.userData.legAxis = model.legAxis;
+        return model;
+    },
+
+    rebuildMobModels() {
+        this.ambientMobs.forEach((mob) => this.attachMobModel(mob));
     },
 
     createMobHealthBar() {
@@ -356,44 +383,82 @@ Object.assign(Game.prototype, {
                 }
             }
 
-            this.animateMobRig(mob, moveScale);
+            this.animateMobRig(mob, moveScale, delta);
         }
     },
 
-    animateMobRig(mob, moveScale) {
-        const phase = mob.userData.stepPhase;
-        const walking = moveScale > 0 ? 1 : 0.15;
-        const swing = Math.sin(phase) * 0.5 * walking;
-        const axis = mob.userData.legAxis;
+    // Gait eases in and out with movement; idle mobs breathe, look around, graze and flick
+    // their ears.
+    animateMobRig(mob, moveScale, delta = 1 / 60) {
+        const data = mob.userData;
+        data.life += delta;
+        data.gait += ((moveScale > 0 ? 1 : 0) - data.gait) * Math.min(1, delta * 6);
+        const phase = data.stepPhase;
+        const swing = Math.sin(phase) * 0.5 * data.gait;
+        const axis = data.legAxis;
 
-        mob.userData.legs.forEach((leg, index) => {
+        data.legs.forEach((leg, index) => {
             // Diagonal gait: front-left with back-right, alternating sides.
             const side = index % 2 === 0 ? 1 : -1;
             const pair = Math.floor(index / 2) % 2 === 0 ? 1 : -1;
             const base = leg.userData.baseRotation;
             if (axis === 'y') {
                 leg.rotation.y = base.y + swing * 0.5 * side * pair;
-                leg.rotation.z = base.z + Math.abs(Math.sin(phase + index)) * 0.12 * side;
+                leg.rotation.z = base.z + Math.abs(Math.sin(phase + index)) * 0.12 * side * data.gait;
             } else {
                 leg.rotation.x = base.x + swing * side * pair;
             }
         });
 
-        mob.userData.arms.forEach((arm, index) => {
+        data.arms.forEach((arm, index) => {
             arm.rotation.x = arm.userData.baseRotation.x - swing * (index % 2 === 0 ? 1 : -1) * 0.8;
         });
 
-        mob.userData.tail.forEach((segment, index) => {
-            const base = segment.userData.baseRotation;
-            segment.rotation.y = base.y + Math.sin(phase * 0.75 + index * 0.6) * 0.35;
+        // Body bob while walking, slow breathing always.
+        if (data.modelRoot) {
+            data.modelRoot.position.y = Math.abs(Math.sin(phase)) * 0.025 * data.gait;
+            const body = data.modelParts && data.modelParts.body;
+            if (body) body.scale.y = 1 + Math.sin(data.life * 2.1) * 0.012;
+        }
+
+        // Head: look somewhere new every few seconds; grazers sometimes lower their head.
+        if (data.head) {
+            data.lookTimer -= delta;
+            if (data.lookTimer <= 0) {
+                data.lookTimer = 1.5 + Math.random() * 3.5;
+                const grazer = data.species === 'sheep' || data.species === 'pig' || data.species === 'giraffe';
+                const graze = grazer && data.gait < 0.2 && Math.random() < 0.4;
+                data.lookYaw = graze ? 0 : (Math.random() - 0.5) * 1.1;
+                data.lookPitch = graze ? 0.6 : (Math.random() - 0.5) * 0.4;
+            }
+            const base = data.head.userData.baseRotation;
+            const follow = Math.min(1, delta * 3);
+            const moving = 1 - data.gait * 0.7;
+            data.head.rotation.y += (base.y + data.lookYaw * moving - data.head.rotation.y) * follow;
+            data.head.rotation.x += (base.x + data.lookPitch * moving - data.head.rotation.x) * follow;
+        }
+
+        // Ear flicks: brief twitches at random moments.
+        const parts = data.modelParts || {};
+        ['earL', 'earR'].forEach((name, index) => {
+            const ear = parts[name];
+            if (!ear) return;
+            const flick = Math.max(0, Math.sin(data.life * 1.3 + index * 2.1) - 0.97) * 12;
+            ear.rotation.x = ear.userData.baseRotation.x + flick * 0.35;
         });
 
-        if (mob.userData.wings.length === 2) {
-            const flap = mob.userData.flyHeight
+        data.tail.forEach((segment, index) => {
+            const base = segment.userData.baseRotation;
+            const speed = 2.2 + data.gait * 3;
+            segment.rotation.y = base.y + Math.sin(data.life * speed + index * 0.6) * (0.18 + data.gait * 0.2);
+        });
+
+        if (data.wings.length === 2) {
+            const flap = data.flyHeight
                 ? Math.abs(Math.sin(phase * 2.2)) * 1.1
-                : Math.max(0, Math.sin(phase * 0.4)) * 0.25;
-            mob.userData.wings[0].rotation.z = flap;
-            mob.userData.wings[1].rotation.z = -flap;
+                : Math.max(0, Math.sin(data.life * 0.9)) * 0.12;
+            data.wings[0].rotation.z = flap;
+            data.wings[1].rotation.z = -flap;
         }
     },
 

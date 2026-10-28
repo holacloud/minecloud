@@ -85,10 +85,16 @@ Object.assign(Game.prototype, {
         };
     },
 
-    createModelMaterial(texture) {
-        return this.rtxModeEnabled
-            ? new THREE.MeshStandardMaterial({ map: texture, roughness: 0.82, metalness: 0.0, envMapIntensity: 0.45 })
-            : new THREE.MeshLambertMaterial({ map: texture });
+    createModelMaterial(texture, normalMap = null) {
+        if (!this.rtxModeEnabled) return new THREE.MeshLambertMaterial({ map: texture });
+        return new THREE.MeshStandardMaterial({
+            map: texture,
+            normalMap,
+            normalScale: new THREE.Vector2(0.9, 0.9),
+            roughness: normalMap ? 0.9 : 0.82,
+            metalness: 0.0,
+            envMapIntensity: 0.45
+        });
     },
 
     tagModelMeshes(root, key, value) {
@@ -421,7 +427,7 @@ Object.assign(Game.prototype, {
                 if (!node.isMesh || !node.userData.modelMap) return;
                 let material = replaced.get(node.material);
                 if (!material) {
-                    material = this.createModelMaterial(node.userData.modelMap);
+                    material = this.createModelMaterial(node.userData.modelMap, node.userData.modelNormalMap);
                     replaced.set(node.material, material);
                     node.material.dispose();
                 }
