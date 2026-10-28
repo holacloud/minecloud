@@ -383,7 +383,52 @@ Object.assign(Game.prototype, {
 
     recapturePointerLockFromGesture() {
         this.recapturePointerLock(false);
-        window.addEventListener('pointerup', () => this.recapturePointerLock(false), { once: true });
+    },
+
+    // True while the player is in the world with no menu or overlay open.
+    isGameplayActive() {
+        return !this.titleScreenOpen && !this.appearanceMenuOpen && !this.chatOpen && !this.craftingOpen &&
+            !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending;
+    },
+
+    // The only place that asks for pointer lock: one request at a time, and a visible
+    // "click to play" hint whenever the browser refuses or the lock is lost.
+    requestPointerLockOnce() {
+        const canvas = this.renderer.domElement;
+        if (this.pointerLockPending || document.pointerLockElement === canvas) return;
+        this.pointerLockPending = true;
+        const done = () => {
+            this.pointerLockPending = false;
+            this.updatePointerLockHint();
+        };
+        try {
+            const request = canvas.requestPointerLock();
+            if (request && typeof request.then === 'function') {
+                // Browsers refuse without a fresh gesture or for ~1 s after Esc; the hint asks for a click.
+                request.then(done, done);
+            } else {
+                setTimeout(done, 300);
+            }
+        } catch (_error) {
+            done();
+        }
+    },
+
+    updatePointerLockHint() {
+        if (!this.pointerLockHint) {
+            const hint = document.createElement('div');
+            hint.id = 'pointer-lock-hint';
+            hint.textContent = 'Click to play';
+            hint.style.cssText = 'position:fixed;left:50%;top:58%;transform:translateX(-50%);padding:8px 16px;' +
+                'border-radius:8px;background:rgba(0,0,0,0.55);color:#fff;font:600 14px system-ui,sans-serif;' +
+                'pointer-events:none;z-index:50;display:none';
+            document.body.appendChild(hint);
+            this.pointerLockHint = hint;
+        }
+        const locked = document.pointerLockElement === this.renderer.domElement;
+        const show = !locked && !this.pointerLockPending && !this.touchControlsEnabled && this.isGameplayActive();
+        const display = show ? 'block' : 'none';
+        if (this.pointerLockHint.style.display !== display) this.pointerLockHint.style.display = display;
     },
 
     openAppearanceEditorFromPause() {
@@ -411,11 +456,7 @@ Object.assign(Game.prototype, {
 
         const requestPointer = () => {
             if (!this.touchControlsEnabled && !this.titleScreenOpen && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
-                const request = this.renderer.domElement.requestPointerLock();
-                if (request && typeof request.catch === 'function') {
-                    // Browsers refuse the lock without a fresh gesture or right after Esc; the next click retries.
-                    request.catch(() => {});
-                }
+                this.requestPointerLockOnce();
             }
         };
 

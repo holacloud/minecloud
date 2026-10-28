@@ -815,6 +815,12 @@ class Game {
         }
         document.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
         document.addEventListener('pointerlockchange', () => {
+            this.updatePointerLockHint();
+            if (document.pointerLockElement === this.renderer.domElement) {
+                // A focused button or slider would swallow Space/arrow keys while playing.
+                if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+                return;
+            }
             if (document.pointerLockElement !== this.renderer.domElement) {
                 this.stopMining();
                 if (performance.now() < this.suppressPointerLockPauseUntil) {
@@ -1144,17 +1150,21 @@ class Game {
     }
 
     onWheel(event) {
-        if (!this.cameraController.isLocked) return;
+        // Gameplay state rather than the lock flag, so a lagging lock state never eats the wheel.
+        if (this.touchControlsEnabled || !this.isGameplayActive()) return;
         if (event.deltaY === 0) return;
 
         event.preventDefault();
 
+        // Normalise lines/pages to pixels and accumulate, so touchpads and smooth-scrolling
+        // wheels (many tiny deltas) step too; one mouse notch (~100 px) steps immediately.
+        const scale = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 300 : 1;
+        this.wheelAccumulator = (this.wheelAccumulator || 0) + event.deltaY * scale;
         const now = performance.now();
-        if (now - this.lastWheelStepAt < 110) {
-            return;
-        }
+        if (Math.abs(this.wheelAccumulator) < 50 || now - (this.lastWheelStepAt || 0) < 60) return;
 
-        const direction = event.deltaY > 0 ? 1 : -1;
+        const direction = this.wheelAccumulator > 0 ? 1 : -1;
+        this.wheelAccumulator = 0;
         this.lastWheelStepAt = now;
 
         const availableSlots = this.getHotbarInventoryIndexes();
@@ -1184,6 +1194,7 @@ class Game {
     }
 
     updateUI() {
+        this.updatePointerLockHint();
         this.frameCount++;
         const now = performance.now();
         

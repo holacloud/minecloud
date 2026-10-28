@@ -33,6 +33,12 @@ class CameraController {
         
         this.velocityY = 0;
         this.isLocked = false;
+        // Jump forgiveness: a press shortly before landing, or shortly after walking off an
+        // edge, still jumps (frames where the player is briefly airborne would eat it).
+        this.jumpBufferMs = 150;
+        this.coyoteTimeMs = 100;
+        this.jumpPressedAt = -Infinity;
+        this.lastGroundedAt = -Infinity;
         this.onGround = false;
         // After joining or respawning the player waits for terrain and then floats down gently.
         this.spawnSettling = true;
@@ -82,11 +88,16 @@ class CameraController {
             if (e.code === 'KeyS') this.keys.backward = true;
             if (e.code === 'KeyA') this.keys.left = true;
             if (e.code === 'KeyD') this.keys.right = true;
-            if (e.code === 'Space') this.keys.jump = true;
+            if (e.code === 'Space') {
+                if (!e.repeat) this.jumpPressedAt = performance.now();
+                this.keys.jump = true;
+            }
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.crouch = true;
         });
         
         document.addEventListener('keyup', e => {
+            // Space released on a focused button would "click" it instead of jumping.
+            if (e.code === 'Space' && this.canInteract()) e.preventDefault();
             if (e.code === 'KeyW') this.keys.forward = false;
             if (e.code === 'KeyS') this.keys.backward = false;
             if (e.code === 'KeyA') this.keys.left = false;
@@ -103,15 +114,7 @@ class CameraController {
             this.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.pitch));
         });
         
-        this.domElement.addEventListener('click', () => {
-            if (!this.touchControlsEnabled) {
-                const request = this.domElement.requestPointerLock();
-                if (request && typeof request.catch === 'function') {
-                    // Browsers refuse the lock without a fresh gesture or right after Esc; the next click retries.
-                    request.catch(() => {});
-                }
-            }
-        });
+        // Pointer lock is requested by the game (one request at a time); this only tracks it.
         document.addEventListener('pointerlockchange', () => this.isLocked = document.pointerLockElement === this.domElement);
     }
     
@@ -362,9 +365,17 @@ class CameraController {
             } else {
                 this.velocityY = Math.max(-1.0, this.velocityY - 0.04);
             }
-        } else if ((this.keys.jump || this.touchJump) && this.onGround) {
-            this.velocityY = this.jumpVelocity;
-            this.onGround = false;
+        } else {
+            const now = performance.now();
+            if (this.onGround) this.lastGroundedAt = now;
+            const wantsJump = this.keys.jump || this.touchJump || now - this.jumpPressedAt < this.jumpBufferMs;
+            const canJump = this.onGround || (now - this.lastGroundedAt < this.coyoteTimeMs && this.velocityY <= 0);
+            if (wantsJump && canJump) {
+                this.velocityY = this.jumpVelocity;
+                this.onGround = false;
+                this.jumpPressedAt = -Infinity;
+                this.lastGroundedAt = -Infinity;
+            }
         }
         
         if (!this.isOnLadder) {
