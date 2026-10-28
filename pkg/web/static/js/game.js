@@ -1381,6 +1381,7 @@ class Game {
         }
 
         this.cameraController.update(delta);
+        this.updateWaterInteraction(delta);
         if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {
             this.playJumpSound();
         }

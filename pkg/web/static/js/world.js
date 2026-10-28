@@ -21,6 +21,9 @@ class WorldRenderer {
         // Ultra builds on RTX: larger textures, roughness maps, wind and animated water.
         this.ultraModeEnabled = false;
         this.windUniforms = { windTime: { value: 0 }, windStrength: { value: 0 } };
+        // Expanding water rings (x, z, start time, strength), newest overwrite the oldest.
+        this.rippleUniforms = { ripples: { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, 0, -100, 0)) } };
+        this.nextRipple = 0;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.cutoutGeometries = new Map();
@@ -428,6 +431,13 @@ class WorldRenderer {
         }
     }
 
+    // Starts a ring of ripples on the water at (x, z); strength ~0.3 (wading) .. 1.5 (big splash).
+    addRipple(x, z, strength) {
+        const ripple = this.rippleUniforms.ripples.value[this.nextRipple];
+        ripple.set(x, z, this.windUniforms.windTime.value, strength);
+        this.nextRipple = (this.nextRipple + 1) % this.rippleUniforms.ripples.value.length;
+    }
+
     // Per-frame material animation: drives wind (ultra) and water waves (RTX and ultra).
     animateMaterials(time) {
         this.windUniforms.windTime.value = time;
@@ -679,7 +689,7 @@ class WorldRenderer {
             case 'metal': return { roughness: 0.32, metalness: 0.85, normalScale: 0.5 };
             case 'obsidian': return { roughness: 0.18, metalness: 0.1, normalScale: 0.6 };
             case 'glass': return { roughness: 0.05, metalness: 0, normalScale: 0.1 };
-            case 'water': return { roughness: 0.03, metalness: 0, normalScale: 0.45, emissive: 0x061a26 };
+            case 'water': return { roughness: 0.03, metalness: 0, normalScale: 1, emissive: 0x061a26 };
             case 'wool': return { roughness: 1, metalness: 0, normalScale: 0.6 };
             case 'torch': return { roughness: 0.8, metalness: 0, normalScale: 0.2, emissive: 0x6b3a08 };
             default: return { roughness: 0.85, metalness: 0, normalScale: 0.6 };
@@ -750,7 +760,8 @@ class WorldRenderer {
             blockLightStrength: this.blockLightStrength,
             heldLightPosition: this.heldLightPosition,
             heldLightStrength: this.heldLightStrength,
-            ...this.windUniforms
+            ...this.windUniforms,
+            ...this.rippleUniforms
         };
         // Wind: a world-position phase keeps neighbouring blocks moving coherently.
         const wind = foliage === 'leaves'
@@ -766,14 +777,37 @@ class WorldRenderer {
             Object.assign(shader.uniforms, uniforms);
             if (water) {
                 shader.vertexShader = shader.vertexShader
-                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;')
-                    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xz;');
-                shader.fragmentShader = shader.fragmentShader
                     .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;\nuniform float windTime;')
+                    .replace('#include <begin_vertex>', [
+                        '#include <begin_vertex>',
+                        'vec3 waterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+                        'vWaterWorld = waterWorld.xz;',
+                        // Surface-level vertices (top faces and the upper edge of side faces)
+                        // swell gently; shared corners keep the surface continuous.
+                        'if (fract(waterWorld.y) > 0.8) {',
+                        '    transformed.y += (sin(waterWorld.x * 0.9 + windTime * 1.4) + sin(waterWorld.z * 0.7 - windTime * 1.1) + sin((waterWorld.x + waterWorld.z) * 0.45 + windTime * 0.8)) * 0.025;',
+                        '}'
+                    ].join('\n'));
+                shader.fragmentShader = shader.fragmentShader
+                    .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;\nuniform float windTime;\nuniform vec4 ripples[8];')
                     .replace('vec3 mapN = texture2D( normalMap, vUv ).xyz * 2.0 - 1.0;', [
                         'vec2 waveUvA = vWaterWorld * 0.19 + vec2(windTime * 0.035, windTime * 0.022);',
                         'vec2 waveUvB = vWaterWorld * 0.071 + vec2(-windTime * 0.018, windTime * 0.029);',
-                        'vec3 mapN = normalize((texture2D(normalMap, waveUvA).xyz * 2.0 - 1.0) + (texture2D(normalMap, waveUvB).xyz * 2.0 - 1.0));'
+                        'vec3 mapN = normalize((texture2D(normalMap, waveUvA).xyz * 2.0 - 1.0) + (texture2D(normalMap, waveUvB).xyz * 2.0 - 1.0));',
+                        // Ripple rings: a travelling wave front that fades with age and distance.
+                        // Tangent space follows the face UVs: +x along u, -z along v.
+                        'for (int i = 0; i < 8; i++) {',
+                        '    vec4 ripple = ripples[i];',
+                        '    float age = windTime - ripple.z;',
+                        '    if (ripple.w <= 0.0 || age < 0.0 || age > 4.0) continue;',
+                        '    vec2 away = vWaterWorld - ripple.xy;',
+                        '    float d = length(away);',
+                        '    float front = age * 2.4;',
+                        '    float envelope = exp(-abs(d - front) * 1.4) * exp(-age * 1.1) * ripple.w;',
+                        '    float wave = cos((d - front) * 7.5) * envelope;',
+                        '    vec2 dir = away / max(d, 0.001);',
+                        '    mapN.xy += vec2(dir.x, -dir.y) * wave * 1.6;',
+                        '}'
                     ].join('\n'))
                     .replace('#include <normal_fragment_maps>', [
                         '#include <normal_fragment_maps>',

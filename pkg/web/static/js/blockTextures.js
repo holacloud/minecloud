@@ -946,7 +946,8 @@ class BlockTextureFactory {
         if (label) this.drawLabel(albedo, label, tint);
         result = {
             albedo,
-            normal: hd ? this.normalCanvas(surface) : null,
+            // Water's gentle wave heights need a much steeper normal map to read as waves.
+            normal: hd ? this.normalCanvas(surface, pattern === 'water' ? 5 : 2.5) : null,
             roughness: hd ? this.roughnessCanvas(surface) : null
         };
         this.cache.set(key, result);
