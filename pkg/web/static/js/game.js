@@ -59,6 +59,8 @@ class Game {
         this.masterVolume = this.settings.masterVolume;
         this.mouseSensitivity = this.settings.mouseSensitivity;
         this.rtxPreferred = this.settings.rtxModeEnabled;
+        this.ultraPreferred = this.settings.ultraModeEnabled;
+        this.ultraModeEnabled = false;
         this.renderDistanceSetting = this.settings.renderDistance;
         this.fovSetting = this.settings.fov;
         this.rtxModeEnabled = false;
@@ -320,6 +322,7 @@ class Game {
         this.initAmbientMobs();
         this.restoreLastSafePosition();
         this.applyRTXMode(this.rtxPreferred);
+        if (this.ultraPreferred) this.applyUltraMode(true);
         this.initNetwork();
         this.initHotbar();
         this.initInput();
@@ -372,6 +375,7 @@ class Game {
             masterVolume: 0.8,
             mouseSensitivity: 1,
             rtxModeEnabled: false,
+            ultraModeEnabled: false,
             renderDistance: 4,
             fov: 70
         };
@@ -385,6 +389,7 @@ class Game {
                 masterVolume: typeof parsed.masterVolume === 'number' ? parsed.masterVolume : defaults.masterVolume,
                 mouseSensitivity: typeof parsed.mouseSensitivity === 'number' ? parsed.mouseSensitivity : defaults.mouseSensitivity,
                 rtxModeEnabled: typeof parsed.rtxModeEnabled === 'boolean' ? parsed.rtxModeEnabled : defaults.rtxModeEnabled,
+                ultraModeEnabled: typeof parsed.ultraModeEnabled === 'boolean' ? parsed.ultraModeEnabled : defaults.ultraModeEnabled,
                 renderDistance: typeof parsed.renderDistance === 'number' ? parsed.renderDistance : defaults.renderDistance,
                 fov: typeof parsed.fov === 'number' ? parsed.fov : defaults.fov
             };
@@ -398,6 +403,7 @@ class Game {
             masterVolume: this.masterVolume,
             mouseSensitivity: this.mouseSensitivity,
             rtxModeEnabled: this.rtxPreferred,
+            ultraModeEnabled: this.ultraPreferred,
             renderDistance: this.renderDistanceSetting,
             fov: this.fovSetting
         }));
@@ -564,6 +570,7 @@ class Game {
         this.sunLight.shadow.camera.top = 70;
         this.sunLight.shadow.camera.bottom = -70;
         this.scene.add(this.sunLight);
+        this.scene.add(this.sunLight.target);
         
         this.hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D5C3D, 0.4);
         this.scene.add(this.hemiLight);
@@ -1207,7 +1214,8 @@ class Game {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.rtxModeEnabled ? 2 : 1.25));
+        this.renderer.setPixelRatio(this.getPixelRatioLimit());
+        this.resizeUltraPipeline();
         this.resizeAppearancePreview();
     }
 
@@ -1329,7 +1337,7 @@ class Game {
                 this.voiceChat.updateProximity();
             }
             this.updateUI();
-            this.renderer.render(this.scene, this.camera);
+            this.renderFrame(delta);
             return;
         }
 
@@ -1340,14 +1348,14 @@ class Game {
             }
             this.updateDeathScreen();
             this.updateUI();
-            this.renderer.render(this.scene, this.camera);
+            this.renderFrame(delta);
             return;
         }
 
         if (this.pauseOpen) {
             this.renderAppearancePreview(delta);
             this.updateUI();
-            this.renderer.render(this.scene, this.camera);
+            this.renderFrame(delta);
             return;
         }
 
@@ -1368,7 +1376,7 @@ class Game {
                 this.voiceChat.updateProximity();
             }
             this.updateUI();
-            this.renderer.render(this.scene, this.camera);
+            this.renderFrame(delta);
             return;
         }
 
@@ -1420,7 +1428,7 @@ class Game {
         }
         
         this.updateUI();
-        this.renderer.render(this.scene, this.camera);
+        this.renderFrame(delta);
     }
 }
 

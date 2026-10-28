@@ -749,6 +749,28 @@ class BlockTextureFactory {
         return canvas;
     }
 
+    // Roughness from the height field: crevices rough, raised surfaces a bit smoother, with
+    // grain so highlights break up like real materials (green channel, as three.js reads it).
+    roughnessCanvas(s) {
+        const size = s.size;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const image = ctx.createImageData(size, size);
+        const d = image.data;
+        for (let i = 0; i < size * size; i++) {
+            const grain = this.hash(i % size, Math.floor(i / size), 977) - 0.5;
+            const value = this.clamp01(0.62 + (0.5 - s.height[i]) * 0.55 + grain * 0.12) * 255;
+            d[i * 4] = value;
+            d[i * 4 + 1] = value;
+            d[i * 4 + 2] = value;
+            d[i * 4 + 3] = 255;
+        }
+        ctx.putImageData(image, 0, 0);
+        return canvas;
+    }
+
     seedFor(pattern, tint) {
         let h = tint || 0;
         for (let i = 0; i < pattern.length; i++) h = Math.imul(h ^ pattern.charCodeAt(i), 16777619);
@@ -767,7 +789,11 @@ class BlockTextureFactory {
 
         const albedo = this.toCanvas(surface);
         if (label) this.drawLabel(albedo, label, tint);
-        result = { albedo, normal: hd ? this.normalCanvas(surface) : null };
+        result = {
+            albedo,
+            normal: hd ? this.normalCanvas(surface) : null,
+            roughness: hd ? this.roughnessCanvas(surface) : null
+        };
         this.cache.set(key, result);
         return result;
     }

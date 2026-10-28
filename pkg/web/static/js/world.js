@@ -18,6 +18,9 @@ class WorldRenderer {
         this.chunkSize = CHUNK_SIZE;
         this.renderDistance = 4;
         this.rtxModeEnabled = false;
+        // Ultra builds on RTX: larger textures, roughness maps, wind and animated water.
+        this.ultraModeEnabled = false;
+        this.windUniforms = { windTime: { value: 0 }, windStrength: { value: 0 } };
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         this.cutoutGeometries = new Map();
@@ -411,6 +414,31 @@ class WorldRenderer {
         }
     }
 
+    setUltraMode(enabled) {
+        if (this.ultraModeEnabled === enabled) return;
+        this.ultraModeEnabled = enabled;
+        this.windUniforms.windStrength.value = enabled ? 1 : 0;
+        this.disposeCache(this.chunkMaterials);
+        this.disposeCache(this.materials);
+        this.disposeCache(this.textures);
+        this.iconCache.clear();
+        for (const key of this.activeChunks) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            this.requestRebuild(chunkX, chunkZ);
+        }
+    }
+
+    // Per-frame material animation (ultra only): wind phase and drifting water.
+    animateMaterials(time) {
+        this.windUniforms.windTime.value = time;
+        if (!this.ultraModeEnabled) return;
+        const water = this.chunkMaterials.get('water');
+        if (water && water.map) {
+            water.map.offset.set(time * 0.018, time * 0.011);
+            if (water.normalMap) water.normalMap.offset.set(-time * 0.025, time * 0.017);
+        }
+    }
+
     setRenderDistance(distance, playerPosition = null) {
         const nextDistance = Math.max(2, Math.min(7, Math.round(distance)));
         if (this.renderDistance === nextDistance) return;
@@ -594,7 +622,8 @@ class WorldRenderer {
     }
 
     textureSize() {
-        return this.rtxModeEnabled ? 128 : 16;
+        if (!this.rtxModeEnabled) return 16;
+        return this.ultraModeEnabled ? 256 : 128;
     }
 
     generateFaceTextures(faceSpec) {
@@ -617,7 +646,7 @@ class WorldRenderer {
         if (texture) return texture;
 
         const generated = this.generateFaceTextures(faceSpec);
-        texture = new THREE.CanvasTexture(kind === 'normal' ? generated.normal : generated.albedo);
+        texture = new THREE.CanvasTexture(generated[kind] || generated.albedo);
         // Sprites must not wrap, or filtering bleeds the bottom row into the top edge.
         const sprite = ['tall_grass', 'flower', 'mushroom', 'torch', 'ladder', 'spray_paint'].includes(faceSpec.pattern);
         texture.wrapS = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
@@ -682,11 +711,15 @@ class WorldRenderer {
         }
 
         const props = this.getRTXMaterialProps(faceSpec.pattern);
+        // Ultra: deeper normals and per-texel roughness (green channel scales `roughness`).
+        const ultra = this.ultraModeEnabled;
+        const normalScale = props.normalScale * (ultra ? 1.6 : 1);
         return new THREE.MeshStandardMaterial({
             ...common,
             normalMap: this.getTexture(faceSpec, 'normal'),
-            normalScale: new THREE.Vector2(props.normalScale, props.normalScale),
-            roughness: props.roughness,
+            normalScale: new THREE.Vector2(normalScale, normalScale),
+            roughnessMap: ultra ? this.getTexture(faceSpec, 'roughness') : null,
+            roughness: ultra ? Math.min(1, props.roughness * 1.25) : props.roughness,
             metalness: props.metalness,
             envMapIntensity: props.metalness > 0.5 || props.roughness < 0.2 ? 1 : 0.45,
             emissive: props.emissive || 0x000000,
@@ -718,12 +751,19 @@ class WorldRenderer {
     // Baked voxel lighting for chunk meshes:
     // - `skyLight` scales sun/ambient lighting, so roofs and tunnels get dark;
     // - `blockLight` (torches) and the held torch add warm light on top, independent of the sky.
-    addBlockLight(material) {
+    addBlockLight(material, foliage = null) {
         const uniforms = {
             blockLightStrength: this.blockLightStrength,
             heldLightPosition: this.heldLightPosition,
-            heldLightStrength: this.heldLightStrength
+            heldLightStrength: this.heldLightStrength,
+            ...this.windUniforms
         };
+        // Wind: a world-position phase keeps neighbouring blocks moving coherently.
+        const wind = foliage === 'leaves'
+            ? 'transformed.xz += vec2(sin(windTime * 1.7 + windWorld.x * 0.6 + windWorld.y * 0.3), cos(windTime * 1.3 + windWorld.z * 0.6)) * 0.035 * windStrength;'
+            : foliage === 'plant'
+                ? 'transformed.xz += vec2(sin(windTime * 2.3 + windWorld.x * 0.8), cos(windTime * 1.9 + windWorld.z * 0.8)) * 0.12 * windStrength * clamp(uv.y, 0.0, 1.0);'
+                : '';
         material.onBeforeCompile = (shader) => {
             Object.assign(shader.uniforms, uniforms);
             shader.vertexShader = shader.vertexShader
@@ -732,12 +772,16 @@ class WorldRenderer {
                     'attribute float blockLight;',
                     'attribute float skyLight;',
                     'uniform vec3 heldLightPosition;',
+                    'uniform float windTime;',
+                    'uniform float windStrength;',
                     'varying float vBlockLight;',
                     'varying float vSkyLight;',
                     'varying float vHeldLight;'
                 ].join('\n'))
                 .replace('#include <begin_vertex>', [
                     '#include <begin_vertex>',
+                    wind ? 'vec3 windWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;' : '',
+                    wind,
                     'vBlockLight = blockLight;',
                     'vSkyLight = skyLight;',
                     'float heldDistance = distance((modelMatrix * vec4(transformed, 1.0)).xyz, heldLightPosition);',
@@ -766,7 +810,7 @@ class WorldRenderer {
                     'totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.74, 0.45) * torchLight;'
                 ].join('\n'));
         };
-        material.customProgramCacheKey = () => 'voxel-light';
+        material.customProgramCacheKey = () => `voxel-light-${foliage || 'solid'}`;
     }
 
     setHeldLight(position, active) {
@@ -782,10 +826,13 @@ class WorldRenderer {
         let material = this.chunkMaterials.get(type);
         if (material) return material;
 
+        // Leaves sway as a whole; plants bend from the ground up.
+        const foliage = type === 'leaves' || type.endsWith('_leaves') ? 'leaves'
+            : this.isCrossGeometry(type) && type !== 'torch' ? 'plant' : null;
         const withVertexColors = (base) => {
             const clone = base.clone();
             clone.vertexColors = true;
-            this.addBlockLight(clone);
+            this.addBlockLight(clone, foliage);
             return clone;
         };
         const base = this.getMaterial(type);

@@ -234,6 +234,7 @@ Object.assign(Game.prototype, {
         const renderDistanceInput = document.getElementById('settings-render-distance');
         const fovInput = document.getElementById('settings-fov');
         const rtxToggle = document.getElementById('settings-rtx-toggle');
+        const ultraToggle = document.getElementById('settings-ultra-toggle');
         const fullscreenToggle = document.getElementById('settings-fullscreen-toggle');
         const appearanceButton = document.getElementById('settings-appearance');
         const resumeButton = document.getElementById('settings-resume');
@@ -275,6 +276,7 @@ Object.assign(Game.prototype, {
         document.addEventListener('fullscreenchange', () => this.updateSettingsUI());
 
         rtxToggle.addEventListener('click', () => this.toggleRTXMode());
+        if (ultraToggle) ultraToggle.addEventListener('click', () => this.toggleUltraMode());
         fullscreenToggle.addEventListener('click', () => this.toggleFullscreen());
         appearanceButton.addEventListener('click', () => this.openAppearanceEditorFromPause());
         resumeButton.addEventListener('pointerdown', (event) => {
@@ -304,6 +306,8 @@ Object.assign(Game.prototype, {
         if (renderDistanceValue) renderDistanceValue.textContent = String(this.renderDistanceSetting);
         if (fovValue) fovValue.textContent = String(this.fovSetting);
         if (rtxToggle) rtxToggle.textContent = this.rtxModeEnabled ? 'Disable RTX' : 'Enable RTX';
+        const ultraToggle = document.getElementById('settings-ultra-toggle');
+        if (ultraToggle) ultraToggle.textContent = this.ultraModeEnabled ? 'Disable Ultra' : 'Enable Ultra';
         if (fullscreenToggle) fullscreenToggle.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen';
         if (sensitivityInput) sensitivityInput.value = this.mouseSensitivity.toFixed(2);
         if (volumeInput) volumeInput.value = this.masterVolume.toFixed(2);

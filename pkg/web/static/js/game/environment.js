@@ -40,11 +40,12 @@ Object.assign(Game.prototype, {
             new THREE.MeshBasicMaterial({ color: 0xffdd88 })
         );
         this.sunCube.renderOrder = 10;
+        this.sunCube.material.fog = false;
         this.scene.add(this.sunCube);
 
         const moonMaterials = [];
         for (let i = 0; i < 8; i++) {
-            moonMaterials.push(new THREE.MeshBasicMaterial({ map: this.createMoonPhaseTexture(i) }));
+            moonMaterials.push(new THREE.MeshBasicMaterial({ map: this.createMoonPhaseTexture(i), fog: false }));
         }
         this.moonCube = new THREE.Mesh(new THREE.BoxGeometry(9, 9, 9), moonMaterials);
         this.moonCube.renderOrder = 10;
@@ -80,8 +81,8 @@ Object.assign(Game.prototype, {
         const statusEl = document.getElementById('rtx-status');
         if (!statusEl) return;
 
-        statusEl.textContent = this.rtxModeEnabled ? 'On' : 'Off';
-        statusEl.style.color = this.rtxModeEnabled ? '#7CE7FF' : '#FFFFFF';
+        statusEl.textContent = this.ultraModeEnabled ? 'Ultra' : this.rtxModeEnabled ? 'On' : 'Off';
+        statusEl.style.color = this.ultraModeEnabled ? '#FFD36B' : this.rtxModeEnabled ? '#7CE7FF' : '#FFFFFF';
     },
 
     getSkyPreset() {
@@ -157,18 +158,31 @@ Object.assign(Game.prototype, {
         this.scene.fog.near = this.rtxModeEnabled ? 18 : 20;
         this.scene.fog.far = THREE.MathUtils.lerp(this.rtxModeEnabled ? 115 : 105, this.rtxModeEnabled ? 210 : 160, daylight);
 
+        // Sun, moon and the shadow camera orbit the player (they used to orbit the world
+        // origin, so shadows only existed near 0,0).
         const orbitRadius = 180;
-        this.sunLight.position.set(
+        const sunOffset = new THREE.Vector3(
             Math.cos(angle) * orbitRadius,
             Math.max(18, sunHeight * orbitRadius + 24),
             Math.sin(angle) * orbitRadius * 0.65
         );
+        this.sunDirection = (this.sunDirection || new THREE.Vector3()).copy(sunOffset).normalize();
+        this.sunHeight = sunHeight;
+        this.daylight = daylight;
+        const anchor = this.getShadowAnchor();
+        this.sunLight.position.copy(anchor).add(sunOffset);
+        this.sunLight.target.position.copy(anchor);
+        this.sunLight.target.updateMatrixWorld();
         if (this.sunCube) {
-            this.sunCube.position.copy(this.sunLight.position.clone().multiplyScalar(0.92));
-            this.sunCube.visible = sunHeight > -0.18;
+            this.sunCube.position.copy(this.camera.position).addScaledVector(sunOffset, 0.92);
+            this.sunCube.visible = sunHeight > -0.18 && !this.ultraModeEnabled;
         }
         if (this.moonCube) {
-            this.moonCube.position.set(-this.sunLight.position.x * 0.92, Math.max(18, -sunHeight * orbitRadius + 24), -this.sunLight.position.z * 0.92);
+            this.moonCube.position.set(
+                this.camera.position.x - sunOffset.x * 0.92,
+                this.camera.position.y + Math.max(18, -sunHeight * orbitRadius + 24),
+                this.camera.position.z - sunOffset.z * 0.92
+            );
             const phase = ((this.worldDay % 8) + 8) % 8;
             if (phase !== this.currentMoonPhase) {
                 this.currentMoonPhase = phase;
@@ -194,6 +208,21 @@ Object.assign(Game.prototype, {
         if (this.rtxModeEnabled) {
             this.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.52, 1.18, daylight) + sunset * 0.05;
         }
+    },
+
+    // The HDR pipeline in ultra mode is costly per pixel, so it renders at a lower ratio than RTX.
+    getPixelRatioLimit() {
+        const limit = this.ultraModeEnabled ? 1.5 : this.rtxModeEnabled ? 2 : 1.25;
+        return Math.min(window.devicePixelRatio, limit);
+    },
+
+    // Player position snapped to the shadow map's texel grid, so shadows do not shimmer
+    // as the shadow camera follows the player.
+    getShadowAnchor() {
+        const camera = this.sunLight.shadow.camera;
+        const texel = (camera.right - camera.left) / this.sunLight.shadow.mapSize.x;
+        const p = this.camera.position;
+        return new THREE.Vector3(Math.round(p.x / texel) * texel, Math.round(p.y / texel) * texel, Math.round(p.z / texel) * texel);
     },
 
     updateWeather(delta) {
@@ -271,7 +300,8 @@ Object.assign(Game.prototype, {
         this.scene.background = skyColor;
         this.scene.fog = new THREE.Fog(skyColor.getHex(), enabled ? 18 : 20, enabled ? 190 : 150);
 
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, enabled ? 2 : 1.25));
+        if (!enabled && this.ultraModeEnabled) this.applyUltraMode(false);
+        this.renderer.setPixelRatio(this.getPixelRatioLimit());
         this.renderer.shadowMap.enabled = enabled;
         this.renderer.shadowMap.type = enabled ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
         this.renderer.toneMapping = enabled ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
