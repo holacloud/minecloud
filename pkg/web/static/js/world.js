@@ -20,14 +20,15 @@ class WorldRenderer {
         this.rtxModeEnabled = false;
 
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
-        this.waterSurfaceGeometry = new THREE.PlaneGeometry(1, 1);
-        this.waterSurfaceGeometry.rotateX(-Math.PI / 2);
         this.cutoutGeometries = new Map();
         this.materials = new Map();
+        // Variants of the block materials that multiply in per-vertex ambient occlusion.
+        this.chunkMaterials = new Map();
+        this.mesher = new ChunkMesher(this);
+        this.hiddenBlock = null;
         this.textures = new Map();
         this.iconCache = new Map();
         this.textureFactory = new BlockTextureFactory();
-        this.tempMatrix = new THREE.Matrix4();
 
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
@@ -377,6 +378,7 @@ class WorldRenderer {
         if (this.rtxModeEnabled === enabled) return;
 
         this.rtxModeEnabled = enabled;
+        this.disposeCache(this.chunkMaterials);
         this.disposeCache(this.materials);
         this.disposeCache(this.textures);
         this.iconCache.clear();
@@ -697,6 +699,31 @@ class WorldRenderer {
         return material;
     }
 
+    getChunkMaterial(type) {
+        let material = this.chunkMaterials.get(type);
+        if (material) return material;
+
+        const withVertexColors = (base) => {
+            const clone = base.clone();
+            clone.vertexColors = true;
+            return clone;
+        };
+        const base = this.getMaterial(type);
+        if (Array.isArray(base)) {
+            // Keep shared entries shared (e.g. the four side faces).
+            const clones = new Map();
+            material = base.map((entry) => {
+                if (!clones.has(entry)) clones.set(entry, withVertexColors(entry));
+                return clones.get(entry);
+            });
+        } else {
+            material = withVertexColors(base);
+        }
+
+        this.chunkMaterials.set(type, material);
+        return material;
+    }
+
     generateInitialChunks() {
         for (let x = -this.renderDistance; x <= this.renderDistance; x++) {
             for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
@@ -795,9 +822,6 @@ class WorldRenderer {
         // Block materials and textures are shared caches; only free what this chunk owns.
         for (let i = 0; i < chunk.children.length; i++) {
             const child = chunk.children[i];
-            if (child.isInstancedMesh && typeof child.dispose === 'function') {
-                child.dispose();
-            }
             if (child.isSprite && child.material) {
                 if (child.material.map) child.material.map.dispose();
                 child.material.dispose();
@@ -810,128 +834,36 @@ class WorldRenderer {
         this.chunks.delete(chunkKey);
     }
 
-    // A face is drawn when the neighbouring block does not hide it.
-    isBlockVisible(x, y, z, id) {
-        const registry = this.registry;
-        const transparent = registry.transparent[id];
-        const neighbors = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-
-        for (let i = 0; i < neighbors.length; i++) {
-            const [dx, dy, dz] = neighbors[i];
-            const nx = x + dx;
-            const nz = z + dz;
-            const column = this.getColumnAt(nx, nz);
-            if (!column) return true;
-
-            const neighborId = column.get(localCoord(nx), y + dy, localCoord(nz));
-            if (neighborId === AIR_ID || registry.fluid[neighborId]) return true;
-            if (transparent) {
-                if (!registry.transparent[neighborId] || neighborId !== id) return true;
-                continue;
-            }
-            if (registry.transparent[neighborId]) return true;
-        }
-
-        return false;
-    }
-
     rebuildChunk(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
         this.removeChunkMesh(key);
 
-        if (!this.activeChunks.has(key)) return;
+        if (!this.activeChunks.has(key) || !this.columns.has(key)) return;
 
-        const column = this.columns.get(key);
-        if (!column) return;
-
-        const registry = this.registry;
-        const waterId = registry.id('water');
-        const ladderId = registry.id('ladder');
+        const result = this.mesher.build(chunkX, chunkZ, { hiddenBlock: this.hiddenBlock });
         const baseX = chunkX * this.chunkSize;
         const baseZ = chunkZ * this.chunkSize;
-        const instancesByType = new Map();
-        const waterSurfacePositions = [];
-        const specialBlocks = [];
-        const blocks = column.blocks;
-
-        for (let index = 0; index < blocks.length; index++) {
-            const id = blocks[index];
-            if (id === AIR_ID) continue;
-
-            const lx = index % CHUNK_SIZE;
-            const lz = Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
-            const y = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;
-            const type = registry.names[id];
-
-            if (id === waterId) {
-                if (column.get(lx, y + 1, lz) !== waterId) {
-                    waterSurfacePositions.push({ x: lx, y: y + 0.5, z: lz });
-                }
-                continue;
-            }
-            if (type === 'sign' || type === 'torch' || id === ladderId) {
-                specialBlocks.push({ type, x: baseX + lx, y, z: baseZ + lz });
-            }
-            if (id === ladderId) continue;
-            if (!this.isBlockVisible(baseX + lx, y, baseZ + lz, id)) continue;
-
-            let positions = instancesByType.get(type);
-            if (!positions) {
-                positions = [];
-                instancesByType.set(type, positions);
-            }
-
-            positions.push({ x: lx, y, z: lz });
-        }
-
-        if (instancesByType.size === 0 && waterSurfacePositions.length === 0 && specialBlocks.length === 0) return;
-
         const chunk = new THREE.Group();
         chunk.position.set(baseX, 0, baseZ);
         chunk.updateMatrix();
         chunk.matrixAutoUpdate = false;
 
-        for (const [type, positions] of instancesByType) {
-            const mesh = new THREE.InstancedMesh(this.getGeometry(type), this.getMaterial(type), positions.length);
-            mesh.userData.blockType = type;
-            mesh.userData.instancePositions = positions;
-            mesh.userData.chunkBaseX = baseX;
-            mesh.userData.chunkBaseZ = baseZ;
-            mesh.matrixAutoUpdate = false;
-            mesh.castShadow = this.rtxModeEnabled && type !== 'water';
-            mesh.receiveShadow = this.rtxModeEnabled;
-
-            if (THREE.StaticDrawUsage) {
-                mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-            }
-
-            for (let i = 0; i < positions.length; i++) {
-                const position = positions[i];
-                this.tempMatrix.makeTranslation(position.x + 0.5, position.y + 0.5, position.z + 0.5);
-                mesh.setMatrixAt(i, this.tempMatrix);
-            }
-
-            mesh.instanceMatrix.needsUpdate = true;
-            chunk.add(mesh);
+        const solidMesh = ChunkMesher.toMesh(result.buckets);
+        if (solidMesh) {
+            solidMesh.castShadow = this.rtxModeEnabled;
+            solidMesh.receiveShadow = this.rtxModeEnabled;
+            chunk.add(solidMesh);
         }
 
-        if (waterSurfacePositions.length > 0) {
-            const waterMesh = new THREE.InstancedMesh(this.waterSurfaceGeometry, this.getMaterial('water'), waterSurfacePositions.length);
+        // Water is its own object so it sorts as a transparent surface.
+        const waterMesh = result.water ? ChunkMesher.toMesh([result.water]) : null;
+        if (waterMesh) {
+            waterMesh.receiveShadow = this.rtxModeEnabled;
             waterMesh.userData.blockType = 'water';
-            waterMesh.userData.instancePositions = waterSurfacePositions;
-            waterMesh.userData.chunkBaseX = baseX;
-            waterMesh.userData.chunkBaseZ = baseZ;
-            waterMesh.matrixAutoUpdate = false;
-            for (let i = 0; i < waterSurfacePositions.length; i++) {
-                const position = waterSurfacePositions[i];
-                this.tempMatrix.makeTranslation(position.x + 0.5, position.y, position.z + 0.5);
-                waterMesh.setMatrixAt(i, this.tempMatrix);
-            }
-            waterMesh.instanceMatrix.needsUpdate = true;
             chunk.add(waterMesh);
         }
 
-        for (const { type, x, y, z } of specialBlocks) {
+        for (const { type, x, y, z } of result.special) {
             const blockKey = this.blockKey(x, y, z);
 
             if (type === 'sign') {
@@ -954,12 +886,25 @@ class WorldRenderer {
                 ladder.position.x += x - baseX + 0.5;
                 ladder.position.y += y;
                 ladder.position.z += z - baseZ + 0.5;
+                ladder.userData.blockPosition = { x, y, z };
                 chunk.add(ladder);
             }
         }
 
+        if (chunk.children.length === 0) return;
         this.scene.add(chunk);
         this.chunks.set(key, chunk);
+    }
+
+    // Temporarily leaves one block out of its chunk mesh (used while it is drawn shaking).
+    setHiddenBlock(position) {
+        const previous = this.hiddenBlock;
+        this.hiddenBlock = position ? { x: position.x, y: position.y, z: position.z } : null;
+        for (const block of [previous, this.hiddenBlock]) {
+            if (!block) continue;
+            const { chunkX, chunkZ } = this.getChunkCoords(block.x, block.z);
+            this.rebuildChunk(chunkX, chunkZ);
+        }
     }
 
     rebuildChunkAndActiveNeighbors(chunkX, chunkZ, includeCenter = true) {
@@ -1225,7 +1170,7 @@ class WorldRenderer {
 
                 for (let i = 0; i < chunk.children.length; i++) {
                     const child = chunk.children[i];
-                    if (child.isInstancedMesh) {
+                    if (child.userData.isChunkMesh || child.userData.blockPosition) {
                         objects.push(child);
                     }
                 }
@@ -1235,38 +1180,15 @@ class WorldRenderer {
         return objects;
     }
 
-    getBlockPosition(block, instanceId = null) {
-        if (!block) return null;
-
-        if (block.isInstancedMesh) {
-            const position = block.userData.instancePositions[instanceId];
-            if (!position) return null;
-
-            return {
-                x: Math.round(block.userData.chunkBaseX + position.x),
-                y: Math.round(position.y),
-                z: Math.round(block.userData.chunkBaseZ + position.z)
-            };
-        }
-
-        if (!block.parent) return null;
-        return {
-            x: Math.round(block.parent.position.x + block.position.x),
-            y: Math.round(block.parent.position.y + block.position.y),
-            z: Math.round(block.parent.position.z + block.position.z)
-        };
-    }
-
     getBlockPositionFromIntersection(intersection) {
-        if (!intersection) return null;
-        return this.getBlockPosition(intersection.object, intersection.instanceId);
-    }
+        if (!intersection || !intersection.object) return null;
+        const object = intersection.object;
+        if (object.userData.blockPosition) return { ...object.userData.blockPosition };
 
-    removeBlock(block, instanceId = null) {
-        const position = this.getBlockPosition(block, instanceId);
-        if (!position) return false;
-
-        return this.removeBlockAt(position.x, position.y, position.z);
+        const faceBlocks = object.userData.faceBlocks;
+        if (!faceBlocks || intersection.faceIndex == null) return null;
+        const i = intersection.faceIndex * 3;
+        return { x: faceBlocks[i], y: faceBlocks[i + 1], z: faceBlocks[i + 2] };
     }
 
     addBlock(position, type) {

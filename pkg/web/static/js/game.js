@@ -231,9 +231,6 @@ class Game {
 
         this.miningBlockVisual = null;
         this.miningBlockVisualZero = new THREE.Vector3(0, 0, 0);
-        this.instanceTempQuaternion = new THREE.Quaternion();
-        this.instanceTempMatrix = new THREE.Matrix4();
-        this.instanceTempScale = new THREE.Vector3(1, 1, 1);
 
         this.firstPersonHand = null;
         this.firstPersonLeftHand = null;
@@ -4752,15 +4749,19 @@ class Game {
         }
     }
 
+    // While a block is being mined it is cut out of its chunk mesh and drawn as a
+    // standalone cube that shakes on every strike.
     bindMiningBlockVisual(hit, targetKey) {
-        if (!hit || !hit.object || !hit.object.isInstancedMesh || hit.instanceId == null) {
+        const position = hit ? this.world.getBlockPositionFromIntersection(hit) : null;
+        const type = position ? this.world.getBlockTypeAt(position.x, position.y, position.z) : null;
+        if (!position || !type || this.world.getGeometry(type) !== this.world.geometry || type === 'water') {
             if (this.miningBlockVisual && this.miningBlockVisual.key !== targetKey) {
                 this.resetMiningBlockVisual(true);
             }
             return;
         }
 
-        if (this.miningBlockVisual && this.miningBlockVisual.key === targetKey && this.miningBlockVisual.mesh === hit.object && this.miningBlockVisual.instanceId === hit.instanceId) {
+        if (this.miningBlockVisual && this.miningBlockVisual.key === targetKey) {
             this.miningBlockVisual.returning = false;
             return;
         }
@@ -4769,53 +4770,47 @@ class Game {
             this.resetMiningBlockVisual(true);
         }
 
-        const position = hit.object.userData.instancePositions[hit.instanceId];
-        if (!position) return;
+        const mesh = new THREE.Mesh(this.world.geometry, this.world.getMaterial(type));
+        mesh.position.set(position.x + 0.5, position.y + 0.5, position.z + 0.5);
+        mesh.castShadow = this.rtxModeEnabled;
+        mesh.receiveShadow = this.rtxModeEnabled;
+        mesh.userData.blockPosition = { ...position };
+        this.scene.add(mesh);
+        this.world.setHiddenBlock(position);
 
         this.miningBlockVisual = {
             key: targetKey,
-            mesh: hit.object,
-            instanceId: hit.instanceId,
-            position: { x: position.x, y: position.y, z: position.z },
+            mesh,
+            position,
             currentRotation: new THREE.Vector3(0, 0, 0),
             targetRotation: new THREE.Vector3(0, 0, 0),
             returning: false
         };
-        this.applyMiningBlockVisual();
     }
 
     resetMiningBlockVisual(immediate = false) {
         if (!this.miningBlockVisual) return;
 
         if (immediate) {
-            this.miningBlockVisual.currentRotation.set(0, 0, 0);
-            this.miningBlockVisual.targetRotation.set(0, 0, 0);
-            this.applyMiningBlockVisual();
-            this.miningBlockVisual = null;
+            this.disposeMiningBlockVisual();
             return;
         }
 
         this.miningBlockVisual.returning = true;
     }
 
+    disposeMiningBlockVisual() {
+        const visual = this.miningBlockVisual;
+        if (!visual) return;
+        this.scene.remove(visual.mesh);
+        this.miningBlockVisual = null;
+        this.world.setHiddenBlock(null);
+    }
+
     applyMiningBlockVisual() {
         if (!this.miningBlockVisual) return;
-
-        const visual = this.miningBlockVisual;
-        this.instanceTempQuaternion.setFromEuler(new THREE.Euler(
-            visual.currentRotation.x,
-            visual.currentRotation.y,
-            visual.currentRotation.z,
-            'XYZ'
-        ));
-        this.instanceTempMatrix.compose(
-            new THREE.Vector3(visual.position.x + 0.5, visual.position.y + 0.5, visual.position.z + 0.5),
-            this.instanceTempQuaternion,
-            this.instanceTempScale
-        );
-
-        visual.mesh.setMatrixAt(visual.instanceId, this.instanceTempMatrix);
-        visual.mesh.instanceMatrix.needsUpdate = true;
+        const { mesh, currentRotation } = this.miningBlockVisual;
+        mesh.rotation.set(currentRotation.x, currentRotation.y, currentRotation.z);
     }
 
     kickMiningBlockVisual() {
@@ -4849,10 +4844,7 @@ class Game {
 
         if (visual.currentRotation.distanceToSquared(this.miningBlockVisualZero) < 0.00001 &&
             visual.targetRotation.distanceToSquared(this.miningBlockVisualZero) < 0.00001) {
-            visual.currentRotation.set(0, 0, 0);
-            visual.targetRotation.set(0, 0, 0);
-            this.applyMiningBlockVisual();
-            this.miningBlockVisual = null;
+            this.disposeMiningBlockVisual();
         }
     }
 
@@ -4870,6 +4862,8 @@ class Game {
         this.raycaster.set(ray.origin, ray.direction);
 
         const blocks = this.world.getInteractableObjects(ray.reachOrigin, maxDistance);
+        // The block being mined is drawn outside its chunk mesh; keep it targetable.
+        if (this.miningBlockVisual) blocks.push(this.miningBlockVisual.mesh);
         if (blocks.length === 0) return null;
 
         const intersects = this.raycaster.intersectObjects(blocks, false);
