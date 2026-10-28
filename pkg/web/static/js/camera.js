@@ -8,8 +8,9 @@ class CameraController {
         this.moveSpeed = 4.5;
         this.sprintSpeed = 6;
         this.jumpVelocity = 7.25;
-        // Downward speed (blocks/s) water removes per block of depth crossed on a fast entry.
-        this.waterDrag = 6;
+        // Fraction of the downward speed water absorbs per block crossed (v * e^(-drag * depth)),
+        // so the faster the entry, the harder it brakes; ~2 blocks stop even very long falls.
+        this.waterDrag = 1;
         // Downward speed at the last landing, consumed by fall damage.
         this.landingSpeed = 0;
         this.lookSpeed = 0.002;
@@ -355,8 +356,9 @@ class CameraController {
             if (this.keys.jump || this.touchJump) {
                 this.velocityY = Math.min(4.8, this.velocityY + 0.85);
             } else if (this.velocityY < -1.0) {
-                // Brake fast entries progressively, so deep water absorbs a long fall.
-                this.velocityY = Math.min(-1.0, this.velocityY - this.velocityY * this.waterDrag * delta);
+                // Drag proportional to speed: the distance covered this frame removes a fraction of it.
+                const distance = -this.velocityY * delta;
+                this.velocityY = Math.min(-1.0, this.velocityY * Math.exp(-this.waterDrag * distance));
             } else {
                 this.velocityY = Math.max(-1.0, this.velocityY - 0.04);
             }
