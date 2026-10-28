@@ -26,7 +26,10 @@ class WorldRenderer {
         this.chunkMaterials = new Map();
         this.mesher = new ChunkMesher(this);
         // 0 = torch light invisible (bright day) .. 1 = full strength (night, caves).
-        this.blockLightStrength = { value: 0.35 };
+        this.blockLightStrength = { value: 0.6 };
+        // The torch held by the local player, applied to terrain like placed torches.
+        this.heldLightPosition = { value: new THREE.Vector3() };
+        this.heldLightStrength = { value: 0 };
         this.hiddenBlock = null;
         this.textures = new Map();
         this.iconCache = new Map();
@@ -706,20 +709,63 @@ class WorldRenderer {
         return material;
     }
 
-    // Adds baked torch light (the `blockLight` vertex attribute) as warm emissive light,
-    // so lit blocks glow at night independently of the sun and ambient lights.
+    // Baked voxel lighting for chunk meshes:
+    // - `skyLight` scales sun/ambient lighting, so roofs and tunnels get dark;
+    // - `blockLight` (torches) and the held torch add warm light on top, independent of the sky.
     addBlockLight(material) {
-        const strength = this.blockLightStrength;
-        material.onBeforeCompile = (shader) => {
-            shader.uniforms.blockLightStrength = strength;
-            shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute float blockLight;\nvarying float vBlockLight;')
-                .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBlockLight = blockLight;');
-            shader.fragmentShader = shader.fragmentShader
-                .replace('#include <common>', '#include <common>\nuniform float blockLightStrength;\nvarying float vBlockLight;')
-                .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.74, 0.45) * vBlockLight * blockLightStrength;');
+        const uniforms = {
+            blockLightStrength: this.blockLightStrength,
+            heldLightPosition: this.heldLightPosition,
+            heldLightStrength: this.heldLightStrength
         };
-        material.customProgramCacheKey = () => 'block-light';
+        material.onBeforeCompile = (shader) => {
+            Object.assign(shader.uniforms, uniforms);
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', [
+                    '#include <common>',
+                    'attribute float blockLight;',
+                    'attribute float skyLight;',
+                    'uniform vec3 heldLightPosition;',
+                    'varying float vBlockLight;',
+                    'varying float vSkyLight;',
+                    'varying float vHeldLight;'
+                ].join('\n'))
+                .replace('#include <begin_vertex>', [
+                    '#include <begin_vertex>',
+                    'vBlockLight = blockLight;',
+                    'vSkyLight = skyLight;',
+                    'float heldDistance = distance((modelMatrix * vec4(transformed, 1.0)).xyz, heldLightPosition);',
+                    'vHeldLight = pow(clamp(1.0 - heldDistance / 9.0, 0.0, 1.0), 2.0);'
+                ].join('\n'));
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <common>', [
+                    '#include <common>',
+                    'uniform float blockLightStrength;',
+                    'uniform float heldLightStrength;',
+                    'varying float vBlockLight;',
+                    'varying float vSkyLight;',
+                    'varying float vHeldLight;'
+                ].join('\n'))
+                .replace('#include <aomap_fragment>', [
+                    '#include <aomap_fragment>',
+                    'float skyFactor = mix(0.04, 1.0, vSkyLight);',
+                    'reflectedLight.directDiffuse *= skyFactor;',
+                    'reflectedLight.indirectDiffuse *= skyFactor;',
+                    'reflectedLight.directSpecular *= skyFactor;',
+                    'reflectedLight.indirectSpecular *= skyFactor;'
+                ].join('\n'))
+                .replace('#include <emissivemap_fragment>', [
+                    '#include <emissivemap_fragment>',
+                    'float torchLight = max(vBlockLight * blockLightStrength, vHeldLight * heldLightStrength);',
+                    'totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.74, 0.45) * torchLight;'
+                ].join('\n'));
+        };
+        material.customProgramCacheKey = () => 'voxel-light';
+    }
+
+    setHeldLight(position, active) {
+        if (position) this.heldLightPosition.value.copy(position);
+        this.heldLightStrength.value = active ? 0.9 : 0;
     }
 
     setBlockLightStrength(value) {
@@ -953,9 +999,19 @@ class WorldRenderer {
     setHiddenBlock(position) {
         const previous = this.hiddenBlock;
         this.hiddenBlock = position ? { x: position.x, y: position.y, z: position.z } : null;
+        // Rebuild every chunk whose mesh borders the block (its own and, at edges, neighbours).
+        const touched = new Set();
         for (const block of [previous, this.hiddenBlock]) {
             if (!block) continue;
-            const { chunkX, chunkZ } = this.getChunkCoords(block.x, block.z);
+            for (const dx of [-1, 0, 1]) {
+                for (const dz of [-1, 0, 1]) {
+                    const { chunkX, chunkZ } = this.getChunkCoords(block.x + dx, block.z + dz);
+                    touched.add(this.chunkKey(chunkX, chunkZ));
+                }
+            }
+        }
+        for (const key of touched) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
             this.rebuildChunk(chunkX, chunkZ);
         }
     }

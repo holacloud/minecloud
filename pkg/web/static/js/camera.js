@@ -9,7 +9,8 @@ class CameraController {
         this.sprintSpeed = 6;
         this.jumpVelocity = 7.25;
         this.lookSpeed = 0.002;
-        this.stepHeight = 1;
+        // Walk up slabs automatically; full blocks still need a jump.
+        this.stepHeight = 0.55;
         this.crouchSpeedFactor = 0.45;
         this.standingEyeHeight = 1.62;
         this.crouchingEyeHeight = 1.32;
@@ -101,7 +102,8 @@ class CameraController {
             if (!this.touchControlsEnabled) {
                 const request = this.domElement.requestPointerLock();
                 if (request && typeof request.catch === 'function') {
-                    request.catch((error) => console.warn('Pointer lock unavailable', error));
+                    // Browsers refuse the lock without a fresh gesture or right after Esc; the next click retries.
+                    request.catch(() => {});
                 }
             }
         });
@@ -205,10 +207,23 @@ class CameraController {
     }
 
     wouldStepOffLedge(targetX, targetZ, currentFloorY) {
-        const nextFloorY = this.getFloorY(targetX, targetZ, currentFloorY + 1);
+        const nextFloorY = this.getSupportFloorY(targetX, targetZ, currentFloorY + 1);
         return nextFloorY < currentFloorY - 0.1;
     }
     
+    // Highest floor under any part of the player's footprint, so the player is supported
+    // as long as some of it overlaps a block (edges, slabs, steps).
+    getSupportFloorY(x, z, startY) {
+        const r = this.collisionRadius - 0.01;
+        let floor = this.getFloorY(x, z, startY);
+        for (const [dx, dz] of [[-r, -r], [r, -r], [-r, r], [r, r]]) {
+            // A corner poking into a wall is not support.
+            const cornerFloor = this.getFloorY(x + dx, z + dz, startY);
+            if (cornerFloor <= startY + 0.001) floor = Math.max(floor, cornerFloor);
+        }
+        return floor;
+    }
+
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
@@ -275,7 +290,7 @@ class CameraController {
             const px = this.camera.position.x;
             const pz = this.camera.position.z;
             const py = this.camera.position.y - this.eyeHeight;
-            const currentFloorY = this.getFloorY(px, pz, py);
+            const currentFloorY = this.getSupportFloorY(px, pz, py);
 
             const targetX = px + moveX;
             const targetZ = pz + moveZ;
@@ -286,7 +301,7 @@ class CameraController {
                 if (resolved.collided && this.onGround) {
                     const stepFeetY = py + this.stepHeight;
                     const stepped = this.resolveHorizontalPosition(targetX, targetZ, stepFeetY);
-                    const steppedFloorY = this.getFloorY(stepped.x, stepped.z, stepFeetY);
+                    const steppedFloorY = this.getSupportFloorY(stepped.x, stepped.z, stepFeetY);
                     if (steppedFloorY > currentFloorY + 0.001 && steppedFloorY <= currentFloorY + this.stepHeight + 0.001 && this.canStandAt(stepped.x, stepped.z, steppedFloorY)) {
                         this.applyStepUp(steppedFloorY);
                         this.camera.position.x = stepped.x;
@@ -303,7 +318,7 @@ class CameraController {
         }
         
         const feetY = this.camera.position.y - this.eyeHeight;
-        const floorY = this.getFloorY(this.camera.position.x, this.camera.position.z, feetY);
+        const floorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, feetY);
         
         if (feetY <= floorY + 0.001 && this.velocityY <= 0) {
             this.camera.position.y = floorY + this.eyeHeight;
@@ -337,7 +352,7 @@ class CameraController {
         const newFeetY = newY - this.eyeHeight;
         
         if (this.velocityY < 0) {
-            const newFloorY = this.getFloorY(this.camera.position.x, this.camera.position.z, newFeetY);
+            const newFloorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, newFeetY);
             if (newFeetY <= newFloorY + 0.001) {
                 this.camera.position.y = newFloorY + this.eyeHeight;
                 this.velocityY = 0;

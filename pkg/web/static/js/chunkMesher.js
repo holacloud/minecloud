@@ -17,6 +17,8 @@ const MESH_FACE_UVS = [[0, 0], [1, 0], [1, 1], [0, 1]];
 const AO_LEVELS = [0.42, 0.62, 0.82, 1];
 const WATER_SURFACE_HEIGHT = 0.875;
 const MAX_BLOCK_LIGHT = 14;
+// How far (in blocks) open sky still lights cells sideways, e.g. into a cave mouth.
+const SKY_REACH = 3;
 
 // Torch light around one chunk: a breadth-first flood from every torch within reach,
 // losing one level per block and stopped by opaque full cubes.
@@ -123,17 +125,19 @@ class MeshBucket {
         this.uvs = [];
         this.colors = [];
         this.light = [];
+        this.sky = [];
         this.indices = [];
         this.blocks = [];
         this.vertexCount = 0;
     }
 
-    addVertex(x, y, z, nx, ny, nz, u, v, shade, light = 0) {
+    addVertex(x, y, z, nx, ny, nz, u, v, shade, light = 0, sky = 1) {
         this.positions.push(x, y, z);
         this.normals.push(nx, ny, nz);
         this.uvs.push(u, v);
         this.colors.push(shade, shade, shade);
         this.light.push(light);
+        this.sky.push(sky);
         return this.vertexCount++;
     }
 
@@ -149,6 +153,62 @@ class ChunkMesher {
         // Padded copy of the chunk plus a 1-block border from its neighbours.
         this.paddedSize = CHUNK_SIZE + 2;
         this.padded = new Uint16Array(this.paddedSize * this.paddedSize * WORLD_HEIGHT);
+        // Highest light-blocking block per column, for the chunk plus SKY_REACH + 1 around it.
+        this.heightmapSize = CHUNK_SIZE + (SKY_REACH + 1) * 2;
+        this.heightmap = new Int16Array(this.heightmapSize * this.heightmapSize);
+        this.skyCache = new Float32Array(this.paddedSize * this.paddedSize * WORLD_HEIGHT);
+    }
+
+    blocksSky(id) {
+        const registry = this.world.registry;
+        return id !== AIR_ID && registry.solid[id] === 1 && registry.transparent[id] === 0;
+    }
+
+    fillHeightmap(chunkX, chunkZ) {
+        const size = this.heightmapSize;
+        const minX = chunkX * CHUNK_SIZE - SKY_REACH - 1;
+        const minZ = chunkZ * CHUNK_SIZE - SKY_REACH - 1;
+        for (let hz = 0; hz < size; hz++) {
+            for (let hx = 0; hx < size; hx++) {
+                const column = this.world.getColumnAt(minX + hx, minZ + hz);
+                let top = WORLD_MIN_Y - 1;
+                if (column) {
+                    const lx = localCoord(minX + hx);
+                    const lz = localCoord(minZ + hz);
+                    for (let y = WORLD_MAX_Y; y >= WORLD_MIN_Y; y--) {
+                        if (this.blocksSky(column.blocks[chunkIndex(lx, y, lz)])) {
+                            top = y;
+                            break;
+                        }
+                    }
+                }
+                this.heightmap[hz * size + hx] = top;
+            }
+        }
+        this.skyCache.fill(-1);
+    }
+
+    // 1 under open sky, fading under roofs and a few blocks into openings, 0 deep underground.
+    skyAt(px, y, pz) {
+        if (y > WORLD_MAX_Y) return 1;
+        if (y < WORLD_MIN_Y) return 0;
+        const cacheIndex = this.paddedIndex(px, y, pz);
+        const cached = this.skyCache[cacheIndex];
+        if (cached >= 0) return cached;
+
+        const size = this.heightmapSize;
+        const hx = px + SKY_REACH;
+        const hz = pz + SKY_REACH;
+        const top = this.heightmap[hz * size + hx];
+        let sky = y > top ? 1 : Math.max(0, 1 - (top - y) / 4);
+        for (let dz = -SKY_REACH; dz <= SKY_REACH && sky < 1; dz++) {
+            for (let dx = -SKY_REACH; dx <= SKY_REACH; dx++) {
+                if (y <= this.heightmap[(hz + dz) * size + hx + dx]) continue;
+                sky = Math.max(sky, 1 - Math.max(Math.abs(dx), Math.abs(dz)) * 0.22);
+            }
+        }
+        this.skyCache[cacheIndex] = sky;
+        return sky;
     }
 
     paddedIndex(px, y, pz) {
@@ -251,6 +311,32 @@ class ChunkMesher {
         return ChunkMesher.lightCurve(total / count);
     }
 
+    // Same corner sampling as vertexLight, for sky exposure.
+    vertexSky(px, y, pz, face, corner, flatTop) {
+        const [nx, ny, nz] = face.normal;
+        const fx = px + nx;
+        const fy = flatTop ? y : y + ny;
+        const fz = pz + nz;
+        const ax = nx !== 0 ? 0 : corner[0] * 2 - 1;
+        const ay = ny !== 0 ? 0 : corner[1] * 2 - 1;
+        const az = nz !== 0 ? 0 : corner[2] * 2 - 1;
+        const samples = nx !== 0
+            ? [[0, 0, 0], [0, ay, 0], [0, 0, az], [0, ay, az]]
+            : ny !== 0
+                ? [[0, 0, 0], [ax, 0, 0], [0, 0, az], [ax, 0, az]]
+                : [[0, 0, 0], [ax, 0, 0], [0, ay, 0], [ax, ay, 0]];
+        let total = 0;
+        let count = 0;
+        for (const [sx, sy, sz] of samples) {
+            const cx = Math.min(this.paddedSize - 1, Math.max(0, fx + sx));
+            const cz = Math.min(this.paddedSize - 1, Math.max(0, fz + sz));
+            if (count > 0 && this.occludes(this.idAt(cx, fy + sy, cz))) continue;
+            total += this.skyAt(cx, fy + sy, cz);
+            count++;
+        }
+        return total / count;
+    }
+
     static lightCurve(level) {
         const t = level / MAX_BLOCK_LIGHT;
         return t * t;
@@ -264,12 +350,24 @@ class ChunkMesher {
         if (!column) return null;
 
         this.fillPadded(chunkX, chunkZ);
+        this.fillHeightmap(chunkX, chunkZ);
         const baseX = chunkX * CHUNK_SIZE;
         const baseZ = chunkZ * CHUNK_SIZE;
+        const hiddenBlock = options.hiddenBlock;
+        if (hiddenBlock) {
+            // Treat the hidden block as air so the faces around it are drawn (no see-through gaps).
+            const hx = hiddenBlock.x - baseX + 1;
+            const hz = hiddenBlock.z - baseZ + 1;
+            if (hx >= 0 && hz >= 0 && hx < this.paddedSize && hz < this.paddedSize &&
+                hiddenBlock.y >= WORLD_MIN_Y && hiddenBlock.y <= WORLD_MAX_Y) {
+                this.padded[this.paddedIndex(hx, hiddenBlock.y, hz)] = AIR_ID;
+            }
+        }
         this.originX = baseX;
         this.originZ = baseZ;
         this.light = new LightField(world, chunkX, chunkZ);
         const cellLight = (x, y, z) => ChunkMesher.lightCurve(this.light.get(x, y, z));
+        const cellSky = (lx, y, lz) => this.skyAt(lx + 1, y, lz + 1);
         const waterId = registry.id('water');
         const ladderId = registry.id('ladder');
         const bedrockId = registry.id('bedrock');
@@ -312,10 +410,11 @@ class ChunkMesher {
                 if (!water) water = new MeshBucket(world.getChunkMaterial('water'));
                 const top = y + WATER_SURFACE_HEIGHT;
                 const lit = cellLight(worldX, y, worldZ);
-                const a = water.addVertex(lx, top, lz + 1, 0, 1, 0, 0, 0, 1, lit);
-                const b = water.addVertex(lx + 1, top, lz + 1, 0, 1, 0, 1, 0, 1, lit);
-                const c = water.addVertex(lx + 1, top, lz, 0, 1, 0, 1, 1, 1, lit);
-                const d = water.addVertex(lx, top, lz, 0, 1, 0, 0, 1, 1, lit);
+                const sky = cellSky(lx, y + 1, lz);
+                const a = water.addVertex(lx, top, lz + 1, 0, 1, 0, 0, 0, 1, lit, sky);
+                const b = water.addVertex(lx + 1, top, lz + 1, 0, 1, 0, 1, 0, 1, lit, sky);
+                const c = water.addVertex(lx + 1, top, lz, 0, 1, 0, 1, 1, 1, lit, sky);
+                const d = water.addVertex(lx, top, lz, 0, 1, 0, 0, 1, 1, lit, sky);
                 water.addTriangle(a, b, c, worldX, y, worldZ);
                 water.addTriangle(a, c, d, worldX, y, worldZ);
                 continue;
@@ -323,7 +422,7 @@ class ChunkMesher {
 
             if (world.isCrossGeometry(type)) {
                 const cutout = world.getGeometry(type);
-                this.addCutout(bucketFor(world.getChunkMaterial(type)), cutout, lx, y, lz, worldX, worldZ, cellLight(worldX, y, worldZ));
+                this.addCutout(bucketFor(world.getChunkMaterial(type)), cutout, lx, y, lz, worldX, worldZ, cellLight(worldX, y, worldZ), cellSky(lx, y, lz));
                 continue;
             }
 
@@ -346,7 +445,8 @@ class ChunkMesher {
                     face.normal[0], face.normal[1], face.normal[2],
                     MESH_FACE_UVS[i][0], sideFace ? MESH_FACE_UVS[i][1] * height : MESH_FACE_UVS[i][1],
                     AO_LEVELS[ao[i]],
-                    this.vertexLight(px, y, pz, face, corner, lowTop)
+                    this.vertexLight(px, y, pz, face, corner, lowTop),
+                    this.vertexSky(px, y, pz, face, corner, lowTop)
                 ));
                 // Flip the diagonal so AO interpolates without a visible crease.
                 if (ao[0] + ao[2] < ao[1] + ao[3]) {
@@ -363,7 +463,7 @@ class ChunkMesher {
     }
 
     // Copies a cross-plane template (plants, torches) into the bucket at the block position.
-    addCutout(bucket, geometry, lx, y, lz, worldX, worldZ, light) {
+    addCutout(bucket, geometry, lx, y, lz, worldX, worldZ, light, sky) {
         const position = geometry.attributes.position;
         const normal = geometry.attributes.normal;
         const uv = geometry.attributes.uv;
@@ -374,7 +474,8 @@ class ChunkMesher {
                 normal.getX(i), normal.getY(i), normal.getZ(i),
                 uv.getX(i), uv.getY(i),
                 1,
-                light
+                light,
+                sky
             );
         }
         const index = geometry.index.array;
@@ -398,6 +499,7 @@ class ChunkMesher {
         const uvs = new Float32Array(vertexCount * 2);
         const colors = new Float32Array(vertexCount * 3);
         const light = new Float32Array(vertexCount);
+        const sky = new Float32Array(vertexCount);
         const indices = vertexCount > 65535 ? new Uint32Array(indexCount) : new Uint16Array(indexCount);
         const faceBlocks = new Int32Array(indexCount);
         const geometry = new THREE.BufferGeometry();
@@ -411,6 +513,7 @@ class ChunkMesher {
             uvs.set(bucket.uvs, vertexOffset * 2);
             colors.set(bucket.colors, vertexOffset * 3);
             light.set(bucket.light, vertexOffset);
+            sky.set(bucket.sky, vertexOffset);
             for (let i = 0; i < bucket.indices.length; i++) {
                 indices[indexOffset + i] = bucket.indices[i] + vertexOffset;
             }
@@ -426,6 +529,7 @@ class ChunkMesher {
         geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         geometry.setAttribute('blockLight', new THREE.BufferAttribute(light, 1));
+        geometry.setAttribute('skyLight', new THREE.BufferAttribute(sky, 1));
         geometry.setIndex(new THREE.BufferAttribute(indices, 1));
         geometry.computeBoundingBox();
         geometry.computeBoundingSphere();

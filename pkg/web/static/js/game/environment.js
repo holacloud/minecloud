@@ -132,7 +132,7 @@ Object.assign(Game.prototype, {
         const daylight = THREE.MathUtils.clamp((sunHeight + 0.16) / 1.16, 0, 1);
         const sunset = Math.max(0, 1 - Math.abs(sunHeight) * 3.2) * (1 - daylight * 0.55);
         // Torch light is baked into chunk meshes; it shows mostly once the sun is down.
-        this.world.setBlockLightStrength(THREE.MathUtils.lerp(1, 0.3, daylight));
+        this.world.setBlockLightStrength(THREE.MathUtils.lerp(1, 0.6, daylight));
 
         const preset = this.getSkyPreset();
         const sky = this.blendColors(this.blendColors(preset.nightSky, preset.sunsetSky, sunset), preset.daySky, daylight);

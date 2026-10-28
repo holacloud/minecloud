@@ -234,6 +234,11 @@ Object.assign(Game.prototype, {
         if (!this.miningBlockVisual) return;
 
         const visual = this.miningBlockVisual;
+        // Broken elsewhere (e.g. by another player): nothing left to shake.
+        if (!this.world.getBlockTypeAt(visual.position.x, visual.position.y, visual.position.z)) {
+            this.disposeMiningBlockVisual();
+            return;
+        }
         const targetDecay = Math.min(1, delta * (visual.returning ? 11 : 8));
         visual.targetRotation.lerp(this.miningBlockVisualZero, targetDecay);
 
@@ -285,6 +290,8 @@ Object.assign(Game.prototype, {
         const blockType = this.world.getBlockTypeAt(position.x, position.y, position.z);
         const dropType = this.world.getDropTypeForBlock(blockType);
         if (!this.world.removeBlockAt(position.x, position.y, position.z)) return false;
+        // The block is gone: drop its shaking stand-in right away.
+        this.disposeMiningBlockVisual();
 
         if (blockType === 'bed' && this.isRespawnBoundToBlock(position)) {
             this.respawnPoint = null;

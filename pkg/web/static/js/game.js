@@ -1258,6 +1258,8 @@ class Game {
 
         const hasTorchInHand = this.getSelectedBlockType() === 'torch' && this.getInventoryCount('torch') > 0;
         this.heldTorchLight.intensity = hasTorchInHand ? 1.45 : 0;
+        // Terrain receives the held torch through the voxel-light shader (sky-independent).
+        this.world.setHeldLight(this.camera.position, hasTorchInHand);
     }
 
     animate() {

@@ -130,8 +130,15 @@ class NetworkClient {
             }
         }
         
-        if (payload.blocks || payload.removedBlocks || payload.sprayPaints) {
-            this.emit('worldInit', { blocks: payload.blocks || {}, removedBlocks: payload.removedBlocks || {}, sprayPaints: payload.sprayPaints || {} });
+        if (payload.blocks || payload.removedBlocks || payload.chunkedBlocks || payload.sprayPaints) {
+            this.emit('worldInit', {
+                blocks: payload.blocks || {},
+                removedBlocks: payload.removedBlocks || {},
+                // Plain placed/removed blocks travel palette + RLE encoded per section.
+                chunkedBlocks: payload.chunkedBlocks || {},
+                chunkSize: payload.chunkSize,
+                sprayPaints: payload.sprayPaints || {}
+            });
         }
 
         if (typeof payload.timeOfDay === 'number') {

@@ -413,7 +413,8 @@ Object.assign(Game.prototype, {
             if (!this.touchControlsEnabled && !this.titleScreenOpen && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
                 const request = this.renderer.domElement.requestPointerLock();
                 if (request && typeof request.catch === 'function') {
-                    request.catch((error) => console.warn('Pointer lock unavailable', error));
+                    // Browsers refuse the lock without a fresh gesture or right after Esc; the next click retries.
+                    request.catch(() => {});
                 }
             }
         };
