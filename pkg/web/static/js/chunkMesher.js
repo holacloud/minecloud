@@ -83,24 +83,24 @@ class ChunkMesher {
     }
 
     occludes(id) {
-        const registry = this.world.registry;
-        return id !== AIR_ID && registry.solid[id] === 1 && registry.transparent[id] === 0;
+        return this.world.registry.fullCube[id] === 1;
     }
 
     isFaceVisible(id, neighborId) {
         const registry = this.world.registry;
         if (neighborId === AIR_ID || registry.fluid[neighborId]) return true;
         if (registry.transparent[id]) return neighborId !== id;
-        return registry.transparent[neighborId] === 1 || registry.solid[neighborId] === 0;
+        return registry.fullCube[neighborId] === 0;
     }
 
-    vertexAO(px, y, pz, face, corner) {
+    // `flatTop` samples the block's own layer, for faces that sit below the next layer (slab tops).
+    vertexAO(px, y, pz, face, corner, flatTop = false) {
         const [nx, ny, nz] = face.normal;
         const ax = nx !== 0 ? -1 : corner[0] * 2 - 1;
         const ay = ny !== 0 ? -1 : corner[1] * 2 - 1;
         const az = nz !== 0 ? -1 : corner[2] * 2 - 1;
         const lx = px + nx;
-        const ly = y + ny;
+        const ly = flatTop ? y : y + ny;
         const lz = pz + nz;
         // The two in-plane directions of this corner.
         let side1;
@@ -183,26 +183,30 @@ class ChunkMesher {
                 continue;
             }
 
-            const cutout = world.getGeometry(type);
-            if (cutout !== world.geometry) {
+            if (world.isCrossGeometry(type)) {
+                const cutout = world.getGeometry(type);
                 this.addCutout(bucketFor(world.getChunkMaterial(type)), cutout, lx, y, lz, worldX, worldZ);
                 continue;
             }
 
             const material = world.getChunkMaterial(type);
+            const height = registry.height[id] || 1;
             for (let f = 0; f < 6; f++) {
                 // The underside of the world is never visible.
                 if (f === 3 && id === bedrockId) continue;
                 const face = MESH_FACES[f];
+                const lowTop = f === 2 && height < 1;
                 const neighborId = this.idAt(px + face.normal[0], y + face.normal[1], pz + face.normal[2]);
-                if (!this.isFaceVisible(id, neighborId)) continue;
+                if (!lowTop && !this.isFaceVisible(id, neighborId)) continue;
 
                 const bucket = bucketFor(Array.isArray(material) ? material[f] : material);
-                const ao = face.corners.map((corner) => this.vertexAO(px, y, pz, face, corner));
+                const ao = face.corners.map((corner) => this.vertexAO(px, y, pz, face, corner, lowTop));
+                // Partial-height blocks (slabs) squash the face and its texture vertically.
+                const sideFace = face.normal[1] === 0;
                 const v = face.corners.map((corner, i) => bucket.addVertex(
-                    lx + corner[0], y + corner[1], lz + corner[2],
+                    lx + corner[0], y + corner[1] * height, lz + corner[2],
                     face.normal[0], face.normal[1], face.normal[2],
-                    MESH_FACE_UVS[i][0], MESH_FACE_UVS[i][1],
+                    MESH_FACE_UVS[i][0], sideFace ? MESH_FACE_UVS[i][1] * height : MESH_FACE_UVS[i][1],
                     AO_LEVELS[ao[i]]
                 ));
                 // Flip the diagonal so AO interpolates without a visible crease.

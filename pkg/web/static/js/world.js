@@ -115,7 +115,7 @@ class WorldRenderer {
         for (const source of slabSources) {
             const def = this.blockTypes[source];
             if (!def) continue;
-            this.blockTypes[`${source}_slab`] = { color: def.color, name: `${def.name} Slab`, slabSource: source, breakDuration: Math.max(0.2, (def.breakDuration || 0.6) * 0.6), category: def.category || (source.includes('planks') ? 'wood' : 'stone') };
+            this.blockTypes[`${source}_slab`] = { color: def.color, name: `${def.name} Slab`, slabSource: source, height: 0.5, breakDuration: Math.max(0.2, (def.breakDuration || 0.6) * 0.6), category: def.category || (source.includes('planks') ? 'wood' : 'stone') };
         }
 
         const materials = {
@@ -253,11 +253,22 @@ class WorldRenderer {
                 ]);
                 break;
             default:
+                if (this.blockTypes[type] && this.blockTypes[type].height === 0.5) {
+                    // Bottom slab: occupies the lower half of the block when centred on it.
+                    geometry = new THREE.BoxGeometry(1, 0.5, 1);
+                    geometry.translate(0, -0.25, 0);
+                    break;
+                }
                 return this.geometry;
         }
 
         this.cutoutGeometries.set(type, geometry);
         return geometry;
+    }
+
+    // Plants and torches are drawn as crossed planes instead of cubes.
+    isCrossGeometry(type) {
+        return ['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch'].includes(type);
     }
 
     createDisplayMaterial(color) {
@@ -1005,6 +1016,11 @@ class WorldRenderer {
             this.generatedChunks.delete(key);
             this.chunkBiomes.delete(key);
         }
+    }
+
+    // Height of the solid part of a block for collisions (0 when walkable through).
+    getCollisionHeight(x, y, z) {
+        return this.registry.height[this.getBlockId(Math.round(x), Math.round(y), Math.round(z))];
     }
 
     hasSolidBlock(x, y, z) {

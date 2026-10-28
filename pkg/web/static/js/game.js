@@ -723,6 +723,7 @@ class Game {
         this.cameraController = new CameraController(this.camera, this.renderer.domElement);
         this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
         this.cameraController.setBlockTypeGetter((x, y, z) => this.world.getBlockTypeAt(x, y, z));
+        this.cameraController.setBlockHeightGetter((x, y, z) => this.world.getCollisionHeight(x, y, z));
         this.applyLookSensitivity();
     }
 

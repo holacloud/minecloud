@@ -34,6 +34,7 @@ class CameraController {
         this.isInWater = false;
         
         this.blockChecker = null;
+        this.blockHeightGetter = null;
         this.eyeHeight = this.standingEyeHeight;
         this.isCrouching = false;
         this.isOnLadder = false;
@@ -43,6 +44,7 @@ class CameraController {
     
     setBlockChecker(fn) { this.blockChecker = fn; }
     setBlockTypeGetter(fn) { this.blockTypeGetter = fn; }
+    setBlockHeightGetter(fn) { this.blockHeightGetter = fn; }
     setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
     setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
     addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
@@ -114,6 +116,12 @@ class CameraController {
         return this.blockTypeGetter ? this.blockTypeGetter(x, y, z) : null;
     }
 
+    // Solid height of a block cell: 1 for full blocks, 0.5 for slabs, 0 for none.
+    getBlockHeight(x, y, z) {
+        if (this.blockHeightGetter) return this.blockHeightGetter(x, y, z);
+        return this.hasBlock(x, y, z) ? 1 : 0;
+    }
+
     getCollisionBlocks(x, z, feetY) {
         const blocks = [];
         const minX = Math.floor(x - this.collisionRadius);
@@ -126,7 +134,8 @@ class CameraController {
         for (let by = minY; by <= maxY; by++) {
             for (let bx = minX; bx <= maxX; bx++) {
                 for (let bz = minZ; bz <= maxZ; bz++) {
-                    if (this.hasBlock(bx, by, bz)) {
+                    const height = this.getBlockHeight(bx, by, bz);
+                    if (height > 0 && feetY + 0.02 < by + height) {
                         blocks.push({ x: bx, z: bz });
                     }
                 }
@@ -203,8 +212,9 @@ class CameraController {
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
-        for (let y = Math.floor(startY); y >= -5; y--) {
-            if (this.hasBlock(ix, y, iz)) return y + 1;
+        for (let y = Math.floor(startY); y >= -16; y--) {
+            const height = this.getBlockHeight(ix, y, iz);
+            if (height > 0) return y + height;
         }
         return -100;
     }

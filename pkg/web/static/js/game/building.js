@@ -159,7 +159,7 @@ Object.assign(Game.prototype, {
     bindMiningBlockVisual(hit, targetKey) {
         const position = hit ? this.world.getBlockPositionFromIntersection(hit) : null;
         const type = position ? this.world.getBlockTypeAt(position.x, position.y, position.z) : null;
-        if (!position || !type || this.world.getGeometry(type) !== this.world.geometry || type === 'water') {
+        if (!position || !type || this.world.isCrossGeometry(type) || type === 'water') {
             if (this.miningBlockVisual && this.miningBlockVisual.key !== targetKey) {
                 this.resetMiningBlockVisual(true);
             }
@@ -175,7 +175,7 @@ Object.assign(Game.prototype, {
             this.resetMiningBlockVisual(true);
         }
 
-        const mesh = new THREE.Mesh(this.world.geometry, this.world.getMaterial(type));
+        const mesh = new THREE.Mesh(this.world.getGeometry(type), this.world.getMaterial(type));
         mesh.position.set(position.x + 0.5, position.y + 0.5, position.z + 0.5);
         mesh.castShadow = this.rtxModeEnabled;
         mesh.receiveShadow = this.rtxModeEnabled;
