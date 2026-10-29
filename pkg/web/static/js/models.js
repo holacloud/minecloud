@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -992,6 +992,57 @@ const VoxelModels = {
             b.part('flipperBR', { parent: 'body', pivot: [-4.5, 2.75, -5], from: [-3.5, -0.5, -1.25], size: [3.5, 1, 2.5], paint: skinPaint, rotation: [0, -0.5, 0.2] });
             b.part('tail', { parent: 'body', pivot: [0, 3, -7], from: [-0.75, -0.5, -2], size: [1.5, 1, 2], paint: skinPaint });
             return { head: 'head' };
+        },
+
+        camel(b) {
+            const coat = 0xc9a46a;
+            const dark = 0x9c7744;
+            const light = 0xe2c99a;
+            const coatPaint = { color: coat, noise: 0.06, all: (p, face) => { if (face === 'bottom') p.fill(light, 0.05); } };
+            b.part('body', { pivot: [0, 0, 0], from: [-4.5, 17, -9], size: [9, 9, 18], paint: { ...coatPaint, faces: { top: (p) => p.rect(1, 0, p.w - 2, p.h, shadeRgb(colorToRgb(coat), -0.06), 0.06) } } });
+            b.part('hump', {
+                parent: 'body', pivot: [0, 26, -1], from: [-3.5, 0, -4], size: [7, 5, 8],
+                paint: { color: dark, noise: 0.07, all: (p, face) => { if (face !== 'top') p.rect(0, p.h - 1.5, p.w, 1.5, coat, 0.05); } }
+            });
+            b.part('humpTop', { parent: 'hump', pivot: [0, 5, 0], from: [-2.25, 0, -2.5], size: [4.5, 1.5, 5], paint: { color: dark, noise: 0.07 } });
+            b.part('neck', {
+                parent: 'body', pivot: [0, 22, 8], from: [-2, -2, -1.5], size: [4, 13, 4],
+                paint: { ...coatPaint, faces: { back: (p) => p.fill(dark, 0.06) } }, rotation: [0.7, 0, 0]
+            });
+            b.part('head', {
+                parent: 'neck', pivot: [0, 11, 0.5], from: [-2.25, -1.5, -1.5], size: [4.5, 4.5, 8],
+                rotation: [-0.85, 0, 0],
+                paint: {
+                    color: coat, noise: 0.05,
+                    all: (p, face) => {
+                        if (face === 'left' || face === 'right') {
+                            const x = face === 'left' ? 4.5 : 2;
+                            p.rect(x, 0.8, 1.5, 1.1, 0xf2ead8, 0);
+                            p.rect(x + 0.4, 0.9, 0.8, 0.9, 0x1a120c, 0);
+                            p.rect(x - 0.2, 0.4, 1.9, 0.3, 0x3a2a1a, 0);
+                            p.rect(face === 'left' ? 6.5 : 0.5, 3.2, 1, 0.3, 0x5a4026, 0);
+                        }
+                        if (face === 'front') { p.fill(light, 0.04); p.rect(0.75, 1.2, 0.8, 0.5, 0x4a3420, 0); p.rect(2.95, 1.2, 0.8, 0.5, 0x4a3420, 0); p.rect(0.5, 3.4, 3.5, 0.3, 0x5a4026, 0); }
+                        if (face === 'bottom') p.fill(light, 0.04);
+                    }
+                }
+            });
+            b.part('earL', { parent: 'head', pivot: [2, 3, 0], from: [0, -0.5, -0.75], size: [1.5, 1, 1.5], paint: { color: dark }, rotation: [0, 0, -0.4] });
+            b.part('earR', { parent: 'head', pivot: [-2, 3, 0], from: [-1.5, -0.5, -0.75], size: [1.5, 1, 1.5], paint: { color: dark }, rotation: [0, 0, 0.4] });
+            b.part('tail', { parent: 'body', pivot: [0, 25, -9], from: [-0.5, -8, -1], size: [1, 8, 1], paint: { color: coat, faces: { bottom: (p) => p.fill(0x3b2a18) } }, rotation: [-0.15, 0, 0] });
+            const legs = VoxelModels.quadLegs(b, {
+                size: [3, 18, 3], hipY: 18, x: 2.75, zFront: 6.5, zBack: -6.5,
+                paint: {
+                    color: coat, noise: 0.05,
+                    all: (p, face) => {
+                        if (face === 'top') return;
+                        if (face === 'bottom') { p.fill(0x6b5235, 0.04); return; }
+                        p.rect(0, 8, p.w, 2, dark, 0.05);
+                        p.rect(0, 16.5, p.w, 1.5, 0x8a6a42, 0.04);
+                    }
+                }
+            });
+            return { legs, head: 'head', tail: ['tail'] };
         }
     }
 };

@@ -119,7 +119,7 @@ Object.assign(Game.prototype, {
     // Species that can appear in each biome, with relative weights.
     getBiomeSpawnTable(biome) {
         switch (biome) {
-            case 'desert': return [['giraffe', 3], ['duck', 1]];
+            case 'desert': return [['camel', 3], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
             case 'rocky': return [['sheep', 2], ['spider', 1], ['cave_monster', 1]];
             default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
@@ -272,6 +272,7 @@ Object.assign(Game.prototype, {
         }
 
         mob.userData.bounceVelocity = 2.4;
+        mob.userData.resting = 0;
         mob.userData.direction = Math.atan2(this.camera.position.z - mob.position.z, this.camera.position.x - mob.position.x);
 
         this.playTone({ frequency: getMobSpecies(mob.userData.species).tone || 300, duration: 0.08, type: 'triangle', volume: 0.02, release: 0.07, detune: (Math.random() - 0.5) * 40 });
@@ -337,11 +338,17 @@ Object.assign(Game.prototype, {
             } else if (mob.userData.moveTimer <= 0) {
                 mob.userData.moveTimer = 1.2 + Math.random() * 2.8;
                 mob.userData.direction += (Math.random() - 0.5) * 1.8;
+                // Some species lie down for a while instead.
+                if (getMobSpecies(mob.userData.species).restDrop && Math.random() < 0.12) {
+                    mob.userData.resting = 10 + Math.random() * 15;
+                    mob.userData.moveTimer = mob.userData.resting;
+                }
             }
+            mob.userData.resting = Math.max(0, (mob.userData.resting || 0) - delta);
 
             const info = getMobSpecies(mob.userData.species);
             const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed;
-            const moveScale = (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
+            const moveScale = mob.userData.resting > 0 || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             if (mob.position.y - mob.userData.flyHeight < -20) {
                 // Spawned before its chunk was generated: drop it onto the terrain once it exists.
@@ -446,6 +453,18 @@ Object.assign(Game.prototype, {
             data.modelRoot.position.y = Math.abs(Math.sin(phase)) * 0.025 * data.gait;
             const body = data.modelParts && data.modelParts.body;
             if (body) body.scale.y = 1 + Math.sin(data.life * 2.1) * 0.012;
+        }
+
+        // Resting species fold their legs under them and lower their body to the ground.
+        const restDrop = getMobSpecies(data.species).restDrop || 0;
+        if (restDrop && data.modelRoot) {
+            data.restBlend = (data.restBlend || 0) + ((data.resting > 0 ? 1 : 0) - (data.restBlend || 0)) * Math.min(1, delta * 1.5);
+            if (data.restBlend > 0.001) {
+                data.legs.forEach((leg, index) => {
+                    leg.rotation.x += ((index < 2 ? -1 : 1) * Math.PI / 2 - leg.rotation.x) * data.restBlend;
+                });
+                data.modelRoot.position.y -= restDrop * data.restBlend;
+            }
         }
 
         // Head: look somewhere new every few seconds; grazers sometimes lower their head.

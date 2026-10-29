@@ -11,6 +11,7 @@
 //   variants   number of colour variants (picked at random)
 //   group      [min, max] number spawned together naturally
 //   grazer     lowers its head to graze while idle
+//   restDrop   lies down now and then, folding its legs and lowering its body this far
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
 //              swims underwater); see js/game/wildlife.js
@@ -26,7 +27,8 @@ const MOB_SPECIES = {
     macaw: { eggColor: 0x24B45A, tone: 300, speed: 0.85, flyHeight: 2.2, variants: 4, group: [1, 3] },
     fish: { eggColor: 0x6f9fd8, tone: 700, speed: 1.1, variants: 4, group: [5, 8], movement: 'swim' },
     frog: { eggColor: 0x4f8a3b, tone: 190, speed: 2.6, variants: 2, group: [1, 3], movement: 'hop' },
-    turtle: { eggColor: 0x7a8a45, tone: 160, speed: 0.3, group: [1, 2], movement: 'amphibious' }
+    turtle: { eggColor: 0x7a8a45, tone: 160, speed: 0.3, group: [1, 2], movement: 'amphibious' },
+    camel: { eggColor: 0xc9a46a, tone: 210, speed: 0.45, group: [1, 3], grazer: true, restDrop: 1 }
 };
 
 function getMobSpecies(species) {
