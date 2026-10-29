@@ -4,8 +4,10 @@
 // Bees live in colonies around a hive hanging under a tree's canopy: they hover about the
 // entrance, fly off to flowers and back, shelter inside at night and in the rain, and when
 // the hive or one of them is struck the whole swarm chases the player and stings (each bee
-// only once). Mixed into Game.prototype; updateAmbientMobs hands 'soar' mobs to
-// updateSoaringMob and 'swarm' ones (bees and their hive) to updateSwarmMob.
+// only once). Fireflies drift in loose clouds over the grass and ponds from dusk to dawn,
+// blinking on and off, shying away from the player and scattering when swatted.
+// Mixed into Game.prototype; updateAmbientMobs hands 'soar' mobs to updateSoaringMob,
+// 'swarm' ones (bees and their hive) to updateSwarmMob and 'glow' ones to updateGlowMob.
 
 const _flyTarget = new THREE.Vector3();
 const _beeDesired = new THREE.Vector3();
@@ -597,5 +599,144 @@ Object.assign(Game.prototype, {
             const volume = 0.006 * (1 - nearest / 10) * (angry ? 2.5 : 1) * Math.min(3, colony.bees.length) / 3;
             this.playTone({ frequency: getMobSpecies('bee').tone * (angry ? 1.35 : 1), duration: 0.1, type: 'sawtooth', volume, attack: 0.02, release: 0.04, detune: (Math.random() - 0.5) * 60 });
         }
+    },
+
+    // Natural spawning: plains and forest chunks get a cloud now and then, near water if any.
+    spawnFirefliesForChunk(chunkX, chunkZ, biome) {
+        if (biome !== 'forest' && biome !== 'plains') return;
+        if (this.chunkRandom(chunkX, chunkZ, 51) > 0.25) return;
+        if (this.ambientMobs.filter((mob) => mob.userData.species === 'firefly').length >= getMobSpecies('firefly').limit) return;
+        const size = this.world.chunkSize;
+        let spot = null;
+        for (let i = 0; i < 8 && !spot; i++) {
+            const x = chunkX * size + this.chunkRandom(chunkX, chunkZ, 52 + i) * size;
+            const z = chunkZ * size + this.chunkRandom(chunkX, chunkZ, 62 + i) * size;
+            const shore = this.findShoreSpot(x, z);
+            if (shore) spot = new THREE.Vector3(shore.x, shore.y, shore.z);
+            else if (i === 7) {
+                const floor = this.cameraController.getFloorY(x, z, 64);
+                if (floor > -20) spot = new THREE.Vector3(x, floor, z);
+            }
+        }
+        if (!spot) return;
+        const mob = this.createMob('firefly', spot);
+        mob.userData.natural = true;
+        mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+        this.ambientMobs.push(mob);
+    },
+
+    // Soft round glow shared by every firefly.
+    getFireflyHaloTexture() {
+        if (this.fireflyHaloTexture) return this.fireflyHaloTexture;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.25, 'rgba(255,255,255,0.45)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
+        this.fireflyHaloTexture = new THREE.CanvasTexture(canvas);
+        return this.fireflyHaloTexture;
+    },
+
+    initFireflies(mob) {
+        const data = mob.userData;
+        const light = new THREE.MeshBasicMaterial({ color: 0xd8f05a });
+        const halo = new THREE.SpriteMaterial({ map: this.getFireflyHaloTexture(), color: 0xc8f060, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.7 });
+        // Disposed by removeMob (the halo texture is shared and kept).
+        data.glowMaterials = [light];
+        data.haloMaterial = halo;
+        const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.07);
+        data.flies = [];
+        const count = 10 + Math.floor(Math.random() * 7);
+        for (let i = 0; i < count; i++) {
+            const fly = new THREE.Group();
+            const body = new THREE.Mesh(geometry, light);
+            body.userData.disposeGeometry = true;
+            body.userData.mobRoot = mob;
+            const glow = new THREE.Sprite(halo);
+            glow.scale.setScalar(0.45);
+            fly.add(body, glow);
+            fly.userData = { seed: Math.random() * 100, phase: Math.random() * 10, period: 2.5 + Math.random() * 3, avoid: new THREE.Vector3() };
+            data.flies.push(fly);
+            mob.add(fly);
+        }
+        data.center = new THREE.Vector3().copy(mob.position);
+        data.center.y += 1.2;
+        mob.position.copy(data.center);
+        data.target = data.center.clone();
+        data.scatter = 0;
+        data.glow = 0;
+        // Wild clouds only show at night; spawned ones always do, so they can be seen.
+        data.alwaysGlow = !data.natural;
+    },
+
+    updateGlowMob(mob, delta, player) {
+        const data = mob.userData;
+        if (!data.flies) this.initFireflies(mob);
+        data.life += delta;
+        data.modelRoot.visible = false;
+        const position = mob.position;
+
+        // The cloud drifts slowly about its home, a little above the grass or water.
+        if (data.moveTimer <= 0) {
+            data.moveTimer = 4 + Math.random() * 4;
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 6;
+            const x = data.home.x + Math.cos(angle) * radius;
+            const z = data.home.z + Math.sin(angle) * radius;
+            const floor = this.cameraController.getFloorY(x, z, data.home.y + 4);
+            if (floor > -20) {
+                const water = this.findWaterSurface(x, floor + 0.1, z);
+                data.target.set(x, (water ?? floor) + 1 + Math.random() * 0.8, z);
+            }
+        }
+        _flyTarget.subVectors(data.target, position);
+        const distance = _flyTarget.length();
+        if (distance > 0.01) position.addScaledVector(_flyTarget, Math.min(1, getMobSpecies('firefly').speed * delta / distance));
+
+        const hour = ((this.timeOfDay * 24) + 6) % 24;
+        const dark = hour >= 19 || hour < 5.5;
+        data.glow += ((data.alwaysGlow || dark ? 1 : 0) - data.glow) * Math.min(1, delta * 0.5);
+        mob.visible = data.glow > 0.01;
+        if (!mob.visible) return;
+        data.scatter = Math.max(0, data.scatter - delta / 3);
+
+        // In Ultra the lights are HDR-bright, so the bloom pass gives them a halo.
+        const boost = this.ultraModeEnabled ? 5 : 1;
+        data.glowMaterials[0].color.setRGB(0.85 * boost, 0.95 * boost, 0.35 * boost);
+        data.haloMaterial.opacity = 0.7 * Math.min(1, boost);
+
+        const spread = 1 + data.scatter * 1.5;
+        data.flies.forEach((fly) => {
+            const f = fly.userData;
+            const t = data.life;
+            fly.position.set(
+                (Math.sin(t * 0.31 + f.seed) * 1.8 + Math.sin(t * 2.1 + f.seed * 3) * 0.12) * spread,
+                (Math.sin(t * 0.43 + f.seed * 1.3) * 0.6 + Math.sin(t * 1.7 + f.seed) * 0.1) * spread,
+                (Math.cos(t * 0.27 + f.seed * 0.7) * 1.8 + Math.cos(t * 2.3 + f.seed * 2) * 0.12) * spread
+            );
+            // Shy away from the player's body.
+            _beeDesired.set(position.x + fly.position.x - player.x, position.y + fly.position.y - (player.y - 0.8), position.z + fly.position.z - player.z);
+            const near = _beeDesired.length();
+            if (near < 1.4) _beeDesired.multiplyScalar((1.4 - near) / Math.max(near, 0.001));
+            else _beeDesired.set(0, 0, 0);
+            f.avoid.lerp(_beeDesired, Math.min(1, delta * 3));
+            fly.position.add(f.avoid);
+
+            // Each blinks on its own rhythm; swatted ones all light up as they scatter.
+            const cycle = (t + f.phase) % f.period;
+            const pulse = cycle < 0.7 ? Math.sin(cycle / 0.7 * Math.PI) : 0;
+            const intensity = Math.max(pulse, data.scatter * 0.8) * data.glow;
+            fly.scale.setScalar(Math.max(0.001, intensity));
+        });
+    },
+
+    // A swat scatters the cloud in a burst of light.
+    scatterFireflies(mob) {
+        mob.userData.scatter = 1;
+        this.playTone({ frequency: getMobSpecies('firefly').tone, endFrequency: 2600, duration: 0.15, type: 'sine', volume: 0.008, release: 0.1 });
     }
 });

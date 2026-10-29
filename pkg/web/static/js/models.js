@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin', firefly: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1280,6 +1280,12 @@ const VoxelModels = {
             b.part('wingL', { parent: 'body', pivot: [0.5, 1.25, 0.5], from: [0, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
             b.part('wingR', { parent: 'body', pivot: [-0.5, 1.25, 0.5], from: [-2.5, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
             return { wings: ['wingL', 'wingR'] };
+        },
+
+        // A single beetle; the swarm's glowing lights are added by js/game/flyers.js.
+        firefly(b) {
+            b.part('body', { pivot: [0, 0, 0], from: [-0.5, -0.4, -1], size: [1, 0.8, 2], paint: { color: 0x2a2320, noise: 0.03, faces: { back: (p) => p.fill(0xd8f05a) } } });
+            return {};
         },
 
         // Hangs from its top (the origin), under a branch.

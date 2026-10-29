@@ -141,6 +141,7 @@ Object.assign(Game.prototype, {
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
         this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
         this.spawnBeesForChunk(chunkX, chunkZ, biome);
+        this.spawnFirefliesForChunk(chunkX, chunkZ, biome);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -175,6 +176,7 @@ Object.assign(Game.prototype, {
     removeMob(mob) {
         this.scene.remove(mob);
         this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== mob);
+        if (mob.userData.glowMaterials) mob.userData.glowMaterials.forEach((material) => material.dispose());
         // Textures are shared per species; geometries and materials belong to this mob.
         mob.traverse((node) => {
             if (node.isMesh && node.userData.disposeGeometry) node.geometry.dispose();
@@ -253,6 +255,10 @@ Object.assign(Game.prototype, {
         if (getMobSpecies(mob.userData.species).movement === 'swim') {
             this.startleSchool(mob, this.camera.position);
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
+            return;
+        }
+        if (getMobSpecies(mob.userData.species).movement === 'glow') {
+            this.scatterFireflies(mob);
             return;
         }
         if (getMobSpecies(mob.userData.species).movement === 'swarm') {
@@ -349,6 +355,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'dart') {
                 this.updateDartingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'glow') {
+                this.updateGlowMob(mob, delta, player);
                 continue;
             }
             if (movement === 'swarm') {
