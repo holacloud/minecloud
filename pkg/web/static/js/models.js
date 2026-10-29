@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1090,6 +1090,55 @@ const VoxelModels = {
                 });
             });
             return { legs, head: 'head', tail: ['tail1', 'tail2', 'tail3'], legAxis: 'y' };
+        },
+
+        // The tail curls up over the back in five segments ending in the sting.
+        scorpion(b, variant) {
+            const palettes = [
+                { shell: 0xc29a4a, band: 0x8a6328, dark: 0x4a3214 },
+                { shell: 0x2e2824, band: 0x1a1614, dark: 0x0d0b0a }
+            ];
+            const c = palettes[variant % palettes.length];
+            const plated = { color: c.shell, noise: 0.06, bevel: 0.14, all: (p, face) => {
+                if (face === 'top') for (let y = 1.6; y < p.h; y += 2) p.rect(0, y, p.w, 0.35, c.band, 0.04);
+                if (face === 'bottom') p.fill(c.band, 0.04);
+            } };
+            b.part('body', { pivot: [0, 0, 0], from: [-3, 1.5, -5], size: [6, 2.5, 10], paint: plated });
+            b.part('head', {
+                parent: 'body', pivot: [0, 2.75, 5], from: [-2.5, -1.25, 0], size: [5, 2, 2],
+                paint: { ...plated, faces: { top: (p) => { p.rect(2, 0.3, 0.4, 0.4, 0x050404, 0); p.rect(2.6, 0.3, 0.4, 0.4, 0x050404, 0); p.rect(0.3, 0.6, 0.3, 0.3, 0x050404, 0); p.rect(4.4, 0.6, 0.3, 0.3, 0x050404, 0); } } }
+            });
+            [['L', 1], ['R', -1]].forEach(([side, sign]) => {
+                b.part(`arm${side}`, { parent: 'body', pivot: [2.25 * sign, 2.5, 5.5], from: [-0.6, -0.6, 0], size: [1.2, 1.2, 4], paint: plated, rotation: [-0.15, -0.55 * sign, 0] });
+                b.part(`claw${side}`, { parent: `arm${side}`, pivot: [0, 0, 4], from: [-1.25, -0.9, 0], size: [2.5, 1.8, 3], paint: plated, rotation: [0, 0.55 * sign, 0] });
+                b.part(`pincer${side}`, { parent: `claw${side}`, pivot: [-0.75 * sign, 0, 3], from: [-0.4, -0.5, 0], size: [0.8, 1, 2.25], paint: { color: c.dark, noise: 0.04 } });
+                b.part(`finger${side}`, { parent: `claw${side}`, pivot: [0.75 * sign, 0, 3], from: [-0.4, -0.5, 0], size: [0.8, 1, 2.25], paint: { color: c.dark, noise: 0.04 } });
+            });
+            const tailSizes = [[2, 1.8, 3], [1.75, 1.6, 3], [1.5, 1.4, 3], [1.3, 1.2, 2.5]];
+            let parent = 'body';
+            let pivot = [0, 3.25, -5];
+            const tail = [];
+            tailSizes.forEach((size, index) => {
+                const name = `tail${index + 1}`;
+                b.part(name, { parent, pivot, from: [-size[0] / 2, -size[1] / 2, -size[2]], size, paint: plated, rotation: [index === 0 ? 0.9 : 0.55, 0, 0] });
+                tail.push(name);
+                parent = name;
+                pivot = [0, 0, -size[2]];
+            });
+            b.part('stingBulb', { parent, pivot, from: [-0.9, -0.9, -2], size: [1.8, 1.8, 2], paint: { color: c.band, noise: 0.05 }, rotation: [0.5, 0, 0] });
+            b.part('sting', { parent: 'stingBulb', pivot: [0, -0.4, -2], from: [-0.25, -0.25, -1.5], size: [0.5, 0.5, 1.5], paint: { color: 0x120c08, noise: 0 }, rotation: [0.7, 0, 0] });
+            tail.push('stingBulb');
+
+            const legPaint = { color: c.band, noise: 0.05, bevel: 0.05 };
+            const legs = [];
+            for (let i = 0; i < 4; i++) {
+                const z = 3 - i * 2;
+                const spread = 0.5 - i * 0.33;
+                b.part(`legL${i}`, { parent: 'body', pivot: [3, 2.5, z], from: [0, -0.5, -0.5], size: [5, 1, 1], paint: legPaint, rotation: [0, spread, -0.55] });
+                b.part(`legR${i}`, { parent: 'body', pivot: [-3, 2.5, z], from: [-5, -0.5, -0.5], size: [5, 1, 1], paint: legPaint, rotation: [0, -spread, 0.55] });
+                legs.push(`legL${i}`, `legR${i}`);
+            }
+            return { legs, head: 'head', tail, legAxis: 'y' };
         }
     }
 };

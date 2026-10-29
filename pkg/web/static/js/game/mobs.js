@@ -119,9 +119,9 @@ Object.assign(Game.prototype, {
     // Species that can appear in each biome, with relative weights.
     getBiomeSpawnTable(biome) {
         switch (biome) {
-            case 'desert': return [['camel', 3], ['lizard', 2], ['giraffe', 1], ['duck', 1]];
+            case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-            case 'rocky': return [['sheep', 2], ['lizard', 1], ['spider', 1], ['cave_monster', 1]];
+            case 'rocky': return [['sheep', 2], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
             default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
         }
     },
@@ -287,6 +287,7 @@ Object.assign(Game.prototype, {
     updateAmbientMobs(delta) {
         this.updateNaturalSpawning(delta);
         this.updateDroppedTails(delta);
+        this.updatePoison(delta);
         this.mobFrame = (this.mobFrame || 0) + 1;
         const player = this.getLocalPlayerPosition();
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
@@ -322,8 +323,9 @@ Object.assign(Game.prototype, {
 
             const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
             const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
-            const chaseDistance = mob.userData.species === 'cave_monster' ? 10 : 16;
-            const keepDistance = mob.userData.species === 'cave_monster' ? 4 : 0;
+            const info = getMobSpecies(mob.userData.species);
+            const chaseDistance = info.nocturnal && !this.isNightTime() ? 3.5 : info.chaseDistance || 16;
+            const keepDistance = info.keepDistance || 0;
             const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
             const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
             const isFollowingCat = mob.userData.species === 'cat' && this.followingCat === mob;
@@ -356,7 +358,6 @@ Object.assign(Game.prototype, {
             }
             mob.userData.resting = Math.max(0, (mob.userData.resting || 0) - delta);
 
-            const info = getMobSpecies(mob.userData.species);
             const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed;
             const moveScale = mob.userData.resting > 0 || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
@@ -391,8 +392,11 @@ Object.assign(Game.prototype, {
             mob.userData.blockedCooldown = Math.max(0, (mob.userData.blockedCooldown || 0) - delta);
 
             if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
-                this.applyDamage(mob.userData.species === 'spider' ? 2 : 4, `You were attacked by a ${mob.userData.species === 'spider' ? 'spider' : 'cave monster'}`);
+                const name = mob.userData.species.replace('_', ' ');
+                this.applyDamage(info.attackDamage, `You were attacked by a ${name}`);
+                if (info.poison) this.poisonPlayer(info.poison, name);
                 mob.userData.attackCooldown = 1.2;
+                mob.userData.attackPose = 0.4;
             }
 
             if (isFollowingDog && mob.userData.defendCooldown <= 0) {
@@ -429,6 +433,26 @@ Object.assign(Game.prototype, {
 
             this.animateMobRig(mob, moveScale, delta);
         }
+    },
+
+    // Venom: a few points of damage over the next seconds.
+    poisonPlayer(ticks, source) {
+        if (!this.poison) this.receiveSystemMessage({ text: `You were poisoned by a ${source}` });
+        this.poison = { ticks: Math.max(ticks, this.poison ? this.poison.ticks : 0), timer: 1.5, source };
+    },
+
+    updatePoison(delta) {
+        if (!this.poison) return;
+        if (this.respawnPending) {
+            this.poison = null;
+            return;
+        }
+        this.poison.timer -= delta;
+        if (this.poison.timer > 0) return;
+        this.applyDamage(1, `You were poisoned by a ${this.poison.source}`);
+        this.poison.ticks -= 1;
+        this.poison.timer = 1.5;
+        if (this.poison.ticks <= 0) this.poison = null;
     },
 
     // Gait eases in and out with movement; idle mobs breathe, look around, graze and flick
@@ -502,10 +526,25 @@ Object.assign(Game.prototype, {
             ear.rotation.x = ear.userData.baseRotation.x + flick * 0.35;
         });
 
+        data.attackPose = Math.max(0, (data.attackPose || 0) - delta);
+        const strike = getMobSpecies(data.species).tailStrike && data.attackPose > 0 ? Math.sin((1 - data.attackPose / 0.4) * Math.PI) : 0;
         data.tail.forEach((segment, index) => {
             const base = segment.userData.baseRotation;
             const speed = 2.2 + data.gait * 3;
-            segment.rotation.y = base.y + Math.sin(data.life * speed + index * 0.6) * (0.18 + data.gait * 0.2);
+            const sway = strike ? 0.08 : 0.18 + data.gait * 0.2;
+            segment.rotation.y = base.y + Math.sin(data.life * speed + index * 0.6) * sway;
+            segment.rotation.x = base.x + strike * 0.35;
+        });
+
+        // Pincers open and close.
+        ['L', 'R'].forEach((side, index) => {
+            const pincer = parts[`pincer${side}`];
+            const finger = parts[`finger${side}`];
+            if (!pincer || !finger) return;
+            const open = Math.max(0, Math.sin(data.life * 2.3 + index * 1.7)) * 0.45 + strike * 0.3;
+            const sign = side === 'L' ? 1 : -1;
+            pincer.rotation.y = open * sign;
+            finger.rotation.y = -open * sign;
         });
 
         if (data.wings.length === 2) {
