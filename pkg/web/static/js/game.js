@@ -1124,6 +1124,11 @@ class Game {
             return;
         }
 
+        if ((event.code === 'ShiftLeft' || event.code === 'ShiftRight') && !event.repeat && this.ridingMob) {
+            this.dismount();
+            return;
+        }
+
         if (event.code === 'KeyC' && !event.repeat) {
             event.preventDefault();
             this.toggleCraftingPanel();
@@ -1424,7 +1429,7 @@ class Game {
         }
         
         if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
-            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType(), this.getCurrentPlayerAction());
+            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType(), this.getCurrentPlayerAction(), this.getMountState());
             this.lastNetworkUpdate = now;
         }
         

@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1216,6 +1216,51 @@ const VoxelModels = {
                 b.part(`talons${side}`, { parent: `leg${side}`, pivot: [0, -3.5, 0], from: [-0.75, 0, -0.75], size: [1.5, 0.5, 2], paint: { color: 0x1a1410, noise: 0.03 } });
             });
             return { head: 'head', tail: ['tail'] };
+        },
+
+        // Rideable: the rider sits on the back, 20 units (1.25 blocks) up; see js/game/riding.js.
+        horse(b, variant) {
+            const palettes = [
+                { coat: 0x8a5a34, mane: 0x2a1c14, sock: 0x2a1c14, blaze: true },
+                { coat: 0xb8743c, mane: 0xe2c9a0, sock: 0xe8dcc6, blaze: true },
+                { coat: 0x2b2522, mane: 0x15110f, sock: 0x15110f, blaze: false },
+                { coat: 0xd9d4ca, mane: 0x8c857c, sock: 0x6f6a63, blaze: false, dapple: 0xb0aa9f }
+            ];
+            const c = palettes[variant % palettes.length];
+            const coatPaint = { color: c.coat, noise: 0.05, all: (p, face) => {
+                if (c.dapple && face !== 'bottom') p.spots(c.dapple, 10, 1, 2);
+                if (face === 'bottom') p.fill(shadeRgb(colorToRgb(c.coat), -0.12), 0.05);
+            } };
+            b.part('body', { pivot: [0, 0, 0], from: [-3.5, 13, -8], size: [7, 7, 16], paint: coatPaint });
+            b.part('neck', { parent: 'body', pivot: [0, 17, 6.5], from: [-1.75, -1, -2], size: [3.5, 9, 4], paint: coatPaint, rotation: [0.55, 0, 0] });
+            b.part('mane', { parent: 'neck', pivot: [0, 0, -2], from: [-0.75, 0, -1.25], size: [1.5, 9, 1.5], paint: { color: c.mane, noise: 0.1 } });
+            b.part('head', {
+                parent: 'neck', pivot: [0, 8, 0], from: [-1.75, -2.5, -1.5], size: [3.5, 4, 8],
+                paint: {
+                    color: c.coat, noise: 0.05,
+                    all: (p, face) => {
+                        if (face === 'top' && c.blaze) p.rect(1.25, 0, 1, p.h, 0xf2eee6, 0.03);
+                        if (face === 'front') { p.rect(0, p.h - 1.5, p.w, 1.5, shadeRgb(colorToRgb(c.coat), -0.25), 0.03); p.rect(0.4, 1.6, 0.8, 0.6, 0x15110f, 0); p.rect(2.3, 1.6, 0.8, 0.6, 0x15110f, 0); }
+                        if (face === 'left' || face === 'right') {
+                            const x = face === 'left' ? 1 : p.w - 2;
+                            p.rect(x, 0.8, 1, 1, 0x15110f, 0);
+                            p.rect(x + 0.2, 0.9, 0.4, 0.4, 0xffffff, 0);
+                        }
+                    }
+                }
+            });
+            b.part('forelock', { parent: 'head', pivot: [0, 1.5, 0.5], from: [-1, 0, 0], size: [2, 0.75, 2.5], paint: { color: c.mane, noise: 0.1 } });
+            b.part('earL', { parent: 'head', pivot: [1.1, 1.5, 0], from: [-0.5, 0, -0.5], size: [1, 2, 1], paint: { color: c.coat }, rotation: [-0.2, 0, -0.15] });
+            b.part('earR', { parent: 'head', pivot: [-1.1, 1.5, 0], from: [-0.5, 0, -0.5], size: [1, 2, 1], paint: { color: c.coat }, rotation: [-0.2, 0, 0.15] });
+            b.part('tail', { parent: 'body', pivot: [0, 19, -8], from: [-1, -10, -1], size: [2, 10, 2], paint: { color: c.mane, noise: 0.1 }, rotation: [0.35, 0, 0] });
+            const legs = VoxelModels.quadLegs(b, {
+                size: [3, 13, 3], hipY: 14, x: 2, zFront: 5.5, zBack: -5.5,
+                paint: { color: c.coat, noise: 0.05, all: (p, face) => {
+                    if (face === 'bottom') { p.fill(0x2a2420, 0.03); return; }
+                    if (face !== 'top') { p.rect(0, p.h - 4, p.w, 3, c.sock, 0.05); p.rect(0, p.h - 1, p.w, 1, 0x2a2420, 0.03); }
+                } }
+            });
+            return { legs, head: 'head', tail: ['tail'] };
         }
     }
 };

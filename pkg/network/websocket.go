@@ -99,6 +99,9 @@ type Player struct {
 	Z          float64 `json:"z"`
 	Yaw        float64 `json:"yaw"`
 	Pitch      float64 `json:"pitch"`
+	// Mount is "species:variant" while riding (e.g. "horse:2"), MountYaw its facing.
+	Mount    string  `json:"mount,omitempty"`
+	MountYaw float64 `json:"mountYaw,omitempty"`
 }
 
 type GameState struct {

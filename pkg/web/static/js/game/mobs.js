@@ -67,6 +67,7 @@ Object.assign(Game.prototype, {
 
     rebuildMobModels() {
         this.ambientMobs.forEach((mob) => this.attachMobModel(mob));
+        this.otherPlayerMeshes.forEach((avatar) => { if (avatar.userData.mountMob) this.attachMobModel(avatar.userData.mountMob); });
     },
 
     createMobHealthBar() {
@@ -122,7 +123,7 @@ Object.assign(Game.prototype, {
             case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
             case 'rocky': return [['goat', 3], ['eagle', 2], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
-            default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
+            default: return [['sheep', 4], ['pig', 3], ['horse', 2], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
         }
     },
 
@@ -226,6 +227,7 @@ Object.assign(Game.prototype, {
         this.raycaster.setFromCamera(this.screenCenter, this.camera);
         const meshes = [];
         this.ambientMobs.forEach((mob) => {
+            if (mob === this.ridingMob) return;
             mob.traverse((node) => {
                 if (node instanceof THREE.Mesh) {
                     meshes.push(node);
@@ -311,12 +313,20 @@ Object.assign(Game.prototype, {
         if (this.followingCat && !this.ambientMobs.includes(this.followingCat)) {
             this.followingCat = null;
         }
+        if (this.ridingMob && !this.ambientMobs.includes(this.ridingMob)) {
+            this.ridingMob = null;
+            this.cameraController.setMount(null);
+        }
 
         for (const mob of this.ambientMobs) {
             mob.userData.moveTimer -= delta;
             mob.userData.attackCooldown = Math.max(0, mob.userData.attackCooldown - delta);
             mob.userData.defendCooldown = Math.max(0, mob.userData.defendCooldown - delta);
             mob.userData.purrTimer = Math.max(0, mob.userData.purrTimer - delta);
+            if (mob.userData.rider) {
+                this.updateRiddenMob(mob, delta);
+                continue;
+            }
             const movement = getMobSpecies(mob.userData.species).movement;
             if (movement === 'swim') {
                 this.updateSwimmingMob(mob, delta, player);
@@ -528,7 +538,7 @@ Object.assign(Game.prototype, {
             data.lookTimer -= delta;
             if (data.lookTimer <= 0) {
                 data.lookTimer = 1.5 + Math.random() * 3.5;
-                const graze = getMobSpecies(data.species).grazer && data.gait < 0.2 && Math.random() < 0.4;
+                const graze = getMobSpecies(data.species).grazer && !data.rider && data.gait < 0.2 && Math.random() < 0.4;
                 data.lookYaw = graze ? 0 : (Math.random() - 0.5) * 1.1;
                 data.lookPitch = graze ? 0.6 : (Math.random() - 0.5) * 0.4;
             }

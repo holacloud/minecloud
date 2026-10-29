@@ -16,6 +16,8 @@
 //   grazer     lowers its head to graze while idle
 //   restDrop   lies down now and then, folding its legs and lowering its body this far
 //   tailStrike attacks by lunging its curled tail forward
+//   mount      can be ridden (right click): rider eye height, seat height above its feet,
+//              speed, jump strength; see js/game/riding.js
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
 //              swims underwater), 'dart' (basks, then runs in short bursts) or 'climb'
@@ -39,6 +41,7 @@ const MOB_SPECIES = {
     lizard: { eggColor: 0xb08a50, tone: 900, speed: 3.2, variants: 2, group: [1, 2], movement: 'dart' },
     scorpion: { eggColor: 0xc29a4a, tone: 1400, hostile: true, nocturnal: true, chaseDistance: 8, attackDamage: 1, poison: 3, maxHealth: 6, speed: 0.35, chaseSpeed: 1.1, variants: 2, group: [1, 1], tailStrike: true },
     goat: { eggColor: 0xe9e4d6, tone: 420, speed: 0.6, variants: 2, group: [2, 4], grazer: true, movement: 'climb' },
+    horse: { eggColor: 0x8a5a34, tone: 260, speed: 0.55, variants: 4, group: [2, 4], grazer: true, mount: { eyeHeight: 2.32, seat: 0.7, speed: 9, autoJump: 7.6, jump: 10.5 } },
     eagle: { eggColor: 0x4a3222, tone: 2400, speed: 4, group: [1, 1], limit: 2, movement: 'soar' }
 };
 

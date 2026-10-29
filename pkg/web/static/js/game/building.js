@@ -469,6 +469,7 @@ Object.assign(Game.prototype, {
     },
 
     placeBlock() {
+        if (this.tryMountMob()) return;
         const hit = this.raycastBlock(this.placeDistance);
         if (!hit) return;
 

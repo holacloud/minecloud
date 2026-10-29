@@ -53,6 +53,8 @@ class CameraController {
         this.eyeHeight = this.standingEyeHeight;
         this.isCrouching = false;
         this.isOnLadder = false;
+        // While riding, the mount's settings (see setMount) replace the player's body and gait.
+        this.mount = null;
         
         this.init();
     }
@@ -250,6 +252,18 @@ class CameraController {
         return floor;
     }
 
+    // Starts (mount = { eyeHeight, speed, autoJump, jump }) or stops (null) riding, keeping
+    // the feet where they are: the eye rises to the saddle and the body grows to cover the mount.
+    setMount(mount) {
+        const feetY = this.camera.position.y - this.eyeHeight;
+        this.mount = mount;
+        this.isCrouching = false;
+        this.eyeHeight = mount ? mount.eyeHeight : this.standingEyeHeight;
+        this.bodyHeight = mount ? mount.eyeHeight + 0.2 : 1.8;
+        this.collisionRadius = mount ? 0.4 : 0.16;
+        this.camera.position.y = feetY + this.eyeHeight;
+    }
+
     // Shoves the player along (dirX, dirZ) and pops them slightly into the air.
     applyKnockback(dirX, dirZ, strength, lift = 4) {
         const length = Math.hypot(dirX, dirZ) || 1;
@@ -273,7 +287,7 @@ class CameraController {
     
     update(delta) {
         const wasCrouching = this.isCrouching;
-        this.isCrouching = this.keys.crouch;
+        this.isCrouching = this.keys.crouch && !this.mount;
         if (wasCrouching !== this.isCrouching) {
             const previousEyeHeight = this.eyeHeight;
             this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
@@ -300,10 +314,11 @@ class CameraController {
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
         const feetBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight), Math.floor(this.camera.position.z));
         this.isInWater = feetBlockType === 'water' || torsoBlockType === 'water' || eyeBlockType === 'water';
-        this.isOnLadder = feetBlockType === 'ladder' || torsoBlockType === 'ladder' || eyeBlockType === 'ladder';
+        this.isOnLadder = !this.mount && (feetBlockType === 'ladder' || torsoBlockType === 'ladder' || eyeBlockType === 'ladder');
 
-        const baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
-        const speed = this.isInWater ? baseSpeed * 0.55 : baseSpeed;
+        let baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
+        if (this.mount) baseSpeed = this.mount.speed * (isSprinting ? 1.25 : 1);
+        const speed = this.isInWater ? baseSpeed * (this.mount ? 0.35 : 0.55) : baseSpeed;
         
         const forward = new THREE.Vector3(0, 0, -1);
         forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -340,6 +355,12 @@ class CameraController {
             }
             if (!blockedByLedge) {
                 const resolved = this.resolveHorizontalPosition(targetX, targetZ, py);
+                // A mount hops up one-block steps by itself.
+                if (this.mount && resolved.collided && this.onGround && !this.isInWater &&
+                    !this.resolveHorizontalPosition(targetX, targetZ, py + 1.05).collided && this.canStandAt(px, pz, py + 1.05)) {
+                    this.velocityY = this.mount.autoJump;
+                    this.onGround = false;
+                }
                 if (resolved.collided && this.onGround) {
                     const stepFeetY = py + this.stepHeight;
                     const stepped = this.resolveHorizontalPosition(targetX, targetZ, stepFeetY);
@@ -405,7 +426,7 @@ class CameraController {
             const wantsJump = this.keys.jump || this.touchJump || now - this.jumpPressedAt < this.jumpBufferMs;
             const canJump = this.onGround || (now - this.lastGroundedAt < this.coyoteTimeMs && this.velocityY <= 0);
             if (wantsJump && canJump) {
-                this.velocityY = this.jumpVelocity;
+                this.velocityY = this.mount ? this.mount.jump : this.jumpVelocity;
                 this.onGround = false;
                 this.jumpPressedAt = -Infinity;
                 this.lastGroundedAt = -Infinity;

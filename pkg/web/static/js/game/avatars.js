@@ -12,6 +12,11 @@ Object.assign(Game.prototype, {
         this.applyAvatarHeadPitch(this.localPlayerAvatar, this.cameraController.pitch, 1);
         this.updateAvatarHeldItem(this.localPlayerAvatar, this.getSelectedHeldItemType());
         this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
+        if (this.ridingMob) {
+            this.localPlayerAvatar.position.y += getMobSpecies(this.ridingMob.userData.species).mount.seat;
+            this.localPlayerAvatar.rotation.y = this.ridingMob.rotation.y;
+            this.poseRider(this.localPlayerAvatar);
+        }
         this.localPlayerAvatar.userData.targetAction = this.getCurrentPlayerAction();
         this.applyAvatarAction(this.localPlayerAvatar, delta);
     },
@@ -308,6 +313,10 @@ Object.assign(Game.prototype, {
         } else {
             this.scene.remove(avatar);
         }
+        if (avatar.userData.mountMob) {
+            this.removeMob(avatar.userData.mountMob);
+            avatar.userData.mountMob = null;
+        }
     },
 
     lerpAngle(current, target, alpha) {
@@ -333,6 +342,9 @@ Object.assign(Game.prototype, {
         parts.rightArm.rotation.z = -0.05;
         parts.leftLeg.rotation.x = -swing;
         parts.rightLeg.rotation.x = swing;
+        // Undo the rider's straddle (see poseRider).
+        parts.leftLeg.rotation.z = 0;
+        parts.rightLeg.rotation.z = 0;
 
         if (playFootsteps && deltaDistance > 0.002) {
             avatar.userData.stepDistance += deltaDistance;
@@ -413,7 +425,8 @@ Object.assign(Game.prototype, {
             avatar.position.lerp(avatar.userData.targetPosition, alpha);
             avatar.rotation.y = this.lerpAngle(avatar.rotation.y, avatar.userData.targetYaw, alpha);
             this.applyAvatarHeadPitch(avatar, avatar.userData.targetPitch, alpha);
-            this.animatePlayerAvatar(avatar, previousPosition, delta, true);
+            this.animatePlayerAvatar(avatar, previousPosition, delta, !avatar.userData.mountMob);
+            if (avatar.userData.mountMob) this.updateRemoteMount(avatar, previousPosition, delta);
             this.applyAvatarAction(avatar, delta);
         }
     },
@@ -467,7 +480,10 @@ Object.assign(Game.prototype, {
 
         this.updateAvatarNameTag(avatar, displayName);
         this.updateAvatarHeldItem(avatar, player.heldItem || null);
-        const nextFeetPosition = new THREE.Vector3(player.x, player.y - 1.62, player.z);
+        // Riders' eyes are higher; their avatar sits on the saddle.
+        const mountInfo = player.mount ? (getMobSpecies(player.mount.split(':')[0]) || {}).mount : null;
+        const avatarHeight = mountInfo ? mountInfo.eyeHeight - mountInfo.seat : 1.62;
+        const nextFeetPosition = new THREE.Vector3(player.x, player.y - avatarHeight, player.z);
         if (!avatar.userData.initialized) {
             avatar.userData.lastPosition.copy(nextFeetPosition);
             avatar.userData.targetPosition.copy(nextFeetPosition);
@@ -481,6 +497,7 @@ Object.assign(Game.prototype, {
         avatar.userData.targetYaw = player.yaw + Math.PI;
         avatar.userData.targetPitch = typeof player.pitch === 'number' ? player.pitch : 0;
         avatar.userData.targetAction = this.normalizePlayerAction(player.action);
+        this.syncRemoteMount(avatar, mountInfo ? player.mount : '', player.mountYaw);
     },
 
     raycastPlayer(maxDistance) {
