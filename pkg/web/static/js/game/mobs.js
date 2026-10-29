@@ -2,7 +2,7 @@
 // Mixed into Game.prototype; `this` is the Game instance.
 
 Object.assign(Game.prototype, {
-    createMob(species, position) {
+    createMob(species, position, { variant = null } = {}) {
         const group = new THREE.Group();
         group.userData.species = species;
         group.userData.home = position.clone();
@@ -19,7 +19,7 @@ Object.assign(Game.prototype, {
         group.userData.maxHealth = info.maxHealth || 1;
         group.userData.health = group.userData.maxHealth;
 
-        group.userData.variant = Math.floor(Math.random() * (info.variants || 1));
+        group.userData.variant = variant ?? Math.floor(Math.random() * (info.variants || 1));
         // Idle behaviour state (see animateMobRig).
         group.userData.life = Math.random() * 100;
         group.userData.gait = 0;
@@ -135,6 +135,7 @@ Object.assign(Game.prototype, {
     spawnMobsForChunk(chunkX, chunkZ) {
         const size = this.world.chunkSize;
         const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
+        if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -203,9 +204,9 @@ Object.assign(Game.prototype, {
             }
         }
 
-        if (this.ambientMobs.length >= 40) return;
         for (let dx = -spawnRadius; dx <= spawnRadius; dx++) {
             for (let dz = -spawnRadius; dz <= spawnRadius; dz++) {
+                if (this.ambientMobs.length >= 64) return;
                 // Never pop mobs into existence right next to the player.
                 if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && this.mobSpawnedChunks.size > 0) continue;
                 const chunkX = playerChunkX + dx;
@@ -241,6 +242,11 @@ Object.assign(Game.prototype, {
     },
 
     interactWithMob(mob) {
+        if (getMobSpecies(mob.userData.species).movement === 'swim') {
+            this.startleSchool(mob, this.camera.position);
+            this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
+            return;
+        }
         if (mob.userData.maxHealth > 1) {
             mob.userData.health -= 4;
             this.updateMobHealthBar(mob);
@@ -260,6 +266,8 @@ Object.assign(Game.prototype, {
 
     updateAmbientMobs(delta) {
         this.updateNaturalSpawning(delta);
+        this.mobFrame = (this.mobFrame || 0) + 1;
+        const player = this.getLocalPlayerPosition();
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
         if (this.followingDog && !this.ambientMobs.includes(this.followingDog)) {
             this.followingDog = null;
@@ -273,6 +281,10 @@ Object.assign(Game.prototype, {
             mob.userData.attackCooldown = Math.max(0, mob.userData.attackCooldown - delta);
             mob.userData.defendCooldown = Math.max(0, mob.userData.defendCooldown - delta);
             mob.userData.purrTimer = Math.max(0, mob.userData.purrTimer - delta);
+            if (getMobSpecies(mob.userData.species).movement === 'swim') {
+                this.updateSwimmingMob(mob, delta, player);
+                continue;
+            }
 
             const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
             const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
@@ -464,6 +476,11 @@ Object.assign(Game.prototype, {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw || 0);
         const x = player.x + forward.x * 3;
         const z = player.z + forward.z * 3;
+        if (getMobSpecies(species).movement === 'swim') {
+            const school = this.spawnFishNear(x, z, player.y + 4, 10);
+            this.receiveSystemMessage({ text: school ? `Spawned a school of ${school.length} fish` : 'Fish need water at least two blocks deep nearby' });
+            return;
+        }
         const floorY = this.cameraController.getFloorY(x, z, player.y + 4);
 
         if (floorY <= -20) {
@@ -478,6 +495,16 @@ Object.assign(Game.prototype, {
     },
 
     spawnAnimalFromEgg(species, position) {
+        if (getMobSpecies(species).movement === 'swim') {
+            if (!this.spawnFishNear(position.x + 0.5, position.z + 0.5, position.y + 1, 2)) {
+                this.receiveSystemMessage({ text: 'Fish eggs must be placed in deep water' });
+                return;
+            }
+            this.consumeSelectedBlock();
+            this.placeActionTimer = 0.35;
+            this.showHitIndicator();
+            return;
+        }
         const ground = this.cameraController.getFloorY(position.x + 0.5, position.z + 0.5, position.y + 4);
         const spawnPosition = new THREE.Vector3(position.x + 0.5, Math.max(position.y, ground), position.z + 0.5);
         this.ambientMobs.push(this.createMob(species, spawnPosition));

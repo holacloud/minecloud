@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -847,6 +847,56 @@ const VoxelModels = {
             b.part('legL', { pivot: [3, 10, 0], from: [-2.5, -10, -2.5], size: [5, 10, 5], paint: legPaint });
             b.part('legR', { pivot: [-3, 10, 0], from: [-2.5, -10, -2.5], size: [5, 10, 5], paint: legPaint });
             return { legs: ['legL', 'legR'], arms: ['armL', 'armR'], head: 'head' };
+        },
+
+        // Centred on its middle (not its feet) so it can pitch while swimming.
+        fish(b, variant) {
+            const palettes = [
+                // Trout: olive back, silver belly, pink side stripe, dark speckles.
+                { back: 0x5d6b3c, side: 0xb9bfa8, belly: 0xeeeee4, stripe: 0xd98a8f, fin: 0x7c7f5a, speckle: 0x2f3420 },
+                // Koi: white with orange patches.
+                { back: 0xf07a22, side: 0xf6f0e6, belly: 0xffffff, stripe: 0xf07a22, fin: 0xf3c9a1, speckle: 0xe0601a },
+                // Tang: deep blue with a yellow tail.
+                { back: 0x1d4fb8, side: 0x2f6fe0, belly: 0x8fb4f0, stripe: 0x10264f, fin: 0xf5c518, speckle: 0x10264f },
+                // Perch: green-gold with dark bars and orange fins.
+                { back: 0x4f6a2a, side: 0xb7a945, belly: 0xece2b0, stripe: 0x2c3a16, fin: 0xe2742a, speckle: 0x2c3a16 }
+            ];
+            const c = palettes[variant % palettes.length];
+            const flank = (p) => {
+                // Dark back fading to a pale belly, with a lateral stripe or bars.
+                p.rect(0, 0, p.w, p.h * 0.35, c.back, 0.05);
+                p.rect(0, p.h * 0.7, p.w, p.h * 0.3, c.belly, 0.03);
+                if (variant === 3) for (let x = 0.5; x < p.w - 0.5; x += 1.5) p.rect(x, 0, 0.6, p.h * 0.65, c.stripe, 0.04);
+                else if (variant === 1) p.spots(c.speckle, 3, 1, 2, 4);
+                else p.rect(0, p.h * 0.45, p.w, 0.5, c.stripe, 0.04);
+                if (variant === 0) p.spots(c.speckle, 5, 0.3, 0.5, 8);
+            };
+            const finPaint = { color: c.fin, noise: 0.04, bevel: 0.05, surface: 'smooth' };
+            b.part('body', {
+                pivot: [0, 0, 0], from: [-1.25, -1.75, -3], size: [2.5, 3.5, 6],
+                paint: { color: c.side, noise: 0.05, faces: { left: flank, right: flank, top: (p) => p.fill(c.back, 0.05), bottom: (p) => p.fill(c.belly, 0.03) } }
+            });
+            b.part('head', {
+                parent: 'body', pivot: [0, -0.25, 3], from: [-1, -1.25, 0], size: [2, 2.75, 2],
+                paint: {
+                    color: c.side, noise: 0.04,
+                    all: (p, face) => {
+                        if (face === 'top') p.fill(c.back, 0.04);
+                        if (face === 'left' || face === 'right') {
+                            p.rect(0, 0, p.w, 0.9, c.back, 0.04);
+                            p.rect(0.6, 0.7, 0.8, 0.8, 0xf2ead2, 0);
+                            p.rect(0.8, 0.9, 0.5, 0.5, 0x0d0b0a, 0);
+                        }
+                        if (face === 'front') p.rect(0.5, 1.75, 1, 0.4, 0x2a1d1a, 0);
+                    }
+                }
+            });
+            b.part('tail', { parent: 'body', pivot: [0, 0, -3], from: [-0.75, -1, -1.5], size: [1.5, 2, 1.5], paint: { color: c.side, noise: 0.05, faces: { top: (p) => p.fill(c.back) } } });
+            b.part('tailFin', { parent: 'tail', pivot: [0, 0, -1.5], from: [-0.25, -2, -2], size: [0.5, 4, 2], paint: finPaint });
+            b.part('dorsalFin', { parent: 'body', pivot: [0, 1.75, 0.5], from: [-0.25, 0, -2], size: [0.5, 1.25, 2.5], paint: finPaint });
+            b.part('finL', { parent: 'body', pivot: [1.25, -0.75, 1.5], from: [0, -0.25, -1.25], size: [1.25, 0.5, 1.25], paint: finPaint, rotation: [0, 0, -0.5] });
+            b.part('finR', { parent: 'body', pivot: [-1.25, -0.75, 1.5], from: [-1.25, -0.25, -1.25], size: [1.25, 0.5, 1.25], paint: finPaint, rotation: [0, 0, 0.5] });
+            return { tail: ['tail', 'tailFin'], wings: ['finL', 'finR'] };
         }
     }
 };

@@ -11,6 +11,7 @@
 //   variants   number of colour variants (picked at random)
 //   group      [min, max] number spawned together naturally
 //   grazer     lowers its head to graze while idle
+//   movement   'ground' (default) or 'swim' (lives in water, see js/game/wildlife.js)
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -20,7 +21,8 @@ const MOB_SPECIES = {
     cat: { eggColor: 0xF2C36B, tone: 660, speed: 0.5, variants: 3, group: [1, 3] },
     spider: { eggColor: 0x24192C, tone: 180, hostile: true, maxHealth: 8, speed: 0.38, chaseSpeed: 1.25, group: [1, 1] },
     cave_monster: { eggColor: 0x477599, tone: 120, hostile: true, maxHealth: 16, speed: 0.38, chaseSpeed: 0.9, group: [1, 1] },
-    macaw: { eggColor: 0x24B45A, tone: 300, speed: 0.85, flyHeight: 2.2, variants: 4, group: [1, 3] }
+    macaw: { eggColor: 0x24B45A, tone: 300, speed: 0.85, flyHeight: 2.2, variants: 4, group: [1, 3] },
+    fish: { eggColor: 0x6f9fd8, tone: 700, speed: 1.1, variants: 4, group: [5, 8], movement: 'swim' }
 };
 
 function getMobSpecies(species) {
