@@ -22,8 +22,8 @@
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
 //              swims underwater), 'dart' (basks, then runs in short bursts) or 'climb'
 //              (leaps up to two blocks, seeks high ground and rams); see js/game/wildlife.js.
-//              'soar' (circles high up, perches on peaks, dives for fish); see
-//              js/game/flyers.js
+//              'soar' (circles high up, perches on peaks, dives for fish) or 'swarm'
+//              (a colony around its hive that stings when provoked); see js/game/flyers.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -42,6 +42,7 @@ const MOB_SPECIES = {
     scorpion: { eggColor: 0xc29a4a, tone: 1400, hostile: true, nocturnal: true, chaseDistance: 8, attackDamage: 1, poison: 3, maxHealth: 6, speed: 0.35, chaseSpeed: 1.1, variants: 2, group: [1, 1], tailStrike: true },
     goat: { eggColor: 0xe9e4d6, tone: 420, speed: 0.6, variants: 2, group: [2, 4], grazer: true, movement: 'climb' },
     horse: { eggColor: 0x8a5a34, tone: 260, speed: 0.55, variants: 4, group: [2, 4], grazer: true, mount: { eyeHeight: 2.32, seat: 0.7, speed: 9, autoJump: 7.6, jump: 10.5 } },
+    bee: { eggColor: 0xf2c230, tone: 220, speed: 2.4, group: [5, 7], limit: 3, movement: 'swarm' },
     eagle: { eggColor: 0x4a3222, tone: 2400, speed: 4, group: [1, 1], limit: 2, movement: 'soar' }
 };
 

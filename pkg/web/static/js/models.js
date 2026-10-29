@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1261,6 +1261,44 @@ const VoxelModels = {
                 } }
             });
             return { legs, head: 'head', tail: ['tail'] };
+        },
+
+        // Centred on its middle, like fish: bees fly, they never stand.
+        bee(b) {
+            const yellow = 0xf2c230;
+            b.part('body', { pivot: [0, 0, 0], from: [-1.25, -1.25, -2], size: [2.5, 2.5, 3.5], paint: { color: yellow, noise: 0.06, all: (p, face) => {
+                if (face === 'front' || face === 'back') return;
+                const along = face === 'top' || face === 'bottom' ? p.h : p.w;
+                for (let i = 0.9; i < along - 0.3; i += 1.1) {
+                    if (face === 'top' || face === 'bottom') p.rect(0, i, p.w, 0.5, 0x1d1712, 0.03);
+                    else p.rect(i, 0, 0.5, p.h, 0x1d1712, 0.03);
+                }
+            } } });
+            b.part('head', { parent: 'body', pivot: [0, 0, 1.5], from: [-1, -1, 0], size: [2, 2, 1.25], paint: { color: 0x1d1712, noise: 0.03, faces: { front: (p) => { p.rect(0.2, 0.4, 0.5, 0.6, 0x4a4038, 0); p.rect(1.3, 0.4, 0.5, 0.6, 0x4a4038, 0); } } } });
+            b.part('sting', { parent: 'body', pivot: [0, -0.25, -2], from: [-0.2, -0.2, -0.75], size: [0.4, 0.4, 0.75], paint: { color: 0x1d1712, noise: 0 } });
+            const wingPaint = { color: 0xdfeef5, noise: 0.03, all: (p) => p.rect(0.3, 0.3, p.w - 0.6, 0.2, 0xb7cbd6, 0) };
+            b.part('wingL', { parent: 'body', pivot: [0.5, 1.25, 0.5], from: [0, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
+            b.part('wingR', { parent: 'body', pivot: [-0.5, 1.25, 0.5], from: [-2.5, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
+            return { wings: ['wingL', 'wingR'] };
+        },
+
+        // Hangs from its top (the origin), under a branch.
+        beehive(b) {
+            const comb = 0xc8902e;
+            const ridge = 0xa8731f;
+            const layered = { color: comb, noise: 0.08, all: (p, face) => {
+                if (face === 'top' || face === 'bottom') return;
+                for (let y = 0.8; y < p.h; y += 1.3) p.rect(0, y, p.w, 0.4, ridge, 0.05);
+            } };
+            const tiers = [[3, 1.5], [6, 2.5], [8, 3], [7, 2.5], [4.5, 2]];
+            let top = 0;
+            tiers.forEach(([width, height], index) => {
+                b.part(index === 0 ? 'body' : `tier${index}`, { parent: index === 0 ? undefined : 'body', pivot: [0, 0, 0], from: [-width / 2, top - height, -width / 2], size: [width, height, width], paint: layered });
+                top -= height;
+            });
+            // Entrance hole on the widest tier.
+            b.part('entrance', { parent: 'body', pivot: [0, -5.5, 4], from: [-1, -0.75, 0], size: [2, 1.5, 0.1], paint: { color: 0x2a1a0a, noise: 0 } });
+            return {};
         }
     }
 };

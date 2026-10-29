@@ -2,9 +2,11 @@
 // Mixed into Game.prototype; `this` is the Game instance.
 
 Object.assign(Game.prototype, {
-    createMob(species, position, { variant = null } = {}) {
+    // `modelSpecies` builds a different model than the species' own (a bee colony's hive).
+    createMob(species, position, { variant = null, modelSpecies = null } = {}) {
         const group = new THREE.Group();
         group.userData.species = species;
+        group.userData.modelSpecies = modelSpecies;
         group.userData.home = position.clone();
         group.userData.direction = Math.random() * Math.PI * 2;
         group.userData.moveTimer = 1 + Math.random() * 2;
@@ -50,7 +52,7 @@ Object.assign(Game.prototype, {
                 if (node.isMesh && node.material) node.material.dispose();
             });
         }
-        const species = group.userData.species;
+        const species = group.userData.modelSpecies || group.userData.species;
         const model = VoxelModels.createMob(species, (texture, normalMap) => this.createModelMaterial(texture, normalMap), this.mobTextureCache, group.userData.variant, this.rtxModeEnabled);
         group.add(model.root);
         this.tagModelMeshes(model.root, 'mobRoot', group);
@@ -138,6 +140,7 @@ Object.assign(Game.prototype, {
         const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
         this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
+        this.spawnBeesForChunk(chunkX, chunkZ, biome);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -252,6 +255,10 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'swarm') {
+            this.provokeColony(mob);
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'soar') {
             // Eagles take to the air, screeching, and move their circle away from the player.
             if (mob.userData.flight) this.takeOff(mob, true);
@@ -342,6 +349,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'dart') {
                 this.updateDartingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'swarm') {
+                this.updateSwarmMob(mob, delta, player);
                 continue;
             }
             if (movement === 'soar') {
@@ -599,6 +610,10 @@ Object.assign(Game.prototype, {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw || 0);
         const x = player.x + forward.x * 3;
         const z = player.z + forward.z * 3;
+        if (getMobSpecies(species).movement === 'swarm') {
+            this.spawnColonyNear(x, z, player.y + 4);
+            return;
+        }
         if (getMobSpecies(species).movement === 'swim') {
             const school = this.spawnFishNear(x, z, player.y + 4, 10);
             this.receiveSystemMessage({ text: school ? `Spawned a school of ${school.length} fish` : 'Fish need water at least two blocks deep nearby' });
@@ -618,6 +633,13 @@ Object.assign(Game.prototype, {
     },
 
     spawnAnimalFromEgg(species, position) {
+        if (getMobSpecies(species).movement === 'swarm') {
+            this.spawnColonyNear(position.x + 0.5, position.z + 0.5, position.y + 4);
+            this.consumeSelectedBlock();
+            this.placeActionTimer = 0.35;
+            this.showHitIndicator();
+            return;
+        }
         if (getMobSpecies(species).movement === 'swim') {
             if (!this.spawnFishNear(position.x + 0.5, position.z + 0.5, position.y + 1, 2)) {
                 this.receiveSystemMessage({ text: 'Fish eggs must be placed in deep water' });
