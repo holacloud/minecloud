@@ -1,10 +1,11 @@
-// Wildlife that does not walk on the ground. Fish swim in schools: they cruise towards a
+// Wildlife that does not simply walk around. Fish swim in schools: they cruise towards a
 // shared target, keep together without bumping into each other, dart away from the player
 // and now and then leap out of the water. Frogs hop along the shore, swim at the surface,
 // flee into the water and croak at night. Turtles plod along beaches, go for long swims
-// (surfacing to breathe) and hide in their shell when frightened. Mixed into
-// Game.prototype; updateAmbientMobs hands these mobs to updateSwimmingMob,
-// updateHoppingMob and updateAmphibiousMob.
+// (surfacing to breathe) and hide in their shell when frightened. Lizards bask, do
+// push-ups, dart about and drop their tail when struck. Mixed into Game.prototype;
+// updateAmbientMobs hands these mobs to updateSwimmingMob, updateHoppingMob,
+// updateAmphibiousMob and updateDartingMob.
 
 const _swimDesired = new THREE.Vector3();
 const _swimOffset = new THREE.Vector3();
@@ -528,31 +529,39 @@ Object.assign(Game.prototype, {
         data.restTimer = Math.max(0, (data.restTimer || 0) - delta);
         if (data.restTimer > 0 && !goal) return;
 
-        const speed = getMobSpecies(mob.userData.species).speed;
-        const nx = position.x + Math.cos(data.facing) * speed * delta;
-        const nz = position.z + Math.sin(data.facing) * speed * delta;
-        const water = this.findWaterSurface(nx, position.y - 0.4, nz);
-        if (water !== null) {
+        const step = this.walkStep(mob, data.facing, getMobSpecies(mob.userData.species).speed * delta, delta);
+        if (step.water !== undefined) {
             if (data.wantsWater) {
                 // Slide in just under the surface; swimming takes over from here.
-                position.set(nx, water - 0.5, nz);
-                this.world.addRipple(nx, nz, 0.25);
+                position.set(step.x, step.water - 0.5, step.z);
+                this.world.addRipple(step.x, step.z, 0.25);
             } else {
                 data.facing += Math.PI * (0.6 + Math.random() * 0.4);
             }
-            return;
-        }
-        const floor = this.cameraController.getFloorY(nx, nz, position.y + 1.1);
-        const rise = floor - position.y;
-        if (floor <= -20 || rise > 1.01 || rise < -2) {
+        } else if (step.blocked) {
             data.facing += Math.PI * (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1);
             data.turnTimer = 2;
-            return;
+        } else {
+            data.gait = 1;
         }
+    },
+
+    // Moves a ground creature `distance` blocks along `heading`, stepping up at most one
+    // block and down at most two. Returns { moved }, { blocked } or, when the step would
+    // enter water, { water: surfaceY, x, z } without moving.
+    walkStep(mob, heading, distance, delta) {
+        const position = mob.position;
+        const nx = position.x + Math.cos(heading) * distance;
+        const nz = position.z + Math.sin(heading) * distance;
+        const water = this.findWaterSurface(nx, position.y - 0.4, nz);
+        if (water !== null) return { water, x: nx, z: nz };
+        const floor = this.cameraController.getFloorY(nx, nz, position.y + 1.1);
+        const rise = floor - position.y;
+        if (floor <= -20 || rise > 1.01 || rise < -2) return { blocked: true };
         position.x = nx;
         position.z = nz;
-        position.y = rise > 0 ? position.y + Math.min(rise, delta * 4) : floor;
-        data.gait = 1;
+        position.y = rise > 0 ? position.y + Math.min(rise, Math.max(delta * 4, distance * 2)) : floor;
+        return { moved: true };
     },
 
     swimAmphibious(mob, delta, player, near) {
@@ -662,5 +671,127 @@ Object.assign(Game.prototype, {
             }
         });
         if (data.modelRoot) data.modelRoot.position.y = inWater ? 0 : Math.abs(Math.sin(phase)) * 0.015 * (data.gait || 0);
+    },
+    updateDartingMob(mob, delta, player) {
+        const data = mob.userData;
+        const position = mob.position;
+        const parts = data.modelParts || {};
+        if (data.facing === undefined) data.facing = Math.random() * Math.PI * 2;
+        data.life += delta;
+
+        const ground = this.cameraController.getFloorY(position.x, position.z, position.y + 0.5);
+        if (position.y - ground > 0.02) position.y = Math.max(ground, position.y - 6 * delta);
+
+        if (Math.hypot(position.x - player.x, position.z - player.z) < 4 && Math.abs(player.y - 1.6 - position.y) < 3) {
+            data.flee = 2.5;
+        }
+        data.flee = Math.max(0, (data.flee || 0) - delta);
+        data.dart = Math.max(0, (data.dart || 0) - delta);
+        data.dartTimer = (data.dartTimer ?? 1 + Math.random() * 4) - delta;
+
+        let speed = 0;
+        if (data.flee > 0) {
+            // Zig-zag away from the player.
+            const away = Math.atan2(position.z - player.z, position.x - player.x);
+            data.facing = this.lerpAngle(data.facing, away + Math.sin(data.life * 9) * 0.5, Math.min(1, delta * 10));
+            speed = 5;
+        } else if (data.dart > 0) {
+            speed = getMobSpecies('lizard').speed;
+        } else if (data.dartTimer <= 0) {
+            // Bask a while, then dash a short way.
+            data.dartTimer = 1.5 + Math.random() * 6;
+            data.dart = 0.25 + Math.random() * 0.55;
+            const homeDistance = Math.hypot(data.home.x - position.x, data.home.z - position.z);
+            data.facing = homeDistance > 8
+                ? Math.atan2(data.home.z - position.z, data.home.x - position.x)
+                : data.facing + (Math.random() - 0.5) * 2.4;
+            if (Math.random() < 0.3) data.pushUps = 1.3;
+        }
+        data.pushUps = Math.max(0, (data.pushUps || 0) - delta);
+
+        if (speed > 0) {
+            const step = this.walkStep(mob, data.facing, speed * delta, delta);
+            if (!step.moved) {
+                data.facing += Math.PI * (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1);
+                data.dart = 0;
+            }
+        }
+
+        // The tail grows back a minute after being dropped.
+        if (data.tailless) {
+            data.tailless -= delta;
+            if (data.tailless <= 0) {
+                data.tailless = 0;
+                if (parts.tail1) parts.tail1.visible = true;
+            }
+        }
+
+        mob.rotation.y = this.lerpAngle(mob.rotation.y, Math.PI / 2 - data.facing, Math.min(1, delta * 14));
+        this.animateLizard(mob, delta, speed);
+    },
+
+    animateLizard(mob, delta, speed) {
+        const data = mob.userData;
+        const parts = data.modelParts || {};
+        data.gait += ((speed > 0 ? 1 : 0) - data.gait) * Math.min(1, delta * 12);
+        data.stepPhase += delta * speed * 9;
+        const phase = data.stepPhase;
+        // Sprawling gait: diagonal legs sweep together while the body and tail bend in an S.
+        data.legs.forEach((leg, index) => {
+            const base = leg.userData.baseRotation;
+            const diagonal = index === 0 || index === 3 ? 1 : -1;
+            leg.rotation.y = base.y + Math.sin(phase) * 0.6 * diagonal * data.gait;
+        });
+        const bend = Math.sin(phase) * 0.25 * data.gait;
+        if (parts.body) parts.body.rotation.y = bend * 0.4;
+        const idleSway = Math.sin(data.life * 1.3) * 0.12 * (1 - data.gait);
+        data.tail.forEach((segment, index) => {
+            segment.rotation.y = -bend * (index + 1) * 0.6 + idleSway * (index + 1);
+        });
+        // Push-ups: the front of the body bobs up and down a few times.
+        const push = data.pushUps > 0 ? Math.max(0, Math.sin(data.pushUps * Math.PI * 3)) : 0;
+        if (parts.body) parts.body.rotation.x = -push * 0.3;
+        if (data.modelRoot) data.modelRoot.position.y = push * 0.04;
+        if (data.head) {
+            data.head.rotation.x = push * 0.25 + Math.sin(data.life * 0.7) * 0.05;
+            data.head.rotation.y = Math.sin(data.life * 0.5 + data.stepPhase) * 0.3 * (1 - data.gait);
+        }
+    },
+
+    // Struck lizards shed their tail, which keeps wriggling on the ground for a while.
+    dropLizardTail(mob) {
+        const data = mob.userData;
+        const tail = data.modelParts && data.modelParts.tail1;
+        data.flee = 3;
+        if (!tail || data.tailless) return;
+        mob.updateMatrixWorld(true);
+        const dropped = tail.clone(true);
+        tail.getWorldPosition(dropped.position);
+        tail.getWorldQuaternion(dropped.quaternion);
+        dropped.rotation.x = 0;
+        dropped.rotation.z = 0;
+        dropped.position.y = mob.position.y + 0.04;
+        dropped.traverse((node) => { node.userData = { ...node.userData, mobRoot: undefined }; });
+        this.scene.add(dropped);
+        this.droppedTails = this.droppedTails || [];
+        this.droppedTails.push({ object: dropped, age: 0 });
+        tail.visible = false;
+        data.tailless = 60;
+    },
+
+    updateDroppedTails(delta) {
+        if (!this.droppedTails || this.droppedTails.length === 0) return;
+        this.droppedTails = this.droppedTails.filter((entry) => {
+            entry.age += delta;
+            const wriggle = Math.sin(entry.age * 22) * 0.7 * Math.max(0, 1 - entry.age / 6);
+            entry.object.children.forEach((child) => {
+                if (child.isGroup) child.rotation.y = wriggle;
+                child.children.forEach((grandchild) => { if (grandchild.isGroup) grandchild.rotation.y = wriggle; });
+            });
+            if (entry.age < 8) return true;
+            // Geometry and material are shared with the lizard that dropped it.
+            this.scene.remove(entry.object);
+            return false;
+        });
     }
 });

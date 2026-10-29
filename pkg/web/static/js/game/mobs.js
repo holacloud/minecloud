@@ -119,9 +119,9 @@ Object.assign(Game.prototype, {
     // Species that can appear in each biome, with relative weights.
     getBiomeSpawnTable(biome) {
         switch (biome) {
-            case 'desert': return [['camel', 3], ['giraffe', 1], ['duck', 1]];
+            case 'desert': return [['camel', 3], ['lizard', 2], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-            case 'rocky': return [['sheep', 2], ['spider', 1], ['cave_monster', 1]];
+            case 'rocky': return [['sheep', 2], ['lizard', 1], ['spider', 1], ['cave_monster', 1]];
             default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
         }
     },
@@ -248,6 +248,11 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'dart') {
+            this.dropLizardTail(mob);
+            this.playTone({ frequency: getMobSpecies('lizard').tone, duration: 0.04, type: 'triangle', volume: 0.012, release: 0.04 });
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'amphibious') {
             mob.userData.hide = 5;
             mob.userData.flee = 4;
@@ -281,6 +286,7 @@ Object.assign(Game.prototype, {
 
     updateAmbientMobs(delta) {
         this.updateNaturalSpawning(delta);
+        this.updateDroppedTails(delta);
         this.mobFrame = (this.mobFrame || 0) + 1;
         const player = this.getLocalPlayerPosition();
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
@@ -307,6 +313,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'amphibious') {
                 this.updateAmphibiousMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'dart') {
+                this.updateDartingMob(mob, delta, player);
                 continue;
             }
 

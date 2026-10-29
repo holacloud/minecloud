@@ -14,7 +14,8 @@
 //   restDrop   lies down now and then, folding its legs and lowering its body this far
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
-//              swims underwater); see js/game/wildlife.js
+//              swims underwater) or 'dart' (basks, then runs in short bursts); see
+//              js/game/wildlife.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -28,7 +29,8 @@ const MOB_SPECIES = {
     fish: { eggColor: 0x6f9fd8, tone: 700, speed: 1.1, variants: 4, group: [5, 8], movement: 'swim' },
     frog: { eggColor: 0x4f8a3b, tone: 190, speed: 2.6, variants: 2, group: [1, 3], movement: 'hop' },
     turtle: { eggColor: 0x7a8a45, tone: 160, speed: 0.3, group: [1, 2], movement: 'amphibious' },
-    camel: { eggColor: 0xc9a46a, tone: 210, speed: 0.45, group: [1, 3], grazer: true, restDrop: 1 }
+    camel: { eggColor: 0xc9a46a, tone: 210, speed: 0.45, group: [1, 3], grazer: true, restDrop: 1 },
+    lizard: { eggColor: 0xb08a50, tone: 900, speed: 3.2, variants: 2, group: [1, 2], movement: 'dart' }
 };
 
 function getMobSpecies(species) {
