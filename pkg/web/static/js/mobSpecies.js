@@ -11,8 +11,9 @@
 //   variants   number of colour variants (picked at random)
 //   group      [min, max] number spawned together naturally
 //   grazer     lowers its head to graze while idle
-//   movement   'ground' (default), 'swim' (lives in water) or 'hop' (jumps instead of
-//              walking and can swim at the surface); see js/game/wildlife.js
+//   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
+//              walking and can swim at the surface) or 'amphibious' (walks on the beach and
+//              swims underwater); see js/game/wildlife.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -24,7 +25,8 @@ const MOB_SPECIES = {
     cave_monster: { eggColor: 0x477599, tone: 120, hostile: true, maxHealth: 16, speed: 0.38, chaseSpeed: 0.9, group: [1, 1] },
     macaw: { eggColor: 0x24B45A, tone: 300, speed: 0.85, flyHeight: 2.2, variants: 4, group: [1, 3] },
     fish: { eggColor: 0x6f9fd8, tone: 700, speed: 1.1, variants: 4, group: [5, 8], movement: 'swim' },
-    frog: { eggColor: 0x4f8a3b, tone: 190, speed: 2.6, variants: 2, group: [1, 3], movement: 'hop' }
+    frog: { eggColor: 0x4f8a3b, tone: 190, speed: 2.6, variants: 2, group: [1, 3], movement: 'hop' },
+    turtle: { eggColor: 0x7a8a45, tone: 160, speed: 0.3, group: [1, 2], movement: 'amphibious' }
 };
 
 function getMobSpecies(species) {

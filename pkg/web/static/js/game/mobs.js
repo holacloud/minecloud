@@ -136,7 +136,7 @@ Object.assign(Game.prototype, {
         const size = this.world.chunkSize;
         const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
-        this.spawnFrogsForChunk(chunkX, chunkZ, biome);
+        this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -248,6 +248,12 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'amphibious') {
+            mob.userData.hide = 5;
+            mob.userData.flee = 4;
+            this.playNoiseBurst({ duration: 0.06, volume: 0.02, highpass: 200, lowpass: 1200 });
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'hop') {
             if (!mob.userData.airborne && !mob.userData.swimming) {
                 this.hopSomewhere(mob, Math.atan2(mob.position.z - this.camera.position.z, mob.position.x - this.camera.position.x), 1.6, 3.4);
@@ -296,6 +302,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'hop') {
                 this.updateHoppingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'amphibious') {
+                this.updateAmphibiousMob(mob, delta, player);
                 continue;
             }
 

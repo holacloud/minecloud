@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -944,6 +944,53 @@ const VoxelModels = {
             b.part('thighR', { parent: 'body', pivot: [-3, 2.5, -2.5], from: [-1.75, -1.25, -1], size: [1.75, 2.5, 4], paint: legPaint, rotation: [0.35, 0, 0] });
             b.part('footL', { parent: 'thighL', pivot: [0.9, -1.25, 2.5], from: [-1.25, -1.1, -4], size: [2.5, 0.5, 4.5], paint: footPaint, rotation: [-0.35, 0, 0] });
             b.part('footR', { parent: 'thighR', pivot: [-0.9, -1.25, 2.5], from: [-1.25, -1.1, -4], size: [2.5, 0.5, 4.5], paint: footPaint, rotation: [-0.35, 0, 0] });
+            return { head: 'head' };
+        },
+
+        turtle(b) {
+            const shell = 0x5b6b34;
+            const seam = 0x2f3a1a;
+            const scute = 0x7a8a45;
+            const skin = 0x7d8c55;
+            const belly = 0xd2c690;
+            // Plates: lighter centres separated by dark seams.
+            const scutes = (p) => {
+                const cell = 3.5;
+                for (let x = 0, column = 0; x < p.w; x += cell, column++) {
+                    // Alternate columns are staggered by half a plate.
+                    for (let y = column % 2 ? -cell / 2 : 0; y < p.h; y += cell) p.rect(x + 0.5, y + 0.5, cell - 1, cell - 1, scute, 0.06);
+                }
+                for (let x = 0; x < p.w; x += cell) p.rect(x, 0, 0.35, p.h, seam, 0.03);
+            };
+            const rim = (p) => { p.rect(0, p.h - 0.6, p.w, 0.6, seam, 0.03); for (let x = 0; x < p.w; x += 2) p.rect(x, 0, 0.3, p.h, seam, 0.03); };
+            const skinPaint = { color: skin, noise: 0.06, all: (p, face) => { if (face !== 'bottom') p.spots(0x58663a, Math.ceil(p.w * p.h / 4), 0.4, 0.9, 2); } };
+            b.part('body', { pivot: [0, 0, 0], from: [-5, 1.5, -6], size: [10, 2, 12], paint: { color: belly, noise: 0.04, surface: 'skin' } });
+            b.part('shell', {
+                parent: 'body', pivot: [0, 0, 0], from: [-6, 3, -7], size: [12, 3, 14],
+                paint: { color: shell, noise: 0.06, surface: 'skin', faces: { top: scutes, left: rim, right: rim, front: rim, back: rim, bottom: (p) => p.fill(belly, 0.04) } }
+            });
+            b.part('shellTop', { parent: 'shell', pivot: [0, 6, 0], from: [-4, 0, -5], size: [8, 1.5, 10], paint: { color: shell, noise: 0.06, surface: 'skin', faces: { top: scutes, left: rim, right: rim, front: rim, back: rim } } });
+            b.part('head', {
+                parent: 'body', pivot: [0, 3.5, 6], from: [-1.75, -1, -0.5], size: [3.5, 3, 4.5],
+                paint: {
+                    ...skinPaint,
+                    all: (p, face) => {
+                        if (face === 'left' || face === 'right') {
+                            p.spots(0x58663a, 3, 0.4, 0.8, 2);
+                            const x = face === 'left' ? 2.6 : 1;
+                            p.rect(x, 0.8, 0.9, 0.9, 0x15110e, 0);
+                            p.rect(x, 0.8, 0.35, 0.35, 0xffffff, 0);
+                        }
+                        if (face === 'front') { p.rect(0.5, 2, 2.5, 0.35, 0x2a2a18, 0); p.rect(0, 0, p.w, 1, 0x6a7848, 0.04); }
+                        if (face === 'bottom') p.fill(belly, 0.03);
+                    }
+                }
+            });
+            b.part('flipperFL', { parent: 'body', pivot: [5, 3, 3.5], from: [0, -0.5, -1.5], size: [6, 1, 3], paint: skinPaint, rotation: [0, -0.35, -0.2] });
+            b.part('flipperFR', { parent: 'body', pivot: [-5, 3, 3.5], from: [-6, -0.5, -1.5], size: [6, 1, 3], paint: skinPaint, rotation: [0, 0.35, 0.2] });
+            b.part('flipperBL', { parent: 'body', pivot: [4.5, 2.75, -5], from: [0, -0.5, -1.25], size: [3.5, 1, 2.5], paint: skinPaint, rotation: [0, 0.5, -0.2] });
+            b.part('flipperBR', { parent: 'body', pivot: [-4.5, 2.75, -5], from: [-3.5, -0.5, -1.25], size: [3.5, 1, 2.5], paint: skinPaint, rotation: [0, -0.5, 0.2] });
+            b.part('tail', { parent: 'body', pivot: [0, 3, -7], from: [-0.75, -0.5, -2], size: [1.5, 1, 2], paint: skinPaint });
             return { head: 'head' };
         }
     }
