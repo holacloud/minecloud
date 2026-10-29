@@ -169,10 +169,8 @@ class WorldRenderer {
             }
         }
 
-        const animals = ['sheep', 'duck', 'pig', 'giraffe', 'dog', 'cat', 'spider', 'cave_monster', 'macaw'];
-        const eggColors = [0xF1EFE6, 0xF4F0D8, 0xD89AA3, 0xF4A12C, 0xC89058, 0xF2C36B, 0x24192C, 0x477599, 0x24B45A];
-        animals.forEach((species, index) => {
-            this.blockTypes[`${species}_egg`] = { color: eggColors[index], name: `${this.capitalize(species.replace('_', ' '))} Egg`, breakDuration: 0, solid: false, itemOnly: true, eggSpecies: species };
+        Object.entries(MOB_SPECIES).forEach(([species, info]) => {
+            this.blockTypes[`${species}_egg`] = { color: info.eggColor, name: `${this.capitalize(species.replace('_', ' '))} Egg`, breakDuration: 0, solid: false, itemOnly: true, eggSpecies: species };
         });
     }
 

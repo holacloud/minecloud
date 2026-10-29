@@ -259,7 +259,7 @@ class Game {
         const materialBlocks = ['marble', 'basalt', 'slate', 'limestone', 'granite', 'copper_block', 'iron_block', 'gold_block', 'obsidian', 'concrete'];
         const elementSymbols = ['h', 'he', 'li', 'be', 'b', 'c', 'n', 'o', 'f', 'ne', 'na', 'mg', 'al', 'si', 'p', 's', 'cl', 'ar', 'k', 'ca', 'ti', 'cr', 'mn', 'fe', 'co', 'ni', 'cu', 'zn', 'ag', 'sn', 'i', 'w', 'pt', 'au', 'hg', 'pb'];
         const toolItems = ['wood_pickaxe', 'wood_shovel', 'wood_axe', 'wood_sword', 'wood_hoe', 'stone_pickaxe', 'stone_shovel', 'stone_axe', 'stone_sword', 'stone_hoe', 'iron_pickaxe', 'iron_shovel', 'iron_axe', 'iron_sword', 'iron_hoe', 'iron_shears', 'gold_pickaxe', 'gold_shovel', 'gold_axe', 'gold_sword', 'gold_hoe'];
-        const eggItems = ['sheep_egg', 'duck_egg', 'pig_egg', 'giraffe_egg', 'dog_egg', 'cat_egg', 'spider_egg', 'cave_monster_egg', 'macaw_egg'];
+        const eggItems = Object.keys(MOB_SPECIES).map((species) => `${species}_egg`);
         const slabBlocks = ['stone_slab', 'cobblestone_slab', 'brick_slab', 'stone_bricks_slab', 'planks_slab', 'spruce_planks_slab', 'birch_planks_slab', 'jungle_planks_slab', 'acacia_planks_slab', 'dark_oak_planks_slab', 'cherry_planks_slab', 'maple_planks_slab', 'willow_planks_slab'];
 
         const addItemSlot = (type) => {

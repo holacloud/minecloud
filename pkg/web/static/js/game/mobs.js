@@ -10,15 +10,16 @@ Object.assign(Game.prototype, {
         group.userData.moveTimer = 1 + Math.random() * 2;
         group.userData.stepPhase = Math.random() * Math.PI * 2;
         group.userData.bounceVelocity = 0;
-        group.userData.hostile = species === 'spider' || species === 'cave_monster';
+        const info = getMobSpecies(species);
+        group.userData.hostile = Boolean(info.hostile);
         group.userData.attackCooldown = 0;
         group.userData.defendCooldown = 0;
         group.userData.purrTimer = species === 'cat' ? 2 + Math.random() * 4 : 0;
-        group.userData.flyHeight = species === 'macaw' ? 2.2 : 0;
-        group.userData.maxHealth = species === 'cave_monster' ? 16 : species === 'spider' ? 8 : 1;
+        group.userData.flyHeight = info.flyHeight || 0;
+        group.userData.maxHealth = info.maxHealth || 1;
         group.userData.health = group.userData.maxHealth;
 
-        group.userData.variant = species === 'cat' ? Math.floor(Math.random() * 3) : species === 'macaw' ? Math.floor(Math.random() * 4) : 0;
+        group.userData.variant = Math.floor(Math.random() * (info.variants || 1));
         // Idle behaviour state (see animateMobRig).
         group.userData.life = Math.random() * 100;
         group.userData.gait = 0;
@@ -145,8 +146,8 @@ Object.assign(Game.prototype, {
             if (pick <= 0) { species = candidate; break; }
         }
 
-        const hostile = species === 'spider' || species === 'cave_monster';
-        const groupSize = hostile || species === 'giraffe' ? 1 : 1 + Math.floor(this.chunkRandom(chunkX, chunkZ, 3) * 3);
+        const [minGroup, maxGroup] = getMobSpecies(species).group || [1, 1];
+        const groupSize = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, 3) * (maxGroup - minGroup + 1));
         for (let i = 0; i < groupSize; i++) {
             const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, 10 + i) * (size - 4);
             const z = chunkZ * size + 2 + this.chunkRandom(chunkX, chunkZ, 20 + i) * (size - 4);
@@ -253,17 +254,7 @@ Object.assign(Game.prototype, {
         mob.userData.bounceVelocity = 2.4;
         mob.userData.direction = Math.atan2(this.camera.position.z - mob.position.z, this.camera.position.x - mob.position.x);
 
-        const tones = {
-            sheep: 330,
-            duck: 520,
-            pig: 240,
-            giraffe: 390,
-            dog: 440,
-            cat: 660,
-            spider: 180,
-            cave_monster: 120
-        };
-        this.playTone({ frequency: tones[mob.userData.species] || 300, duration: 0.08, type: 'triangle', volume: 0.02, release: 0.07, detune: (Math.random() - 0.5) * 40 });
+        this.playTone({ frequency: getMobSpecies(mob.userData.species).tone || 300, duration: 0.08, type: 'triangle', volume: 0.02, release: 0.07, detune: (Math.random() - 0.5) * 40 });
         this.playNoiseBurst({ duration: 0.04, volume: 0.01, highpass: 120, lowpass: 900 });
     },
 
@@ -313,7 +304,8 @@ Object.assign(Game.prototype, {
                 mob.userData.direction += (Math.random() - 0.5) * 1.8;
             }
 
-            const moveSpeed = isChasing ? (mob.userData.species === 'spider' ? 1.25 : 0.9) : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : mob.userData.species === 'macaw' ? 0.85 : mob.userData.species === 'duck' ? 0.55 : mob.userData.species === 'cat' ? 0.5 : 0.38;
+            const info = getMobSpecies(mob.userData.species);
+            const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed;
             const moveScale = (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             if (mob.position.y - mob.userData.flyHeight < -20) {
@@ -426,8 +418,7 @@ Object.assign(Game.prototype, {
             data.lookTimer -= delta;
             if (data.lookTimer <= 0) {
                 data.lookTimer = 1.5 + Math.random() * 3.5;
-                const grazer = data.species === 'sheep' || data.species === 'pig' || data.species === 'giraffe';
-                const graze = grazer && data.gait < 0.2 && Math.random() < 0.4;
+                const graze = getMobSpecies(data.species).grazer && data.gait < 0.2 && Math.random() < 0.4;
                 data.lookYaw = graze ? 0 : (Math.random() - 0.5) * 1.1;
                 data.lookPitch = graze ? 0.6 : (Math.random() - 0.5) * 0.4;
             }
@@ -464,8 +455,8 @@ Object.assign(Game.prototype, {
 
     spawnMobFromCommand(args) {
         const species = (args[0] || '').toLowerCase();
-        if (species !== 'giraffe' && species !== 'macaw' && species !== 'dog' && species !== 'cat') {
-            this.receiveSystemMessage({ text: 'Usage: /mob giraffe, /mob macaw, /mob dog, or /mob cat' });
+        if (!getMobSpecies(species)) {
+            this.receiveSystemMessage({ text: `Usage: /mob <animal>. Animals: ${Object.keys(MOB_SPECIES).join(', ')}` });
             return;
         }
 

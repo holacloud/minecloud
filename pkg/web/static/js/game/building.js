@@ -329,8 +329,8 @@ Object.assign(Game.prototype, {
             return saplings[Math.floor(Math.random() * saplings.length)];
         }
         if ((blockType === 'tall_grass' || blockType.includes('leaves')) && Math.random() < 0.035) {
-            const eggs = ['sheep_egg', 'duck_egg', 'pig_egg', 'giraffe_egg', 'dog_egg', 'cat_egg', 'spider_egg', 'cave_monster_egg', 'macaw_egg'];
-            return eggs[Math.floor(Math.random() * eggs.length)];
+            const species = Object.keys(MOB_SPECIES);
+            return `${species[Math.floor(Math.random() * species.length)]}_egg`;
         }
         return null;
     },
