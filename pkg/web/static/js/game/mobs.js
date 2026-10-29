@@ -121,7 +121,7 @@ Object.assign(Game.prototype, {
         switch (biome) {
             case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-            case 'rocky': return [['sheep', 2], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
+            case 'rocky': return [['goat', 3], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
             default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
         }
     },
@@ -248,6 +248,12 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'climb') {
+            // Goats butt back.
+            if (!mob.userData.ram && !mob.userData.airborne) mob.userData.ram = { phase: 'paw', timer: 0.5 };
+            this.playTone({ frequency: getMobSpecies('goat').tone, duration: 0.18, type: 'sawtooth', volume: 0.015, release: 0.1, detune: (Math.random() - 0.5) * 80 });
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'dart') {
             this.dropLizardTail(mob);
             this.playTone({ frequency: getMobSpecies('lizard').tone, duration: 0.04, type: 'triangle', volume: 0.012, release: 0.04 });
@@ -318,6 +324,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'dart') {
                 this.updateDartingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'climb') {
+                this.updateClimbingMob(mob, delta, player);
                 continue;
             }
 

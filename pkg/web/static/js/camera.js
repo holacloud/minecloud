@@ -32,6 +32,9 @@ class CameraController {
         this.lastForwardTapAt = 0;
         
         this.velocityY = 0;
+        // Horizontal push from being hit (blocks per second), decaying quickly.
+        this.knockbackX = 0;
+        this.knockbackZ = 0;
         this.isLocked = false;
         // Jump forgiveness: a press shortly before landing, or shortly after walking off an
         // edge, still jumps (frames where the player is briefly airborne would eat it).
@@ -247,6 +250,17 @@ class CameraController {
         return floor;
     }
 
+    // Shoves the player along (dirX, dirZ) and pops them slightly into the air.
+    applyKnockback(dirX, dirZ, strength, lift = 4) {
+        const length = Math.hypot(dirX, dirZ) || 1;
+        this.knockbackX = dirX / length * strength;
+        this.knockbackZ = dirZ / length * strength;
+        if (this.onGround) {
+            this.velocityY = lift;
+            this.onGround = false;
+        }
+    }
+
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
@@ -345,6 +359,20 @@ class CameraController {
             }
         }
         
+        if (this.knockbackX !== 0 || this.knockbackZ !== 0) {
+            const resolved = this.resolveHorizontalPosition(
+                this.camera.position.x + this.knockbackX * delta,
+                this.camera.position.z + this.knockbackZ * delta,
+                this.camera.position.y - this.eyeHeight
+            );
+            this.camera.position.x = resolved.x;
+            this.camera.position.z = resolved.z;
+            const decay = Math.exp(-delta * 5);
+            this.knockbackX *= decay;
+            this.knockbackZ *= decay;
+            if (Math.hypot(this.knockbackX, this.knockbackZ) < 0.05) this.knockbackX = this.knockbackZ = 0;
+        }
+
         const feetY = this.camera.position.y - this.eyeHeight;
         const floorY = this.getSupportFloorY(this.camera.position.x, this.camera.position.z, feetY);
         

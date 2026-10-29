@@ -3,9 +3,10 @@
 // and now and then leap out of the water. Frogs hop along the shore, swim at the surface,
 // flee into the water and croak at night. Turtles plod along beaches, go for long swims
 // (surfacing to breathe) and hide in their shell when frightened. Lizards bask, do
-// push-ups, dart about and drop their tail when struck. Mixed into Game.prototype;
+// push-ups, dart about and drop their tail when struck. Goats climb towards high ground,
+// leap up ledges and now and then ram the player. Mixed into Game.prototype;
 // updateAmbientMobs hands these mobs to updateSwimmingMob, updateHoppingMob,
-// updateAmphibiousMob and updateDartingMob.
+// updateAmphibiousMob, updateDartingMob and updateClimbingMob.
 
 const _swimDesired = new THREE.Vector3();
 const _swimOffset = new THREE.Vector3();
@@ -793,5 +794,150 @@ Object.assign(Game.prototype, {
             this.scene.remove(entry.object);
             return false;
         });
+    },
+    updateClimbingMob(mob, delta, player) {
+        const data = mob.userData;
+        const position = mob.position;
+        if (!data.velocity) data.velocity = new THREE.Vector3();
+        if (data.facing === undefined) data.facing = Math.random() * Math.PI * 2;
+        const velocity = data.velocity;
+        data.ramCooldown = Math.max(0, (data.ramCooldown ?? 8 + Math.random() * 20) - delta);
+        let speed = 0;
+
+        if (data.airborne) {
+            velocity.y -= 20 * delta;
+            const nx = position.x + velocity.x * delta;
+            const nz = position.z + velocity.z * delta;
+            if (!this.world.hasSolidBlock(Math.floor(nx), Math.floor(position.y + 0.3), Math.floor(position.z))) position.x = nx;
+            if (!this.world.hasSolidBlock(Math.floor(position.x), Math.floor(position.y + 0.3), Math.floor(nz))) position.z = nz;
+            position.y += velocity.y * delta;
+            const floor = this.cameraController.getFloorY(position.x, position.z, position.y + 0.6);
+            if (velocity.y < 0 && position.y <= floor) {
+                position.y = floor;
+                data.airborne = false;
+                velocity.set(0, 0, 0);
+                this.playNoiseBurst({ duration: 0.05, volume: 0.008, highpass: 200, lowpass: 1400 });
+            }
+        } else {
+            const floor = this.cameraController.getFloorY(position.x, position.z, position.y + 0.5);
+            if (position.y - floor > 0.05) {
+                velocity.set(0, 0, 0);
+                data.airborne = true;
+            } else {
+                speed = this.updateGoatIntent(mob, delta, player);
+            }
+        }
+
+        mob.rotation.y = this.lerpAngle(mob.rotation.y, Math.PI / 2 - data.facing, Math.min(1, delta * (data.ram ? 12 : 6)));
+        data.stepPhase += delta * speed * 9;
+        this.animateMobRig(mob, speed > 0 ? 1 : 0, delta);
+        this.animateGoatPose(mob);
+    },
+
+    // Chooses what a grounded goat does this frame and moves it; returns its speed.
+    updateGoatIntent(mob, delta, player) {
+        const data = mob.userData;
+        const position = mob.position;
+        const dx = player.x - position.x;
+        const dz = player.z - position.z;
+        const distance = Math.hypot(dx, dz);
+        const playerFeetY = player.y - 1.6;
+        const canRam = !this.titleScreenOpen && !this.respawnPending && Math.abs(playerFeetY - position.y) < 1.5;
+
+        if (!data.ram && data.ramCooldown <= 0 && canRam && distance > 2.5 && distance < 7 && Math.random() < delta * 0.25) {
+            data.ram = { phase: 'paw', timer: 1.1 };
+        }
+        if (data.ram) {
+            const ram = data.ram;
+            ram.timer -= delta;
+            if (ram.phase === 'paw') {
+                // Lower the head and scrape the ground, eyes on the player.
+                data.facing = Math.atan2(dz, dx);
+                if (ram.timer <= 0) {
+                    ram.phase = 'charge';
+                    ram.timer = 2;
+                }
+                return 0;
+            }
+            const step = this.walkStep(mob, data.facing, 5 * delta, delta);
+            const hit = canRam && Math.hypot(dx, dz) < 1.2;
+            if (hit) {
+                this.cameraController.applyKnockback(Math.cos(data.facing), Math.sin(data.facing), 9, 5);
+                this.applyDamage(1, 'You were rammed by a goat');
+                this.playTone({ frequency: 95, duration: 0.12, type: 'triangle', volume: 0.05, release: 0.1 });
+                this.playNoiseBurst({ duration: 0.08, volume: 0.03, highpass: 80, lowpass: 700 });
+            }
+            if (hit || !step.moved || ram.timer <= 0) {
+                data.ram = null;
+                data.ramCooldown = 15 + Math.random() * 20;
+                data.moveTimer = 1;
+            }
+            return 5;
+        }
+
+        data.moveTimer -= delta;
+        if (data.moveTimer <= 0) {
+            data.moveTimer = 1.5 + Math.random() * 3;
+            data.paused = Math.random() < 0.35;
+            const homeDistance = Math.hypot(data.home.x - position.x, data.home.z - position.z);
+            if (homeDistance > 14) {
+                data.facing = Math.atan2(data.home.z - position.z, data.home.x - position.x);
+            } else {
+                // Goats like high ground: favour headings that lead uphill.
+                let best = data.facing;
+                let bestScore = -Infinity;
+                for (let i = 0; i < 6; i++) {
+                    const heading = data.facing + (Math.random() - 0.5) * Math.PI * 1.6;
+                    const ahead = this.cameraController.getFloorY(position.x + Math.cos(heading) * 2.5, position.z + Math.sin(heading) * 2.5, position.y + 3);
+                    const score = Math.min(ahead - position.y, 2.5) + Math.random() * 1.5;
+                    if (ahead > -20 && score > bestScore) {
+                        best = heading;
+                        bestScore = score;
+                    }
+                }
+                data.facing = best;
+            }
+        }
+        if (data.paused) return 0;
+
+        const speed = getMobSpecies('goat').speed;
+        const step = this.walkStep(mob, data.facing, speed * delta, delta);
+        if (step.moved) return speed;
+        if (step.water === undefined && this.leapAhead(mob)) return speed;
+        data.facing += Math.PI * (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1);
+        data.moveTimer = 1.5;
+        return 0;
+    },
+
+    // Jumps onto a ledge up to two blocks high, or down a drop of up to six.
+    leapAhead(mob) {
+        const data = mob.userData;
+        const position = mob.position;
+        const tx = position.x + Math.cos(data.facing) * 1.3;
+        const tz = position.z + Math.sin(data.facing) * 1.3;
+        if (this.findWaterSurface(tx, position.y - 0.4, tz) !== null) return false;
+        const floor = this.cameraController.getFloorY(tx, tz, position.y + 2.5);
+        const rise = floor - position.y;
+        if (floor <= -20 || rise > 2.3 || rise < -6) return false;
+        // Room for the body above the landing spot.
+        if (this.world.hasSolidBlock(Math.floor(tx), Math.floor(floor + 0.5), Math.floor(tz))) return false;
+        data.velocity.set(Math.cos(data.facing) * 2.4, Math.sqrt(2 * 20 * (Math.max(rise, 0) + 0.6)), Math.sin(data.facing) * 2.4);
+        data.airborne = true;
+        return true;
+    },
+
+    animateGoatPose(mob) {
+        const data = mob.userData;
+        const legs = data.legs;
+        if (data.airborne) {
+            // Tuck the legs: front ones forward, back ones back.
+            legs.forEach((leg, index) => { leg.rotation.x = leg.userData.baseRotation.x + (index < 2 ? -0.7 : 0.7); });
+        }
+        if (data.ram && data.head) {
+            // Head down, horns forward; while pawing one front hoof scrapes the ground.
+            data.head.rotation.x = data.head.userData.baseRotation.x + 0.55;
+            data.head.rotation.y = data.head.userData.baseRotation.y;
+            if (data.ram.phase === 'paw' && legs[0]) legs[0].rotation.x = legs[0].userData.baseRotation.x - Math.abs(Math.sin(data.life * 9)) * 0.8;
+        }
     }
 });

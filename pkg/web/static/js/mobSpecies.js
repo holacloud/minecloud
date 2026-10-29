@@ -17,8 +17,8 @@
 //   tailStrike attacks by lunging its curled tail forward
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
-//              swims underwater) or 'dart' (basks, then runs in short bursts); see
-//              js/game/wildlife.js
+//              swims underwater), 'dart' (basks, then runs in short bursts) or 'climb'
+//              (leaps up to two blocks, seeks high ground and rams); see js/game/wildlife.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -34,7 +34,8 @@ const MOB_SPECIES = {
     turtle: { eggColor: 0x7a8a45, tone: 160, speed: 0.3, group: [1, 2], movement: 'amphibious' },
     camel: { eggColor: 0xc9a46a, tone: 210, speed: 0.45, group: [1, 3], grazer: true, restDrop: 1 },
     lizard: { eggColor: 0xb08a50, tone: 900, speed: 3.2, variants: 2, group: [1, 2], movement: 'dart' },
-    scorpion: { eggColor: 0xc29a4a, tone: 1400, hostile: true, nocturnal: true, chaseDistance: 8, attackDamage: 1, poison: 3, maxHealth: 6, speed: 0.35, chaseSpeed: 1.1, variants: 2, group: [1, 1], tailStrike: true }
+    scorpion: { eggColor: 0xc29a4a, tone: 1400, hostile: true, nocturnal: true, chaseDistance: 8, attackDamage: 1, poison: 3, maxHealth: 6, speed: 0.35, chaseSpeed: 1.1, variants: 2, group: [1, 1], tailStrike: true },
+    goat: { eggColor: 0xe9e4d6, tone: 420, speed: 0.6, variants: 2, group: [2, 4], grazer: true, movement: 'climb' }
 };
 
 function getMobSpecies(species) {

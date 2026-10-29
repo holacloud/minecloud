@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1139,6 +1139,49 @@ const VoxelModels = {
                 legs.push(`legL${i}`, `legR${i}`);
             }
             return { legs, head: 'head', tail, legAxis: 'y' };
+        },
+
+        goat(b, variant) {
+            const palettes = [
+                { coat: 0xe9e4d6, shade: 0xcfc8b6, horn: 0x2b2826, hoof: 0x2b2826 },
+                { coat: 0x9a7a52, shade: 0x5e4630, horn: 0x8a7a64, hoof: 0x2b2420 }
+            ];
+            const c = palettes[variant % palettes.length];
+            const shaggy = { color: c.coat, noise: 0.08, all: (p, face) => {
+                if (face === 'bottom') { p.fill(c.shade, 0.06); return; }
+                if (face !== 'top') p.rect(0, p.h - 2, p.w, 2, c.shade, 0.08);
+                if (variant === 1 && face === 'top') p.rect(p.w / 2 - 0.5, 0, 1, p.h, 0x3a2a1c, 0.05);
+            } };
+            b.part('body', { pivot: [0, 0, 0], from: [-3.5, 10, -6], size: [7, 8, 12], paint: shaggy });
+            b.part('head', {
+                parent: 'body', pivot: [0, 17, 5.5], from: [-2.25, -2, -1], size: [4.5, 4.5, 7],
+                rotation: [0.35, 0, 0],
+                paint: {
+                    color: c.coat, noise: 0.06,
+                    all: (p, face) => {
+                        if (face === 'left' || face === 'right') {
+                            const x = face === 'left' ? 3.5 : 2.5;
+                            p.rect(x, 1, 1, 0.8, 0xc9a23a, 0);
+                            p.rect(x + 0.2, 1.2, 0.6, 0.4, 0x0d0b0a, 0);
+                        }
+                        if (face === 'front') { p.rect(0.75, 2.8, 0.8, 0.5, 0x3a302a, 0); p.rect(2.95, 2.8, 0.8, 0.5, 0x3a302a, 0); }
+                    }
+                }
+            });
+            b.part('beard', { parent: 'head', pivot: [0, -2, 4.5], from: [-1, -2.5, -1], size: [2, 2.5, 2], paint: { color: c.shade, noise: 0.08 } });
+            const hornPaint = { color: c.horn, noise: 0.05, all: (p, face) => { if (face !== 'top' && face !== 'bottom') for (let y = 0.6; y < p.h; y += 0.9) p.rect(0, y, p.w, 0.25, shadeRgb(colorToRgb(c.horn), 0.25), 0); } };
+            [['L', 1], ['R', -1]].forEach(([side, sign]) => {
+                b.part(`horn${side}`, { parent: 'head', pivot: [1.25 * sign, 2.5, 0.5], from: [-0.6, 0, -0.6], size: [1.2, 3.5, 1.2], paint: hornPaint, rotation: [-0.7, 0, -0.12 * sign] });
+                b.part(`hornTip${side}`, { parent: `horn${side}`, pivot: [0, 3.5, 0], from: [-0.45, 0, -0.45], size: [0.9, 3, 0.9], paint: hornPaint, rotation: [-0.8, 0, 0] });
+            });
+            b.part('earL', { parent: 'head', pivot: [2.25, 2, 0.5], from: [0, -0.5, -0.75], size: [2, 1, 1.5], paint: { color: c.coat }, rotation: [0, 0, 0.3] });
+            b.part('earR', { parent: 'head', pivot: [-2.25, 2, 0.5], from: [-2, -0.5, -0.75], size: [2, 1, 1.5], paint: { color: c.coat }, rotation: [0, 0, -0.3] });
+            b.part('tail', { parent: 'body', pivot: [0, 17, -6], from: [-0.75, -0.5, -2], size: [1.5, 1.5, 2], paint: { color: c.coat }, rotation: [-0.6, 0, 0] });
+            const legs = VoxelModels.quadLegs(b, {
+                size: [2.5, 10, 2.5], hipY: 10, x: 2.25, zFront: 4, zBack: -4,
+                paint: { color: c.coat, noise: 0.07, all: (p, face) => { if (face === 'bottom') { p.fill(c.hoof, 0.03); return; } if (face !== 'top') { p.rect(0, 0, p.w, 3, c.shade, 0.07); p.rect(0, p.h - 1.25, p.w, 1.25, c.hoof, 0.03); } } }
+            });
+            return { legs, head: 'head', tail: ['tail'] };
         }
     }
 };
