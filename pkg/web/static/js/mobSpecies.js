@@ -12,13 +12,16 @@
 //   flyHeight  hovering height above the ground
 //   variants   number of colour variants (picked at random)
 //   group      [min, max] number spawned together naturally
+//   limit      at most this many alive at once from natural spawning
 //   grazer     lowers its head to graze while idle
 //   restDrop   lies down now and then, folding its legs and lowering its body this far
 //   tailStrike attacks by lunging its curled tail forward
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
 //              walking and can swim at the surface) or 'amphibious' (walks on the beach and
 //              swims underwater), 'dart' (basks, then runs in short bursts) or 'climb'
-//              (leaps up to two blocks, seeks high ground and rams); see js/game/wildlife.js
+//              (leaps up to two blocks, seeks high ground and rams); see js/game/wildlife.js.
+//              'soar' (circles high up, perches on peaks, dives for fish); see
+//              js/game/flyers.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -35,7 +38,8 @@ const MOB_SPECIES = {
     camel: { eggColor: 0xc9a46a, tone: 210, speed: 0.45, group: [1, 3], grazer: true, restDrop: 1 },
     lizard: { eggColor: 0xb08a50, tone: 900, speed: 3.2, variants: 2, group: [1, 2], movement: 'dart' },
     scorpion: { eggColor: 0xc29a4a, tone: 1400, hostile: true, nocturnal: true, chaseDistance: 8, attackDamage: 1, poison: 3, maxHealth: 6, speed: 0.35, chaseSpeed: 1.1, variants: 2, group: [1, 1], tailStrike: true },
-    goat: { eggColor: 0xe9e4d6, tone: 420, speed: 0.6, variants: 2, group: [2, 4], grazer: true, movement: 'climb' }
+    goat: { eggColor: 0xe9e4d6, tone: 420, speed: 0.6, variants: 2, group: [2, 4], grazer: true, movement: 'climb' },
+    eagle: { eggColor: 0x4a3222, tone: 2400, speed: 4, group: [1, 1], limit: 2, movement: 'soar' }
 };
 
 function getMobSpecies(species) {

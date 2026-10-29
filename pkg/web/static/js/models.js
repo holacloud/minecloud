@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1182,6 +1182,40 @@ const VoxelModels = {
                 paint: { color: c.coat, noise: 0.07, all: (p, face) => { if (face === 'bottom') { p.fill(c.hoof, 0.03); return; } if (face !== 'top') { p.rect(0, 0, p.w, 3, c.shade, 0.07); p.rect(0, p.h - 1.25, p.w, 1.25, c.hoof, 0.03); } } }
             });
             return { legs, head: 'head', tail: ['tail'] };
+        },
+
+        // Built with its wings spread for soaring; js/game/flyers.js folds them when perched.
+        eagle(b) {
+            const brown = 0x4a3222;
+            const covert = 0x6b4a30;
+            const white = 0xf2efe6;
+            const gold = 0xf0b429;
+            b.part('body', { pivot: [0, 0, 0], from: [-2.5, 3, -5], size: [5, 5, 10], paint: { color: brown, noise: 0.07, all: (p) => p.spots(covert, 6, 1, 1.5) } });
+            b.part('head', {
+                parent: 'body', pivot: [0, 7, 4.5], from: [-2, -1, -0.5], size: [4, 4, 4.5],
+                paint: {
+                    color: white, noise: 0.04,
+                    all: (p, face) => {
+                        if (face !== 'left' && face !== 'right') return;
+                        const x = face === 'left' ? p.w - 1.7 : 0.7;
+                        p.rect(x, 1.1, 1, 0.9, 0xf2d24a, 0);
+                        p.rect(x + 0.25, 1.3, 0.5, 0.5, 0x0d0b0a, 0);
+                        p.rect(x - 0.2, 0.8, 1.4, 0.3, 0xd8d2c4, 0);
+                    }
+                }
+            });
+            b.part('beak', { parent: 'head', pivot: [0, 1.5, 4], from: [-0.75, -1.25, 0], size: [1.5, 2, 1.75], paint: { color: gold, noise: 0.03 } });
+            b.part('beakTip', { parent: 'beak', pivot: [0, -1.25, 1.75], from: [-0.5, -0.9, -0.75], size: [1, 1, 0.75], paint: { color: 0xc98a1a, noise: 0.03 } });
+            b.part('tail', { parent: 'body', pivot: [0, 6, -5], from: [-2.5, -0.5, -5], size: [5, 1, 5], paint: { color: white, noise: 0.04 }, rotation: [-0.1, 0, 0] });
+            const wingPaint = { color: brown, noise: 0.07, all: (p) => p.spots(covert, 10, 1, 2) };
+            const primaryPaint = { color: 0x2e2018, noise: 0.08, all: (p) => p.spots(0x3d2a1e, 8, 1, 2) };
+            [['L', 1], ['R', -1]].forEach(([side, sign]) => {
+                b.part(`wing${side}`, { parent: 'body', pivot: [2.5 * sign, 7, 1], from: [sign > 0 ? 0 : -8, -0.5, -3], size: [8, 1, 6], paint: wingPaint });
+                b.part(`wingTip${side}`, { parent: `wing${side}`, pivot: [8 * sign, 0, 0], from: [sign > 0 ? 0 : -8, -0.4, -3.5], size: [8, 0.8, 5], paint: primaryPaint });
+                b.part(`leg${side}`, { parent: 'body', pivot: [1.2 * sign, 3.5, 0.5], from: [-0.5, -3.5, -0.5], size: [1, 3.5, 1], paint: { color: 0xf0c040, noise: 0.04, all: (p, face) => { if (face !== 'top' && face !== 'bottom') p.rect(0, 0, p.w, 1.2, covert, 0.06); } } });
+                b.part(`talons${side}`, { parent: `leg${side}`, pivot: [0, -3.5, 0], from: [-0.75, 0, -0.75], size: [1.5, 0.5, 2], paint: { color: 0x1a1410, noise: 0.03 } });
+            });
+            return { head: 'head', tail: ['tail'] };
         }
     }
 };

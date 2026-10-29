@@ -33,7 +33,8 @@ Object.assign(Game.prototype, {
         return buffer;
     },
 
-    playTone({ frequency, duration, type = 'sine', volume = 0.04, attack = 0.005, release = 0.08, detune = 0 }) {
+    // endFrequency, when given, glides the pitch there over the tone's duration.
+    playTone({ frequency, duration, type = 'sine', volume = 0.04, attack = 0.005, release = 0.08, detune = 0, endFrequency = null }) {
         const audio = this.ensureAudio();
         if (!audio || audio.state !== 'running') return;
 
@@ -41,6 +42,7 @@ Object.assign(Game.prototype, {
         const gain = audio.createGain();
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
+        if (endFrequency) oscillator.frequency.exponentialRampToValueAtTime(endFrequency, audio.currentTime + duration);
         oscillator.detune.setValueAtTime(detune, audio.currentTime);
 
         const scaledVolume = volume * this.masterVolume;

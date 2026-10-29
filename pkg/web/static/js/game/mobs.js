@@ -121,8 +121,8 @@ Object.assign(Game.prototype, {
         switch (biome) {
             case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
             case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-            case 'rocky': return [['goat', 3], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
-            default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1]];
+            case 'rocky': return [['goat', 3], ['eagle', 2], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
+            default: return [['sheep', 4], ['pig', 3], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
         }
     },
 
@@ -148,7 +148,9 @@ Object.assign(Game.prototype, {
             if (pick <= 0) { species = candidate; break; }
         }
 
-        const [minGroup, maxGroup] = getMobSpecies(species).group || [1, 1];
+        const info = getMobSpecies(species);
+        if (info.limit && this.ambientMobs.filter((mob) => mob.userData.species === species).length >= info.limit) return;
+        const [minGroup, maxGroup] = info.group || [1, 1];
         const groupSize = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, 3) * (maxGroup - minGroup + 1));
         for (let i = 0; i < groupSize; i++) {
             const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, 10 + i) * (size - 4);
@@ -248,6 +250,12 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'soar') {
+            // Eagles take to the air, screeching, and move their circle away from the player.
+            if (mob.userData.flight) this.takeOff(mob, true);
+            this.playNoiseBurst({ duration: 0.06, volume: 0.02, highpass: 400, lowpass: 2600 });
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'climb') {
             // Goats butt back.
             if (!mob.userData.ram && !mob.userData.airborne) mob.userData.ram = { phase: 'paw', timer: 0.5 };
@@ -324,6 +332,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'dart') {
                 this.updateDartingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'soar') {
+                this.updateSoaringMob(mob, delta, player);
                 continue;
             }
             if (movement === 'climb') {
