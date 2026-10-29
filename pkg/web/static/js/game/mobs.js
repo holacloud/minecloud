@@ -136,6 +136,7 @@ Object.assign(Game.prototype, {
         const size = this.world.chunkSize;
         const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
+        this.spawnFrogsForChunk(chunkX, chunkZ, biome);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -247,6 +248,13 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'hop') {
+            if (!mob.userData.airborne && !mob.userData.swimming) {
+                this.hopSomewhere(mob, Math.atan2(mob.position.z - this.camera.position.z, mob.position.x - this.camera.position.x), 1.6, 3.4);
+            }
+            this.playTone({ frequency: getMobSpecies('frog').tone, duration: 0.07, type: 'square', volume: 0.015, release: 0.06 });
+            return;
+        }
         if (mob.userData.maxHealth > 1) {
             mob.userData.health -= 4;
             this.updateMobHealthBar(mob);
@@ -281,8 +289,13 @@ Object.assign(Game.prototype, {
             mob.userData.attackCooldown = Math.max(0, mob.userData.attackCooldown - delta);
             mob.userData.defendCooldown = Math.max(0, mob.userData.defendCooldown - delta);
             mob.userData.purrTimer = Math.max(0, mob.userData.purrTimer - delta);
-            if (getMobSpecies(mob.userData.species).movement === 'swim') {
+            const movement = getMobSpecies(mob.userData.species).movement;
+            if (movement === 'swim') {
                 this.updateSwimmingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'hop') {
+                this.updateHoppingMob(mob, delta, player);
                 continue;
             }
 

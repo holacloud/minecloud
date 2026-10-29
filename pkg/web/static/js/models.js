@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -897,6 +897,54 @@ const VoxelModels = {
             b.part('finL', { parent: 'body', pivot: [1.25, -0.75, 1.5], from: [0, -0.25, -1.25], size: [1.25, 0.5, 1.25], paint: finPaint, rotation: [0, 0, -0.5] });
             b.part('finR', { parent: 'body', pivot: [-1.25, -0.75, 1.5], from: [-1.25, -0.25, -1.25], size: [1.25, 0.5, 1.25], paint: finPaint, rotation: [0, 0, 0.5] });
             return { tail: ['tail', 'tailFin'], wings: ['finL', 'finR'] };
+        },
+
+        // Sits on folded hind legs; js/game/wildlife.js stretches them while hopping or
+        // swimming and inflates the throat to croak.
+        frog(b, variant) {
+            const palettes = [
+                { skin: 0x4f8a3b, dark: 0x2c5a22, belly: 0xdcd9a2, stripe: 0xb7c25a },
+                { skin: 0x8a6b3e, dark: 0x4f3a1f, belly: 0xe2d2a8, stripe: 0xc49a5a }
+            ];
+            const c = palettes[variant % palettes.length];
+            const skin = { color: c.skin, noise: 0.06, all: (p, face) => {
+                if (face === 'bottom') { p.fill(c.belly, 0.03); return; }
+                if (face !== 'top') p.rect(0, p.h * 0.65, p.w, p.h * 0.35, c.belly, 0.03);
+                p.spots(c.dark, Math.ceil(p.w * p.h / 6), 0.6, 1.2, 3);
+            } };
+            b.part('body', {
+                pivot: [0, 0, 0], from: [-3, 1, -3.5], size: [6, 3.5, 7],
+                paint: { ...skin, faces: { left: (p) => p.rect(0, 1, p.w, 0.5, c.stripe, 0.03), right: (p) => p.rect(0, 1, p.w, 0.5, c.stripe, 0.03) } }
+            });
+            b.part('head', {
+                parent: 'body', pivot: [0, 2.75, 3.5], from: [-3, -1.25, 0], size: [6, 2.75, 3],
+                paint: { ...skin, faces: { front: (p) => { p.fill(c.skin, 0.04); p.rect(0, 1.9, p.w, 0.35, 0x1d2b14, 0); p.rect(1.5, 0.5, 0.5, 0.4, 0x1d2b14, 0); p.rect(4, 0.5, 0.5, 0.4, 0x1d2b14, 0); p.rect(0, 2.25, p.w, 0.5, c.belly, 0.02); } } }
+            });
+            const eyePaint = {
+                color: c.skin, noise: 0.04, surface: 'smooth',
+                all: (p, face) => {
+                    if (face === 'bottom' || face === 'back') return;
+                    if (face === 'top') { p.rect(0.25, 0.25, 1.5, 1.5, 0xd8b23a, 0); p.rect(0.6, 0.85, 0.8, 0.3, 0x0d0b0a, 0); return; }
+                    p.rect(0.2, 0.15, 1.6, 1.2, 0xd8b23a, 0);
+                    p.rect(0.5, 0.55, 1, 0.45, 0x0d0b0a, 0);
+                    p.rect(0.4, 0.3, 0.3, 0.25, 0xffffff, 0);
+                }
+            };
+            b.part('eyeL', { parent: 'head', pivot: [1.9, 1.25, 1.4], from: [-1, 0, -1], size: [2, 1.5, 2], paint: eyePaint });
+            b.part('eyeR', { parent: 'head', pivot: [-1.9, 1.25, 1.4], from: [-1, 0, -1], size: [2, 1.5, 2], paint: eyePaint });
+            b.part('throat', { parent: 'head', pivot: [0, -1.25, 1.5], from: [-2, -0.75, -1.25], size: [4, 0.75, 2.5], paint: { color: c.belly, noise: 0.03, surface: 'smooth' } });
+            const legPaint = { color: c.skin, noise: 0.05, all: (p, face) => { if (face !== 'top' && face !== 'bottom') p.spots(c.dark, 2, 0.5, 0.8, 7); } };
+            const footPaint = { color: shadeRgb(colorToRgb(c.skin), -0.1), noise: 0.04, surface: 'smooth' };
+            b.part('armL', { parent: 'body', pivot: [2.25, 2.25, 2.25], from: [-0.6, -2.25, -0.6], size: [1.2, 2.25, 1.2], paint: legPaint, rotation: [0.2, 0, -0.15] });
+            b.part('armR', { parent: 'body', pivot: [-2.25, 2.25, 2.25], from: [-0.6, -2.25, -0.6], size: [1.2, 2.25, 1.2], paint: legPaint, rotation: [0.2, 0, 0.15] });
+            b.part('handL', { parent: 'armL', pivot: [0, -2.25, 0], from: [-1, 0, -0.5], size: [2, 0.4, 2], paint: footPaint });
+            b.part('handR', { parent: 'armR', pivot: [0, -2.25, 0], from: [-1, 0, -0.5], size: [2, 0.4, 2], paint: footPaint });
+            // Thighs pivot at the hip; the shin and long webbed foot fold forward under them.
+            b.part('thighL', { parent: 'body', pivot: [3, 2.5, -2.5], from: [0, -1.25, -1], size: [1.75, 2.5, 4], paint: legPaint, rotation: [0.35, 0, 0] });
+            b.part('thighR', { parent: 'body', pivot: [-3, 2.5, -2.5], from: [-1.75, -1.25, -1], size: [1.75, 2.5, 4], paint: legPaint, rotation: [0.35, 0, 0] });
+            b.part('footL', { parent: 'thighL', pivot: [0.9, -1.25, 2.5], from: [-1.25, -1.1, -4], size: [2.5, 0.5, 4.5], paint: footPaint, rotation: [-0.35, 0, 0] });
+            b.part('footR', { parent: 'thighR', pivot: [-0.9, -1.25, 2.5], from: [-1.25, -1.1, -4], size: [2.5, 0.5, 4.5], paint: footPaint, rotation: [-0.35, 0, 0] });
+            return { head: 'head' };
         }
     }
 };

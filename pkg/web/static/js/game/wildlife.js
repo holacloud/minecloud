@@ -1,7 +1,8 @@
 // Wildlife that does not walk on the ground. Fish swim in schools: they cruise towards a
 // shared target, keep together without bumping into each other, dart away from the player
-// and now and then leap out of the water. Mixed into Game.prototype; updateAmbientMobs
-// hands swimming mobs to updateSwimmingMob.
+// and now and then leap out of the water. Frogs hop along the shore, swim at the surface,
+// flee into the water and croak at night. Mixed into Game.prototype; updateAmbientMobs
+// hands these mobs to updateSwimmingMob and updateHoppingMob.
 
 const _swimDesired = new THREE.Vector3();
 const _swimOffset = new THREE.Vector3();
@@ -254,5 +255,206 @@ Object.assign(Game.prototype, {
         const column = this.findWaterColumn(x, z, radius, topY);
         if (!column) return null;
         return this.spawnFishSchool(column, 6);
+    },
+    // A land spot (bank) with water within two blocks, for frogs and turtles.
+    findShoreSpot(x, z) {
+        const bx = Math.floor(x);
+        const bz = Math.floor(z);
+        const floor = this.cameraController.getFloorY(bx + 0.5, bz + 0.5, 64);
+        if (floor <= -20 || this.world.getBlockTypeAt(bx, Math.floor(floor), bz) === 'water') return null;
+        for (let dx = -2; dx <= 2; dx++) {
+            for (let dz = -2; dz <= 2; dz++) {
+                if (this.world.getBlockTypeAt(bx + dx, Math.floor(floor) - 1, bz + dz) === 'water') {
+                    return { x: bx + 0.5, y: floor, z: bz + 0.5, water: new THREE.Vector3(bx + dx + 0.5, floor, bz + dz + 0.5) };
+                }
+            }
+        }
+        return null;
+    },
+
+    spawnFrogsForChunk(chunkX, chunkZ, biome) {
+        if (biome === 'desert' || biome === 'rocky' || this.chunkRandom(chunkX, chunkZ, 6) > 0.35) return;
+        const size = this.world.chunkSize;
+        for (let attempt = 0; attempt < 8; attempt++) {
+            const x = chunkX * size + 1 + this.chunkRandom(chunkX, chunkZ, 60 + attempt) * (size - 2);
+            const z = chunkZ * size + 1 + this.chunkRandom(chunkX, chunkZ, 70 + attempt) * (size - 2);
+            const spot = this.findShoreSpot(x, z);
+            if (!spot) continue;
+            const [minGroup, maxGroup] = MOB_SPECIES.frog.group;
+            const count = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, 7) * (maxGroup - minGroup + 1));
+            for (let i = 0; i < count; i++) {
+                const frog = this.createMob('frog', new THREE.Vector3(spot.x + (Math.random() - 0.5) * 0.6, spot.y, spot.z + (Math.random() - 0.5) * 0.6));
+                frog.userData.pond = spot.water;
+                frog.userData.natural = true;
+                frog.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.ambientMobs.push(frog);
+            }
+            return;
+        }
+    },
+
+    // Launches a hop towards `heading` (radians, from +x towards +z). Picks a higher arc to
+    // climb one block, and refuses ledges that are too tall or too deep.
+    startHop(mob, heading, distance, speed) {
+        const data = mob.userData;
+        const position = mob.position;
+        const tx = position.x + Math.cos(heading) * distance;
+        const tz = position.z + Math.sin(heading) * distance;
+        // Landing in water is always fine, however deep it is.
+        const water = this.findWaterSurface(tx, position.y - 0.4, tz);
+        const floor = water ?? this.cameraController.getFloorY(tx, tz, position.y + 1.6);
+        const rise = floor - position.y;
+        if (floor <= -20 || rise > 1.05 || rise < -3.5) return false;
+        const up = rise > 0.2 ? 6.6 : 4.6;
+        data.velocity.set(Math.cos(heading) * speed, up, Math.sin(heading) * speed);
+        data.airborne = true;
+        data.facing = heading;
+        return true;
+    },
+
+    // Tries the preferred heading first, then a few turns away from it.
+    hopSomewhere(mob, heading, distance, speed) {
+        for (const turn of [0, 0.6, -0.6, 1.3, -1.3, Math.PI]) {
+            if (this.startHop(mob, heading + turn, distance, speed)) return true;
+        }
+        return false;
+    },
+
+    updateHoppingMob(mob, delta, player) {
+        const data = mob.userData;
+        const position = mob.position;
+        if (!data.velocity) data.velocity = new THREE.Vector3();
+        const velocity = data.velocity;
+        data.life += delta;
+        if (data.facing === undefined) data.facing = Math.random() * Math.PI * 2;
+        data.hopTimer = (data.hopTimer ?? 1 + Math.random() * 3) - delta;
+        const awayFromPlayer = Math.atan2(position.z - player.z, position.x - player.x);
+        const scared = Math.hypot(position.x - player.x, position.z - player.z) < 3.5 && Math.abs(player.y - 1.6 - position.y) < 3;
+        const surface = this.findWaterSurface(position.x, position.y + 0.3, position.z);
+        if (surface !== null) data.pond = data.pond || position.clone();
+
+        if (data.airborne) {
+            velocity.y -= 18 * delta;
+            const nx = position.x + velocity.x * delta;
+            const nz = position.z + velocity.z * delta;
+            // Stop against walls instead of passing through them.
+            if (!this.world.hasSolidBlock(Math.floor(nx), Math.floor(position.y + 0.15), Math.floor(position.z))) position.x = nx;
+            if (!this.world.hasSolidBlock(Math.floor(position.x), Math.floor(position.y + 0.15), Math.floor(nz))) position.z = nz;
+            position.y += velocity.y * delta;
+
+            const landingSurface = this.findWaterSurface(position.x, position.y, position.z);
+            const floor = this.cameraController.getFloorY(position.x, position.z, position.y + 0.5);
+            if (velocity.y < 0 && landingSurface !== null && position.y <= landingSurface - 0.2) {
+                data.airborne = false;
+                data.swimming = true;
+                velocity.multiplyScalar(0.25);
+                this.fishSplash(position.x, landingSurface, position.z, 0.3);
+            } else if (velocity.y < 0 && position.y <= floor) {
+                position.y = floor;
+                data.airborne = false;
+                data.swimming = false;
+                velocity.set(0, 0, 0);
+                data.hopTimer = scared ? 0.15 : 1.2 + Math.random() * 3;
+            }
+        } else if (surface !== null && position.y < surface) {
+            // Swimming: float with the eyes above the surface and paddle about.
+            data.swimming = true;
+            position.y += (surface - 0.22 - position.y) * Math.min(1, delta * 4);
+            if (data.hopTimer <= 0) {
+                data.hopTimer = 2 + Math.random() * 4;
+                data.facing = scared ? awayFromPlayer : data.facing + (Math.random() - 0.5) * 2;
+            }
+            if (scared) data.facing = awayFromPlayer;
+            const speed = scared ? 1.4 : 0.55;
+            velocity.x = Math.cos(data.facing) * speed;
+            velocity.z = Math.sin(data.facing) * speed;
+            const nx = position.x + velocity.x * delta;
+            const nz = position.z + velocity.z * delta;
+            const ahead = this.cameraController.getFloorY(nx + Math.cos(data.facing) * 0.3, nz + Math.sin(data.facing) * 0.3, surface + 1.5);
+            const blocked = this.world.hasSolidBlock(Math.floor(nx + Math.cos(data.facing) * 0.3), Math.floor(position.y + 0.1), Math.floor(nz + Math.sin(data.facing) * 0.3));
+            if (!blocked) {
+                position.x = nx;
+                position.z = nz;
+            } else if (ahead - surface < 1.2 && (!scared || Math.random() < 0.02)) {
+                // A low bank: climb out onto it.
+                velocity.set(Math.cos(data.facing) * 1.8, 6.6, Math.sin(data.facing) * 1.8);
+                data.airborne = true;
+                data.swimming = false;
+                this.world.addRipple(position.x, position.z, 0.2);
+            } else {
+                data.facing += Math.PI * (0.5 + Math.random() * 0.5);
+            }
+            if (Math.random() < delta * 0.8) this.world.addRipple(position.x, position.z, 0.12);
+        } else {
+            data.swimming = false;
+            const floor = this.cameraController.getFloorY(position.x, position.z, position.y + 0.5);
+            if (position.y - floor > 0.05) {
+                // The ground went away: fall.
+                velocity.set(0, 0, 0);
+                data.airborne = true;
+            } else if (scared && data.hopTimer <= 0) {
+                // Head for the water if there is some close by, otherwise just away.
+                const pond = data.pond && Math.hypot(data.pond.x - position.x, data.pond.z - position.z) < 10 ? data.pond : null;
+                const heading = pond ? Math.atan2(pond.z - position.z, pond.x - position.x) : awayFromPlayer;
+                this.hopSomewhere(mob, heading, 1.4, 3.2);
+            } else if (data.hopTimer <= 0) {
+                const homeDistance = Math.hypot(data.home.x - position.x, data.home.z - position.z);
+                const heading = homeDistance > 8
+                    ? Math.atan2(data.home.z - position.z, data.home.x - position.x)
+                    : data.facing + (Math.random() - 0.5) * 2.4;
+                if (!this.hopSomewhere(mob, heading, 1.1, 2.4)) data.hopTimer = 1;
+            }
+        }
+
+        this.updateFrogCroak(mob, delta, player);
+        mob.rotation.y = this.lerpAngle(mob.rotation.y, Math.PI / 2 - data.facing, Math.min(1, delta * 10));
+        this.animateFrog(mob, delta);
+    },
+
+    updateFrogCroak(mob, delta, player) {
+        const data = mob.userData;
+        data.croak = Math.max(0, (data.croak || 0) - delta);
+        data.croakTimer = (data.croakTimer ?? 2 + Math.random() * 8) - delta;
+        if (data.croakTimer > 0 || data.airborne) return;
+        data.croakTimer = 4 + Math.random() * 9;
+        if (!this.isNightTime() && this.weatherState !== 'rain') return;
+        const distance = Math.hypot(mob.position.x - player.x, mob.position.y - player.y, mob.position.z - player.z);
+        if (distance > 28) return;
+        data.croak = 0.7;
+        // Two low, buzzy pulses.
+        const volume = 0.03 * (1 - distance / 28);
+        const pitch = data.variant === 1 ? 150 : 185;
+        this.playTone({ frequency: pitch, duration: 0.12, type: 'square', volume, release: 0.08, detune: (Math.random() - 0.5) * 40 });
+        setTimeout(() => this.playTone({ frequency: pitch * 0.9, duration: 0.16, type: 'square', volume, release: 0.1 }), 220);
+    },
+
+    animateFrog(mob, delta) {
+        const data = mob.userData;
+        const parts = data.modelParts || {};
+        // Legs stretch out behind in the air, kick while swimming and fold when sitting.
+        const target = data.airborne ? 1 : data.swimming ? 0.5 + Math.sin(data.life * 7) * 0.5 : 0;
+        data.stretch = (data.stretch || 0) + (target - (data.stretch || 0)) * Math.min(1, delta * 14);
+        const stretch = data.stretch;
+        ['thighL', 'thighR'].forEach((name) => {
+            const thigh = parts[name];
+            if (thigh) thigh.rotation.x = thigh.userData.baseRotation.x - stretch * 1.25;
+        });
+        ['footL', 'footR'].forEach((name) => {
+            const foot = parts[name];
+            if (foot) foot.rotation.x = foot.userData.baseRotation.x + stretch * 1.4;
+        });
+        ['armL', 'armR'].forEach((name) => {
+            const arm = parts[name];
+            if (arm) arm.rotation.x = arm.userData.baseRotation.x + (data.airborne ? -0.9 : 0) + (data.swimming ? Math.sin(data.life * 7 + 1) * 0.4 : 0);
+        });
+        if (parts.body) parts.body.rotation.x = data.airborne ? Math.max(-0.5, Math.min(0.5, -data.velocity.y * 0.08)) : 0;
+
+        // Breathing throat, and the big croak sac.
+        const throat = parts.throat;
+        if (throat) {
+            const sac = Math.sin(Math.min(1, data.croak / 0.7) * Math.PI);
+            const breath = (Math.sin(data.life * 6) * 0.5 + 0.5) * 0.25;
+            throat.scale.set(1 + sac * 0.5, 1 + breath + sac * 2.6, 1 + sac * 0.4);
+        }
     }
 });
