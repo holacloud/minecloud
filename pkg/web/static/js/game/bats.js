@@ -87,7 +87,7 @@ Object.assign(Game.prototype, {
             data.colony = colony;
             data.velocity = new THREE.Vector3();
             data.flight = { mode: 'fly', target: new THREE.Vector3(), retarget: 0, wake: 0, panic: 0, awake: 0, chirp: Math.random() * 2, fold: 0, wingPhase: Math.random() * 6, perch: new THREE.Vector3(), validate: 0 };
-            this.choosePerch(bat);
+            this.batChoosePerch(bat);
             if (roost) this.hangBat(bat);
             else bat.position.set(colony.center.x + (Math.random() - 0.5) * 2, colony.center.y + Math.random(), colony.center.z + (Math.random() - 0.5) * 2);
             colony.bats.push(bat);
@@ -113,7 +113,7 @@ Object.assign(Game.prototype, {
         this.receiveSystemMessage({ text: roost ? `Spawned ${colony.bats.length} bats; they will roost under the nearest roof` : `Spawned ${colony.bats.length} bats; no roof nearby, so they keep flying` });
     },
 
-    choosePerch(bat) {
+    batChoosePerch(bat) {
         const colony = bat.userData.colony;
         const perch = bat.userData.flight.perch;
         if (colony.cells.length === 0) return false;
@@ -197,13 +197,13 @@ Object.assign(Game.prototype, {
                 colony.roost = roost;
                 colony.cells = this.findRoostCells(roost);
                 colony.center.copy(roost);
-                colony.bats.forEach((bat) => this.choosePerch(bat));
+                colony.bats.forEach((bat) => this.batChoosePerch(bat));
             }
         }
         const homing = !outside && colony.cells.length > 0;
         let speed = getMobSpecies('bat').speed * (flight.panic > 0 ? 1.4 : 1);
         if (homing) {
-            if (!this.roostIsValid(flight.perch) && !this.choosePerch(mob)) colony.cells = [];
+            if (!this.roostIsValid(flight.perch) && !this.batChoosePerch(mob)) colony.cells = [];
             flight.target.copy(flight.perch);
             flight.target.y -= HANG_DROP;
             if (mob.position.distanceTo(flight.target) < 0.35) {
