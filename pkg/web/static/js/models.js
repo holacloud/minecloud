@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin', firefly: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin', firefly: 'skin', shadow: 'skin' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1280,6 +1280,23 @@ const VoxelModels = {
             b.part('wingL', { parent: 'body', pivot: [0.5, 1.25, 0.5], from: [0, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
             b.part('wingR', { parent: 'body', pivot: [-0.5, 1.25, 0.5], from: [-2.5, 0, -1], size: [2.5, 0.2, 1.75], paint: wingPaint });
             return { wings: ['wingL', 'wingR'] };
+        },
+
+        // Tall, thin and hooded; its glowing eyes are added by js/game/shadows.js.
+        shadow(b) {
+            const dark = 0x16121d;
+            const darker = 0x0c0a11;
+            const wisp = { color: dark, noise: 0.12, all: (p) => p.spots(darker, 8, 1, 2.5) };
+            b.part('body', { pivot: [0, 0, 0], from: [-3, 16, -1.75], size: [6, 13, 3.5], paint: wisp });
+            b.part('cloak', { parent: 'body', pivot: [0, 28.5, -1.75], from: [-3.5, -22, -1], size: [7, 22, 1], paint: { color: darker, noise: 0.12, all: (p, face) => { if (face === 'front' || face === 'back') for (let x = 0; x < p.w; x += 1.5) p.rect(x, p.h - 1 - (x * 7 % 3), 0.75, 1 + (x * 7 % 3), 0x050407, 0); } }, rotation: [-0.08, 0, 0] });
+            b.part('head', { parent: 'body', pivot: [0, 29, 0.25], from: [-2.5, 0, -2.5], size: [5, 6, 5], paint: { color: darker, noise: 0.05 }, rotation: [0.15, 0, 0] });
+            b.part('hood', { parent: 'head', pivot: [0, 0, 0], from: [-3, -0.5, -3], size: [6, 7.5, 6], paint: { color: dark, noise: 0.1, faces: { front: (p) => p.rect(0.75, 1.5, p.w - 1.5, p.h - 1.5, 0x030204, 0) } } });
+            [['L', 1], ['R', -1]].forEach(([side, sign]) => {
+                b.part(`arm${side}`, { parent: 'body', pivot: [3.9 * sign, 28, 0], from: [-0.9, -18, -0.9], size: [1.8, 18, 1.8], paint: wisp, rotation: [0, 0, 0.06 * sign] });
+                b.part(`claw${side}`, { parent: `arm${side}`, pivot: [0, -18, 0], from: [-0.6, -2.5, -0.6], size: [1.2, 2.5, 1.2], paint: { color: 0x050407, noise: 0.03 } });
+                b.part(`leg${side}`, { parent: 'body', pivot: [1.4 * sign, 16, 0], from: [-1, -16, -1], size: [2, 16, 2], paint: wisp });
+            });
+            return { legs: ['legL', 'legR'], arms: ['armL', 'armR'], head: 'head' };
         },
 
         // A single beetle; the swarm's glowing lights are added by js/game/flyers.js.

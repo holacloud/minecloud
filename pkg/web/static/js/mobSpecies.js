@@ -24,7 +24,9 @@
 //              (leaps up to two blocks, seeks high ground and rams); see js/game/wildlife.js.
 //              'soar' (circles high up, perches on peaks, dives for fish) or 'swarm'
 //              (a colony around its hive that stings when provoked) or 'glow' (a cloud of
-//              blinking lights over the grass at night); see js/game/flyers.js
+//              blinking lights over the grass at night); see js/game/flyers.js.
+//              'stalk' (a night shadow that glides after the player and dissolves in
+//              daylight or torchlight); see js/game/shadows.js
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },
@@ -45,6 +47,7 @@ const MOB_SPECIES = {
     horse: { eggColor: 0x8a5a34, tone: 260, speed: 0.55, variants: 4, group: [2, 4], grazer: true, mount: { eyeHeight: 2.32, seat: 0.7, speed: 9, autoJump: 7.6, jump: 10.5 } },
     bee: { eggColor: 0xf2c230, tone: 220, speed: 2.4, group: [5, 7], limit: 3, movement: 'swarm' },
     firefly: { eggColor: 0xd8f05a, tone: 1800, speed: 0.3, group: [1, 1], limit: 4, movement: 'glow' },
+    shadow: { eggColor: 0x1a1420, tone: 70, hostile: true, nocturnal: true, chaseDistance: 24, attackDamage: 3, maxHealth: 12, speed: 0.5, chaseSpeed: 2.3, group: [1, 1], limit: 2, movement: 'stalk' },
     eagle: { eggColor: 0x4a3222, tone: 2400, speed: 4, group: [1, 1], limit: 2, movement: 'soar' }
 };
 

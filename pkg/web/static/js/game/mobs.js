@@ -257,6 +257,10 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'stalk') {
+            this.hitShadow(mob);
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'glow') {
             this.scatterFireflies(mob);
             return;
@@ -317,6 +321,8 @@ Object.assign(Game.prototype, {
         this.updateNaturalSpawning(delta);
         this.updateDroppedTails(delta);
         this.updatePoison(delta);
+        this.updateShadowSpawning(delta);
+        this.updateSmokePuffs(delta);
         this.mobFrame = (this.mobFrame || 0) + 1;
         const player = this.getLocalPlayerPosition();
         const playerPosition = new THREE.Vector3(this.getLocalPlayerPosition().x, 0, this.getLocalPlayerPosition().z);
@@ -355,6 +361,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'dart') {
                 this.updateDartingMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'stalk') {
+                this.updateStalkingMob(mob, delta, player);
                 continue;
             }
             if (movement === 'glow') {
