@@ -40,6 +40,7 @@ Object.assign(Game.prototype, {
         group.position.copy(position);
         group.position.y += group.userData.flyHeight;
         this.scene.add(group);
+        this.emitMobEvent('spawned', group);
         return group;
     },
 
@@ -121,12 +122,43 @@ Object.assign(Game.prototype, {
 
     // Species that can appear in each biome, with relative weights.
     getBiomeSpawnTable(biome) {
-        switch (biome) {
-            case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
-            case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-            case 'rocky': return [['goat', 3], ['eagle', 2], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
-            default: return [['sheep', 4], ['pig', 3], ['horse', 2], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
+        const table = (() => {
+            switch (biome) {
+                case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
+                case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
+                case 'rocky': return [['goat', 3], ['eagle', 2], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
+                default: return [['sheep', 4], ['pig', 3], ['horse', 2], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
+            }
+        })();
+        // Species from their own files join through spawnBiomes.
+        const key = ['desert', 'forest', 'rocky'].includes(biome) ? biome : 'plains';
+        Object.entries(MOB_SPECIES).forEach(([species, info]) => {
+            if (info.spawnBiomes && info.spawnBiomes[key]) table.push([species, info.spawnBiomes[key]]);
+        });
+        return table;
+    },
+
+    emitMobEvent(event, ...args) {
+        (MOB_EVENT_LISTENERS[event] || []).forEach((listener) => listener.call(this, ...args));
+    },
+
+    // Right click on a mob: the registered use handlers (taming, harvesting, ...) get a go.
+    tryUseItemOnMob() {
+        if (MOB_USE_HANDLERS.length === 0) return false;
+        const mob = this.raycastMob(4);
+        if (!mob) return false;
+        const item = this.getSelectedHeldItemType() || null;
+        return MOB_USE_HANDLERS.some((handler) => handler.call(this, mob, item));
+    },
+
+    // A registered goal for a ground mob (bait, a mate, its owner...), or null to wander.
+    // A goal may carry `stopDistance` (default 1): the mob stands still once that close.
+    getMobGoal(mob, delta) {
+        for (const provider of MOB_GOAL_PROVIDERS) {
+            const goal = provider.call(this, mob, delta);
+            if (goal) return goal;
         }
+        return null;
     },
 
     chunkRandom(chunkX, chunkZ, salt) {
@@ -143,6 +175,9 @@ Object.assign(Game.prototype, {
         this.spawnBeesForChunk(chunkX, chunkZ, biome);
         this.spawnFirefliesForChunk(chunkX, chunkZ, biome);
         this.spawnBatsForChunk(chunkX, chunkZ, biome);
+        Object.values(MOB_BEHAVIOURS).forEach((behaviour) => {
+            if (behaviour.spawnForChunk) behaviour.spawnForChunk.call(this, chunkX, chunkZ, biome);
+        });
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -175,6 +210,7 @@ Object.assign(Game.prototype, {
     },
 
     removeMob(mob) {
+        if (mob.parent) this.emitMobEvent('removed', mob);
         this.scene.remove(mob);
         this.ambientMobs = this.ambientMobs.filter((candidate) => candidate !== mob);
         if (mob.userData.glowMaterials) mob.userData.glowMaterials.forEach((material) => material.dispose());
@@ -253,6 +289,12 @@ Object.assign(Game.prototype, {
     },
 
     interactWithMob(mob) {
+        this.emitMobEvent('hit', mob);
+        const behaviour = MOB_BEHAVIOURS[getMobSpecies(mob.userData.species).movement];
+        if (behaviour && behaviour.interact) {
+            behaviour.interact.call(this, mob);
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'swim') {
             this.startleSchool(mob, this.camera.position);
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
@@ -308,6 +350,7 @@ Object.assign(Game.prototype, {
             mob.userData.health -= 4;
             this.updateMobHealthBar(mob);
             if (mob.userData.health <= 0) {
+                this.emitMobEvent('defeated', mob, 'player');
                 this.removeMob(mob);
                 this.receiveSystemMessage({ text: `You defeated the ${mob.userData.species.replace('_', ' ')}` });
                 return;
@@ -352,6 +395,11 @@ Object.assign(Game.prototype, {
                 continue;
             }
             const movement = getMobSpecies(mob.userData.species).movement;
+            const behaviour = MOB_BEHAVIOURS[movement];
+            if (behaviour && behaviour.update) {
+                behaviour.update.call(this, mob, delta, player);
+                continue;
+            }
             if (movement === 'swim') {
                 this.updateSwimmingMob(mob, delta, player);
                 continue;
@@ -401,6 +449,7 @@ Object.assign(Game.prototype, {
             const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
             const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
             const isFollowingCat = mob.userData.species === 'cat' && this.followingCat === mob;
+            let goal = null;
 
             if (mob.userData.species === 'dog' && !this.followingDog && distanceToPlayer <= 10) {
                 this.followingDog = mob;
@@ -419,6 +468,8 @@ Object.assign(Game.prototype, {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
             } else if (isChasing) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
+            } else if ((goal = this.getMobGoal(mob, delta))) {
+                mob.userData.direction = Math.atan2(goal.z - mob.position.z, goal.x - mob.position.x);
             } else if (mob.userData.moveTimer <= 0) {
                 mob.userData.moveTimer = 1.2 + Math.random() * 2.8;
                 mob.userData.direction += (Math.random() - 0.5) * 1.8;
@@ -431,7 +482,8 @@ Object.assign(Game.prototype, {
             mob.userData.resting = Math.max(0, (mob.userData.resting || 0) - delta);
 
             const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed;
-            const moveScale = mob.userData.resting > 0 || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
+            const goalReached = goal && Math.hypot(goal.x - mob.position.x, goal.z - mob.position.z) <= (goal.stopDistance ?? 1);
+            const moveScale = mob.userData.resting > 0 || goalReached || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             if (mob.position.y - mob.userData.flyHeight < -20) {
                 // Spawned before its chunk was generated: drop it onto the terrain once it exists.
@@ -446,7 +498,7 @@ Object.assign(Game.prototype, {
             // Search from just above the feet so mobs can climb one block but not tunnel into hills.
             const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, feetY + 1);
             const homeDistance = Math.hypot(candidate.x - mob.userData.home.x, candidate.z - mob.userData.home.z);
-            const leashed = !isChasing && !isFollowingDog && !isFollowingCat;
+            const leashed = !isChasing && !isFollowingDog && !isFollowingCat && !goal;
             const walkable = floorY > -20 && floorY - feetY <= 1.01 && feetY - floorY <= 3;
             if (walkable && (!leashed || homeDistance < 18 || homeDistance < Math.hypot(mob.position.x - mob.userData.home.x, mob.position.z - mob.userData.home.z))) {
                 mob.position.x = candidate.x;
@@ -639,6 +691,8 @@ Object.assign(Game.prototype, {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.yaw || 0);
         const x = player.x + forward.x * 3;
         const z = player.z + forward.z * 3;
+        const behaviour = MOB_BEHAVIOURS[getMobSpecies(species).movement];
+        if (behaviour && behaviour.spawnCommand && behaviour.spawnCommand.call(this, species, x, z, player)) return;
         if (getMobSpecies(species).movement === 'swarm') {
             this.spawnColonyNear(x, z, player.y + 4);
             return;
@@ -666,6 +720,8 @@ Object.assign(Game.prototype, {
     },
 
     spawnAnimalFromEgg(species, position) {
+        const behaviour = MOB_BEHAVIOURS[getMobSpecies(species).movement];
+        if (behaviour && behaviour.spawnEgg && behaviour.spawnEgg.call(this, species, position)) return;
         if (getMobSpecies(species).movement === 'flutter') {
             this.spawnBatColonyNear(position.x + 0.5, position.z + 0.5, position.y + 2);
             this.consumeSelectedBlock();

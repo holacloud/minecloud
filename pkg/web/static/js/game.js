@@ -309,6 +309,7 @@ class Game {
         eggItems.forEach((egg) => addItemSlot(egg));
         toolItems.forEach((tool) => addItemSlot(tool));
         ['spruce_wood', 'birch_wood', 'jungle_wood', 'acacia_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'cherry_leaves', 'maple_leaves', 'willow_leaves'].forEach(addItemSlot);
+        GAME_CONTENT_HOOKS.forEach((hook) => hook.call(this, { addItem: addItemSlot, addRecipe }));
     }
 
     formatItemName(type) {

@@ -29,6 +29,13 @@
 //              daylight or torchlight); see js/game/shadows.js
 //              'flutter' (hangs under a roof by day, flies erratically at night); see
 //              js/game/bats.js
+//              Any other mode is handled by the behaviour registered for it with
+//              registerMobBehaviour (js/extensions.js).
+//   spawnBiomes {biome: weight} adds the species to those biomes' natural spawn tables
+//              (biomes: desert, forest, rocky, plains); see getBiomeSpawnTable
+//
+// Species defined in their own file add themselves with MOB_SPECIES.<name> = {...}, and their
+// model with VoxelModels.mobBuilders.<name> and VoxelModels.MOB_SURFACES.<name>.
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, speed: 0.38, group: [1, 3], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, speed: 0.55, group: [1, 3] },

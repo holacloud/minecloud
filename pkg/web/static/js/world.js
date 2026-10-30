@@ -172,6 +172,10 @@ class WorldRenderer {
         Object.entries(MOB_SPECIES).forEach(([species, info]) => {
             this.blockTypes[`${species}_egg`] = { color: info.eggColor, name: `${this.capitalize(species.replace('_', ' '))} Egg`, breakDuration: 0, solid: false, itemOnly: true, eggSpecies: species };
         });
+
+        Object.entries(ITEM_TYPES).forEach(([id, definition]) => {
+            this.blockTypes[id] = { breakDuration: 0, solid: false, itemOnly: true, ...definition };
+        });
     }
 
     capitalize(value) {
