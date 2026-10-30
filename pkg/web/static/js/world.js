@@ -1317,6 +1317,7 @@ class WorldRenderer {
         if (def && def.toolType) return this.createToolDisplayMesh(type, def, scale);
         if (def && def.eggSpecies) return this.createEggDisplayMesh(type, def, scale);
         if (def && def.saplingWood) return this.createSaplingDisplayMesh(type, def, scale);
+        if (def && def.displayMesh) return def.displayMesh(this, type, scale);
 
         const shared = this.getMaterial(type);
         const material = Array.isArray(shared) ? shared.map((m) => m.clone()) : shared.clone();

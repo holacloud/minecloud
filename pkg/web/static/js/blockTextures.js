@@ -1020,6 +1020,7 @@ class BlockTextureFactory {
         };
         const head = hex(def.color);
         const handle = '#7a5129';
+        if (def.drawIcon) return def.drawIcon(ctx, s);
         ctx.save();
         if (def.toolType) {
             // Diagonal handle bottom-left to top-right.

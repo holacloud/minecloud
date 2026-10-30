@@ -83,6 +83,8 @@ Object.assign(Game.prototype, {
 
     eatSelectedItem() {
         const type = this.getSelectedBlockType();
+        const itemDef = this.getItemDefinition(type);
+        if (itemDef && itemDef.consume && this.getInventoryCount(type) > 0) return itemDef.consume.call(this, type);
         const healAmount = this.getFoodHealAmount(type);
         if (!type || healAmount <= 0) return false;
         if (this.health >= this.maxHealth) {
@@ -118,6 +120,7 @@ Object.assign(Game.prototype, {
     },
 
     applyDamage(amount, reason = 'Respawning soon...') {
+        if (this.resourcesAdjustDamage) amount = this.resourcesAdjustDamage(amount, reason);
         if (amount <= 0 || this.health <= 0 || this.respawnPending) return;
 
         this.health = Math.max(0, this.health - amount);
