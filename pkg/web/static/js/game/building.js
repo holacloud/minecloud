@@ -472,6 +472,7 @@ Object.assign(Game.prototype, {
         if (this.tryUseItemOnMob()) return;
         if (this.tryMountMob()) return;
         const hit = this.raycastBlock(this.placeDistance);
+        if (ITEM_USE_HANDLERS.some((handler) => handler.call(this, this.getSelectedHeldItemType(), hit))) return;
         if (!hit) return;
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);

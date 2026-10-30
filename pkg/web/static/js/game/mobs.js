@@ -557,6 +557,7 @@ Object.assign(Game.prototype, {
 
             this.animateMobRig(mob, moveScale, delta);
         }
+        FRAME_UPDATERS.forEach((updater) => updater.call(this, delta));
     },
 
     // Venom: a few points of damage over the next seconds.

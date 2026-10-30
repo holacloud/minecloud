@@ -46,3 +46,16 @@ const GAME_CONTENT_HOOKS = [];
 function registerGameContent(hook) {
     GAME_CONTENT_HOOKS.push(hook);
 }
+
+// Right click that no mob took: handler(itemType, hit) gets the held item (or null) and the
+// targeted block hit (or null); returns true when it handled the click (tools, entities...).
+const ITEM_USE_HANDLERS = [];
+function registerItemUseHandler(handler) {
+    ITEM_USE_HANDLERS.push(handler);
+}
+
+// Once per frame, after the mobs moved: updater(delta) (client-side entities of a mechanic).
+const FRAME_UPDATERS = [];
+function registerFrameUpdate(updater) {
+    FRAME_UPDATERS.push(updater);
+}
