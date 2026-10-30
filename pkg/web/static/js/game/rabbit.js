@@ -210,8 +210,6 @@ Object.assign(Game.prototype, {
     // Every burrow, a few times a second: one whose ground was dug away (or filled in)
     // collapses at once, wherever its rabbits are.
     rabbitCheckBurrows(delta) {
-        if (this.rabbitBurrowFrame === this.mobFrame) return;
-        this.rabbitBurrowFrame = this.mobFrame;
         this.rabbitBurrowCheck = (this.rabbitBurrowCheck || 0) - delta;
         if (this.rabbitBurrowCheck > 0) return;
         this.rabbitBurrowCheck = 0.2;
@@ -329,7 +327,6 @@ Object.assign(Game.prototype, {
             if (ground <= -20) return;
             position.y = ground;
         }
-        this.rabbitCheckBurrows(delta);
         this.updateRabbitBurrow(mob, delta);
 
         r.threatCheck -= delta;
@@ -925,4 +922,8 @@ registerMobBehaviour('burrow', {
     interact(mob) { this.hitRabbit(mob); },
     spawnCommand(species, x, z, player) { return this.spawnRabbitsFromCommand(x, z, player); },
     spawnForChunk(chunkX, chunkZ, biome) { this.spawnRabbitsForChunk(chunkX, chunkZ, biome); }
+});
+
+registerFrameUpdate(function (delta) {
+    this.rabbitCheckBurrows(delta);
 });

@@ -372,7 +372,7 @@ Object.assign(Game.prototype, {
                 if (!s.bit && s.strikeT >= 0.15) {
                     s.bit = true;
                     if (reachable && distance < info.strikeDistance + 0.6) {
-                        this.applyDamage(info.attackDamage, 'You were bitten by a snake');
+                        this.applyDamage(info.attackDamage, 'You were bitten by a snake', 'mob');
                         this.poisonPlayer(info.poison, 'snake');
                         this.playTone({ frequency: 240, endFrequency: 120, duration: 0.09, type: 'triangle', volume: 0.03, release: 0.06 });
                     }

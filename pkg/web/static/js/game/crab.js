@@ -215,10 +215,6 @@ Object.assign(Game.prototype, {
         const position = mob.position;
         const info = getMobSpecies('crab');
         data.life += delta;
-        if (this.crabPuffFrame !== this.mobFrame) {
-            this.crabPuffFrame = this.mobFrame;
-            this.crabUpdatePuffs(delta);
-        }
         crab.timer -= delta;
         crab.pinchCooldown = Math.max(0, crab.pinchCooldown - delta);
         crab.flinch = Math.max(0, crab.flinch - delta);
@@ -378,7 +374,7 @@ Object.assign(Game.prototype, {
         crab.pinchAnim = 0.3;
         const toPlayer = Math.atan2(player.z - mob.position.z, player.x - mob.position.x);
         this.cameraController.applyKnockback(Math.cos(toPlayer), Math.sin(toPlayer), 3, 2);
-        this.applyDamage(1, 'You were pinched by a crab');
+        this.applyDamage(1, 'You were pinched by a crab', 'mob');
         // A sharp snap.
         this.playTone({ frequency: 1900, endFrequency: 800, duration: 0.04, type: 'square', volume: 0.025 * Math.max(loudness, 0.5), attack: 0.001, release: 0.04 });
         this.playNoiseBurst({ duration: 0.03, volume: 0.03, highpass: 1500, lowpass: 6000 });
@@ -545,4 +541,9 @@ Object.assign(Game.prototype, {
             return true;
         });
     }
+});
+
+// Sand puffs outlive the crab that kicked them up.
+registerFrameUpdate(function (delta) {
+    this.crabUpdatePuffs(delta);
 });

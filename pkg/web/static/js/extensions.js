@@ -34,7 +34,11 @@ function onMobEvent(event, listener) {
 }
 
 // Extra item types (non-placeable): registerItemType('feather', { color: 0xf2efe6, name: 'Feather' }).
-// They join world.blockTypes as itemOnly entries; extra fields (e.g. food: 2) are kept.
+// They join world.blockTypes as itemOnly entries; extra fields are kept. Optional hooks:
+//   drawIcon(ctx, size)           draws its hotbar/inventory icon (blockTextures.drawItemIcon)
+//   displayMesh(world, type, s)   returns its dropped/held mesh (world.createDisplayMesh)
+//   consume(type)                 eating it (G) runs this (with `this` the Game) instead of
+//                                 the default food handling; returns whether it was used
 const ITEM_TYPES = {};
 function registerItemType(id, definition) {
     ITEM_TYPES[id] = definition;
@@ -52,6 +56,20 @@ function registerGameContent(hook) {
 const ITEM_USE_HANDLERS = [];
 function registerItemUseHandler(handler) {
     ITEM_USE_HANDLERS.push(handler);
+}
+
+// Damage the player takes: modifier(amount, type, reason) returns the new amount (armour,
+// immunities...). Types are listed at Game.applyDamage.
+const DAMAGE_MODIFIERS = [];
+function registerDamageModifier(modifier) {
+    DAMAGE_MODIFIERS.push(modifier);
+}
+
+// Panels from other files (bestiary...): registerModalPanel({ isOpen(), close() }). While one is
+// open the game is not in play, the pointer stays free, and Escape closes it.
+const MODAL_PANELS = [];
+function registerModalPanel(panel) {
+    MODAL_PANELS.push(panel);
 }
 
 // Once per frame, after the mobs moved: updater(delta) (client-side entities of a mechanic).

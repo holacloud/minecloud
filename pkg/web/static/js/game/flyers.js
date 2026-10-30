@@ -473,7 +473,7 @@ Object.assign(Game.prototype, {
             target = _beeDesired.set(Math.sin(data.life * 3.1 + data.orbit) * 0.5, submerged ? 1.5 : Math.sin(data.life * 4.3) * 0.25, Math.cos(data.life * 2.7 + data.orbit) * 0.5).add(playerEye);
             speed = 5.2;
             if (!submerged && position.distanceTo(playerEye) < 0.7) {
-                this.applyDamage(1, 'You were stung by a bee');
+                this.applyDamage(1, 'You were stung by a bee', 'mob');
                 this.playTone({ frequency: 1300, duration: 0.05, type: 'square', volume: 0.025, release: 0.05 });
                 data.dying = 0;
                 return;

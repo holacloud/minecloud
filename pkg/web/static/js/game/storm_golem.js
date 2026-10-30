@@ -332,7 +332,7 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.2, volume: volume * 0.06, highpass: 1500, lowpass: 9000 });
         });
         if (hit && !this.respawnPending) {
-            this.applyDamage(2 + (Math.random() < 0.5 ? 1 : 0), 'You were struck down by a storm golem');
+            this.applyDamage(2 + (Math.random() < 0.5 ? 1 : 0), 'You were struck down by a storm golem', 'mob');
             this.playNoiseBurst({ duration: 0.15, volume: 0.05, highpass: 2500, lowpass: 9000 });
         }
         data.recoil = 0.35;
@@ -355,7 +355,7 @@ Object.assign(Game.prototype, {
             data.surge = 0.8;
             const player = this.getLocalPlayerPosition();
             if (!this.respawnPending && Math.hypot(player.x - top.x, player.z - top.z) < 1.6 && Math.abs(player.y - 1.6 - top.y) < 2.5) {
-                this.applyDamage(2, 'You were struck by lightning');
+                this.applyDamage(2, 'You were struck by lightning', 'lightning');
             }
             return;
         }
@@ -968,9 +968,7 @@ Object.assign(Game.prototype, {
     }
 });
 
-// The golem's world update rides along with the mob update every frame.
-const _stormGolemBaseUpdateAmbientMobs = Game.prototype.updateAmbientMobs;
-Game.prototype.updateAmbientMobs = function (delta) {
-    _stormGolemBaseUpdateAmbientMobs.call(this, delta);
+// Spawning in the rain, lightning, sparks, rubble and the flash: every frame, golems or not.
+registerFrameUpdate(function (delta) {
     this.stormGolemUpdateWorld(delta);
-};
+});

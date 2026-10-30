@@ -436,7 +436,7 @@ Object.assign(Game.prototype, {
             if (!this.respawnPending && Math.hypot(dx, dz) < 1.5 && Math.abs(feetY - data.surfaceY) < 1.3) {
                 const away = Math.hypot(dx, dz) > 0.05 ? [dx, dz] : [Math.cos(data.facing), Math.sin(data.facing)];
                 this.cameraController.applyKnockback(away[0], away[1], 6.5, 5.5);
-                this.applyDamage(2, 'You were bowled over by a giant mole');
+                this.applyDamage(2, 'You were bowled over by a giant mole', 'mob');
             }
         }
         data.moleTimer = data.moleDuration;
@@ -854,14 +854,12 @@ Object.assign(Game.prototype, {
     }
 });
 
-// Mounds and clods outlive the mole that made them, so they update every frame alongside
-// the mobs rather than from a mole's own update.
-const _moleBaseUpdateAmbientMobs = Game.prototype.updateAmbientMobs;
-Game.prototype.updateAmbientMobs = function (delta) {
-    _moleBaseUpdateAmbientMobs.call(this, delta);
+// Mounds and clods outlive the mole that made them, so they update every frame on their own
+// rather than from a mole's update.
+registerFrameUpdate(function (delta) {
     this.moleSenseVibrations(delta);
     this.moleUpdateEarthworks(delta);
-};
+});
 
 registerMobBehaviour('tunnel', {
     update(mob, delta, player) {

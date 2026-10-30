@@ -376,8 +376,8 @@ registerMobUseHandler(function (mob, item) {
     return this.resourcesHarvest(mob, item);
 });
 
-onMobEvent('spawned', function () {
-    this.resourcesStartTicker();
+registerFrameUpdate(function (delta) {
+    this.resourcesUpdate(delta);
 });
 
 onMobEvent('hit', function (mob) {
@@ -553,9 +553,11 @@ Object.assign(Game.prototype, {
     },
 
     // Once a second: wool grows back, the shorn look survives model rebuilds, birds molt.
-    resourcesStartTicker() {
-        if (this.resourcesTicker) return;
-        this.resourcesTicker = setInterval(() => this.resourcesTick(), 1000);
+    resourcesUpdate(delta) {
+        this.resourcesTickTimer = (this.resourcesTickTimer || 0) - delta;
+        if (this.resourcesTickTimer > 0) return;
+        this.resourcesTickTimer = 1;
+        this.resourcesTick();
     },
 
     resourcesTick() {
@@ -619,19 +621,19 @@ Object.assign(Game.prototype, {
     },
 
     // Called by applyDamage: carried gear softens blows and falls; antivenom stops poison.
-    resourcesAdjustDamage(amount, reason) {
-        if (amount <= 0 || typeof reason !== 'string') return amount;
-        if (reason.startsWith('You were poisoned')) {
+    resourcesAdjustDamage(amount, type) {
+        if (amount <= 0) return amount;
+        if (type === 'poison') {
             if (this.resourcesPoisonImmuneUntil && this.resourcesNow() < this.resourcesPoisonImmuneUntil) {
                 this.poison = null;
                 return 0;
             }
             return amount;
         }
-        if (reason === 'You died from fall damage') {
+        if (type === 'fall') {
             return this.getInventoryCount('feather_cape') > 0 ? Math.floor(amount * (1 - RESOURCE_ITEMS.feather_cape.fallGuard)) : amount;
         }
-        if (reason.startsWith('You were') && amount > 1) {
+        if (type === 'mob' && amount > 1) {
             const armour = ['scale_mail', 'warm_coat']
                 .filter((type) => this.getInventoryCount(type) > 0)
                 .reduce((best, type) => Math.max(best, RESOURCE_ITEMS[type].armour), 0);
@@ -639,4 +641,8 @@ Object.assign(Game.prototype, {
         }
         return amount;
     }
+});
+
+registerDamageModifier(function (amount, type) {
+    return this.resourcesAdjustDamage(amount, type);
 });

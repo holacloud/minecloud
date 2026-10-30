@@ -392,14 +392,19 @@ Object.assign(Game.prototype, {
     // True while the player is in the world with no menu or overlay open.
     isGameplayActive() {
         return !this.titleScreenOpen && !this.appearanceMenuOpen && !this.chatOpen && !this.craftingOpen &&
-            !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending;
+            !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending &&
+            !this.getOpenModalPanel();
+    },
+
+    getOpenModalPanel() {
+        return MODAL_PANELS.find((panel) => panel.isOpen.call(this)) || null;
     },
 
     // The only place that asks for pointer lock: one request at a time, and a visible
     // "click to play" hint whenever the browser refuses or the lock is lost.
     requestPointerLockOnce() {
         const canvas = this.renderer.domElement;
-        if (this.pointerLockPending || document.pointerLockElement === canvas) return;
+        if (this.pointerLockPending || document.pointerLockElement === canvas || this.getOpenModalPanel()) return;
         this.pointerLockPending = true;
         const done = () => {
             this.pointerLockPending = false;
@@ -493,6 +498,11 @@ Object.assign(Game.prototype, {
         }
         if (this.craftingOpen) {
             this.closeCraftingPanel();
+            return true;
+        }
+        const panel = this.getOpenModalPanel();
+        if (panel) {
+            panel.close.call(this);
             return true;
         }
         if (this.pauseOpen) {

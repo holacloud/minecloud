@@ -2,7 +2,7 @@
 // - Baits (bait_*): right click the ground to drop a little pile that lasts two minutes. Mobs
 //   that like it (TRAPS_SPECIES[species].baits) within 16 blocks walk over, nibble it until it
 //   is gone and hang around for a while (their home moves there). Ground mobs use
-//   registerMobGoal; hopping, darting, climbing and amphibious ones are nudged towards it; bees
+//   registerMobGoal (goats too); hopping, darting and amphibious ones are nudged towards it; bees
 //   fly to honey bait instead of a flower. Species with their own behaviour only come if their
 //   update asks this.getMobGoal(mob, delta).
 // - Cage trap: right click the ground to set it, door towards you. A small ground mob that walks
@@ -66,7 +66,7 @@ const TRAPS_BAIT_RANGE = 16;
 const TRAPS_EAT_SECONDS = 14;
 const TRAPS_CAST_RANGE = 9;
 const TRAPS_NET_RANGE = 4.5;
-const TRAPS_NUDGE_MODES = ['hop', 'dart', 'climb', 'amphibious'];
+const TRAPS_NUDGE_MODES = ['hop', 'dart', 'amphibious'];
 const _trapsVec = new THREE.Vector3();
 const _trapsVec2 = new THREE.Vector3();
 

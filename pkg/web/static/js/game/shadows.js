@@ -91,7 +91,7 @@ Object.assign(Game.prototype, {
             if (distance < 1.4 && data.attackCooldown <= 0) {
                 data.attackCooldown = 1.6;
                 data.attackPose = 0.5;
-                this.applyDamage(info.attackDamage, 'You were taken by a wandering shadow');
+                this.applyDamage(info.attackDamage, 'You were taken by a wandering shadow', 'mob');
                 this.playTone({ frequency: 110, endFrequency: 55, duration: 0.3, type: 'sawtooth', volume: 0.04, release: 0.15 });
                 this.playNoiseBurst({ duration: 0.2, volume: 0.03, highpass: 80, lowpass: 600 });
             }

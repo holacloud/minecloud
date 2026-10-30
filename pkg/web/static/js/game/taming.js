@@ -7,17 +7,20 @@
 // other and have a baby that grows up in a few minutes, following its parents. Tamed mobs are
 // kept in localStorage and come back when the world around them has loaded.
 //
-// Only ground mobs (no `movement`, or 'ground') can be tamed, since those are the ones that
-// walk to registerMobGoal targets; a behaviour registered with registerMobBehaviour can opt in
-// with `tameable: true` if its update() honours getMobGoal and `userData.resting`.
+// Only mobs that walk to registerMobGoal targets can be tamed: ground mobs and goats ('climb'),
+// see TAMING_GOAL_MOVEMENTS; a behaviour registered with registerMobBehaviour can opt in with
+// `tameable: true` if its update() honours getMobGoal and `userData.resting`.
 //
 // Mobs are not synced between players, so tamed mobs live in this browser only (`owner` is
-// informative). Mixed into Game.prototype; everything runs after updateAmbientMobs (see the
-// wrapper below).
+// informative). Mixed into Game.prototype; everything runs once per frame after the mobs
+// moved (registerFrameUpdate below).
 
 // Per species: `foods` (held item types that tame and feed it, in order of preference; types
 // that do not exist in world.blockTypes are skipped) and `chance` (of taming per item), or
 // null when it cannot be tamed (hostile, colonies, flyers and swimmers).
+// Built-in movement modes whose update honours getMobGoal and userData.resting (wildlife.js).
+const TAMING_GOAL_MOVEMENTS = ['ground', 'climb'];
+
 const TAMING_DIET = {
     sheep: { foods: ['tall_grass', 'flower_yellow', 'leaves'], chance: 1 / 3 },
     duck: { foods: ['tall_grass', 'raw_fish', 'flower_yellow'], chance: 1 / 3 },
@@ -34,7 +37,7 @@ const TAMING_DIET = {
     camel: { foods: ['cactus', 'tall_grass'], chance: 1 / 3 },
     lizard: null, // 'dart'
     scorpion: null,
-    goat: { foods: ['leaves', 'tall_grass'], chance: 1 / 3 }, // 'climb': inert until it opts in
+    goat: { foods: ['leaves', 'tall_grass'], chance: 1 / 3 },
     horse: { foods: ['tall_grass', 'flower_yellow', 'honeycomb'], chance: 1 / 4 },
     bee: null,
     firefly: null,
@@ -66,14 +69,9 @@ const TAMING = {
     babyScale: 0.5
 };
 
-(() => {
-    const baseUpdateAmbientMobs = Game.prototype.updateAmbientMobs;
-    // A per-frame hook for mechanics would be cleaner (see the report); until then, wrap.
-    Game.prototype.updateAmbientMobs = function (delta) {
-        baseUpdateAmbientMobs.call(this, delta);
-        this.tamingUpdate(delta);
-    };
-})();
+registerFrameUpdate(function (delta) {
+    this.tamingUpdate(delta);
+});
 
 registerMobUseHandler(function (mob, item) {
     return this.tamingUse(mob, item);
@@ -97,7 +95,7 @@ Object.assign(Game.prototype, {
         const info = getMobSpecies(species);
         if (!diet || !info || info.hostile) return false;
         const movement = info.movement;
-        return !movement || movement === 'ground' || Boolean(MOB_BEHAVIOURS[movement] && MOB_BEHAVIOURS[movement].tameable);
+        return !movement || TAMING_GOAL_MOVEMENTS.includes(movement) || Boolean(MOB_BEHAVIOURS[movement] && MOB_BEHAVIOURS[movement].tameable);
     },
 
     tamingFoods(species) {

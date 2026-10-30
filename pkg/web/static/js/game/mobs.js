@@ -269,7 +269,8 @@ Object.assign(Game.prototype, {
         this.raycaster.setFromCamera(this.screenCenter, this.camera);
         const meshes = [];
         this.ambientMobs.forEach((mob) => {
-            if (mob === this.ridingMob) return;
+            // Hidden mobs (a rabbit down its burrow, a bee inside the hive) cannot be clicked.
+            if (mob === this.ridingMob || !mob.visible) return;
             mob.traverse((node) => {
                 if (node instanceof THREE.Mesh) {
                     meshes.push(node);
@@ -517,7 +518,7 @@ Object.assign(Game.prototype, {
 
             if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
                 const name = mob.userData.species.replace('_', ' ');
-                this.applyDamage(info.attackDamage, `You were attacked by a ${name}`);
+                this.applyDamage(info.attackDamage, `You were attacked by a ${name}`, 'mob');
                 if (info.poison) this.poisonPlayer(info.poison, name);
                 mob.userData.attackCooldown = 1.2;
                 mob.userData.attackPose = 0.4;
@@ -574,7 +575,7 @@ Object.assign(Game.prototype, {
         }
         this.poison.timer -= delta;
         if (this.poison.timer > 0) return;
-        this.applyDamage(1, `You were poisoned by a ${this.poison.source}`);
+        this.applyDamage(1, `You were poisoned by a ${this.poison.source}`, 'poison');
         this.poison.ticks -= 1;
         this.poison.timer = 1.5;
         if (this.poison.ticks <= 0) this.poison = null;

@@ -842,7 +842,8 @@ Object.assign(Game.prototype, {
         const dz = player.z - position.z;
         const distance = Math.hypot(dx, dz);
         const playerFeetY = player.y - 1.6;
-        const canRam = !this.titleScreenOpen && !this.respawnPending && Math.abs(playerFeetY - position.y) < 1.5;
+        // A tamed goat never rams its owner.
+        const canRam = !data.tamed && !this.titleScreenOpen && !this.respawnPending && Math.abs(playerFeetY - position.y) < 1.5;
 
         if (!data.ram && data.ramCooldown <= 0 && canRam && distance > 2.5 && distance < 7 && Math.random() < delta * 0.25) {
             data.ram = { phase: 'paw', timer: 1.1 };
@@ -863,7 +864,7 @@ Object.assign(Game.prototype, {
             const hit = canRam && Math.hypot(dx, dz) < 1.2;
             if (hit) {
                 this.cameraController.applyKnockback(Math.cos(data.facing), Math.sin(data.facing), 9, 5);
-                this.applyDamage(1, 'You were rammed by a goat');
+                this.applyDamage(1, 'You were rammed by a goat', 'mob');
                 this.playTone({ frequency: 95, duration: 0.12, type: 'triangle', volume: 0.05, release: 0.1 });
                 this.playNoiseBurst({ duration: 0.08, volume: 0.03, highpass: 80, lowpass: 700 });
             }
@@ -873,6 +874,17 @@ Object.assign(Game.prototype, {
                 data.moveTimer = 1;
             }
             return 5;
+        }
+
+        // Sitting (taming), or heading for a goal: bait, a mate, its owner.
+        if (data.resting > 0) return 0;
+        const goal = this.getMobGoal(mob, delta);
+        if (goal) {
+            data.facing = Math.atan2(goal.z - position.z, goal.x - position.x);
+            if (Math.hypot(goal.x - position.x, goal.z - position.z) <= (goal.stopDistance ?? 1)) return 0;
+            const speed = getMobSpecies('goat').speed * 2;
+            if (this.walkStep(mob, data.facing, speed * delta, delta).moved || this.leapAhead(mob)) return speed;
+            return 0;
         }
 
         data.moveTimer -= delta;

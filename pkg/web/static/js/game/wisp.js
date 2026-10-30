@@ -528,10 +528,8 @@ Object.assign(Game.prototype, {
 
 // Per-frame work that does not belong to one wisp: night spawning, the sparkles of burst
 // wisps (which outlive them) and the shared light.
-const _wispBaseUpdateAmbientMobs = Game.prototype.updateAmbientMobs;
-Game.prototype.updateAmbientMobs = function (delta) {
-    _wispBaseUpdateAmbientMobs.call(this, delta);
+registerFrameUpdate(function (delta) {
     this.wispUpdateSpawning(delta);
     this.wispUpdateSparks(delta);
     this.wispUpdateLight();
-};
+});

@@ -119,8 +119,10 @@ Object.assign(Game.prototype, {
         }, 110);
     },
 
-    applyDamage(amount, reason = 'Respawning soon...') {
-        if (this.resourcesAdjustDamage) amount = this.resourcesAdjustDamage(amount, reason);
+    // type: 'mob' (a creature's attack), 'poison', 'fall', 'lightning', 'void' or 'other';
+    // damage modifiers (registerDamageModifier) can reduce it, e.g. armour.
+    applyDamage(amount, reason = 'Respawning soon...', type = 'other') {
+        amount = DAMAGE_MODIFIERS.reduce((current, modifier) => modifier.call(this, current, type, reason), amount);
         if (amount <= 0 || this.health <= 0 || this.respawnPending) return;
 
         this.health = Math.max(0, this.health - amount);
@@ -229,12 +231,12 @@ Object.assign(Game.prototype, {
             const fallDistance = (impactSpeed * impactSpeed) / (2 * 20);
             if (fallDistance > 4.2) {
                 const damage = Math.min(this.maxHealth, Math.ceil((fallDistance - 4) * 1.8));
-                this.applyDamage(damage, 'You died from fall damage');
+                this.applyDamage(damage, 'You died from fall damage', 'fall');
             }
         }
 
         if (this.camera.position.y < -35) {
-            this.applyDamage(this.maxHealth, 'You fell into the void');
+            this.applyDamage(this.maxHealth, 'You fell into the void', 'void');
         }
 
         if (this.cameraController.onGround && this.health > 0 && this.lastSafePositionSaveTimer >= 1) {

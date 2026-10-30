@@ -242,7 +242,6 @@ Object.assign(Game.prototype, {
 
         // Capture phase on window: runs before the game's own keydown handlers.
         window.addEventListener('keydown', (event) => this.bestiaryOnKeyDown(event), true);
-        setInterval(() => this.bestiaryScan(), 250);
         // The pause menu markup exists by now; its listeners are wired later, which is fine.
         this.bestiaryAddPauseButton();
     },
@@ -802,19 +801,18 @@ Object.assign(Game.prototype, {
     }
 });
 
-// While the guide is open the game is not "in play": no pointer grabbing, no
-// "Click to play" hint. Wrapped here so the shared menus.js stays untouched.
-(() => {
-    const isGameplayActive = Game.prototype.isGameplayActive;
-    Game.prototype.isGameplayActive = function () {
-        return !this.bestiaryOpen && isGameplayActive.call(this);
-    };
-    const requestPointerLockOnce = Game.prototype.requestPointerLockOnce;
-    Game.prototype.requestPointerLockOnce = function () {
-        if (this.bestiaryOpen) return;
-        requestPointerLockOnce.call(this);
-    };
-})();
+registerModalPanel({
+    isOpen() { return Boolean(this.bestiaryOpen); },
+    close() { this.bestiaryClose(); }
+});
 
 registerGameContent(function () { this.bestiaryInstall(); });
 onMobEvent('defeated', function (mob, cause) { if (this.bestiaryInstalled) this.bestiaryOnDefeated(mob, cause); });
+
+// Discovery checks, four times a second.
+registerFrameUpdate(function (delta) {
+    this.bestiaryScanTimer = (this.bestiaryScanTimer || 0) - delta;
+    if (this.bestiaryScanTimer > 0) return;
+    this.bestiaryScanTimer = 0.25;
+    this.bestiaryScan();
+});

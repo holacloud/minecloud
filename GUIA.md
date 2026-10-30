@@ -127,10 +127,11 @@ Coge en la mano la comida que le gusta al animal y haz clic derecho sobre él. C
 | Gato | `raw_fish`, `milk`, `mushroom_brown` | 1/2 |
 | Guacamayo | `flower_red`, `flower_yellow`, `cherry_leaves` | 1/3 |
 | Camello | `cactus`, `tall_grass` | 1/3 |
+| Cabra | `leaves`, `tall_grass` | 1/3 |
 | Caballo | `tall_grass`, `flower_yellow`, `honeycomb` | 1/4 |
 
 Las criaturas hostiles (araña, escorpión, serpiente, sombra, golem, fuego fatuo…) y los animales salvajes con
-comportamiento propio (zorro, conejo, búho, cabra, rana, tortuga, peces, aves rapaces, abejas, murciélagos…) no se
+comportamiento propio (zorro, conejo, búho, rana, tortuga, peces, aves rapaces, abejas, murciélagos…) no se
 pueden domesticar. Si les ofreces comida, no se gasta.
 
 ### Animales domesticados
@@ -142,6 +143,7 @@ pueden domesticar. Si les ofreces comida, no se gasta.
 - **Se guardan** en el navegador: al recargar la página vuelven a su sitio, incluidos los sentados y las crías. No
   se comparten con otros jugadores.
 - El perro y el gato siguen haciéndose amigos tuyos solos, como antes. Domesticarlos permite además sentarlos.
+- Una cabra domesticada deja de embestirte y te sigue saltando por las rocas.
 
 ### Criar
 
