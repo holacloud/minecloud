@@ -580,7 +580,7 @@ const VoxelModels = {
 
     // Mobs face +z. Legs are pivoted at the hip and swing around x.
     // Surface used for most parts of each species in high-resolution mode.
-    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin', firefly: 'skin', shadow: 'skin' },
+    MOB_SURFACES: { duck: 'feather', macaw: 'feather', pig: 'skin', cave_monster: 'skin', fish: 'feather', frog: 'skin', turtle: 'skin', camel: 'fur', lizard: 'skin', scorpion: 'skin', goat: 'fur', eagle: 'feather', horse: 'fur', bee: 'fur', beehive: 'skin', firefly: 'skin', shadow: 'skin', bat: 'fur' },
 
     createMob(species, createMaterial, textureCache, variant = 0, hd = false) {
         const builder = this.mobBuilders[species] || this.mobBuilders.pig;
@@ -1297,6 +1297,38 @@ const VoxelModels = {
                 b.part(`leg${side}`, { parent: 'body', pivot: [1.4 * sign, 16, 0], from: [-1, -16, -1], size: [2, 16, 2], paint: wisp });
             });
             return { legs: ['legL', 'legR'], arms: ['armL', 'armR'], head: 'head' };
+        },
+
+        // Centred on its middle and built with its wings spread; js/game/bats.js folds them
+        // and turns it upside down to hang from a ceiling.
+        bat(b, variant) {
+            const palettes = [
+                { fur: 0x5a4334, membrane: 0x2e2220, bone: 0x4a372c, face: 0x3a2a22 },
+                { fur: 0x45403f, membrane: 0x1f1c1d, bone: 0x3a3536, face: 0x2c2829 }
+            ];
+            const c = palettes[variant % palettes.length];
+            b.part('body', { pivot: [0, 0, 0], from: [-1.25, -1.25, -2], size: [2.5, 2.5, 3.5], paint: { color: c.fur, noise: 0.1, faces: { bottom: (p) => p.fill(shadeRgb(colorToRgb(c.fur), 0.12), 0.08) } } });
+            b.part('head', {
+                parent: 'body', pivot: [0, 0.25, 1.5], from: [-1.25, -1.1, 0], size: [2.5, 2.2, 2],
+                paint: { color: c.fur, noise: 0.08, faces: { front: (p) => {
+                    p.rect(0.75, 0.4, 1, 0.9, c.face, 0.03);
+                    p.rect(0.9, 0.9, 0.7, 0.4, 0xc98a84, 0);
+                    p.rect(0.2, 0.5, 0.45, 0.45, 0x0a0808, 0);
+                    p.rect(1.85, 0.5, 0.45, 0.45, 0x0a0808, 0);
+                } } }
+            });
+            [['L', 1], ['R', -1]].forEach(([side, sign]) => {
+                b.part(`ear${side}`, { parent: 'head', pivot: [0.75 * sign, 1.1, 1], from: [-0.4, 0, -0.25], size: [0.8, 1.5, 0.5], paint: { color: c.fur, noise: 0.06, faces: { front: (p) => p.rect(0.2, 0.2, 0.4, 1.1, 0xb07a74, 0) } }, rotation: [0, 0, -0.2 * sign] });
+                const membrane = { color: c.membrane, noise: 0.06, all: (p, face) => {
+                    if (face !== 'top' && face !== 'bottom') return;
+                    for (let x = 0.6; x < p.w; x += 1.1) p.rect(x, 0, 0.25, p.h, c.bone, 0.03);
+                    p.rect(0, 0, p.w, 0.35, c.bone, 0.03);
+                } };
+                b.part(`wing${side}`, { parent: 'body', pivot: [1.25 * sign, 0.6, 0.75], from: [sign > 0 ? 0 : -2.75, -0.15, -2.75], size: [2.75, 0.3, 3.25], paint: membrane });
+                b.part(`wingTip${side}`, { parent: `wing${side}`, pivot: [2.75 * sign, 0, 0], from: [sign > 0 ? 0 : -2.5, -0.12, -2.25], size: [2.5, 0.24, 2.25], paint: membrane });
+                b.part(`leg${side}`, { parent: 'body', pivot: [0.6 * sign, -0.5, -2], from: [-0.25, -0.25, -1.25], size: [0.5, 0.5, 1.25], paint: { color: c.face, noise: 0.04 } });
+            });
+            return { head: 'head', wings: ['wingL', 'wingR'] };
         },
 
         // A single beetle; the swarm's glowing lights are added by js/game/flyers.js.

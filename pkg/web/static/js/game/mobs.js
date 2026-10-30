@@ -142,6 +142,7 @@ Object.assign(Game.prototype, {
         this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
         this.spawnBeesForChunk(chunkX, chunkZ, biome);
         this.spawnFirefliesForChunk(chunkX, chunkZ, biome);
+        this.spawnBatsForChunk(chunkX, chunkZ, biome);
         if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
 
         const table = this.getBiomeSpawnTable(biome);
@@ -265,6 +266,10 @@ Object.assign(Game.prototype, {
             this.scatterFireflies(mob);
             return;
         }
+        if (getMobSpecies(mob.userData.species).movement === 'flutter') {
+            this.startleBats(mob, this.camera.position);
+            return;
+        }
         if (getMobSpecies(mob.userData.species).movement === 'swarm') {
             this.provokeColony(mob);
             return;
@@ -369,6 +374,10 @@ Object.assign(Game.prototype, {
             }
             if (movement === 'glow') {
                 this.updateGlowMob(mob, delta, player);
+                continue;
+            }
+            if (movement === 'flutter') {
+                this.updateFlutteringMob(mob, delta, player);
                 continue;
             }
             if (movement === 'swarm') {
@@ -634,6 +643,10 @@ Object.assign(Game.prototype, {
             this.spawnColonyNear(x, z, player.y + 4);
             return;
         }
+        if (getMobSpecies(species).movement === 'flutter') {
+            this.spawnBatColonyNear(x, z, player.y + 0.5);
+            return;
+        }
         if (getMobSpecies(species).movement === 'swim') {
             const school = this.spawnFishNear(x, z, player.y + 4, 10);
             this.receiveSystemMessage({ text: school ? `Spawned a school of ${school.length} fish` : 'Fish need water at least two blocks deep nearby' });
@@ -653,6 +666,13 @@ Object.assign(Game.prototype, {
     },
 
     spawnAnimalFromEgg(species, position) {
+        if (getMobSpecies(species).movement === 'flutter') {
+            this.spawnBatColonyNear(position.x + 0.5, position.z + 0.5, position.y + 2);
+            this.consumeSelectedBlock();
+            this.placeActionTimer = 0.35;
+            this.showHitIndicator();
+            return;
+        }
         if (getMobSpecies(species).movement === 'swarm') {
             this.spawnColonyNear(position.x + 0.5, position.z + 0.5, position.y + 4);
             this.consumeSelectedBlock();
