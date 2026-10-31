@@ -25,7 +25,8 @@ point. Every now and then it lowers its head and **rams** you.
 
 ## How to interact
 
-- **Hitting it:** it cannot be defeated, and it will ram you.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)); while it holds out, it will ram you. Defeated, it drops 1 `leather` and 1 `fur`.
 - **Resources** (see [Mob resources](2)):
 
 | How | Held item | Gives | Wait |

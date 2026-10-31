@@ -40,7 +40,7 @@ has no honeycomb left»).
 
 - Las celdas del panal son **hexágonos**: la forma que guarda más miel usando menos cera.
 - Los apicultores de verdad también usan **humo**: tapa el olor de alarma de las abejas y las calma.
-- La lista de botín del juego prevé panal (10 %) al derrotar una abeja, pero las abejas no se pueden derrotar:
-  golpearlas solo enfada a la colonia.
+- Una abeja aplastada de un golpe deja panal solo el 10 % de las veces, y enfada a toda la colonia: robar la miel
+  con una antorcha en la mano es mucho mejor negocio.
 
 Ver también: [Recursos de los mobs](2).

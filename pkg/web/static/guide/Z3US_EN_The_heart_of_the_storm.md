@@ -31,7 +31,7 @@ Every 9 to 18 seconds it raises its arms and **calls the lightning**. Where does
 ## It heals with its own lightning
 
 When the bolt falls on its head, the golem **soaks up the charge** and **gets back 4 health**: exactly what one
-of your blows takes away. It has health for **5 blows**, so a badly timed bolt costs you one more.
+of your bare-handed blows takes away. It has health for **5 blows** bare-handed, so a badly timed bolt costs you one more.
 
 **Trick:** put an iron, copper or gold block **under the open sky** near where you are going to fight. It will
 be your **lightning rod**: many of its bolts will land there instead of on its head.

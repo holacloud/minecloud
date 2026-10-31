@@ -36,11 +36,11 @@ El caballo es el único que te deja **más rápido que tú mismo**. Ver [Montar 
 
 ## Resistencia
 
-- El más duro es el ![Gólem](mob:storm_golem) [gólem de tormenta](43): **5 golpes**. Y encima se cura cuando
+- El más duro es el ![Gólem](mob:storm_golem) [gólem de tormenta](43): **5 golpes** a mano. Y encima se cura cuando
   se llama el rayo a sí mismo.
 - Le sigue el [monstruo de cueva](21), con 4 golpes.
-- Muchos animales pacíficos (ovejas, cerdos, lagartos…) **no se pueden derrotar**: no tienen barra de vida y
-  golpearlos solo los asusta.
+- Los animales pacíficos aguantan **3 golpes** a mano; con una [espada](71) de piedra o mejor, 2. Las más frágiles son las
+  abejas: caen al primer golpe. Peces, nubes de luciérnagas y fuegos fatuos no tienen barra de vida.
 
 ## Multitudes
 

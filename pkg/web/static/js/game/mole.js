@@ -459,7 +459,7 @@ Object.assign(Game.prototype, {
     moleHit(mob) {
         const data = mob.userData;
         if (data.moleBuried || data.moleState === 'diving') return;
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         data.flinch = 0.35;
         this.moleSqueak(mob, 1);

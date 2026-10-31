@@ -30,7 +30,7 @@ There are **2 colours**: brown and dark grey.
 
 | What you do | What happens |
 |---|---|
-| Hit it | It cannot be defeated. It frightens the whole colony, which flies off. |
+| Hit it | **12 health**: 3 blows bare-handed, 2 with a stone sword or better ([Swords](71)); defeated, half the time it drops 1 `leather`. Otherwise it frightens the whole colony, which flies off. |
 | Net (`bug_net`) | You catch it and get a `bat_egg`. They are fast: aim well. |
 | Tame, bait or cage | No. |
 | Egg | `bat_egg`: a colony appears in flight and settles under the nearest roof (up to 10 blocks away). |

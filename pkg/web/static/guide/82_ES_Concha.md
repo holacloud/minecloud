@@ -10,6 +10,7 @@ conseguirla.
 | Fuente | Cómo | Cantidad |
 |---|---|---|
 | ![Tortuga](mob:turtle) [Tortuga](28) | Golpearla (sin matarla): **15 %** por golpe, con **60 s** de espera por tortuga | 1 |
+| ![Tortuga](mob:turtle) [Tortuga](28) | Derrotarla (3 golpes) | 1 |
 | ![Cangrejo](mob:crab) [Cangrejo](39) | Derrotarlo (3 golpes) | **1–2** |
 | ![Escorpión](mob:scorpion) [Escorpión](31) | Derrotarlo (2 golpes): **25 %** | 1 |
 | [Caña de pescar](94) | **12 %** de las capturas | 1 |

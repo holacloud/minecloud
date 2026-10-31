@@ -33,7 +33,7 @@ There are **4 coats**: red, ginger, arctic (white) and silver. All with a white 
 | What you do | What happens |
 |---|---|
 | Hit it | **It drops whatever it is carrying**, yelps and bounds away. For a while it won't steal. |
-| Defeat it | **3 hits.** It leaves 1–2 ![fur](item:fur) `fur`. |
+| Defeat it | **3 hits** bare-handed (2 with a stone [sword](71) or better). It leaves 1–2 ![fur](item:fur) `fur`. |
 | Tame it | You can't: it goes its own way. |
 | `iron_shears` | 1 `fur` every 120 s, if you manage to get close (sneaking). |
 | Bait | It is listed with `bait_meat`, but it follows its own behaviour and hardly ever comes. |

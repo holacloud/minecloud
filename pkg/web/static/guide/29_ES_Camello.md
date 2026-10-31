@@ -20,7 +20,8 @@ dobla sus largas patas para tumbarse en la arena caliente.
 
 ## Cómo interactuar
 
-- **Golpearlo:** no se le puede hacer daño ni derrotar.
+- **Golpearlo:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)). Al derrotarlo suelta **1 a 2** `leather` y, la mitad de las veces, 1 `fur`.
 - **Recursos** (ver [Recursos de los mobs](2)):
 
 | Cómo | En la mano | Da | Espera |

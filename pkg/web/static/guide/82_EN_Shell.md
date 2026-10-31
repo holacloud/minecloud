@@ -9,6 +9,7 @@ A ridged pink seashell. Ground up with sand it turns into **limestone**, and it 
 | Source | How | Amount |
 |---|---|---|
 | ![Turtle](mob:turtle) [Turtle](28) | Strike it (without killing it): **15 %** per strike, with a **60 s** wait per turtle | 1 |
+| ![Turtle](mob:turtle) [Turtle](28) | Defeat it (3 blows) | 1 |
 | ![Crab](mob:crab) [Crab](39) | Defeat it (3 blows) | **1–2** |
 | ![Scorpion](mob:scorpion) [Scorpion](31) | Defeat it (2 blows): **25 %** | 1 |
 | [Fishing rod](94) | **12 %** of catches | 1 |

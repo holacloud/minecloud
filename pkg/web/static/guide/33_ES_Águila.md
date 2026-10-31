@@ -30,7 +30,7 @@ pescar.
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpearla | No se puede derrotar. Chilla, despega y se aleja. Hay un **50 %** de que suelte una ![pluma](item:feather) `feather` (espera de 8 s). |
+| Golpearla | **12 de vida**: 3 golpes a mano, 2 con una espada de piedra o mejor ([Espadas](71)); al derrotarla suelta **2 a 3** `feather` (y el pez que llevaba se pierde). Si no, chilla, despega y se aleja. Hay un **50 %** de que suelte una ![pluma](item:feather) `feather` (espera de 8 s). |
 | Domesticarla | No se puede: es una rapaz salvaje. |
 | Cebo | Figura en la tabla de cebos con `bait_fish`, pero vuela a su aire y en la práctica no baja a por él. |
 | Jaula o red | No cabe en la jaula ni se atrapa con la red. |

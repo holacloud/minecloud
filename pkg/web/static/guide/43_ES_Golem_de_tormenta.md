@@ -41,7 +41,7 @@ nube de tormenta** girando sobre la cabeza. Solo camina por el mundo **mientras 
 
 | Qué haces | Qué pasa |
 |---|---|
-| Derrotarlo | **5 golpes**, si no recupera vida antes. Se desmorona ("You toppled the storm golem") y deja 2–3 ![polvo luminoso](item:glow_dust) `glow_dust` y 1–2 ![hierro](item:iron_ore) `iron_ore`. |
+| Derrotarlo | **5 golpes** a mano (4 con espada de madera o piedra, 3 con hierro u oro; ver [Espadas](71)), si no recupera vida antes. Se desmorona ("You toppled the storm golem") y deja 2–3 ![polvo luminoso](item:glow_dust) `glow_dust` y 1–2 ![hierro](item:iron_ore) `iron_ore`. |
 | Esperar a que pare la lluvia | Se desmorona solo, pero **no deja nada**. |
 | Pisar un bloque de metal cercano | Si el rayo cae ahí, te da: **2 de daño**. |
 | Domesticarlo, cebo, jaula o red | No. |

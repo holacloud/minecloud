@@ -32,7 +32,7 @@ Hay **3 colores**: rojo, naranja y arena.
 | Qué haces | Qué pasa |
 |---|---|
 | Golpearlo | Se levanta sobre las patas traseras con las pinzas abiertas, te mira y **te pellizca** si sigues a menos de 1,5 bloques: **1 de daño** y un empujón. Luego huye y se entierra. |
-| Derrotarlo | **3 golpes.** Deja 1–2 ![concha](item:shell) `shell`. |
+| Derrotarlo | **3 golpes** a mano (2 con una [espada](71) de piedra o mejor). Deja 1–2 ![concha](item:shell) `shell`. |
 | Domesticarlo | No se puede: va a su aire. |
 | Cebo | `bait_fish`: acude a comerlo. |
 | Jaula | **Sí**: pon `bait_fish` dentro y espera. |

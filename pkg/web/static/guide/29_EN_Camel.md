@@ -20,7 +20,8 @@ folds its long legs to lie down on the warm sand.
 
 ## How to interact
 
-- **Hitting it:** it cannot be hurt or defeated.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)). Defeated, it drops **1 to 2** `leather` and, half the time, 1 `fur`.
 - **Resources** (see [Mob resources](2)):
 
 | How | Held item | Gives | Wait |

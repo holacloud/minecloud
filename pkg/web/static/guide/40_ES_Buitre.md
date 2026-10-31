@@ -30,7 +30,7 @@ con paciencia sobre el desierto y las rocas… y siempre sabe **dónde ha caído
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpearlo | No se puede derrotar. Sisea y se aleja volando más alto. Hay un **40 %** de que suelte una ![pluma](item:feather) `feather` (espera de 8 s). |
+| Golpearlo | **12 de vida**: 3 golpes a mano, 2 con una espada de piedra o mejor ([Espadas](71)); al derrotarlo suelta **2 a 3** `feather`. Si no, sisea y se aleja volando más alto. Hay un **40 %** de que suelte una ![pluma](item:feather) `feather` (espera de 8 s). |
 | Esperar cerca | Los buitres sueltan de vez en cuando una pluma por su cuenta, si estás a menos de 24 bloques. |
 | Domesticarlo | No se puede. |
 | Cebo | Figura en la tabla con `bait_meat`, pero vuela a su aire y en la práctica no baja a por él. |

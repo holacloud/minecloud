@@ -18,7 +18,8 @@ With a torch in your hand the smoke calms the bees, and it also soothes them if 
 
 ## Striking without killing
 
-Some animals drop something when struck, with some chance and a wait per animal:
+Some animals drop something when struck, with some chance and a wait per animal. Mind you: each blow takes their
+health, and the third (bare-handed) brings them down.
 
 | Animal | Drops | Chance | Wait |
 |---|---|---|---|
@@ -34,10 +35,23 @@ Nearby ducks, macaws, owls and vultures also drop a feather now and then on thei
 ## Loot when defeated
 
 There is only loot when the player defeats the mob. Prey caught by predators (fox, owl, eagle) leaves nothing.
-A percentage is the chance of getting that item.
+A percentage is the chance of getting that item. Peaceful animals take **3 blows** bare-handed (2 with a stone sword
+or better, see [Swords](71)); a bee falls at the first one.
 
 | Mob | Loot |
 |---|---|
+| Sheep | 1–2 `white_wool` |
+| Duck, macaw | 1–3 `feather` |
+| Eagle, vulture | 2–3 `feather` |
+| Pig, giraffe, horse | 1–2 `leather` |
+| Camel | 1–2 `leather`, `fur` (50 %) |
+| Goat | 1 `leather`, 1 `fur` |
+| Bat | `leather` (50 %) |
+| Dog, cat, rabbit | 1 `fur` |
+| Turtle | 1 `shell` |
+| Lizard | 1–2 `scale` |
+| Frog | `venom_sac` (15 %) |
+| Bee | `honeycomb` (10 %) |
 | Spider | `venom_sac` (50 %), `white_wool` (30 %) |
 | Cave monster | 1–3 `leather`, `glow_dust` (50 %) |
 | Scorpion | `venom_sac`, `shell` (25 %) |
@@ -98,6 +112,6 @@ If you carry the coat and the mail together, only the better one counts.
 
 - **Against poison** (snakes, scorpions): carry `milk` or, better still, `antivenom` before heading into the
   desert or the rocks.
-- **Feathers and wool** for the `feather_cape`: feathers come without harming anyone, by striking ducks or waiting
+- **Feathers and wool** for the `feather_cape`: feathers come without killing anyone, by striking ducks or waiting
   for birds to shed them; wool, by shearing sheep.
 - **Torches without coal:** the `glow_dust` of fireflies or of a caught wisp makes 4 torches with a single `wood`.

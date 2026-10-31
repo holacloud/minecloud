@@ -761,7 +761,7 @@ Object.assign(Game.prototype, {
     stormGolemHit(mob) {
         const data = mob.userData;
         if (data.crumbling !== undefined) return;
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         data.flinch = 0.3;
         this.stormGolemSparks(_golemA.copy(mob.position).setY(mob.position.y + 1.5), 14, false);

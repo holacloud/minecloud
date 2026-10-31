@@ -36,7 +36,7 @@ owl (white, pale yellow eyes).
 | What you do | What happens |
 |---|---|
 | Hit it | **It screeches** and flies to another tree. There is a **40 %** chance it drops a ![feather](item:feather) `feather` (8 s wait). |
-| Defeat it | **3 hits.** It leaves 1–3 `feather`. |
+| Defeat it | **3 hits** bare-handed (2 with a stone [sword](71) or better). It leaves 1–3 `feather`. |
 | Wait nearby | It drops a feather on its own now and then, if you are within 24 blocks. |
 | Tame it | You can't: it is a wild hunter. |
 | Bait | It is listed with `bait_meat`, but it follows its own behaviour and does not come. |

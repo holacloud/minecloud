@@ -25,7 +25,8 @@ alto. De vez en cuando baja la cabeza y te **embiste**.
 
 ## Cómo interactuar
 
-- **Golpearla:** no se le puede derrotar, y te embestirá.
+- **Golpearla:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)); mientras aguante, te embestirá. Al derrotarla suelta 1 `leather` y 1 `fur`.
 - **Recursos** (ver [Recursos de los mobs](2)):
 
 | Cómo | En la mano | Da | Espera |

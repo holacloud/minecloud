@@ -17,11 +17,13 @@ blanca** del juego.
 - Pasea despacio sin alejarse mucho de donde nació.
 - Es una **pastadora**: cuando está quieta, baja la cabeza para mordisquear la hierba.
 - También mira a su alrededor, mueve las orejas y respira despacio.
-- Si la golpeas, da un saltito, suelta un balido corto y se gira hacia ti. No se defiende.
+- Si la golpeas, da un saltito, suelta un balido corto y se gira hacia ti. No se defiende, y sobre ella aparece
+  su barra de vida.
 
 ## Cómo interactuar
 
-- **Golpearla:** no se le puede hacer daño ni derrotar.
+- **Golpearla:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)). Al derrotarla suelta **1 a 2** `white_wool`.
 - **Esquilarla:** clic derecho con las `iron_shears` ![Tijeras](item:iron_shears): suelta de **1 a 3** `white_wool`.
   - Queda más delgada y de color gris rosado, sin el gorrito de lana.
   - La lana vuelve a crecer en **150 segundos**. Antes de eso dice "Its wool is still growing back".

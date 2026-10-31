@@ -34,7 +34,7 @@ Hay **4 pelajes**: rojo, rojizo claro, ártico (blanco) y plateado. Todos con la
 | Qué haces | Qué pasa |
 |---|---|
 | Golpearlo | **Suelta lo que lleve en la boca**, gime y huye de un salto. Durante un rato no roba. |
-| Derrotarlo | **3 golpes.** Deja 1–2 ![pelo](item:fur) `fur`. |
+| Derrotarlo | **3 golpes** a mano (2 con una [espada](71) de piedra o mejor). Deja 1–2 ![pelo](item:fur) `fur`. |
 | Domesticarlo | No se puede: va a su aire. |
 | `iron_shears` | 1 `fur` cada 120 s, si consigues acercarte (agachado). |
 | Cebo | Figura en la tabla con `bait_meat`, pero sigue su propio comportamiento y casi nunca acude. |

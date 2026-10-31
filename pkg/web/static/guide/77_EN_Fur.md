@@ -24,6 +24,9 @@ back.
 |---|---|
 | ![Fox](mob:fox) Fox (3 blows) | 1–2 |
 | ![Giant mole](mob:mole) Giant mole (3 blows) | 1–2 |
+| ![Goat](mob:goat) Goat (3 blows) | 1 (and 1 `leather`) |
+| ![Camel](mob:camel) Camel (3 blows) | 1, half the time (and 1–2 `leather`) |
+| ![Dog](mob:dog) Dog, ![Cat](mob:cat) cat, ![Rabbit](mob:rabbit) rabbit (3 blows) | 1 |
 
 ## What it is for
 

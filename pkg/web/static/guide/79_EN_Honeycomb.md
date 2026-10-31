@@ -39,7 +39,7 @@ fall to the ground. Then that hive needs **120 seconds** to fill up again ("The 
 
 - Comb cells are **hexagons**: the shape that holds the most honey with the least wax.
 - Real beekeepers use **smoke** too: it masks the bees' alarm scent and calms them.
-- The game's loot list has honeycomb (10 %) for defeating a bee, but bees cannot be defeated: striking them only
-  angers the colony.
+- A bee swatted in one blow leaves honeycomb only 10 % of the time, and it angers the whole colony: taking the honey
+  with a torch in your hand is a far better deal.
 
 See also: [Mob resources](2).

@@ -30,7 +30,7 @@ bothers them… but strike one and **the whole swarm comes after you**.
 
 | What you do | What happens |
 |---|---|
-| Hit a bee or the hive | They cannot be defeated. **You anger the whole colony** ("You angered the bees!"), and the hive shakes. |
+| Hit a bee or the hive | A bee **dies at the first blow** ("You swatted a bee"), with a **10 %** chance of a `honeycomb`; the hive cannot be destroyed. Either way **you anger the whole colony** ("You angered the bees!"), and the hive shakes. |
 | Right click the hive | 1–2 ![honeycomb](item:honeycomb) `honeycomb`. Then the hive needs **120 s** to refill. |
 | … with a `torch` in your hand | The **smoke calms** the bees: you take the honeycomb without being attacked, and it also soothes them if they were already angry. |
 | … without a torch | You get the honeycomb, but the colony gets angry. |

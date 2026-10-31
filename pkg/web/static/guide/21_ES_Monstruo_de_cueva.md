@@ -22,7 +22,7 @@ tiene unos brazos larguísimos. Es la criatura más resistente de las primeras d
 
 - **Su ataque:** **4 de daño** por golpe, el más fuerte de los mobs de esta época. Con `warm_coat` baja a 3, y con
   `scale_mail` a 2.
-- **Derrotarlo:** **4 golpes**. Al primero aparece su barra de salud.
+- **Derrotarlo:** **4 golpes** a mano o con espada de madera, 3 con piedra o hierro, 2 con oro (ver [Espadas](71)). Al primero aparece su barra de salud.
 - **Botín al derrotarlo:**
 
 | Objeto | Cantidad |

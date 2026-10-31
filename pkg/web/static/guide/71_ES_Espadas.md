@@ -2,7 +2,7 @@
 
 ![Espada de hierro](item:iron_sword)
 
-Una espada reluciente para sentirte un caballero. Ojo: en esta versión del juego es **sobre todo de adorno**.
+Una espada reluciente para sentirte un caballero. Cuanto mejor es el material, **más daño** hace cada golpe.
 
 | | Espada | Id |
 |---|---|---|
@@ -22,11 +22,30 @@ Son las herramientas más baratas: piden **2** de material en vez de 3.
 | `iron_sword` | 2 `iron_ore` + 1 `wood` |
 | `gold_sword` | 2 `gold_ore` + 1 `wood` |
 
-## Lo que hace (y lo que no)
+## Lo que hace
 
-- **No hace más daño.** Cada golpe a una criatura que se puede derrotar le quita **4 puntos de vida**, lleves
-  espada o no: una ![Araña](mob:spider) [araña](20) cae en 2 golpes y un ![Monstruo de cueva](mob:cave_monster)
-  [monstruo de cueva](21), en 4.
+- **Hace más daño.** Cada golpe le quita vida a la criatura según lo que lleves en la mano:
+
+  | En la mano | Daño por golpe |
+  |---|---|
+  | Nada, u otro objeto | 4 |
+  | ![](item:wood_sword) `wood_sword` | 5 |
+  | ![](item:stone_sword) `stone_sword` | 6 |
+  | ![](item:iron_sword) `iron_sword` | 7 |
+  | ![](item:gold_sword) `gold_sword` | 8 |
+
+- **Golpes para derrotar** a cada criatura, según el arma:
+
+  | Criatura (vida) | A mano | Madera | Piedra | Hierro | Oro |
+  |---|---|---|---|---|---|
+  | [Escorpión](31) (6) | 2 | 2 | 1 | 1 | 1 |
+  | [Araña](20) (8) | 2 | 2 | 2 | 2 | 1 |
+  | Animales, [sombra](37), [topo](47)… (12) | 3 | 3 | 2 | 2 | 2 |
+  | [Monstruo de cueva](21) (16) | 4 | 4 | 3 | 3 | 2 |
+  | [Gólem de tormenta](43) (20) | 5 | 4 | 4 | 3 | 3 |
+  | [Serpiente](42) (6, recibe la mitad) | 3 | 3 | 2 | 2 | 2 |
+
+  Las abejas caen al primer golpe; los peces, las nubes de luciérnagas y el fuego fatuo no tienen vida.
 - **No es la herramienta de ningún bloque.** Aun así, como cualquier herramienta, las de metal aceleran un poco la
   minería de todo: ×1 la de madera, ×1,05 la de piedra, ×1,43 la de hierro y ×1,76 la de oro.
 - **Se ve.** Jugando en línea, los demás ven en tu mano lo que llevas seleccionado: una espada de oro impresiona.

@@ -272,7 +272,7 @@ Object.assign(Game.prototype, {
     hitShadow(mob) {
         const data = mob.userData;
         if (data.dissolving !== undefined) return;
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         const away = Math.atan2(mob.position.z - this.camera.position.z, mob.position.x - this.camera.position.x);
         this.walkStep(mob, away, 0.8, 0.2);

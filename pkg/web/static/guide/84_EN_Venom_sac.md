@@ -14,6 +14,7 @@ Only as **loot**, by defeating venomous or dangerous creatures:
 | ![Scorpion](mob:scorpion) [Scorpion](31) | 2 | **100 %** |
 | ![Snake](mob:snake) [Snake](42) | 3 | 60 % |
 | ![Spider](mob:spider) [Spider](20) | 2 | 50 % |
+| ![Frog](mob:frog) [Frog](27) | 3 | 15 % |
 
 The scorpion is the sure source, but it only comes out at night. Scorpions and snakes **poison** when they bite: 1
 damage and then 1 health every 1.5 s, 3 times.
@@ -34,7 +35,6 @@ damage and then 1 health every 1.5 s, 3 times.
 
 - Real antivenoms are made roughly like this: a horse or a sheep is given a little venom, its body makes
   **antibodies**, and the serum is prepared from them.
-- The game's loot list includes a venom sac (15 %) for defeating a frog, but frogs cannot be defeated: they always
-  hop away.
+- Some real frogs, the poison dart frogs, have skin so toxic that people living near them used it on their darts.
 
 See also: [Mob resources](2), [Health, food and dangers](9).

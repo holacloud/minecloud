@@ -25,7 +25,9 @@ cuanto se asusta. Por la noche, croa.
 
 ## Cómo interactuar
 
-- **Golpearla:** no se le puede hacer daño ni derrotar.
+- **Golpearla:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)); si no, salta lejos de ti. Al derrotarla hay un **15 %** de que suelte un `venom_sac`
+  ![Saco de veneno](item:venom_sac).
 - **Domesticarla:** no se puede: va a su aire a saltos.
 - **Cebo:** el `bait_worms` la atrae poco a poco (ver [Cebos y trampas](4)).
 - **Jaula:** **sí** cabe en la `cage_trap`.

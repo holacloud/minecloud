@@ -346,7 +346,7 @@ Object.assign(Game.prototype, {
         const data = mob.userData;
         const crab = data.crab || this.crabState(mob);
         const loudness = 1;
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         this.playTone({ frequency: getMobSpecies('crab').tone * 0.5, endFrequency: getMobSpecies('crab').tone * 0.35, duration: 0.05, type: 'square', volume: 0.012, release: 0.05 });
         this.playNoiseBurst({ duration: 0.04, volume: 0.018, highpass: 900, lowpass: 4000 });

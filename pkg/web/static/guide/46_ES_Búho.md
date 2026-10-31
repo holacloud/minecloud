@@ -37,7 +37,7 @@ Hay **3 tipos**: búho pardo con orejas de plumas (ojos naranjas), búho gris (o
 | Qué haces | Qué pasa |
 |---|---|
 | Golpearlo | **Chilla** y vuela a otro árbol. Hay un **40 %** de que suelte una ![pluma](item:feather) `feather` (espera de 8 s). |
-| Derrotarlo | **3 golpes.** Deja 1–3 `feather`. |
+| Derrotarlo | **3 golpes** a mano (2 con una [espada](71) de piedra o mejor). Deja 1–3 `feather`. |
 | Esperar cerca | Suelta alguna pluma por su cuenta de vez en cuando, si estás a menos de 24 bloques. |
 | Domesticarlo | No se puede: es un cazador salvaje. |
 | Cebo | Figura en la tabla con `bait_meat`, pero sigue su propio comportamiento y no acude. |

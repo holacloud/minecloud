@@ -2,7 +2,7 @@
 
 ![Iron sword](item:iron_sword)
 
-A gleaming sword to feel like a knight. Be warned: in this version of the game it is **mostly for show**.
+A gleaming sword to feel like a knight. The better the material, the **more damage** each blow does.
 
 | | Sword | Id |
 |---|---|---|
@@ -22,11 +22,30 @@ They are the cheapest tools: they need **2** of the material instead of 3.
 | `iron_sword` | 2 `iron_ore` + 1 `wood` |
 | `gold_sword` | 2 `gold_ore` + 1 `wood` |
 
-## What it does (and does not do)
+## What it does
 
-- **No extra damage.** Each blow to a creature that can be defeated takes **4 health**, sword or no sword: a
-  ![Spider](mob:spider) [spider](20) falls in 2 blows and a ![Cave monster](mob:cave_monster)
-  [cave monster](21) in 4.
+- **More damage.** Each blow takes health from the creature depending on what you hold:
+
+  | In your hand | Damage per blow |
+  |---|---|
+  | Nothing, or any other item | 4 |
+  | ![](item:wood_sword) `wood_sword` | 5 |
+  | ![](item:stone_sword) `stone_sword` | 6 |
+  | ![](item:iron_sword) `iron_sword` | 7 |
+  | ![](item:gold_sword) `gold_sword` | 8 |
+
+- **Blows to defeat** each creature, by weapon:
+
+  | Creature (health) | Bare hands | Wood | Stone | Iron | Gold |
+  |---|---|---|---|---|---|
+  | [Scorpion](31) (6) | 2 | 2 | 1 | 1 | 1 |
+  | [Spider](20) (8) | 2 | 2 | 2 | 2 | 1 |
+  | Animals, [shadow](37), [mole](47)… (12) | 3 | 3 | 2 | 2 | 2 |
+  | [Cave monster](21) (16) | 4 | 4 | 3 | 3 | 2 |
+  | [Storm golem](43) (20) | 5 | 4 | 4 | 3 | 3 |
+  | [Snake](42) (6, takes half) | 3 | 3 | 2 | 2 | 2 |
+
+  Bees fall at the first blow; fish, firefly clouds and the wisp have no health.
 - **It is not the tool for any block.** Even so, like any tool, metal ones speed up all mining a little: ×1 for
   wood, ×1.05 for stone, ×1.43 for iron and ×1.76 for gold.
 - **It shows.** Online, other players see in your hand whatever you have selected: a gold sword looks impressive.

@@ -36,7 +36,7 @@ Hay **3 tipos**:
 | Qué haces | Qué pasa |
 |---|---|
 | Golpearla | Retrocede y se enfada: **contraataca casi enseguida**. Muy herida, huye. |
-| Derrotarla | **3 golpes.** Deja 1–2 ![escama](item:scale) `scale` y, con un 60 %, un ![saco de veneno](item:venom_sac) `venom_sac`. |
+| Derrotarla | **3 golpes** a mano o con espada de madera: solo recibe la mitad de cada golpe (2 con una [espada](71) de piedra o mejor). Deja 1–2 ![escama](item:scale) `scale` y, con un 60 %, un ![saco de veneno](item:venom_sac) `venom_sac`. |
 | Domesticarla | No: es hostil. |
 | Cebo | Figura en la tabla con `bait_meat`, pero sigue su propio comportamiento y casi nunca acude. |
 | Jaula | Cabe, pero solo la atraparás si entra por casualidad. |

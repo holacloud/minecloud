@@ -639,7 +639,9 @@ Object.assign(Game.prototype, {
         const s = data.snake || this.snakeInit(mob);
         const player = this.getLocalPlayerPosition();
         const distance = Math.hypot(player.x - mob.position.x, player.z - mob.position.z);
-        data.health -= 2;
+        // Slender and quick, it takes half of each blow: 3 blows bare-handed or with a wooden
+        // sword, 2 with a stone sword or better.
+        data.health -= this.getPlayerAttackDamage() / 2;
         this.updateMobHealthBar(mob);
         this.snakeSound(mob, 'hurt', distance);
         if (data.health <= 0) {

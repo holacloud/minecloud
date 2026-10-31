@@ -37,7 +37,7 @@ never meet it at all.
 
 | What you do | What happens |
 |---|---|
-| Hit it | It reels back in smoke. **3 hits** banish it ("You banished the wandering shadow") and it leaves 1–2 ![shadow essence](item:shadow_essence) `shadow_essence`. |
+| Hit it | It reels back in smoke. **3 hits** bare-handed (2 with a stone [sword](71) or better) banish it ("You banished the wandering shadow") and it leaves 1–2 ![shadow essence](item:shadow_essence) `shadow_essence`. |
 | Chase it off with light | It flees ("The shadow fled from the light"). If you are within 16 blocks, there is a **50 %** chance it leaves 1 `shadow_essence`. |
 | Tame, bait, cage or net | No. |
 | Egg | `shadow_egg` |

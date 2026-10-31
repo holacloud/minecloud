@@ -23,7 +23,9 @@ soon as it is frightened. At night, it croaks.
 
 ## How to interact
 
-- **Hitting it:** it cannot be hurt or defeated.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)); otherwise it hops away from you. Defeated, there is a **15 %** chance it drops a `venom_sac`
+  ![Venom sac](item:venom_sac).
 - **Taming it:** not possible: it hops about as it pleases.
 - **Bait:** `bait_worms` draws it in little by little (see [Baits and traps](4)).
 - **Cage:** it **does** fit in the `cage_trap`.

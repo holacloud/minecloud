@@ -24,7 +24,8 @@ todas partes y hasta te defiende.
 
 ## Cómo interactuar
 
-- **Golpearlo:** no se le puede hacer daño ni derrotar.
+- **Golpearlo:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)). Al derrotarlo suelta 1 `fur` ![Pelo](item:fur). Si era tu perro amigo, deja de seguirte.
 - **Recortarle el pelo:** clic derecho con las `iron_shears`: suelta 1 `fur` ![Pelo](item:fur). Vuelve a crecer en
   **120 segundos**.
 - **Domesticarlo** (ver [Domesticar y criar](3)):

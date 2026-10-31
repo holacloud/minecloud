@@ -8,7 +8,11 @@ bait**.
 ## How to get it
 
 **Loot:** the ![Cave monster](mob:cave_monster) [cave monster](21) leaves **1–3 leather** when you defeat it (it
-takes 4 blows). Half of the time it also leaves `glow_dust`.
+takes 4 blows bare-handed). Half of the time it also leaves `glow_dust`.
+
+These also give leather when defeated (3 blows bare-handed): ![Pig](mob:pig) pig, ![Giraffe](mob:giraffe) giraffe,
+![Horse](mob:horse) horse and ![Camel](mob:camel) camel, **1–2**; ![Goat](mob:goat) goat, **1**; and the
+![Bat](mob:bat) bat, 1 half the time.
 
 **Tanning fur** (C key, crafting):
 
@@ -38,7 +42,7 @@ Fur is trimmed with shears from many animals without hurting them: see [Fur](77)
 
 - In real life, "vegetable" tanning uses the **tannins in tree bark**, such as oak. That is why the game's recipe
   asks for wood.
-- The game has leather loot ready for pigs, giraffes, horses, camels, goats and bats, but today those animals cannot
-  be defeated: they shrug off any blow.
+- At first, pigs, giraffes, horses, camels, goats and bats shrugged off any blow, and their leather loot was out of
+  reach. Now they fall in 3 blows.
 
 See also: [Mob resources](2).

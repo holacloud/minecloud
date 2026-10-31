@@ -3,7 +3,7 @@
 ![Pluma](item:feather)
 
 Una pluma blanca y ligera, de ave. Es el material de la **capa de plumas** y de la **cama de plumas**, y se
-consigue casi siempre **sin hacer daño a nadie**.
+consigue casi siempre **sin matar a nadie**.
 
 ## Cómo conseguirla
 
@@ -21,7 +21,9 @@ otra.
 **Muda:** los patos, guacamayos, búhos y buitres que estén a menos de **24 bloques** de ti dejan caer una pluma
 por su cuenta de vez en cuando (de media, una cada 6 o 7 minutos por ave). Basta con pasear cerca de una bandada.
 
-**Botín:** el ![Búho](mob:owl) búho, si lo derrotas (3 golpes), deja **1–3 plumas**.
+**Botín:** las aves también dejan plumas si las derrotas (3 golpes a mano): el ![Pato](mob:duck) pato, el
+![Guacamayo](mob:macaw) guacamayo y el ![Búho](mob:owl) búho, **1–3**; el ![Águila](mob:eagle) águila y el
+![Buitre](mob:vulture) buitre, **2–3**.
 
 ## Para qué sirve
 
@@ -42,6 +44,6 @@ La pluma no se come y no sirve para domesticar.
 - Las plumas de verdad están hechas de **queratina**, como tu pelo y tus uñas.
 - Las aves reales también **mudan**: cambian las plumas viejas por nuevas una o dos veces al año.
 - Durante siglos se escribió con plumas de oca afiladas: de ahí viene la palabra «pluma» para el bolígrafo.
-- Los buitres no se pueden derrotar en el juego, pero sí soltar plumas cuando los golpeas.
+- Un buitre derrotado deja hasta 3 plumas; pero vivo suelta alguna de vez en cuando al golpearlo, y nunca ataca.
 
 Ver también: [Recursos de los mobs](2).

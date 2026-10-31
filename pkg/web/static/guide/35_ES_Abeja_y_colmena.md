@@ -29,7 +29,7 @@ mientras nadie las moleste… pero si golpeas a una, **te ataca el enjambre ente
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpear una abeja o la colmena | No se pueden derrotar. **Enfadas a toda la colonia** ("You angered the bees!"), y la colmena tiembla. |
+| Golpear una abeja o la colmena | Una abeja **muere al primer golpe** ("You swatted a bee"), con un **10 %** de soltar un `honeycomb`; la colmena no se puede destruir. En los dos casos **enfadas a toda la colonia** ("You angered the bees!"), y la colmena tiembla. |
 | Clic derecho en la colmena | 1–2 ![panal](item:honeycomb) `honeycomb`. Después la colmena necesita **120 s** para rellenarse. |
 | … con una `torch` en la mano | El **humo calma** a las abejas: coges el panal sin que te ataquen, y también las tranquiliza si ya estaban enfadadas. |
 | … sin antorcha | Coges el panal, pero la colonia se enfada. |

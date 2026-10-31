@@ -10,7 +10,7 @@
 // Registered as the 'burrow' movement through js/extensions.js.
 
 MOB_SPECIES.rabbit = {
-    eggColor: 0xa8825a, tone: 1500, speed: 2.2, variants: 5, group: [2, 4], limit: 12,
+    eggColor: 0xa8825a, tone: 1500, maxHealth: 12, speed: 2.2, variants: 5, group: [2, 4], limit: 12,
     movement: 'burrow'
 };
 
@@ -884,17 +884,22 @@ Object.assign(Game.prototype, {
         this.playTone({ frequency: tone * 2, endFrequency: tone * 2.4, duration: 0.06, type: 'sine', volume: volume * 0.4, attack: 0.01, release: 0.04 });
     },
 
-    // Struck: a squeak, and the family runs for it.
+    // Struck: a squeak, and the family runs for it; enough blows defeat it (its burrow goes
+    // with the last of the family, see the 'removed' listener below).
     hitRabbit(mob) {
         const r = mob.userData.rabbit;
-        if (!r || r.mode === 'hidden') return;
+        if (!r || r.mode === 'hidden' || r.mode === 'enter') return;
         this.rabbitSqueak(mob, 1);
         const from = this.camera.position.clone();
+        if (this.damageMobByPlayer(mob)) {
+            this.alarmRabbits(mob, from);
+            this.defeatMobByPlayer(mob, 'You defeated the rabbit');
+            return;
+        }
         if (r.mode === 'peek') {
             this.hideRabbit(mob);
             return;
         }
-        if (r.mode === 'enter') return;
         // Bowled over a little, then off.
         if (!r.airborne) {
             const away = Math.atan2(mob.position.z - from.z, mob.position.x - from.x);

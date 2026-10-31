@@ -36,7 +36,7 @@ There are **3 kinds**:
 | What you do | What happens |
 |---|---|
 | Hit it | It recoils and gets angry: **it strikes back almost at once**. Badly hurt, it flees. |
-| Defeat it | **3 hits.** It leaves 1–2 ![scale](item:scale) `scale` and, 60 % of the time, a ![venom sac](item:venom_sac) `venom_sac`. |
+| Defeat it | **3 hits** bare-handed or with a wooden sword: it only takes half of each blow (2 with a stone [sword](71) or better). It leaves 1–2 ![scale](item:scale) `scale` and, 60 % of the time, a ![venom sac](item:venom_sac) `venom_sac`. |
 | Tame it | No: it is hostile. |
 | Bait | It is listed with `bait_meat`, but it follows its own behaviour and hardly ever comes. |
 | Cage | It fits, but you will only catch it if it wanders in by chance. |

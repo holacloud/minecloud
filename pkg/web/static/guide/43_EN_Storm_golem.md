@@ -40,7 +40,7 @@ swirling over its head. It only walks the world **while it rains**, and it draws
 
 | What you do | What happens |
 |---|---|
-| Defeat it | **5 hits**, unless it heals first. It crumbles ("You toppled the storm golem") and leaves 2–3 ![glow dust](item:glow_dust) `glow_dust` and 1–2 ![iron](item:iron_ore) `iron_ore`. |
+| Defeat it | **5 hits** bare-handed (4 with a wood or stone sword, 3 with iron or gold; see [Swords](71)), unless it heals first. It crumbles ("You toppled the storm golem") and leaves 2–3 ![glow dust](item:glow_dust) `glow_dust` and 1–2 ![iron](item:iron_ore) `iron_ore`. |
 | Wait for the rain to stop | It crumbles by itself, but **leaves nothing**. |
 | Stand on a nearby metal block | If the bolt falls there, it hits you: **2 damage**. |
 | Tame, bait, cage or net | No. |

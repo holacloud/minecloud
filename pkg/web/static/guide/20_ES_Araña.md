@@ -21,7 +21,7 @@ rápido.
 ## Cómo interactuar
 
 - **Su ataque:** **2 de daño** por mordisco (tu salud máxima es 20). Con `warm_coat` o `scale_mail` baja a 1.
-- **Derrotarla:** **2 golpes**. Al primer golpe aparece su barra de salud encima de ella.
+- **Derrotarla:** **2 golpes** a mano o con casi cualquier espada; 1 con la de oro (ver [Espadas](71)). Al primer golpe aparece su barra de salud encima de ella.
 - **Botín al derrotarla:**
 
 | Objeto | Probabilidad |

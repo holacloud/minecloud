@@ -23,7 +23,7 @@ sting **poisons** you.
   "You were poisoned by a scorpion" appears. Armour does not reduce these 1-point hits.
 - **Curing the poison:** drink `milk` (G key) or, better, `antivenom`, which also protects you from poison for
   **3 minutes** (see [Antivenom](89)).
-- **Defeating it:** **2 hits**. After the first one its health bar appears.
+- **Defeating it:** **2 hits** bare-handed or with a wooden sword; 1 with a stone sword or better (see [Swords](71)). After the first one its health bar appears.
 - **Loot when defeated:**
 
 | Item | Chance |

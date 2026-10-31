@@ -11,6 +11,11 @@ const MOB_FISH_CAP = 24;
 const MOB_GROUP_CHANCE = { plains: 0.5, forest: 0.5, desert: 0.35, rocky: 0.4 };
 const MOB_HOSTILE_CHANCE = { plains: 0, forest: 0.015, desert: 0.025, rocky: 0.05 };
 
+// Damage of a player's strike: bare-handed (or holding anything that is not a sword), and per
+// sword material (see getPlayerAttackDamage).
+const PLAYER_BASE_DAMAGE = 4;
+const PLAYER_SWORD_DAMAGE = { wood: 5, stone: 6, iron: 7, gold: 8 };
+
 Object.assign(Game.prototype, {
     // `modelSpecies` builds a different model than the species' own (a bee colony's hive).
     createMob(species, position, { variant = null, modelSpecies = null } = {}) {
@@ -336,32 +341,84 @@ Object.assign(Game.prototype, {
         return current ? current.userData.mobRoot : null;
     },
 
+    // Damage of one strike by the local player: 4 bare-handed (or holding anything that is
+    // not a sword), more with a sword depending on its material.
+    getPlayerAttackDamage() {
+        const type = this.getSelectedHeldItemType();
+        const def = type && this.world && this.world.blockTypes[type];
+        if (!def || def.toolType !== 'sword') return PLAYER_BASE_DAMAGE;
+        return PLAYER_SWORD_DAMAGE[def.toolMaterial] || PLAYER_BASE_DAMAGE;
+    },
+
+    // A player's strike on a mob with a health pool: takes the damage and updates its health
+    // bar. Returns true when the blow was lethal (the caller then calls defeatMobByPlayer,
+    // after any death effects of its own).
+    damageMobByPlayer(mob, damage = this.getPlayerAttackDamage()) {
+        const data = mob.userData;
+        if (!(data.maxHealth > 1)) return false;
+        data.health -= damage;
+        this.updateMobHealthBar(mob);
+        return data.health <= 0;
+    },
+
+    // The player defeated `mob`: loot, bestiary and scavengers hear of it ('defeated'), then
+    // it leaves the world. A ridden mount throws its rider first; a friend or pet that falls
+    // stops being followed, and the tamed mobs are saved again soon.
+    defeatMobByPlayer(mob, message = null) {
+        if (!mob.parent) return;
+        if (mob === this.ridingMob) this.dismount();
+        if (mob === this.followingDog) this.followingDog = null;
+        if (mob === this.followingCat) this.followingCat = null;
+        const tamed = Boolean(mob.userData.tamed);
+        this.emitMobEvent('defeated', mob, 'player');
+        this.removeMob(mob);
+        if (tamed && this.tamingSaveSoon) this.tamingSaveSoon();
+        this.receiveSystemMessage({ text: message || `You defeated the ${mob.userData.species.replace('_', ' ')}` });
+    },
+
     interactWithMob(mob) {
         this.emitMobEvent('hit', mob);
-        const behaviour = MOB_BEHAVIOURS[getMobSpecies(mob.userData.species).movement];
+        // A 'hit' listener may have taken it already (a fish caught by hand, resources.js).
+        if (!mob.parent) return;
+        const movement = getMobSpecies(mob.userData.species).movement;
+        const behaviour = MOB_BEHAVIOURS[movement];
         if (behaviour && behaviour.interact) {
             behaviour.interact.call(this, mob);
             return;
         }
-        if (getMobSpecies(mob.userData.species).movement === 'swim') {
+        if (movement === 'swim') {
+            // Fish have no health pool: a swat into the school catches one now and then.
             this.startleSchool(mob, this.camera.position);
             this.playNoiseBurst({ duration: 0.08, volume: 0.015, highpass: 600, lowpass: 2400 });
             return;
         }
-        if (getMobSpecies(mob.userData.species).movement === 'stalk') {
+        if (movement === 'stalk') {
             this.hitShadow(mob);
             return;
         }
-        if (getMobSpecies(mob.userData.species).movement === 'glow') {
+        if (movement === 'glow') {
+            // A firefly cloud is not one animal: it only scatters.
             this.scatterFireflies(mob);
             return;
         }
-        if (getMobSpecies(mob.userData.species).movement === 'flutter') {
-            this.startleBats(mob, this.camera.position);
+        if (movement === 'swarm') {
+            // The hive cannot be destroyed. A single bee dies at the first blow (no health bar),
+            // but the colony comes after you all the same.
+            this.provokeColony(mob);
+            if (!mob.userData.isHive && mob.userData.dying === undefined) this.defeatMobByPlayer(mob, 'You swatted a bee');
             return;
         }
-        if (getMobSpecies(mob.userData.species).movement === 'swarm') {
-            this.provokeColony(mob);
+        // Everything else takes the blow; unless it was lethal, wildlife with a movement of its
+        // own reacts in its own way below, and ordinary ground mobs bounce.
+        if (this.damageMobByPlayer(mob)) {
+            if (movement === 'flutter' && mob.userData.colony) {
+                mob.userData.colony.bats = mob.userData.colony.bats.filter((bat) => bat !== mob);
+            }
+            this.defeatMobByPlayer(mob);
+            return;
+        }
+        if (movement === 'flutter') {
+            this.startleBats(mob, this.camera.position);
             return;
         }
         if (getMobSpecies(mob.userData.species).movement === 'soar') {
@@ -393,16 +450,6 @@ Object.assign(Game.prototype, {
             }
             this.playTone({ frequency: getMobSpecies('frog').tone, duration: 0.07, type: 'square', volume: 0.015, release: 0.06 });
             return;
-        }
-        if (mob.userData.maxHealth > 1) {
-            mob.userData.health -= 4;
-            this.updateMobHealthBar(mob);
-            if (mob.userData.health <= 0) {
-                this.emitMobEvent('defeated', mob, 'player');
-                this.removeMob(mob);
-                this.receiveSystemMessage({ text: `You defeated the ${mob.userData.species.replace('_', ' ')}` });
-                return;
-            }
         }
 
         mob.userData.bounceVelocity = 2.4;

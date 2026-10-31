@@ -32,7 +32,7 @@ There are **3 colours**: red, orange and sandy.
 | What you do | What happens |
 |---|---|
 | Hit it | It rears up on its back legs with its claws open, faces you and **pinches you** if you stay within 1.5 blocks: **1 damage** and a shove. Then it runs off and buries itself. |
-| Defeat it | **3 hits.** It leaves 1–2 ![shell](item:shell) `shell`. |
+| Defeat it | **3 hits** bare-handed (2 with a stone [sword](71) or better). It leaves 1–2 ![shell](item:shell) `shell`. |
 | Tame it | You can't: it goes its own way. |
 | Bait | `bait_fish`: it comes over to eat. |
 | Cage | **Yes**: put `bait_fish` inside and wait. |

@@ -32,7 +32,7 @@ Cada 9 a 18 segundos levanta los brazos y **llama al rayo**. ¿Dónde cae?
 ## Se cura con su propio rayo
 
 Cuando el rayo cae sobre su cabeza, el gólem **absorbe la carga** y **recupera 4 de vida**: justo lo que le
-quita uno de tus golpes. Tiene vida para **5 golpes**, así que un rayo a destiempo te obliga a dar uno más.
+quita uno de tus golpes a mano. Tiene vida para **5 golpes** a mano, así que un rayo a destiempo te obliga a dar uno más.
 
 **Truco:** pon un bloque de hierro, cobre u oro **a cielo abierto** cerca de donde vas a pelear. Será tu
 **pararrayos**: muchos de sus rayos caerán allí y no en su cabeza.

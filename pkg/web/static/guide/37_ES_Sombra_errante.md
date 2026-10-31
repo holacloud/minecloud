@@ -36,7 +36,7 @@ leyenda**, y muchos jugadores no se la cruzan nunca.
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpearla | Retrocede entre humo. Con **3 golpes** la destierras ("You banished the wandering shadow") y deja 1–2 ![esencia de sombra](item:shadow_essence) `shadow_essence`. |
+| Golpearla | Retrocede entre humo. Con **3 golpes** a mano (2 con una [espada](71) de piedra o mejor) la destierras ("You banished the wandering shadow") y deja 1–2 ![esencia de sombra](item:shadow_essence) `shadow_essence`. |
 | Ahuyentarla con luz | Huye ("The shadow fled from the light"). Si estás a menos de 16 bloques, hay un **50 %** de que deje 1 `shadow_essence`. |
 | Domesticarla, cebo, jaula o red | No. |
 | Huevo | `shadow_egg` |

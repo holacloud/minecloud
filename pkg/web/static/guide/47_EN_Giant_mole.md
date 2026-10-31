@@ -31,7 +31,7 @@ top.
 | What you do | What happens |
 |---|---|
 | Hit it (above ground) | It squeaks and dives underground, away from you. Underground it cannot be hit. |
-| Defeat it | **3 hits**, always while it is out. It leaves 1–2 ![fur](item:fur) `fur`. |
+| Defeat it | **3 hits** bare-handed (2 with a stone [sword](71) or better), always while it is out. It leaves 1–2 ![fur](item:fur) `fur`. |
 | Tame it | You can't: it lives underground. |
 | `iron_shears` | 1 `fur` every 120 s, if you catch it above ground. |
 | Bait | It is listed with `bait_worms`, but it follows its own behaviour and hardly ever comes. |

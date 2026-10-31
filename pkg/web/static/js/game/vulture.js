@@ -6,13 +6,13 @@
 // on the spot, circle low over it for a while, then land around it and peck and squabble,
 // hissing and mantling their wings. When the player's health drops to 30% or less they
 // gather overhead and circle ominously until it recovers. They never attack; struck, one
-// hisses and flaps off higher and away.
+// hisses and flaps off higher and away, and three bare-handed blows defeat it.
 // Self-contained: registers the 'scavenge' movement mode (js/extensions.js); `this` is the Game.
 
 const _vultureTarget = new THREE.Vector3();
 const VULTURE_SIGHT = 56;
 
-MOB_SPECIES.vulture = { eggColor: 0x2e2420, tone: 120, speed: 2.8, group: [1, 3], limit: 4, movement: 'scavenge' };
+MOB_SPECIES.vulture = { eggColor: 0x2e2420, tone: 120, maxHealth: 12, speed: 2.8, group: [1, 3], limit: 4, movement: 'scavenge' };
 VoxelModels.MOB_SURFACES.vulture = 'feather';
 
 // Faces +z; 16 units per block. About 2.6 blocks of wingspan.
@@ -258,6 +258,10 @@ Object.assign(Game.prototype, {
         const state = data.vulture;
         const player = this.getLocalPlayerPosition();
         this.vultureHiss(mob, 1.4);
+        if (this.damageMobByPlayer(mob)) {
+            this.defeatMobByPlayer(mob, 'You defeated the vulture');
+            return;
+        }
         this.vultureChooseThermal(mob, player);
         state.mode = 'flee';
         state.timer = 14;

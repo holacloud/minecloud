@@ -39,7 +39,7 @@ There are **5 colours**: brown (the most common), grey, white (with red eyes), b
 
 | What you do | What happens |
 |---|---|
-| Hit it | It cannot be defeated. It squeaks, is bowled over and runs off with its whole family. |
+| Hit it | **12 health**: 3 blows bare-handed, 2 with a stone sword or better ([Swords](71)); defeated, it drops 1 `fur` and its family bolts for the burrow. Otherwise it squeaks, is bowled over and runs off with its whole family. Hidden or diving into the burrow, it cannot be struck. |
 | Tame it | You can't: it is far too skittish. |
 | `iron_shears` | 1 ![fur](item:fur) `fur` every 120 s, if you manage to get close (sneaking). |
 | Bait | It is listed with `bait_seeds`, but it follows its own behaviour and hardly ever comes. |

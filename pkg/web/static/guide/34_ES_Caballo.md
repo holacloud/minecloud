@@ -32,7 +32,7 @@ Hay **4 capas**:
 | Qué haces | Qué pasa |
 |---|---|
 | Clic derecho con la mano vacía | **Lo montas.** Espacio salta, Shift te bajas. Ver [Montar a caballo](7). |
-| Golpearlo | No se puede derrotar: da un respingo y se gira hacia ti. |
+| Golpearlo | **12 de vida**: 3 golpes a mano, 2 con una espada de piedra o mejor ([Espadas](71)); al derrotarlo suelta **1 a 2** `leather`. Si no, da un respingo y se gira hacia ti. Mientras lo montas no puedes golpearlo. |
 | Domesticarlo | Sí: `tall_grass`, `flower_yellow` o `honeycomb`, con **1 de 4** por intento. Ver [Domesticar y criar](3). |
 | Sentarlo (domesticado) | **Shift + clic derecho**, porque el clic normal lo monta. |
 | Criar | Dos caballos domesticados y enamorados tienen un potro, que no se puede montar hasta que crece. |

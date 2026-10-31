@@ -30,7 +30,7 @@ fish.
 
 | What you do | What happens |
 |---|---|
-| Hit it | It cannot be defeated. It screeches, takes off and moves away. There is a **50 %** chance it drops a ![feather](item:feather) `feather` (8 s wait). |
+| Hit it | **12 health**: 3 blows bare-handed, 2 with a stone sword or better ([Swords](71)); defeated, it drops **2 to 3** `feather` (and the fish it carried is lost). Otherwise it screeches, takes off and moves away. There is a **50 %** chance it drops a ![feather](item:feather) `feather` (8 s wait). |
 | Tame it | You can't: it is a wild bird of prey. |
 | Bait | It is listed with `bait_fish`, but it flies its own way and in practice does not come down for it. |
 | Cage or net | It does not fit in a cage and the net cannot catch it. |

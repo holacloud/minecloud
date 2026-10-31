@@ -22,7 +22,9 @@ asustas, se esconde en su caparazón.
 
 ## Cómo interactuar
 
-- **Golpearla:** no se le puede derrotar. Se esconde unos 5 segundos; si está en el agua, huye nadando. Cada golpe tiene un **15 %** de
+- **Golpearla:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)); al derrotarla suelta 1 `shell`. Mientras, se esconde unos 5 segundos; si está en el agua, huye
+  nadando. Cada golpe tiene además un **15 %** de
   soltar una `shell` ![Concha](item:shell) (como mucho una por minuto por tortuga).
 - **Domesticarla:** no se puede.
 - **Cebos:** el `bait_fish` y el `bait_worms` la atraen poco a poco (ver [Cebos y trampas](4)).

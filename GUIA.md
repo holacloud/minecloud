@@ -41,8 +41,26 @@ Además, los patos, guacamayos, búhos y buitres cercanos sueltan de vez en cuan
 Solo hay botín cuando el mob lo derrota el jugador. Las presas de depredadores (zorro, búho, águila) no dejan
 nada. Donde hay porcentaje, es la probabilidad de que salga ese objeto.
 
+Daño de cada golpe del jugador: **4** a mano (o con cualquier objeto que no sea una espada), **5** con
+`wood_sword`, **6** con `stone_sword`, **7** con `iron_sword` y **8** con `gold_sword`. Los animales pacíficos
+tienen 12 de vida: **3 golpes** a mano, 2 con una espada de piedra o mejor. La serpiente recibe la mitad de cada
+golpe. Una abeja cae al primer golpe (la colmena no se puede destruir); los bancos de peces, las nubes de
+luciérnagas y el fuego fatuo no tienen vida.
+
 | Mob | Botín |
 |---|---|
+| Oveja | 1–2 `white_wool` |
+| Pato, guacamayo | 1–3 `feather` |
+| Águila, buitre | 2–3 `feather` |
+| Cerdo, jirafa, caballo | 1–2 `leather` |
+| Camello | 1–2 `leather`, `fur` (50 %) |
+| Cabra | 1 `leather`, 1 `fur` |
+| Murciélago | `leather` (50 %) |
+| Perro, gato, conejo | 1 `fur` |
+| Tortuga | 1 `shell` |
+| Lagarto | 1–2 `scale` |
+| Rana | `venom_sac` (15 %) |
+| Abeja | `honeycomb` (10 %) |
 | Araña | `venom_sac` (50 %), `white_wool` (30 %) |
 | Monstruo de cueva | 1–3 `leather`, `glow_dust` (50 %) |
 | Escorpión | `venom_sac`, `shell` (25 %) |
@@ -103,7 +121,7 @@ Si llevas el abrigo y la cota a la vez, solo cuenta la mejor de las dos.
 
 - **Contra el veneno** (serpientes, escorpiones): lleva `milk` o, mejor aún, `antivenom` antes de entrar en el
   desierto o la roca.
-- **Plumas y lana** para la `feather_cape`: las plumas se consiguen sin hacer daño, golpeando patos o esperando a
+- **Plumas y lana** para la `feather_cape`: las plumas se consiguen sin matar a nadie, golpeando patos o esperando a
   que muden; la lana, esquilando ovejas.
 - **Antorchas sin carbón:** el `glow_dust` de las luciérnagas o de un fuego fatuo atrapado da 4 antorchas con un
   solo `wood`.

@@ -25,6 +25,9 @@ crecerle la lana.
 |---|---|
 | ![Zorro](mob:fox) Zorro (3 golpes) | 1–2 |
 | ![Topo gigante](mob:mole) Topo gigante (3 golpes) | 1–2 |
+| ![Cabra](mob:goat) Cabra (3 golpes) | 1 (y 1 `leather`) |
+| ![Camello](mob:camel) Camello (3 golpes) | 1, la mitad de las veces (y 1–2 `leather`) |
+| ![Perro](mob:dog) Perro, ![Gato](mob:cat) gato, ![Conejo](mob:rabbit) conejo (3 golpes) | 1 |
 
 ## Para qué sirve
 

@@ -19,8 +19,9 @@ lejos.
 
 ## Cómo interactuar
 
-- **Golpearla:** no se le puede hacer daño ni derrotar.
-- **Recursos:** por ahora no da ninguno.
+- **Golpearla:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)). Al derrotarla suelta **1 a 2** `leather` ![Cuero](item:leather).
+- **Recursos:** solo el cuero al derrotarla.
 - **Domesticarla** (ver [Domesticar y criar](3)):
 
 | Comida | Probabilidad por intento |

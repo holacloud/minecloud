@@ -22,7 +22,7 @@ It is the toughest of the game's first creatures.
 
 - **Its attack:** **4 damage** per blow, the strongest of the mobs of its time. With a `warm_coat` it drops to 3,
   and with `scale_mail` to 2.
-- **Defeating it:** **4 hits**. After the first one its health bar appears.
+- **Defeating it:** **4 hits** bare-handed or with a wooden sword, 3 with stone or iron, 2 with gold (see [Swords](71)). After the first one its health bar appears.
 - **Loot when defeated:**
 
 | Item | Amount |

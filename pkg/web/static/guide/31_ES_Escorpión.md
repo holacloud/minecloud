@@ -23,7 +23,7 @@ su picadura te **envenena**.
   mensaje "You were poisoned by a scorpion". La armadura no reduce estos golpes de 1.
 - **Curar el veneno:** bebe `milk` (tecla G) o, mejor, `antivenom`, que además te protege del veneno durante
   **3 minutos** (ver [Antídoto](89)).
-- **Derrotarlo:** **2 golpes**. Al primero aparece su barra de salud.
+- **Derrotarlo:** **2 golpes** a mano o con espada de madera; 1 con una espada de piedra o mejor (ver [Espadas](71)). Al primero aparece su barra de salud.
 - **Botín al derrotarlo:**
 
 | Objeto | Probabilidad |

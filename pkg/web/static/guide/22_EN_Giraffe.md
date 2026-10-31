@@ -19,8 +19,9 @@ from far away.
 
 ## How to interact
 
-- **Hitting it:** it cannot be hurt or defeated.
-- **Resources:** none for now.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)). Defeated, it drops **1 to 2** `leather` ![Leather](item:leather).
+- **Resources:** only its leather, when defeated.
 - **Taming it** (see [Taming and breeding](3)):
 
 | Food | Chance per try |

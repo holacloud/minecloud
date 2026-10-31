@@ -29,7 +29,7 @@ desert and the rocks… and it always knows **where someone has fallen**.
 
 | What you do | What happens |
 |---|---|
-| Hit it | It cannot be defeated. It hisses and flies off higher. There is a **40 %** chance it drops a ![feather](item:feather) `feather` (8 s wait). |
+| Hit it | **12 health**: 3 blows bare-handed, 2 with a stone sword or better ([Swords](71)); defeated, it drops **2 to 3** `feather`. Otherwise it hisses and flies off higher. There is a **40 %** chance it drops a ![feather](item:feather) `feather` (8 s wait). |
 | Wait nearby | Vultures drop a feather on their own now and then, if you are within 24 blocks. |
 | Tame it | You can't. |
 | Bait | It is listed with `bait_meat`, but it flies its own way and in practice does not come down for it. |

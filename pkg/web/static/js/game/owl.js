@@ -623,7 +623,7 @@ Object.assign(Game.prototype, {
         if (!mob.parent) return;
         if (!data.flight) this.owlInit(mob);
         const flight = data.flight;
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         this.playNoiseBurst({ duration: 0.1, volume: 0.025, highpass: 500, lowpass: 3000 });
         if (data.health <= 0) {

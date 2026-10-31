@@ -31,7 +31,7 @@ que avanza por encima.
 | Qué haces | Qué pasa |
 |---|---|
 | Golpearlo (fuera de la tierra) | Chilla y se zambulle bajo tierra, alejándose de ti. Bajo tierra no se le puede golpear. |
-| Derrotarlo | **3 golpes**, siempre mientras está fuera. Deja 1–2 ![pelo](item:fur) `fur`. |
+| Derrotarlo | **3 golpes** a mano (2 con una [espada](71) de piedra o mejor), siempre mientras está fuera. Deja 1–2 ![pelo](item:fur) `fur`. |
 | Domesticarlo | No se puede: vive bajo tierra. |
 | `iron_shears` | 1 `fur` cada 120 s, si lo pillas fuera. |
 | Cebo | Figura en la tabla con `bait_worms`, pero sigue su propio comportamiento y casi nunca acude. |

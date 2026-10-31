@@ -23,7 +23,9 @@ hides in its shell.
 
 ## How to interact
 
-- **Hitting it:** it cannot be defeated. It hides for about 5 seconds; if it is in the water, it swims away. Each hit has a **15 %**
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)); defeated, it drops 1 `shell`. Until then it hides for about 5 seconds; if it is in the water, it
+  swims away. Each hit also has a **15 %**
   chance of dropping a `shell` ![Shell](item:shell) (at most one a minute per turtle).
 - **Taming it:** not possible.
 - **Baits:** `bait_fish` and `bait_worms` draw it in little by little (see [Baits and traps](4)).

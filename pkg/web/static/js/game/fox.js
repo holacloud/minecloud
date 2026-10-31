@@ -554,7 +554,7 @@ Object.assign(Game.prototype, {
         this.foxDropCarcass(mob);
         fox.stealCooldown = 30;
         fox.huntCooldown = Math.max(fox.huntCooldown, 10);
-        data.health -= 4;
+        data.health -= this.getPlayerAttackDamage();
         this.updateMobHealthBar(mob);
         const tone = getMobSpecies('fox').tone;
         this.playTone({ frequency: tone * 1.9, endFrequency: tone * 1.1, duration: 0.16, type: 'sawtooth', volume: 0.02, attack: 0.01, release: 0.08 });

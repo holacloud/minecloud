@@ -23,7 +23,8 @@ are acceptable, and then it follows you and purrs.
 
 ## How to interact
 
-- **Hitting it:** it cannot be hurt or defeated.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)). Defeated, it drops 1 `fur` ![Fur](item:fur).
 - **Trimming its fur:** right click with `iron_shears`: it drops 1 `fur` ![Fur](item:fur). It grows back in **120
   seconds**.
 - **Taming it** (see [Taming and breeding](3)):

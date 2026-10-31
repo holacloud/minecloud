@@ -36,11 +36,11 @@ The horse is the only thing that makes you **faster than yourself**. See [Riding
 
 ## Toughness
 
-- The toughest is the ![Golem](mob:storm_golem) [storm golem](43): **5 blows**. And on top of that, it heals
+- The toughest is the ![Golem](mob:storm_golem) [storm golem](43): **5 blows** bare-handed. And on top of that, it heals
   when it calls the lightning down onto itself.
 - Next comes the [cave monster](21), with 4 blows.
-- Many peaceful animals (sheep, pigs, lizards…) **cannot be defeated**: they have no health bar and striking
-  them only startles them.
+- Peaceful animals take **3 blows** bare-handed; with a stone [sword](71) or better, 2. The frailest are bees: they fall at
+  the first blow. Fish, firefly clouds and wisps have no health bar.
 
 ## Crowds
 

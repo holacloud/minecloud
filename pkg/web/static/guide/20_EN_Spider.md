@@ -21,7 +21,7 @@ A huge, dark, red-eyed spider that rushes at anyone who comes near. It hits hard
 
 - **Its attack:** **2 damage** per bite (your maximum health is 20). With a `warm_coat` or `scale_mail` it drops
   to 1.
-- **Defeating it:** **2 hits**. After the first hit its health bar appears above it.
+- **Defeating it:** **2 hits** bare-handed or with most swords; 1 with a gold one (see [Swords](71)). After the first hit its health bar appears above it.
 - **Loot when defeated:**
 
 | Item | Chance |

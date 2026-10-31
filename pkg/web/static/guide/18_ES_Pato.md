@@ -20,7 +20,8 @@ hacerle daño.
 
 ## Cómo interactuar
 
-- **Golpearlo:** no se le puede derrotar, pero cada golpe tiene un **40 %** de soltar una `feather`
+- **Golpearlo:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)); al derrotarlo suelta **1 a 3** `feather`. Además, cada golpe tiene un **40 %** de soltar una `feather`
   ![Pluma](item:feather) (como mucho una cada 8 segundos por pato).
 - **Domesticarlo** (ver [Domesticar y criar](3)):
 

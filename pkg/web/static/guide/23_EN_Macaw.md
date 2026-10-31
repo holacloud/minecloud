@@ -19,7 +19,8 @@ showy.
 
 ## How to interact
 
-- **Hitting it:** it cannot be defeated, but each hit has a **40 %** chance of dropping a `feather`
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)); defeated, it drops **1 to 3** `feather`. Besides, each hit has a **40 %** chance of dropping a `feather`
   ![Feather](item:feather) (at most one every 8 seconds per macaw).
 - **Taming it** (see [Taming and breeding](3)):
 

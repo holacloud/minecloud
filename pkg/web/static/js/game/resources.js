@@ -344,7 +344,7 @@ const RESOURCE_DROPS = {
     fox: [['fur', 1, 2]],
     rabbit: [['fur', 1, 1]],
     owl: [['feather', 1, 3]],
-    vulture: [['feather', 2, 3]], // cannot be defeated today; it sheds feathers when struck
+    vulture: [['feather', 2, 3]], // it also sheds feathers when struck
     snake: [['scale', 1, 2], ['venom_sac', 1, 1, 0.6]],
     storm_golem: [['glow_dust', 2, 3], ['iron_ore', 1, 2]],
     wisp: [], // wisp.js drops its own glow_dust when caught

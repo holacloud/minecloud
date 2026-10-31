@@ -20,7 +20,8 @@ drops its tail to escape.
 
 ## How to interact
 
-- **Hitting it:** it cannot be defeated. It **drops its tail**, which lies **wriggling on the ground** for a few
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)); defeated, it drops **1 to 2** `scale`. If it survives, it **drops its tail**, which lies **wriggling on the ground** for a few
   seconds, and runs off. Its tail grows back in **1 minute**.
 - **Scales:** each hit has a **35 %** chance of dropping a `scale` ![Scale](item:scale) (at most one every 10
   seconds per lizard).

@@ -17,11 +17,13 @@ wool**.
 - It strolls slowly without wandering far from where it was born.
 - It is a **grazer**: when it stands still, it lowers its head to nibble the grass.
 - It also looks around, flicks its ears and breathes slowly.
-- If you hit it, it hops, gives a short bleat and turns towards you. It does not fight back.
+- If you hit it, it hops, gives a short bleat and turns towards you. It does not fight back, and its health bar
+  shows above it.
 
 ## How to interact
 
-- **Hitting it:** it cannot be hurt or defeated.
+- **Hitting it:** it has **12 health** and falls in **3 blows** bare-handed (2 with a stone sword or better, see
+  [Swords](71)). Defeated, it drops **1 to 2** `white_wool`.
 - **Shearing it:** right click with `iron_shears` ![Shears](item:iron_shears): it drops **1 to 3** `white_wool`.
   - It becomes slimmer and pinkish grey, without its little woolly cap.
   - The wool grows back in **150 seconds**. Until then it says "Its wool is still growing back".

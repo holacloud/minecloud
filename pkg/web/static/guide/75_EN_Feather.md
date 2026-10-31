@@ -3,7 +3,7 @@
 ![Feather](item:feather)
 
 A light white bird feather. It is the material of the **feather cape** and the **feather bed**, and you can almost
-always get it **without harming anyone**.
+always get it **without killing anyone**.
 
 ## How to get it
 
@@ -21,7 +21,9 @@ another one.
 **Moulting:** ducks, macaws, owls and vultures within **24 blocks** of you drop a feather on their own now and
 then (on average, one every 6 or 7 minutes per bird). Just walk near a flock.
 
-**Loot:** the ![Owl](mob:owl) owl, if you defeat it (3 blows), leaves **1–3 feathers**.
+**Loot:** birds also leave feathers if you defeat them (3 blows bare-handed): the ![Duck](mob:duck) duck, the
+![Macaw](mob:macaw) macaw and the ![Owl](mob:owl) owl, **1–3**; the ![Eagle](mob:eagle) eagle and the
+![Vulture](mob:vulture) vulture, **2–3**.
 
 ## What it is for
 
@@ -43,6 +45,6 @@ A feather cannot be eaten and is not used for taming.
 - Real birds also **moult**: they swap old feathers for new ones once or twice a year.
 - For centuries people wrote with sharpened goose quills, which is why a fountain pen's tip is still called a nib
   and "pen" comes from the Latin *penna*, feather.
-- Vultures cannot be defeated in the game, but they do shed feathers when struck.
+- A defeated vulture leaves up to 3 feathers; but alive it sheds one now and then when struck, and it never attacks.
 
 See also: [Mob resources](2).

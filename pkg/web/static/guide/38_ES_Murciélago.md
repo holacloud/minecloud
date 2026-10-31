@@ -31,7 +31,7 @@ Hay **2 colores**: pardo y gris oscuro.
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpearlo | No se puede derrotar. Asusta a toda la colonia, que sale volando. |
+| Golpearlo | **12 de vida**: 3 golpes a mano, 2 con una espada de piedra o mejor ([Espadas](71)); al derrotarlo, la mitad de las veces suelta 1 `leather`. Si no, asusta a toda la colonia, que sale volando. |
 | Red (`bug_net`) | Lo atrapas y te da un `bat_egg`. Son rápidos: apunta bien. |
 | Domesticarlo, cebo o jaula | No. |
 | Huevo | `bat_egg`: aparece una colonia volando, que se instala bajo el techo más cercano (hasta 10 bloques). |

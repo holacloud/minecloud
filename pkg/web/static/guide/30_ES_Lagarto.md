@@ -21,7 +21,8 @@ golpeas, suelta la cola para escapar.
 
 ## Cómo interactuar
 
-- **Golpearlo:** no se le puede derrotar. **Suelta la cola**, que se queda **retorciéndose en el suelo** unos
+- **Golpearlo:** tiene **12 de vida** y cae en **3 golpes** a mano (2 con una espada de piedra o mejor, ver
+  [Espadas](71)); al derrotarlo suelta **1 a 2** `scale`. Si sobrevive, **suelta la cola**, que se queda **retorciéndose en el suelo** unos
   segundos, y él huye. La cola le vuelve a crecer en **1 minuto**.
 - **Escamas:** cada golpe tiene un **35 %** de soltar una `scale` ![Escama](item:scale) (como mucho una cada 10
   segundos por lagarto).

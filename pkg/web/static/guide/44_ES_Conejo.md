@@ -38,7 +38,7 @@ el desierto). Cada familia suele ser de un color.
 
 | Qué haces | Qué pasa |
 |---|---|
-| Golpearlo | No se puede derrotar. Chilla, sale despedido y huye con toda su familia. |
+| Golpearlo | **12 de vida**: 3 golpes a mano, 2 con una espada de piedra o mejor ([Espadas](71)); al derrotarlo suelta 1 `fur` y su familia huye a la madriguera. Si no, chilla, sale despedido y huye con toda su familia. Escondido o entrando en la madriguera no se le puede golpear. |
 | Domesticarlo | No se puede: es demasiado asustadizo. |
 | `iron_shears` | 1 ![pelo](item:fur) `fur` cada 120 s, si consigues acercarte (agachado). |
 | Cebo | Figura en la tabla con `bait_seeds`, pero sigue su propio comportamiento y casi nunca acude. |
