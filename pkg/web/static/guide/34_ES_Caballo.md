@@ -7,7 +7,7 @@ cruzarás el mapa al galope.
 
 ## Dónde vive
 
-- En las **praderas** (bioma `plains`).
+- En las **praderas** (bioma `plains`) y, menos, en los **bosques**.
 - Aparece en manadas de **2 a 4** caballos.
 - Es de día y de noche: no tiene horario.
 

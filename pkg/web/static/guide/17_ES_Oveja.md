@@ -9,7 +9,8 @@ blanca** del juego.
 
 - **Llanuras:** es el animal más común de las praderas.
 - **Colinas rocosas:** también aparece, aunque menos.
-- Sale de día y de noche, en grupos de **1 a 3**.
+- **Bosques:** alguna que otra.
+- Sale de día y de noche, en rebaños de **2 a 4**.
 
 ## Comportamiento
 

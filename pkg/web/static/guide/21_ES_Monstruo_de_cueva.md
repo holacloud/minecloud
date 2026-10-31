@@ -7,7 +7,7 @@ tiene unos brazos larguísimos. Es la criatura más resistente de las primeras d
 
 ## Dónde vive
 
-- **Colinas rocosas**, siempre solo. A pesar de su nombre, aparece en la superficie, entre las rocas.
+- **Colinas rocosas**, siempre solo, y **no muy a menudo**. A pesar de su nombre, aparece en la superficie, entre las rocas.
 - Es peligroso **de día y de noche**.
 
 ## Comportamiento

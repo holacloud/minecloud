@@ -9,7 +9,7 @@ hacerle daño.
 
 - **Llanuras:** bastante común.
 - **Desierto:** también aparece entre las dunas.
-- De día y de noche, en grupos de **1 a 3**.
+- De día y de noche, en grupos de **2 a 4**.
 
 ## Comportamiento
 

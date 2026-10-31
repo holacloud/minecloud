@@ -7,7 +7,7 @@ su picadura te **envenena**.
 
 ## Dónde vive
 
-- **Desierto** y **colinas rocosas**, siempre solo.
+- **Desierto** y **colinas rocosas**, siempre solo, y **no muy a menudo**.
 - Está ahí de día y de noche, pero **solo es peligroso de noche** (de 18:00 a 6:00).
 
 ## Comportamiento

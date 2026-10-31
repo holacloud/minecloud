@@ -2,16 +2,22 @@
 
 ![Sombra errante](mob:shadow)
 
-Una figura alta y encapuchada, con **dos ojos de luz** bajo la capucha, que surge de la oscuridad por la noche y
-se desliza detrás de ti. La luz es su única debilidad.
+Una figura alta y encapuchada, con **dos ojos de luz** bajo la capucha, que surge de la oscuridad en lo más
+profundo de la noche y se desliza detrás de ti. La luz es su única debilidad. Pocos la han visto: es **una
+leyenda**, y muchos jugadores no se la cruzan nunca.
 
 ## Dónde vive
 
-- **En cualquier parte**, siempre que sea de noche.
-- Cada 10 segundos, de noche, hay una probabilidad de que una sombra **surja del suelo entre una nube de humo**, a
-  20–30 bloques de ti.
-- Nunca aparece sobre el agua ni a menos de 4 bloques de una **antorcha colocada**.
-- Como mucho hay **2 sombras** a la vez.
+- **En cualquier parte, pero solo en plena noche** (de 22:00 a 4:00) **y con el cielo despejado**. Nunca de
+  día, y nunca con lluvia: las tormentas son de los [golems de tormenta](43).
+- Solo viene a por quien se aleja **lejos de casa**: a más de 48 bloques de tu punto de reaparición, **sin
+  antorcha** en la mano y sin ninguna colocada a menos de 10 bloques de ti.
+- Es **muy, muy rara**. Después de aparecer una, no surge otra en al menos **3 días**, y aun así la noche tiene
+  que ser la adecuada. De media, **una cada 10 noches o así** pasadas a la intemperie.
+- Solo hay **una** como mucho, y nunca mientras camina un golem de tormenta.
+- **Antes llega un presagio:** la noche se queda en silencio y el chat te avisa. La primera vez sabrás que se
+  acerca algo especial. Unos segundos después **surge del suelo entre una nube de humo**, a 20–30 bloques de ti.
+- Nunca surge sobre el agua ni a menos de 4 bloques de una **antorcha colocada**.
 
 ## Comportamiento
 
@@ -47,7 +53,10 @@ se desliza detrás de ti. La luz es su única debilidad.
 
 - Es la criatura con el sonido más grave del juego: su tono base es de solo **70 Hz**.
 - En el modo **Ultra**, sus ojos brillan tanto que se ven con halo en la oscuridad.
-- Se parece a las figuras de muchas leyendas: seres que solo se mueven cuando no los miras.
+- Se parece a las figuras de muchas leyendas: seres que solo se mueven cuando no los miras. En MineCloud es una
+  de esas leyendas: si has visto una, puedes contarlo.
+- En versiones anteriores aparecía casi todas las noches, de dos en dos, y el mundo estaba lleno de sombras.
+  Desde entonces se ha retirado a las horas más oscuras.
 - **Al amanecer**, una sombra que se disuelve cerca de ti a veces **susurra algo** mientras sale el sol. Merece la
   pena estar atento al chat y apuntarlo.
 

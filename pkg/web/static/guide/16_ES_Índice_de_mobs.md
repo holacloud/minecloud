@@ -28,13 +28,13 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 | ![](mob:horse) | [Caballo](34) | se puede montar | 2026-10-29 |
 | ![](mob:bee) | [Abeja y colmena](35) | colonias con miel; pican si las enfadas | 2026-10-29 |
 | ![](mob:firefly) | [Luciérnaga](36) | lucecitas que parpadean de noche | 2026-10-29 |
-| ![](mob:shadow) | [Sombra errante](37) | te acecha de noche; huye de la luz | 2026-10-30 |
+| ![](mob:shadow) | [Sombra errante](37) | una leyenda: muy rara vez te acecha en plena noche; huye de la luz | 2026-10-30 |
 | ![](mob:bat) | [Murciélago](38) | cuelga de los techos; vuela de noche | 2026-10-30 |
 | ![](mob:crab) | [Cangrejo](39) | corre de lado por la playa | 2026-10-30 |
 | ![](mob:vulture) | [Buitre](40) | carroñero que vuela en círculos | 2026-10-30 |
 | ![](mob:wisp) | [Fuego fatuo](41) | una llama nocturna que engaña | 2026-10-30 |
 | ![](mob:snake) | [Serpiente](42) | acecha enterrada; venenosa | 2026-10-30 |
-| ![](mob:storm_golem) | [Golem de tormenta](43) | nace de un rayo cuando llueve | 2026-10-30 |
+| ![](mob:storm_golem) | [Golem de tormenta](43) | a veces nace de un rayo cuando llueve | 2026-10-30 |
 | ![](mob:rabbit) | [Conejo](44) | vive en familia en su madriguera | 2026-10-30 |
 | ![](mob:fox) | [Zorro](45) | cazador tímido; roba de noche | 2026-10-30 |
 | ![](mob:owl) | [Búho](46) | vigila de noche desde los árboles | 2026-10-30 |

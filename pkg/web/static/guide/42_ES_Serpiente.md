@@ -8,7 +8,7 @@ se enrosca, **sisea** y, si es de cascabel, hace sonar la cola. Su mordisco es *
 ## Dónde vive
 
 - En el **desierto** y, algo menos, en las **rocas y montañas**.
-- Siempre **sola**. Como mucho hay **3 serpientes** a la vez.
+- Siempre **sola**, y **no muy a menudo**. Como mucho hay **2 serpientes** a la vez.
 - De día y de noche. De noche se mueve un poco más a menudo.
 
 ## Comportamiento

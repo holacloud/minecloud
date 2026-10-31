@@ -28,13 +28,13 @@ To find out where each one lives, see [Biomes](15). To keep track of the ones yo
 | ![](mob:horse) | [Horse](34) | can be ridden | 2026-10-29 |
 | ![](mob:bee) | [Bee and beehive](35) | colonies with honey; they sting if angered | 2026-10-29 |
 | ![](mob:firefly) | [Firefly](36) | tiny lights blinking at night | 2026-10-29 |
-| ![](mob:shadow) | [Wandering shadow](37) | stalks you at night; flees from light | 2026-10-30 |
+| ![](mob:shadow) | [Wandering shadow](37) | a legend: very rarely stalks you in the dead of night; flees from light | 2026-10-30 |
 | ![](mob:bat) | [Bat](38) | hangs from roofs; flies at night | 2026-10-30 |
 | ![](mob:crab) | [Crab](39) | scuttles sideways along the beach | 2026-10-30 |
 | ![](mob:vulture) | [Vulture](40) | a scavenger circling overhead | 2026-10-30 |
 | ![](mob:wisp) | [Wisp](41) | a night flame that deceives | 2026-10-30 |
 | ![](mob:snake) | [Snake](42) | lurks buried; venomous | 2026-10-30 |
-| ![](mob:storm_golem) | [Storm golem](43) | born from lightning when it rains | 2026-10-30 |
+| ![](mob:storm_golem) | [Storm golem](43) | sometimes born from lightning when it rains | 2026-10-30 |
 | ![](mob:rabbit) | [Rabbit](44) | lives in families in a burrow | 2026-10-30 |
 | ![](mob:fox) | [Fox](45) | a shy hunter; steals at night | 2026-10-30 |
 | ![](mob:owl) | [Owl](46) | keeps watch at night from the trees | 2026-10-30 |

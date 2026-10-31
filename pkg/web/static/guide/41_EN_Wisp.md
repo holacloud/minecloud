@@ -7,10 +7,11 @@ attacks: it only **deceives**. Follow it and it will lead you to deep water or t
 
 ## Where it lives
 
-- **Anywhere, at night.** Every 12 seconds there is a chance one appears **25–40 blocks** away from you.
+- **Anywhere, at night**, but not every night. Every 30 seconds there is a **20 %** chance that one appears
+  **25–40 blocks** away from you: about **one every other night**.
 - It prefers dangerous places: the **water's edge** or next to a **ravine**, where the ground drops 4 blocks or
   more.
-- There are at most **2 wisps** at a time.
+- There is at most **1 wisp** at a time.
 - **At dawn it goes out** and vanishes, and also if you get more than 72 blocks away.
 
 ## Behaviour

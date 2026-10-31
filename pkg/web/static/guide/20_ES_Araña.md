@@ -7,7 +7,8 @@ rápido.
 
 ## Dónde vive
 
-- **Bosques** y **colinas rocosas**, siempre sola.
+- **Bosques** y **colinas rocosas**, siempre sola, y **no muy a menudo**: nunca hay más de 4 hostiles salvajes
+  a tu alrededor (arañas, monstruos de cueva, escorpiones y serpientes, todos juntos). Ver [Cómo piensan los mobs](104).
 - Es peligrosa **de día y de noche**: no espera a que oscurezca.
 
 ## Comportamiento

@@ -10,7 +10,7 @@
 // Registered as the 'burrow' movement through js/extensions.js.
 
 MOB_SPECIES.rabbit = {
-    eggColor: 0xa8825a, tone: 1500, speed: 2.2, variants: 5, group: [2, 4], limit: 10,
+    eggColor: 0xa8825a, tone: 1500, speed: 2.2, variants: 5, group: [2, 4], limit: 12,
     movement: 'burrow'
 };
 
@@ -261,7 +261,7 @@ Object.assign(Game.prototype, {
 
     spawnRabbitsForChunk(chunkX, chunkZ, biome) {
         if (biome === 'rocky') return;
-        const chance = biome === 'forest' ? 0.16 : biome === 'desert' ? 0.05 : 0.2;
+        const chance = biome === 'forest' ? 0.25 : biome === 'desert' ? 0.06 : 0.3;
         if (this.chunkRandom(chunkX, chunkZ, 301) > chance) return;
         const info = getMobSpecies('rabbit');
         const alive = this.ambientMobs.filter((mob) => mob.userData.species === 'rabbit').length;

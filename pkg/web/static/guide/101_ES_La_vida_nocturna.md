@@ -29,9 +29,10 @@ se van a dormir y otros salen. Ver [Día, noche y clima](8).
 
 ![Sombra errante](mob:shadow)
 
-- **[Sombra errante](37)**: solo existe de noche. Aparece a 20–30 bloques de ti, lejos de las antorchas,
-  y te sigue. La luz la deshace.
-- **[Fuego fatuo](41)**: una llama pálida que flota a lo lejos e intenta llevarte al agua profunda o al
+- **[Sombra errante](37)**: una leyenda. Muy, muy de vez en cuando, en plena noche y con el cielo despejado,
+  surge a 20–30 bloques de quien se aleja de casa y de las antorchas, y lo sigue. Antes llega un presagio. La
+  luz la deshace.
+- **[Fuego fatuo](41)**: algunas noches, una llama pálida que flota a lo lejos e intenta llevarte al agua profunda o al
   borde de un barranco. Nunca ataca: solo engaña.
 - **[Escorpión](31)**: de día solo te persigue si pasas a menos de 3,5 bloques; **de noche, desde
   8 bloques**.

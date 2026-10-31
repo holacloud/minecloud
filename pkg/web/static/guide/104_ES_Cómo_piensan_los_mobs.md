@@ -55,21 +55,29 @@ te sigue.
 
 Los animales salvajes aparecen **por chunks** (trozos de 16 × 16 bloques):
 
-- Cada segundo el juego mira los chunks a tu alrededor, hasta **3 chunks** de distancia.
+- Cada segundo el juego mira los chunks a tu alrededor, hasta **3 chunks** de distancia, los más cercanos
+  primero.
 - Cada chunk se puebla **una sola vez** mientras sigas cerca, y, salvo al entrar en el mundo, nunca el tuyo ni
   los que lo tocan, para que nada aparezca de golpe delante de tus narices.
-- En cada chunk hay un **30 %** de probabilidad de que aparezca un grupo. La especie se elige de la tabla de su
-  bioma. La tirada depende de la posición del chunk, así que **un mismo sitio suele traer la misma especie**.
-- Cada especie tiene un **límite** de ejemplares a la vez, y en total nunca hay más de **64** mobs.
-- Peces, ranas, tortugas, abejas, luciérnagas, murciélagos y las especies más nuevas tienen además sus propias
-  reglas de aparición. Las sombras y los fuegos fatuos aparecen de noche, y los gólems, con lluvia.
+- Cada chunk tira dos veces. Primero, un grupo de **animales**: un **50 %** en llanuras y bosques, un **40 %**
+  en la roca y un **35 %** en el desierto. Después, aparte, un **hostil** solitario: un **5 %** en la roca, un
+  **2,5 %** en el desierto, un **1,5 %** en los bosques y nunca en las llanuras. La especie se elige de la tabla
+  de su bioma. Las tiradas dependen de la posición del chunk, así que **un mismo sitio suele traer la misma
+  especie**.
+- Nunca hay más de **4** hostiles salvajes de los chunks a la vez (arañas, monstruos de cueva, escorpiones y
+  serpientes, todos juntos).
+- Cada especie tiene un **límite** de ejemplares a la vez, y en total nunca hay más de **80** mobs. Los
+  animales de tierra van primero, para que los peces y los insectos no les quiten el sitio.
+- Peces, ranas, tortugas, conejos, abejas, luciérnagas, murciélagos y las especies más nuevas tienen además sus
+  propias reglas de aparición. Los fuegos fatuos aparecen algunas noches, los gólems de vez en cuando con
+  lluvia, y la [sombra errante](37) es una leyenda: muy, muy de vez en cuando, en plena noche.
 
-| Bioma | Tabla de grupos (las más frecuentes primero) |
-|---|---|
-| Llanura | oveja, cerdo, caballo, pato, perro, gato, águila, zorro, topo |
-| Bosque | cerdo, guacamayo, gato, zorro, perro, araña, topo |
-| Desierto | camello, lagarto, escorpión, jirafa, pato |
-| Roca | cabra, águila, oveja, lagarto, escorpión, araña, monstruo de cueva |
+| Bioma | Animales (los más frecuentes primero) | Hostiles (raros) |
+|---|---|---|
+| Llanura | oveja, cerdo, pato, caballo, perro, gato, águila, zorro, topo | — |
+| Bosque | cerdo, guacamayo, gato, zorro, oveja, caballo, perro, topo | araña |
+| Desierto | camello, lagarto, jirafa, pato | escorpión |
+| Roca | cabra, águila, oveja, lagarto | escorpión, araña, monstruo de cueva |
 
 ## Cómo desaparecen
 

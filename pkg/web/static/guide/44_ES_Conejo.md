@@ -8,7 +8,7 @@ patas traseras a vigilar y, al menor peligro, **da la alarma** y todos corren a 
 ## Dónde vive
 
 - En **praderas** y **bosques**, y también en el **desierto**, donde son de color arena. Nunca en las rocas.
-- En familias de **2 a 4** alrededor de una madriguera. Como mucho hay **10 conejos** a la vez.
+- En familias de **2 a 4** alrededor de una madriguera. Como mucho hay **12 conejos** a la vez.
 - Son animales **de día**: al atardecer vuelven a casa, de noche se quedan bajo tierra y **al amanecer** salen
   más animados que nunca. Con lluvia también se recogen a menudo.
 

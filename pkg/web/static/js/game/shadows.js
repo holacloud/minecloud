@@ -1,5 +1,6 @@
-// The wandering shadow: a tall hooded figure with glowing eyes that rises out of the dark at
-// night, away from the player and from any light. It glides after the player (stopping to
+// The wandering shadow: a tall hooded figure with glowing eyes that rises out of the dark in
+// the dead of night, away from the player and from any light, very rarely (see SHADOW_LEGEND).
+// It glides after the player (stopping to
 // stare while being looked at from afar), flickers closer when something blocks its way and
 // strikes with its claws. Daylight, a torch held nearby or a torch placed next to it make it
 // dissolve into smoke. Mixed into Game.prototype; updateAmbientMobs hands 'stalk' mobs to
@@ -7,29 +8,107 @@
 
 const _shadowLook = new THREE.Vector3();
 
+// The wandering shadow is a legend. A natural one only rises in the dead of night (22:00 to
+// 04:00) under a clear sky, never more than one, far from torches and from the respawn point,
+// and only after several in-game days without one: a 35 % roll every 30 s of dead of night.
+// Once a roll passes there is an omen in the chat, and the shadow rises a few seconds later.
+// With 4-minute days that is about one shadow every 10 nights spent out in the wild. Rain
+// does not help it (it stays away from storms and their golems). /mob shadow and the egg are
+// not affected.
+const SHADOW_LEGEND = {
+    rollEvery: 30,
+    chance: 0.35,
+    firstWaitDays: 2,
+    cooldownDays: 3,
+    omenSeconds: 7,
+    minSpawnDistance: 48,
+    torchRadius: 10,
+    seenKey: 'minecloud-shadow-legend-seen'
+};
+
 Object.assign(Game.prototype, {
-    // Now and then at night a shadow appears 20-30 blocks from the player, in the dark.
+    // 22:00 to 04:00, the darkest half of the night.
+    isDeadOfNight() {
+        const hour = ((this.timeOfDay * 24) + 6) % 24;
+        return hour >= 22 || hour < 4;
+    },
+
+    shadowLegendDay() {
+        return this.dayNightCycleDuration || 240;
+    },
+
+    // Whether a legend could find the player now: dead of night, clear sky, far from the
+    // respawn point, no torch in hand or placed nearby, no other shadow or storm golem about.
+    shadowLegendConditions(player) {
+        if (!this.isDeadOfNight() || this.weatherState === 'rain' || this.titleScreenOpen || this.respawnPending) return false;
+        if (this.ambientMobs.some((mob) => mob.userData.species === 'shadow' || mob.userData.species === 'storm_golem')) return false;
+        if (this.heldTorchLight && this.heldTorchLight.intensity > 0) return false;
+        const home = this.respawnPoint || { x: 0, z: 0 };
+        if (Math.hypot(player.x - home.x, player.z - home.z) < SHADOW_LEGEND.minSpawnDistance) return false;
+        return !this.isNearPlacedTorch(new THREE.Vector3(player.x, player.y - 1.6, player.z), SHADOW_LEGEND.torchRadius);
+    },
+
+    shadowLegendSeen() {
+        try { return window.localStorage.getItem(SHADOW_LEGEND.seenKey) === '1'; } catch (error) { return false; }
+    },
+
+    markShadowLegendSeen() {
+        try { window.localStorage.setItem(SHADOW_LEGEND.seenKey, '1'); } catch (error) { /* storage blocked */ }
+    },
+
     updateShadowSpawning(delta) {
-        this.shadowSpawnTimer = (this.shadowSpawnTimer ?? 10) - delta;
+        if (this.shadowLegendWait === undefined) this.shadowLegendWait = SHADOW_LEGEND.firstWaitDays * this.shadowLegendDay();
+        if (!this.titleScreenOpen) this.shadowLegendWait = Math.max(0, this.shadowLegendWait - delta);
+
+        // The omen has been given: the shadow rises when it runs out, if the night still allows.
+        if (this.shadowOmen !== undefined) {
+            this.shadowOmen -= delta;
+            if (this.shadowOmen > 0) return;
+            this.shadowOmen = undefined;
+            const player = this.getLocalPlayerPosition();
+            if (this.shadowLegendConditions(player) && this.spawnLegendShadow(player)) {
+                this.shadowLegendWait = SHADOW_LEGEND.cooldownDays * this.shadowLegendDay();
+                this.markShadowLegendSeen();
+            } else {
+                this.shadowLegendWait = 60;
+            }
+            return;
+        }
+
+        this.shadowSpawnTimer = (this.shadowSpawnTimer ?? SHADOW_LEGEND.rollEvery) - delta;
         if (this.shadowSpawnTimer > 0) return;
-        this.shadowSpawnTimer = 10;
-        if (!this.isNightTime() || this.titleScreenOpen || this.respawnPending || Math.random() > 0.3) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'shadow').length >= getMobSpecies('shadow').limit) return;
-        const player = this.getLocalPlayerPosition();
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 20 + Math.random() * 10;
-        const x = player.x + Math.cos(angle) * distance;
-        const z = player.z + Math.sin(angle) * distance;
-        const floor = this.cameraController.getFloorY(x, z, player.y + 12);
-        if (floor <= -20 || this.findWaterSurface(x, floor + 0.1, z) !== null) return;
-        const spot = new THREE.Vector3(x, floor, z);
-        if (this.isNearPlacedTorch(spot)) return;
-        const mob = this.createMob('shadow', spot);
-        mob.userData.natural = true;
-        const { chunkX, chunkZ } = this.world.getChunkCoords(x, z);
-        mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
-        this.ambientMobs.push(mob);
-        this.emitSmoke(spot, 10, 1.6);
+        this.shadowSpawnTimer = SHADOW_LEGEND.rollEvery;
+        if (this.shadowLegendWait > 0 || Math.random() > SHADOW_LEGEND.chance) return;
+        if (!this.shadowLegendConditions(this.getLocalPlayerPosition())) return;
+
+        this.shadowOmen = SHADOW_LEGEND.omenSeconds;
+        const text = this.shadowLegendSeen()
+            ? 'The night falls silent...'
+            : 'The night falls utterly silent, and an old, cold wind blows... Something from the old tales walks tonight.';
+        this.receiveSystemMessage({ text });
+        this.playTone({ frequency: 70, endFrequency: 52, duration: 2.4, type: 'sine', volume: 0.035, attack: 0.8, release: 1 });
+    },
+
+    // A natural shadow 20-30 blocks from the player, in the dark and away from water.
+    spawnLegendShadow(player) {
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 10;
+            const x = player.x + Math.cos(angle) * distance;
+            const z = player.z + Math.sin(angle) * distance;
+            const floor = this.cameraController.getFloorY(x, z, player.y + 12);
+            if (floor <= -20 || this.findWaterSurface(x, floor + 0.1, z) !== null) continue;
+            const spot = new THREE.Vector3(x, floor, z);
+            if (this.isNearPlacedTorch(spot)) continue;
+            const mob = this.createMob('shadow', spot);
+            mob.userData.natural = true;
+            const { chunkX, chunkZ } = this.world.getChunkCoords(x, z);
+            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.ambientMobs.push(mob);
+            this.emitSmoke(spot, 10, 1.6);
+            return mob;
+        }
+        return null;
     },
 
     isNearPlacedTorch(position, radius = 4) {
@@ -75,7 +154,7 @@ Object.assign(Game.prototype, {
         const daylight = !this.isNightTime() && data.daylightGrace <= 0;
         if (daylight || heldTorch || placedTorch) {
             // At dawn, one close enough to hear sometimes whispers a guide code as it goes.
-            const whisper = daylight && Math.random() < 0.3 && mob.position.distanceTo(this.camera.position) < 24;
+            const whisper = daylight && Math.random() < 0.5 && mob.position.distanceTo(this.camera.position) < 24;
             this.dissolveShadow(mob, heldTorch || placedTorch ? 'The shadow fled from the light' : whisper ? 'As the sun rises, the shadow hisses: "S... H... 4... D..."' : null);
             return;
         }

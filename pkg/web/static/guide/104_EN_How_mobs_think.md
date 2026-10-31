@@ -55,22 +55,27 @@ follows you.
 
 Wild animals appear **by chunks** (pieces of 16 × 16 blocks):
 
-- Every second the game looks at the chunks around you, up to **3 chunks** away.
+- Every second the game looks at the chunks around you, up to **3 chunks** away, nearest first.
 - Each chunk is populated **only once** while you stay near and, except when you enter the world, never your
   own chunk or the ones touching it, so nothing pops up right under your nose.
-- Each chunk has a **30 %** chance of getting a group. The species is picked from its biome's table. The roll
-  depends on the chunk's position, so **the same spot tends to bring the same species**.
-- Each species has a **limit** on how many can be alive at once, and in total there are never more than **64**
-  mobs.
-- Fish, frogs, turtles, bees, fireflies, bats and the newer species also have their own spawning rules.
-  Shadows and wisps appear at night, and golems in the rain.
+- Each chunk rolls twice. First, a group of **animals**: **50 %** on plains and in forests, **40 %** in the
+  rocks and **35 %** in the desert. Then, apart, a lone **hostile**: **5 %** in the rocks, **2.5 %** in the
+  desert, **1.5 %** in forests and never on plains. The species is picked from its biome's table. The rolls
+  depend on the chunk's position, so **the same spot tends to bring the same species**.
+- There are never more than **4** wild hostiles from chunks at a time (spiders, cave monsters, scorpions and
+  snakes together).
+- Each species has a **limit** on how many can be alive at once, and in total there are never more than **80**
+  mobs. Land animals come first, so fish and insects never take their place.
+- Fish, frogs, turtles, rabbits, bees, fireflies, bats and the newer species also have their own spawning
+  rules. Wisps appear some nights, golems now and then in the rain, and the [wandering shadow](37) is a
+  legend: very, very rarely, in the dead of night.
 
-| Biome | Group table (most frequent first) |
-|---|---|
-| Plains | sheep, pig, horse, duck, dog, cat, eagle, fox, mole |
-| Forest | pig, macaw, cat, fox, dog, spider, mole |
-| Desert | camel, lizard, scorpion, giraffe, duck |
-| Rocky | goat, eagle, sheep, lizard, scorpion, spider, cave monster |
+| Biome | Animals (most frequent first) | Hostiles (rare) |
+|---|---|---|
+| Plains | sheep, pig, duck, horse, dog, cat, eagle, fox, mole | — |
+| Forest | pig, macaw, cat, fox, sheep, horse, dog, mole | spider |
+| Desert | camel, lizard, giraffe, duck | scorpion |
+| Rocky | goat, eagle, sheep, lizard | scorpion, spider, cave monster |
 
 ## How they vanish
 

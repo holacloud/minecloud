@@ -7,7 +7,7 @@ sting **poisons** you.
 
 ## Where it lives
 
-- **Desert** and **rocky hills**, always alone.
+- **Desert** and **rocky hills**, always alone, and **not often**.
 - It is there by day and by night, but it is **only dangerous at night** (18:00 to 6:00).
 
 ## Behaviour

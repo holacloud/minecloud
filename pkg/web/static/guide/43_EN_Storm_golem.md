@@ -7,10 +7,12 @@ swirling over its head. It only walks the world **while it rains**, and it draws
 
 ## Where it lives
 
-- **Anywhere, but only in the rain.** While it rains, now and then one is **born from a lightning strike** 20–30
-  blocks away from you.
+- **Anywhere, but only in the rain**, and **rarely**. While it rains, every 20 seconds there is an **8 %** chance
+  that one is **born from a lightning strike** 20–30 blocks away from you: roughly **one storm in three** brings
+  a golem.
+- After one is born, no other comes for **6 minutes**, and none comes while a [wandering shadow](37) is about.
 - It never appears on water, leaves or cactus.
-- There are at most **2 golems** at a time.
+- There is at most **1 golem** at a time.
 - **When the rain stops**, its cracks slowly dim and it **crumbles** into rubble and dust ("The storm golem
   crumbles as the storm passes").
 

@@ -15,8 +15,8 @@ The borders between them are smooth: the land blends little by little.
 
 - Dense trees of **eight kinds**: oak, spruce, birch, jungle, dark oak, cherry, maple and willow.
 - **Red and brown mushrooms** grow on the ground, with some tall grass and the odd flower.
-- **Living here:** pigs, cats, **macaws**, dogs, spiders, **foxes** (more than on the plains), giant moles
-  and rabbits. This is where most **owls**, **bees** and **bats** live, and there are fireflies too.
+- **Living here:** pigs, cats, **macaws**, dogs, some sheep and horses, **foxes** (more than on the plains),
+  giant moles, rabbits and, rarely, spiders. This is where most **owls**, **bees** and **bats** live, and there are fireflies too.
 
 ## Rocks
 
@@ -24,13 +24,13 @@ The borders between them are smooth: the land blends little by little.
   soil.
 - Only spruces grow, with some tall grass and brown mushrooms.
 - There are no lakes or beaches.
-- **Living here:** **goats**, eagles, sheep, lizards, scorpions, spiders, the **cave monster**, vultures and
-  snakes. Bats hang under the overhangs.
+- **Living here:** **goats**, eagles, sheep, lizards and vultures. More rarely, scorpions, spiders, the **cave
+  monster** and snakes. Bats hang under the overhangs.
 
 ## Desert
 
 - **Sand** with low dunes and **cacti** 2 to 4 blocks tall. Not a single tree.
-- **Living here:** **camels**, lizards, scorpions, giraffes, ducks, **vultures** and **snakes**. Now and then,
+- **Living here:** **camels**, lizards, giraffes, ducks and **vultures**; more rarely, scorpions and **snakes**. Now and then,
   sand-coloured rabbits.
 - No bats: they have nowhere to hang from.
 
@@ -45,8 +45,9 @@ The borders between them are smooth: the land blends little by little.
 
 | When | What appears |
 |---|---|
-| At night | the [wandering shadow](37) and the [wisp](41) |
-| When it rains | the [storm golem](43) |
+| Some nights | the [wisp](41) |
+| Very, very rarely, in the dead of night | the [wandering shadow](37), a legend |
+| Now and then, when it rains | the [storm golem](43) |
 
 ## Underground
 

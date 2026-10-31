@@ -32,7 +32,7 @@ const SNAKE_PALETTES = [
 MOB_SPECIES.snake = {
     eggColor: 0xb89a5a, tone: 520, hostile: true, attackDamage: 1, poison: 3, maxHealth: 6,
     speed: 0.9, fleeSpeed: 2.6, alertDistance: 5, strikeDistance: 2.2,
-    variants: SNAKE_PALETTES.length, group: [1, 1], limit: 3, movement: 'slither'
+    variants: SNAKE_PALETTES.length, group: [1, 1], limit: 2, movement: 'slither'
 };
 VoxelModels.MOB_SURFACES.snake = 'skin';
 
@@ -173,9 +173,11 @@ Object.assign(Game.prototype, {
     // Natural spawning: now and then a desert or rocky chunk has one snake lying in wait.
     snakeSpawnForChunk(chunkX, chunkZ, biome) {
         if (biome !== 'desert' && biome !== 'rocky') return;
-        if (this.chunkRandom(chunkX, chunkZ, 301) > (biome === 'desert' ? 0.16 : 0.1)) return;
+        if (this.chunkRandom(chunkX, chunkZ, 331) > (biome === 'desert' ? 0.08 : 0.05)) return;
         const info = getMobSpecies('snake');
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'snake').length >= info.limit) return;
+        // Snakes share the wild hostile budget with spiders, cave monsters and scorpions.
+        if (this.mobHostileCapReached && this.mobHostileCapReached()) return;
         const size = this.world.chunkSize;
         for (let i = 0; i < 6; i++) {
             const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, 302 + i) * (size - 4);

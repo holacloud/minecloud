@@ -1,6 +1,7 @@
 // The storm golem: a hulking figure of dark slate blocks, veined with glowing blue-white
 // cracks, with a small storm cloud swirling over its head. It only walks the world while it
-// rains: now and then one is born from a lightning strike 20-30 blocks from the player.
+// rains: once in a while (rarely, at most one at a time) one is born from a lightning strike
+// 20-30 blocks from the player.
 // It lumbers about with heavy stomps and, every so often, raises its arms and calls the
 // lightning down onto itself (soaking up the charge) or onto an iron, copper or gold block
 // within 12 blocks (sparks fly; the block is left untouched). Each bolt lights up the scene
@@ -21,7 +22,7 @@ const _golemUp = new THREE.Vector3(0, 1, 0);
 const _golemFlashColor = new THREE.Color(0xdfe9ff);
 const STORM_GOLEM_METALS = ['iron_block', 'copper_block', 'gold_block'];
 
-MOB_SPECIES.storm_golem = { eggColor: 0x3b4352, tone: 80, maxHealth: 20, speed: 0.35, group: [1, 1], limit: 2, movement: 'storm' };
+MOB_SPECIES.storm_golem = { eggColor: 0x3b4352, tone: 80, maxHealth: 20, speed: 0.35, group: [1, 1], limit: 1, movement: 'storm' };
 VoxelModels.MOB_SURFACES.storm_golem = 'skin';
 
 // Stacked slate blocks with dark seams; its glowing cracks are added by stormGolemAttachGlow.
@@ -124,14 +125,18 @@ onMobEvent('removed', function (mob) {
 });
 
 Object.assign(Game.prototype, {
-    // While it rains, now and then a golem is born from a lightning strike 20-30 blocks away.
+    // While it rains, once in a while a golem is born from a lightning strike 20-30 blocks
+    // away: an 8 % roll every 20 s, one at a time, and then none for 6 minutes of play
+    // (nor while a wandering shadow is about).
     stormGolemUpdateSpawning(delta) {
-        this.stormGolemSpawnTimer = (this.stormGolemSpawnTimer ?? 12) - delta;
+        this.stormGolemCooldown = Math.max(0, (this.stormGolemCooldown || 0) - delta);
+        this.stormGolemSpawnTimer = (this.stormGolemSpawnTimer ?? 20) - delta;
         if (this.stormGolemSpawnTimer > 0) return;
-        this.stormGolemSpawnTimer = 10;
-        if (this.weatherState !== 'rain' || !this.world || this.titleScreenOpen || this.respawnPending || Math.random() > 0.3) return;
+        this.stormGolemSpawnTimer = 20;
+        if (this.weatherState !== 'rain' || !this.world || this.titleScreenOpen || this.respawnPending || this.stormGolemCooldown > 0 || Math.random() > 0.08) return;
         const alive = this.ambientMobs.filter((mob) => mob.userData.species === 'storm_golem' && mob.userData.crumbling === undefined);
         if (alive.length >= getMobSpecies('storm_golem').limit) return;
+        if (this.ambientMobs.some((mob) => mob.userData.species === 'shadow')) return;
         const player = this.getLocalPlayerPosition();
         const angle = Math.random() * Math.PI * 2;
         const distance = 20 + Math.random() * 10;
@@ -146,6 +151,7 @@ Object.assign(Game.prototype, {
         const { chunkX, chunkZ } = this.world.getChunkCoords(x, z);
         mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
         this.ambientMobs.push(mob);
+        this.stormGolemCooldown = 360;
     },
 
     stormGolemUpdate(mob, delta, player) {

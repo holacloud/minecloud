@@ -15,8 +15,8 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 
 - Árboles muy juntos de **ocho clases**: roble, abeto, abedul, jungla, roble oscuro, cerezo, arce y sauce.
 - En el suelo crecen **setas** rojas y marrones, algo de hierba alta y alguna flor.
-- **Viven aquí:** cerdos, gatos, **guacamayos**, perros, arañas, **zorros** (más que en las llanuras),
-  topos gigantes y conejos. Es donde más **búhos**, **abejas** y **murciélagos** hay, y también hay
+- **Viven aquí:** cerdos, gatos, **guacamayos**, perros, algunas ovejas y caballos, **zorros** (más que en
+  las llanuras), topos gigantes, conejos y, pocas veces, arañas. Es donde más **búhos**, **abejas** y **murciélagos** hay, y también hay
   luciérnagas.
 
 ## Roca
@@ -24,8 +24,8 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 - Montañas y crestas de **piedra** y **adoquín**, las zonas más altas del mundo, con muy poca tierra.
 - Solo crecen abetos, algo de hierba alta y setas marrones.
 - No hay lagos ni playas.
-- **Viven aquí:** **cabras**, águilas, ovejas, lagartos, escorpiones, arañas, el **monstruo de cueva**,
-  buitres y serpientes. Hay murciélagos bajo los salientes.
+- **Viven aquí:** **cabras**, águilas, ovejas, lagartos y buitres. Con menos frecuencia, escorpiones, arañas,
+  el **monstruo de cueva** y serpientes. Hay murciélagos bajo los salientes.
 
 ## Desierto
 
@@ -45,8 +45,9 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 
 | Cuándo | Qué aparece |
 |---|---|
-| De noche | la [sombra errante](37) y el [fuego fatuo](41) |
-| Cuando llueve | el [golem de tormenta](43) |
+| Algunas noches | el [fuego fatuo](41) |
+| Muy, muy de vez en cuando, en plena noche | la [sombra errante](37), una leyenda |
+| De vez en cuando, con lluvia | el [golem de tormenta](43) |
 
 ## Bajo tierra
 

@@ -11,7 +11,7 @@
 // night spawning, the sparkles and the shared light run from a wrapper around
 // updateAmbientMobs (see the bottom of this file).
 
-MOB_SPECIES.wisp = { eggColor: 0x9ff5e0, tone: 1320, speed: 5, group: [1, 1], limit: 2, movement: 'lure' };
+MOB_SPECIES.wisp = { eggColor: 0x9ff5e0, tone: 1320, speed: 5, group: [1, 1], limit: 1, movement: 'lure' };
 VoxelModels.MOB_SURFACES.wisp = 'skin';
 
 // A little voxel flame; in the world it is hidden behind the glowing rig built below (the
@@ -66,12 +66,13 @@ Object.assign(Game.prototype, {
         return mob;
     },
 
-    // Now and then at night a wisp appears 25-40 blocks away, by water or a drop if it can.
+    // Now and then at night (a 20 % roll every 30 s, one at a time) a wisp appears 25-40
+    // blocks away, by water or a drop if it can.
     wispUpdateSpawning(delta) {
-        this.wispSpawnTimer = (this.wispSpawnTimer ?? 12) - delta;
+        this.wispSpawnTimer = (this.wispSpawnTimer ?? 30) - delta;
         if (this.wispSpawnTimer > 0) return;
-        this.wispSpawnTimer = 12;
-        if (!this.world || !this.isNightTime() || this.titleScreenOpen || this.respawnPending || Math.random() > 0.35) return;
+        this.wispSpawnTimer = 30;
+        if (!this.world || !this.isNightTime() || this.titleScreenOpen || this.respawnPending || Math.random() > 0.2) return;
         if (this.ambientMobs.filter((mob) => mob.userData.species === 'wisp').length >= getMobSpecies('wisp').limit) return;
         const player = this.getLocalPlayerPosition();
         let plain = null;

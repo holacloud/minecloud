@@ -7,11 +7,11 @@ solo **engaña**. Si la sigues, te llevará hacia el agua profunda o al borde de
 
 ## Dónde vive
 
-- **En cualquier parte, de noche.** Cada 12 segundos hay una probabilidad de que aparezca uno a **25–40 bloques**
-  de ti.
+- **En cualquier parte, de noche**, pero no todas las noches. Cada 30 segundos hay un **20 %** de probabilidad de
+  que aparezca uno a **25–40 bloques** de ti: más o menos **uno cada dos noches**.
 - Prefiere los sitios peligrosos: la **orilla del agua** o junto a un **barranco**, donde el suelo cae 4 bloques o
   más.
-- Como mucho hay **2 fuegos fatuos** a la vez.
+- Como mucho hay **1 fuego fatuo** a la vez.
 - **Al amanecer se apaga** y desaparece, igual que si te alejas más de 72 bloques.
 
 ## Comportamiento

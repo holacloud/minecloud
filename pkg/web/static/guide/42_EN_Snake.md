@@ -8,7 +8,7 @@ coils up, **hisses** and, if it is a rattlesnake, shakes its tail. Its bite is *
 ## Where it lives
 
 - In the **desert** and, a little less often, on **rocky hills and mountains**.
-- Always **alone**. There are at most **3 snakes** at a time.
+- Always **alone**, and **not often**. There are at most **2 snakes** at a time.
 - By day and by night. At night it moves about a little more often.
 
 ## Behaviour

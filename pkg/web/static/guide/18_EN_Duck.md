@@ -9,7 +9,7 @@ A white duck with an orange bill and feet that waddles about in little groups. I
 
 - **Plains:** fairly common.
 - **Desert:** it shows up among the dunes too.
-- By day and by night, in groups of **1 to 3**.
+- By day and by night, in groups of **2 to 4**.
 
 ## Behaviour
 

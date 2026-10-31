@@ -7,7 +7,7 @@ It is the toughest of the game's first creatures.
 
 ## Where it lives
 
-- **Rocky hills**, always alone. Despite its name, it appears on the surface, among the rocks.
+- **Rocky hills**, always alone, and **not often**. Despite its name, it appears on the surface, among the rocks.
 - It is dangerous **by day and by night**.
 
 ## Behaviour

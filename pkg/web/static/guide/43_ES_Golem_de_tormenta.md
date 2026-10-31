@@ -7,10 +7,12 @@ nube de tormenta** girando sobre la cabeza. Solo camina por el mundo **mientras 
 
 ## Dónde vive
 
-- **En cualquier parte, solo con lluvia.** Mientras llueve, de vez en cuando uno **nace de un rayo** a 20–30
-  bloques de ti.
+- **En cualquier parte, solo con lluvia**, y **pocas veces**. Mientras llueve, cada 20 segundos hay un **8 %** de
+  probabilidad de que uno **nazca de un rayo** a 20–30 bloques de ti: más o menos **una tormenta de cada tres**
+  trae un golem.
+- Después de nacer uno, no llega otro en **6 minutos**, ni mientras ronde una [sombra errante](37).
 - Nunca aparece sobre agua, hojas ni cactus.
-- Como mucho hay **2 golems** a la vez.
+- Como mucho hay **1 golem** a la vez.
 - **Cuando deja de llover**, sus grietas se apagan poco a poco y se **desmorona** en escombros y polvo ("The storm
   golem crumbles as the storm passes").
 

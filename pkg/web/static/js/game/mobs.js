@@ -1,6 +1,16 @@
 // Mobs: models, natural spawning, AI movement and combat.
 // Mixed into Game.prototype; `this` is the Game instance.
 
+// Natural spawning balance. Each chunk that comes within 3 chunks of the player rolls twice:
+// a passive group with MOB_GROUP_CHANCE and, separately, a lone hostile with
+// MOB_HOSTILE_CHANCE (never more than MOB_HOSTILE_CAP wild hostiles from chunks at a time).
+// Night and weather spawners (shadow, wisp, storm golem) have their own, much rarer rules.
+const MOB_NATURAL_CAP = 80;
+const MOB_HOSTILE_CAP = 4;
+const MOB_FISH_CAP = 24;
+const MOB_GROUP_CHANCE = { plains: 0.5, forest: 0.5, desert: 0.35, rocky: 0.4 };
+const MOB_HOSTILE_CHANCE = { plains: 0, forest: 0.015, desert: 0.025, rocky: 0.05 };
+
 Object.assign(Game.prototype, {
     // `modelSpecies` builds a different model than the species' own (a bee colony's hive).
     createMob(species, position, { variant = null, modelSpecies = null } = {}) {
@@ -124,10 +134,11 @@ Object.assign(Game.prototype, {
     getBiomeSpawnTable(biome) {
         const table = (() => {
             switch (biome) {
-                case 'desert': return [['camel', 3], ['lizard', 2], ['scorpion', 1], ['giraffe', 1], ['duck', 1]];
-                case 'forest': return [['pig', 3], ['cat', 2], ['macaw', 3], ['dog', 1], ['spider', 1]];
-                case 'rocky': return [['goat', 3], ['eagle', 2], ['sheep', 1], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
-                default: return [['sheep', 4], ['pig', 3], ['horse', 2], ['duck', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
+                // Hostile species are rolled apart from the passive ones (see spawnMobsForChunk).
+                case 'desert': return [['camel', 3], ['lizard', 2], ['giraffe', 1], ['duck', 1], ['scorpion', 1]];
+                case 'forest': return [['pig', 3], ['macaw', 3], ['cat', 2], ['sheep', 1], ['horse', 1], ['dog', 1], ['spider', 1]];
+                case 'rocky': return [['goat', 4], ['eagle', 2], ['sheep', 2], ['lizard', 1], ['scorpion', 1], ['spider', 1], ['cave_monster', 1]];
+                default: return [['sheep', 5], ['pig', 4], ['duck', 3], ['horse', 2], ['dog', 1], ['cat', 1], ['eagle', 1]];
             }
         })();
         // Species from their own files join through spawnBiomes.
@@ -167,10 +178,42 @@ Object.assign(Game.prototype, {
         return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
     },
 
+    // Picks a species from `table` ([[species, weight], ...]) with `roll` in [0, 1).
+    pickWeightedSpecies(table, roll) {
+        const total = table.reduce((sum, [, weight]) => sum + weight, 0);
+        let pick = roll * total;
+        for (const [candidate, weight] of table) {
+            pick -= weight;
+            if (pick <= 0) return candidate;
+        }
+        return table[table.length - 1][0];
+    },
+
+    // Wild hostiles that came from chunk spawning (spiders, cave monsters, scorpions, snakes).
+    mobNaturalHostileCount() {
+        return this.ambientMobs.filter((mob) => mob.userData.natural && mob.userData.hostile
+            && !['shadow', 'storm_golem', 'wisp'].includes(mob.userData.species)).length;
+    },
+
+    mobHostileCapReached() {
+        return this.mobNaturalHostileCount() >= MOB_HOSTILE_CAP;
+    },
+
     spawnMobsForChunk(chunkX, chunkZ) {
-        const size = this.world.chunkSize;
         const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || 'plains';
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < 32) this.spawnFishForChunk(chunkX, chunkZ);
+        const key = ['desert', 'forest', 'rocky'].includes(biome) ? biome : 'plains';
+        // Land animals first, so fish and insects never use up the room they need.
+        const table = this.getBiomeSpawnTable(biome);
+        const passive = table.filter(([species]) => !getMobSpecies(species).hostile);
+        const hostile = table.filter(([species]) => getMobSpecies(species).hostile);
+        if (passive.length > 0 && this.chunkRandom(chunkX, chunkZ, 1) < MOB_GROUP_CHANCE[key]) {
+            this.spawnGroupInChunk(chunkX, chunkZ, this.pickWeightedSpecies(passive, this.chunkRandom(chunkX, chunkZ, 2)), 0);
+        }
+        if (hostile.length > 0 && this.chunkRandom(chunkX, chunkZ, 501) < MOB_HOSTILE_CHANCE[key] && !this.mobHostileCapReached()) {
+            this.spawnGroupInChunk(chunkX, chunkZ, this.pickWeightedSpecies(hostile, this.chunkRandom(chunkX, chunkZ, 502)), 600);
+        }
+
+        if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < MOB_FISH_CAP) this.spawnFishForChunk(chunkX, chunkZ);
         this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
         this.spawnBeesForChunk(chunkX, chunkZ, biome);
         this.spawnFirefliesForChunk(chunkX, chunkZ, biome);
@@ -178,24 +221,18 @@ Object.assign(Game.prototype, {
         Object.values(MOB_BEHAVIOURS).forEach((behaviour) => {
             if (behaviour.spawnForChunk) behaviour.spawnForChunk.call(this, chunkX, chunkZ, biome);
         });
-        if (this.chunkRandom(chunkX, chunkZ, 1) > 0.3) return;
+    },
 
-        const table = this.getBiomeSpawnTable(biome);
-        const total = table.reduce((sum, [, weight]) => sum + weight, 0);
-        let pick = this.chunkRandom(chunkX, chunkZ, 2) * total;
-        let species = table[0][0];
-        for (const [candidate, weight] of table) {
-            pick -= weight;
-            if (pick <= 0) { species = candidate; break; }
-        }
-
+    // A group of `species` on the ground of the chunk; `salt` keeps different groups apart.
+    spawnGroupInChunk(chunkX, chunkZ, species, salt) {
+        const size = this.world.chunkSize;
         const info = getMobSpecies(species);
         if (info.limit && this.ambientMobs.filter((mob) => mob.userData.species === species).length >= info.limit) return;
         const [minGroup, maxGroup] = info.group || [1, 1];
-        const groupSize = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, 3) * (maxGroup - minGroup + 1));
+        const groupSize = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, salt + 3) * (maxGroup - minGroup + 1));
         for (let i = 0; i < groupSize; i++) {
-            const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, 10 + i) * (size - 4);
-            const z = chunkZ * size + 2 + this.chunkRandom(chunkX, chunkZ, 20 + i) * (size - 4);
+            const x = chunkX * size + 2 + this.chunkRandom(chunkX, chunkZ, salt + 10 + i) * (size - 4);
+            const z = chunkZ * size + 2 + this.chunkRandom(chunkX, chunkZ, salt + 20 + i) * (size - 4);
             const ground = this.cameraController.getFloorY(x, z, 64);
             if (ground <= -20) continue;
             const surface = this.world.getBlockTypeAt(Math.floor(x), ground - 1, Math.floor(z));
@@ -250,18 +287,28 @@ Object.assign(Game.prototype, {
             }
         }
 
-        for (let dx = -spawnRadius; dx <= spawnRadius; dx++) {
-            for (let dz = -spawnRadius; dz <= spawnRadius; dz++) {
-                if (this.ambientMobs.length >= 64) return;
-                // Never pop mobs into existence right next to the player.
-                if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && this.mobSpawnedChunks.size > 0) continue;
-                const chunkX = playerChunkX + dx;
-                const chunkZ = playerChunkZ + dz;
-                const key = this.world.chunkKey(chunkX, chunkZ);
-                if (this.mobSpawnedChunks.has(key) || !this.world.generatedChunks.has(key)) continue;
-                this.mobSpawnedChunks.add(key);
-                this.spawnMobsForChunk(chunkX, chunkZ);
+        // Nearest chunks first. Mobs never pop into existence right next to the player, except
+        // on the very first pass (the world is just loading), when only the player's own chunk
+        // is skipped.
+        const firstPass = this.mobSpawnedChunks.size === 0;
+        if (!this.mobSpawnOffsets || this.mobSpawnOffsets.radius !== spawnRadius) {
+            const list = [];
+            for (let dx = -spawnRadius; dx <= spawnRadius; dx++) {
+                for (let dz = -spawnRadius; dz <= spawnRadius; dz++) list.push([dx, dz]);
             }
+            list.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));
+            this.mobSpawnOffsets = { radius: spawnRadius, list };
+        }
+        for (const [dx, dz] of this.mobSpawnOffsets.list) {
+            if (this.ambientMobs.length >= MOB_NATURAL_CAP) return;
+            const near = Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+            if (near && (!firstPass || (dx === 0 && dz === 0))) continue;
+            const chunkX = playerChunkX + dx;
+            const chunkZ = playerChunkZ + dz;
+            const key = this.world.chunkKey(chunkX, chunkZ);
+            if (this.mobSpawnedChunks.has(key) || !this.world.generatedChunks.has(key)) continue;
+            this.mobSpawnedChunks.add(key);
+            this.spawnMobsForChunk(chunkX, chunkZ);
         }
     },
 

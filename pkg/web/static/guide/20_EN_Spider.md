@@ -6,7 +6,8 @@ A huge, dark, red-eyed spider that rushes at anyone who comes near. It hits hard
 
 ## Where it lives
 
-- **Forests** and **rocky hills**, always alone.
+- **Forests** and **rocky hills**, always alone, and **not often**: there are never more than 4 wild
+  hostiles around you (spiders, cave monsters, scorpions and snakes together). See [How mobs think](104).
 - It is dangerous **by day and by night**: it does not wait for dark.
 
 ## Behaviour

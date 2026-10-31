@@ -7,7 +7,7 @@ cross the map at a gallop.
 
 ## Where it lives
 
-- On the **plains** (the `plains` biome).
+- On the **plains** (the `plains` biome) and, less often, in **forests**.
 - It appears in herds of **2 to 4** horses.
 - Day or night, it keeps no hours.
 

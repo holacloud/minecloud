@@ -9,7 +9,7 @@ keep watch and, at the slightest danger, **sounds the alarm** and they all run t
 
 - On the **plains** and in **forests**, and also in the **desert**, where they are sand coloured. Never on the
   rocky hills.
-- In families of **2 to 4** around a burrow. There are at most **10 rabbits** at a time.
+- In families of **2 to 4** around a burrow. There are at most **12 rabbits** at a time.
 - They are **day** animals: at dusk they head home, at night they stay underground and **at dawn** they come out
   livelier than ever. In the rain they often turn in too.
 

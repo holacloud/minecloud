@@ -28,9 +28,10 @@ sleep and others come out. See [Day, night and weather](8).
 
 ![Wandering shadow](mob:shadow)
 
-- **[Wandering shadow](37)**: it only exists at night. It appears 20–30 blocks away from you, far from
-  torches, and follows you. Light undoes it.
-- **[Wisp](41)**: a pale flame floating in the distance that tries to lead you into deep water or over
+- **[Wandering shadow](37)**: a legend. Very, very rarely, in the dead of night and under a clear sky, it
+  rises 20–30 blocks away from those who wander far from home and from torches, and follows them. An omen
+  comes first. Light undoes it.
+- **[Wisp](41)**: some nights, a pale flame floating in the distance that tries to lead you into deep water or over
   the edge of a cliff. It never attacks: it only deceives.
 - **[Scorpion](31)**: by day it only chases you if you pass within 3.5 blocks; **at night, from
   8 blocks**.

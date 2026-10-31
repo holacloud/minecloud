@@ -9,7 +9,8 @@ wool**.
 
 - **Plains:** it is the most common animal of the meadows.
 - **Rocky hills:** it shows up there too, less often.
-- Out by day and by night, in groups of **1 to 3**.
+- **Forests:** a few, now and then.
+- Out by day and by night, in flocks of **2 to 4**.
 
 ## Behaviour
 
