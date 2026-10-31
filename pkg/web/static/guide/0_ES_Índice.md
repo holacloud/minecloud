@@ -31,6 +31,7 @@ página.
 - [Mobs](16): una página por cada especie del mundo.
 - [Objetos](48): bloques, herramientas, recursos y trampas.
 - [Curiosidades](98): rarezas y secretos del mundo.
+- [Cultivar trigo](107): la azada, las semillas, el trigal y el pan.
 
 ---
 

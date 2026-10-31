@@ -137,16 +137,16 @@ Coge en la mano la comida que le gusta al animal y haz clic derecho sobre él. C
 
 | Animal | Comida | Probabilidad por intento |
 |---|---|---|
-| Oveja | `tall_grass`, `flower_yellow`, `leaves` | 1/3 |
-| Pato | `tall_grass`, `raw_fish`, `flower_yellow` | 1/3 |
-| Cerdo | `mushroom_brown`, `mushroom_red`, `honeycomb` | 1/3 |
+| Oveja | `tall_grass`, `wheat`, `flower_yellow`, `leaves` | 1/3 |
+| Pato | `tall_grass`, `wheat_seeds`, `raw_fish`, `flower_yellow` | 1/3 |
+| Cerdo | `mushroom_brown`, `mushroom_red`, `wheat`, `honeycomb` | 1/3 |
 | Jirafa | `acacia_leaves`, `leaves`, `jungle_leaves`, `birch_leaves` | 1/4 |
 | Perro | `raw_fish`, `mushroom_brown` | 1/2 |
 | Gato | `raw_fish`, `milk`, `mushroom_brown` | 1/2 |
 | Guacamayo | `flower_red`, `flower_yellow`, `cherry_leaves` | 1/3 |
-| Camello | `cactus`, `tall_grass` | 1/3 |
-| Cabra | `leaves`, `tall_grass` | 1/3 |
-| Caballo | `tall_grass`, `flower_yellow`, `honeycomb` | 1/4 |
+| Camello | `cactus`, `tall_grass`, `wheat` | 1/3 |
+| Cabra | `leaves`, `tall_grass`, `wheat` | 1/3 |
+| Caballo | `tall_grass`, `wheat`, `flower_yellow`, `honeycomb` | 1/4 |
 
 Las criaturas hostiles (araña, escorpión, serpiente, sombra, golem, fuego fatuo…) y los animales salvajes con
 comportamiento propio (zorro, conejo, búho, rana, tortuga, peces, aves rapaces, abejas, murciélagos…) no se
@@ -188,6 +188,7 @@ La cría:
 | Resultado | Ingredientes |
 |---|---|
 | 4 `bait_seeds` | 2 `tall_grass` |
+| 2 `bait_seeds` | `wheat_seeds` |
 | 3 `bait_worms` | 2 `dirt` |
 | 2 `bait_meat` | `leather` + `mushroom_brown` |
 | 2 `bait_fish` | `raw_fish` |
@@ -305,3 +306,21 @@ Derrotar a una criatura que aún no conocías también la descubre.
 
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso
 se guarda en el navegador.
+
+## Cultivos
+
+1. **Semillas:** al romper `tall_grass` cae además `wheat_seeds` el 35 % de las veces.
+2. **Labrar:** clic derecho con cualquier azada (`*_hoe`) en `grass` o `dirt` sin nada encima: se convierte en
+   `farmland` (tierra de cultivo). Al romperla devuelve `dirt`.
+3. **Sembrar:** clic derecho con `wheat_seeds` en la `farmland`: brota el trigo.
+4. **Crecer:** pasa por cuatro fases, de 50 a 90 s cada una (madura en unos 2,5–4,5 minutos). Lo hace crecer el
+   servidor, así que todos los jugadores ven lo mismo y sigue creciendo aunque no haya nadie.
+5. **Cosechar:** el trigo maduro (dorado) da 1 `wheat` y 1–2 `wheat_seeds`; el que no está maduro devuelve su
+   semilla.
+
+| Resultado | Ingredientes |
+|---|---|
+| `bread` (+5 de vida con G) | 3 `wheat` |
+| 2 `bait_seeds` | `wheat_seeds` |
+
+El `wheat` doma y enamora a ovejas, cerdos, camellos, cabras y caballos; las `wheat_seeds`, a los patos.

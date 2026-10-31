@@ -12,7 +12,7 @@ The [horse](34) is the only animal you can ride. It lives on the plains in herds
 - If there is no room for horse and rider (a low ceiling), you cannot get on.
 - Foals cannot be ridden until they grow up ("too young to ride").
 
-> Careful: if you hold its favourite food (`tall_grass`, `flower_yellow` or `honeycomb`), the right click
+> Careful: if you hold its favourite food (`tall_grass`, `wheat`, `flower_yellow` or `honeycomb`), the right click
 > tries to **tame** it instead of riding it.
 
 ## Speeds

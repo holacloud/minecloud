@@ -31,7 +31,7 @@ wool**.
 
 | Food | Chance per try |
 |---|---|
-| ![Tall grass](item:tall_grass) `tall_grass`, ![Yellow flower](item:flower_yellow) `flower_yellow`, ![Leaves](item:leaves) `leaves` | 1/3 |
+| ![Tall grass](item:tall_grass) `tall_grass`, ![Wheat](item:wheat) `wheat`, ![Yellow flower](item:flower_yellow) `flower_yellow`, ![Leaves](item:leaves) `leaves` | 1/3 |
 
 - **Bait:** it comes to `bait_seeds` (see [Baits and traps](4)).
 - **Cage:** it **does** fit in the `cage_trap`.

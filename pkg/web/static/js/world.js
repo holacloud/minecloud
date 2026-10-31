@@ -176,6 +176,11 @@ class WorldRenderer {
         Object.entries(ITEM_TYPES).forEach(([id, definition]) => {
             this.blockTypes[id] = { breakDuration: 0, solid: false, itemOnly: true, ...definition };
         });
+
+        // World blocks from other files (js/extensions.js registerBlockType).
+        Object.entries(BLOCK_TYPES).forEach(([id, definition]) => {
+            this.blockTypes[id] = { breakDuration: 0.5, ...definition };
+        });
     }
 
     capitalize(value) {
@@ -272,6 +277,13 @@ class WorldRenderer {
                 ]);
                 break;
             default:
+                if (this.blockTypes[type] && this.blockTypes[type].cross) {
+                    geometry = this.createCutoutGeometry(this.blockTypes[type].crossPlanes || [
+                        { width: 0.72, height: 0.82, rotationY: Math.PI / 4, yOffset: -0.09 },
+                        { width: 0.72, height: 0.82, rotationY: -Math.PI / 4, yOffset: -0.09 },
+                    ]);
+                    break;
+                }
                 if (this.blockTypes[type] && this.blockTypes[type].height === 0.5) {
                     // Bottom slab: occupies the lower half of the block when centred on it.
                     geometry = new THREE.BoxGeometry(1, 0.5, 1);
@@ -287,7 +299,8 @@ class WorldRenderer {
 
     // Plants and torches are drawn as crossed planes instead of cubes.
     isCrossGeometry(type) {
-        return ['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch'].includes(type);
+        return ['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'torch'].includes(type) ||
+            Boolean(this.blockTypes[type] && this.blockTypes[type].cross);
     }
 
     createDisplayMaterial(color) {
@@ -592,6 +605,7 @@ class WorldRenderer {
         const spec = (pattern, tint = null, label = null) => ({ pattern, tint, label });
         const uniform = (face) => ({ top: face, side: face, bottom: face });
         const category = def.category;
+        if (def.faces) return { top: spec(def.faces.top), side: spec(def.faces.side), bottom: spec(def.faces.bottom || def.faces.side) };
 
         switch (type) {
             case 'grass': return { top: spec('grass_top'), side: spec('grass_side'), bottom: spec('dirt') };
@@ -654,7 +668,8 @@ class WorldRenderer {
         const generated = this.generateFaceTextures(faceSpec);
         texture = new THREE.CanvasTexture(generated[kind] || generated.albedo);
         // Sprites must not wrap, or filtering bleeds the bottom row into the top edge.
-        const sprite = ['tall_grass', 'flower', 'mushroom', 'torch', 'ladder', 'spray_paint'].includes(faceSpec.pattern);
+        const sprite = ['tall_grass', 'flower', 'mushroom', 'torch', 'ladder', 'spray_paint'].includes(faceSpec.pattern) ||
+            Boolean(TEXTURE_PATTERNS[faceSpec.pattern] && TEXTURE_PATTERNS[faceSpec.pattern].sprite);
         texture.wrapS = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
         texture.wrapT = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
         texture.magFilter = this.rtxModeEnabled ? THREE.LinearFilter : THREE.NearestFilter;
@@ -673,7 +688,8 @@ class WorldRenderer {
     isAlphaCutoutType(type) {
         return type === 'leaves' || type.endsWith('_leaves') ||
             type === 'tall_grass' || type === 'flower_red' || type === 'flower_yellow' ||
-            type === 'mushroom_red' || type === 'mushroom_brown' || type === 'torch' || type === 'ladder';
+            type === 'mushroom_red' || type === 'mushroom_brown' || type === 'torch' || type === 'ladder' ||
+            Boolean(this.blockTypes[type] && this.blockTypes[type].cross);
     }
 
     getRTXMaterialProps(pattern) {
@@ -1301,6 +1317,8 @@ class WorldRenderer {
     }
 
     getDropTypeForBlock(type) {
+        const def = this.blockTypes[type];
+        if (def && Object.prototype.hasOwnProperty.call(def, 'dropType')) return def.dropType;
         switch (type) {
             case 'stone': return 'cobblestone';
             case 'water':

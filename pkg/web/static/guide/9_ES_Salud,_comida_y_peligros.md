@@ -54,11 +54,13 @@ Selecciona la comida en la barra y pulsa **G**. Con la vida llena no se gasta.
 | ![](item:raw_fish) `raw_fish` | +1 |
 | ![](item:cooked_fish) `cooked_fish` | +6 |
 | ![](item:honey_bottle) `honey_bottle` | +5 (devuelve el `glass`) |
+| ![](item:bread) `bread` | +5 |
 | ![](item:cheese) `cheese` | +7 |
 | ![](item:milk) `milk` | +2 y quita el veneno (devuelve el `glass`) |
 | ![](item:antivenom) `antivenom` | +1, quita el veneno y da 3 min de inmunidad |
 
-La flor roja no se come. Las setas crecen sobre todo en los bosques; las flores, en los prados.
+La flor roja no se come. Las setas crecen sobre todo en los bosques; las flores, en los prados. El `wheat` crudo
+no se come: hornéalo en pan (ver [Cultivar trigo](107)).
 
 ## Equipo que protege
 

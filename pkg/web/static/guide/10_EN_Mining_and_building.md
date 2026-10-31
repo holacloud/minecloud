@@ -28,7 +28,7 @@ With the right tool in your hand, you mine faster:
 | ![](item:iron_pickaxe) [Pickaxe](68) | stone, ores, bricks, element blocks |
 | ![](item:iron_shovel) [Shovel](69) | dirt, sand, grass |
 | ![](item:iron_axe) [Axe](70) | logs and planks |
-| ![](item:iron_hoe) [Hoe](72) | leaves and grass |
+| ![](item:iron_hoe) [Hoe](72) | leaves and grass (right click: tills the soil, see [Growing wheat](107)) |
 | ![](item:iron_shears) [Shears](73) | leaves and wool |
 
 | Material | Right block | Other block |
@@ -43,7 +43,8 @@ For example, a gold pickaxe breaks stone in about 0.3 s. The [sword](71) does no
 ## What blocks drop
 
 - Every broken block drops **the same block**, except `stone`, which gives `cobblestone` (smelt it back into
-  `stone` with coal: see [Stone and bedrock](50)).
+  `stone` with coal: see [Stone and bedrock](50)), `farmland`, which gives `dirt`, and the wheat crop, which gives
+  seeds or wheat (see [Growing wheat](107)).
 - Water and bedrock drop nothing (water can be carried in a [bucket](111)).
 - **Falling blocks:** if you break a block above your eyes, it falls to the ground before you can pick it
   up.

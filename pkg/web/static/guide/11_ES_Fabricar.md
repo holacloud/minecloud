@@ -55,6 +55,15 @@ Comida, remedios, curtido, equipo y antorchas de polvo luminoso: ver [Recursos d
 
 Cebos, caña de pescar, red y jaula: ver [Cebos y trampas](4).
 
+## Recetas del huerto
+
+| Resultado | Ingredientes | Más en |
+|---|---|---|
+| ![](item:bread) 1 `bread` | 3 `wheat` | [Pan](110) |
+| ![](item:bait_seeds) 2 `bait_seeds` | 1 `wheat_seeds` | [Semillas de trigo](108) |
+
+El trigo y las semillas no se fabrican: se cultivan. Ver [Cultivar trigo](107).
+
 ## Lo que no se fabrica
 
 - Los **minerales**, la arena o la tierra: se minan. Ver [Minar y construir](10).

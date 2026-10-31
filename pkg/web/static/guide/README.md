@@ -162,10 +162,14 @@ Page 98 is the curiosities index; curiosity pages follow from 99.
 
 ### Pages added later (107–)
 
-New topics after the first edition, listed in their index (16, 48 or 98).
+New topics after the first edition, listed in their index (16, 48 or 98) and in the contents (0).
 
 | Id | ES | EN | Items / topic |
 |---|---|---|---|
+| 107 | Cultivar trigo | Growing wheat | farmland, wheat_0 … wheat_3 (the crop), how to till, sow and harvest |
+| 108 | Semillas de trigo | Wheat seeds | wheat_seeds |
+| 109 | Trigo | Wheat | wheat |
+| 110 | Pan | Bread | bread |
 | 111 | Cubo | Bucket | bucket, water_bucket (in the items index, 48) |
 
 ### Secret pages

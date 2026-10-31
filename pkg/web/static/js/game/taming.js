@@ -22,9 +22,9 @@
 const TAMING_GOAL_MOVEMENTS = ['ground', 'climb'];
 
 const TAMING_DIET = {
-    sheep: { foods: ['tall_grass', 'flower_yellow', 'leaves'], chance: 1 / 3 },
-    duck: { foods: ['tall_grass', 'raw_fish', 'flower_yellow'], chance: 1 / 3 },
-    pig: { foods: ['mushroom_brown', 'mushroom_red', 'honeycomb'], chance: 1 / 3 },
+    sheep: { foods: ['tall_grass', 'wheat', 'flower_yellow', 'leaves'], chance: 1 / 3 },
+    duck: { foods: ['tall_grass', 'wheat_seeds', 'raw_fish', 'flower_yellow'], chance: 1 / 3 },
+    pig: { foods: ['mushroom_brown', 'mushroom_red', 'wheat', 'honeycomb'], chance: 1 / 3 },
     giraffe: { foods: ['acacia_leaves', 'leaves', 'jungle_leaves', 'birch_leaves'], chance: 1 / 4 },
     dog: { foods: ['raw_fish', 'mushroom_brown'], chance: 1 / 2 },
     cat: { foods: ['raw_fish', 'milk', 'mushroom_brown'], chance: 1 / 2 },
@@ -34,11 +34,11 @@ const TAMING_DIET = {
     fish: null,
     frog: null, // 'hop' movement does not follow goals
     turtle: null, // 'amphibious'
-    camel: { foods: ['cactus', 'tall_grass'], chance: 1 / 3 },
+    camel: { foods: ['cactus', 'tall_grass', 'wheat'], chance: 1 / 3 },
     lizard: null, // 'dart'
     scorpion: null,
-    goat: { foods: ['leaves', 'tall_grass'], chance: 1 / 3 },
-    horse: { foods: ['tall_grass', 'flower_yellow', 'honeycomb'], chance: 1 / 4 },
+    goat: { foods: ['leaves', 'tall_grass', 'wheat'], chance: 1 / 3 },
+    horse: { foods: ['tall_grass', 'wheat', 'flower_yellow', 'honeycomb'], chance: 1 / 4 },
     bee: null,
     firefly: null,
     shadow: null,

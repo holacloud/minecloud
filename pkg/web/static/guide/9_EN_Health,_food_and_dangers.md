@@ -54,11 +54,13 @@ Select the food in the hotbar and press **G**. At full health it is not used up.
 | ![](item:raw_fish) `raw_fish` | +1 |
 | ![](item:cooked_fish) `cooked_fish` | +6 |
 | ![](item:honey_bottle) `honey_bottle` | +5 (gives the `glass` back) |
+| ![](item:bread) `bread` | +5 |
 | ![](item:cheese) `cheese` | +7 |
 | ![](item:milk) `milk` | +2 and cures poison (gives the `glass` back) |
 | ![](item:antivenom) `antivenom` | +1, cures poison and gives 3 min of immunity |
 
-The red flower cannot be eaten. Mushrooms grow mostly in forests; flowers, in meadows.
+The red flower cannot be eaten. Mushrooms grow mostly in forests; flowers, in meadows. Raw `wheat` is not food:
+bake it into bread (see [Growing wheat](107)).
 
 ## Protective gear
 

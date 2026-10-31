@@ -31,6 +31,7 @@ the pages.
 - [Mobs](16): one page for every species in the world.
 - [Items](48): blocks, tools, resources and traps.
 - [Curiosities](98): oddities and secrets of the world.
+- [Growing wheat](107): the hoe, seeds, the wheat field and bread.
 
 ---
 

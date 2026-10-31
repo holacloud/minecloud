@@ -52,6 +52,15 @@ Food, remedies, tanning, gear and glow-dust torches: see [Mob resources](2).
 
 Baits, fishing rod, net and cage: see [Baits and traps](4).
 
+## Farm recipes
+
+| Result | Ingredients | More in |
+|---|---|---|
+| ![](item:bread) 1 `bread` | 3 `wheat` | [Bread](110) |
+| ![](item:bait_seeds) 2 `bait_seeds` | 1 `wheat_seeds` | [Wheat seeds](108) |
+
+Wheat and seeds are not crafted: they are grown. See [Growing wheat](107).
+
 ## What cannot be crafted
 
 - **Ores**, sand or dirt: they are mined. See [Mining and building](10).

@@ -10,6 +10,7 @@ Montoncitos de comida que **atraen a los animales** hacia un punto. Sirven para 
 | Resultado | Ingredientes |
 |---|---|
 | ![](item:bait_seeds) **4** `bait_seeds` (semillas) | 2 `tall_grass` |
+| ![](item:bait_seeds) **2** `bait_seeds` | 1 [semilla de trigo](108) `wheat_seeds` |
 | ![](item:bait_worms) **3** `bait_worms` (gusanos) | 2 `dirt` |
 | ![](item:bait_meat) **2** `bait_meat` (carne) | 1 `leather` + 1 `mushroom_brown` |
 | ![](item:bait_fish) **2** `bait_fish` (pescado) | 1 `raw_fish` |

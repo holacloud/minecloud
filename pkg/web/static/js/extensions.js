@@ -77,3 +77,30 @@ const FRAME_UPDATERS = [];
 function registerFrameUpdate(updater) {
     FRAME_UPDATERS.push(updater);
 }
+
+// World blocks (placeable, stored in the chunks by name, so the server needs no list):
+// registerBlockType('farmland', { color, name, breakDuration, ... }). They join
+// world.blockTypes before the block registry is built. Extra fields read by world.js:
+//   faces { top, side, bottom }   texture pattern names (bottom defaults to side)
+//   cross                         drawn as crossed planes like tall grass (alpha cutout, sways)
+//   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
+//   dropType                      what breaking it drops (null: nothing) instead of itself
+const BLOCK_TYPES = {};
+function registerBlockType(id, definition) {
+    BLOCK_TYPES[id] = definition;
+}
+
+// Procedural block textures: registerTexturePattern(name, paint, { sprite }), where
+// paint(factory, surface, tint, seed) fills the surface like the patterns of blockTextures.js.
+// sprite: true for cutout sprites (clamped instead of tiled).
+const TEXTURE_PATTERNS = {};
+function registerTexturePattern(name, paint, options = {}) {
+    TEXTURE_PATTERNS[name] = { ...options, paint };
+}
+
+// A block broken by the local player: handler(blockType, position) runs after its normal drop
+// (extra drops, blocks that depend on it...). position holds the block's integer coordinates.
+const BLOCK_BREAK_HANDLERS = [];
+function registerBlockBreakHandler(handler) {
+    BLOCK_BREAK_HANDLERS.push(handler);
+}

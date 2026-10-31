@@ -31,7 +31,7 @@ blanca** del juego.
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Hierba alta](item:tall_grass) `tall_grass`, ![Flor amarilla](item:flower_yellow) `flower_yellow`, ![Hojas](item:leaves) `leaves` | 1/3 |
+| ![Hierba alta](item:tall_grass) `tall_grass`, ![Trigo](item:wheat) `wheat`, ![Flor amarilla](item:flower_yellow) `flower_yellow`, ![Hojas](item:leaves) `leaves` | 1/3 |
 
 - **Cebo:** acude al `bait_seeds` (ver [Cebos y trampas](4)).
 - **Jaula:** **sí** cabe en la `cage_trap`.

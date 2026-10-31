@@ -28,7 +28,7 @@ Break them with a left click: each one drops **itself** (grass stays grass).
 |---|---|---|
 | `grass` | 0.35 s | 8 %: a random [sapling](55) |
 | `dirt` | 0.45 s | — |
-| `tall_grass` | 0.12 s | 3.5 %: a random [mob egg](74) |
+| `tall_grass` | 0.12 s | 35 %: [wheat seeds](108); 3.5 %: a random [mob egg](74) |
 
 ## What they are for
 
@@ -42,6 +42,8 @@ Break them with a left click: each one drops **itself** (grass stays grass).
 - **Tall grass** is not solid: you walk through it. It is food to tame sheep, ducks, camels, goats, horses and
   rabbits (see [Taming and breeding](3)).
 - Grass and dirt are solid and perfect for filling, shaping hills or plugging holes.
+- **Right click** grass or dirt with a [hoe](72) to till it into farmland, where wheat grows. See
+  [Growing wheat](107).
 
 ## Tips
 
@@ -52,7 +54,7 @@ Break them with a left click: each one drops **itself** (grass stays grass).
 ## Trivia
 
 - A handful of fertile soil holds more microorganisms than there are people on the whole planet.
-- Bamboo, wheat and maize are **grasses**, from the same family as your lawn.
+- Bamboo, [wheat](109) and maize are **grasses**, from the same family as your lawn.
 - **Game quirk:** the grass block counts as "stone" for tools, so a pickaxe breaks it fast too, just like a shovel
   or a hoe.
 

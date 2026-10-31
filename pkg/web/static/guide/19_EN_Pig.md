@@ -26,7 +26,7 @@ find.
 
 | Food | Chance per try |
 |---|---|
-| ![Brown mushroom](item:mushroom_brown) `mushroom_brown`, ![Red mushroom](item:mushroom_red) `mushroom_red`, ![Honeycomb](item:honeycomb) `honeycomb` | 1/3 |
+| ![Brown mushroom](item:mushroom_brown) `mushroom_brown`, ![Red mushroom](item:mushroom_red) `mushroom_red`, ![Wheat](item:wheat) `wheat`, ![Honeycomb](item:honeycomb) `honeycomb` | 1/3 |
 
 - **Baits:** it comes to `bait_seeds` and `bait_worms` (see [Baits and traps](4)).
 - **Cage:** it **does** fit in the `cage_trap`.
@@ -35,7 +35,7 @@ find.
 ## Tips
 
 - Mushrooms grow in the forest, right where it lives: take a few along to tame it on the spot.
-- If you have no mushrooms, a `honeycomb` from a beehive works too.
+- If you have no mushrooms, `wheat` from your [field](107) or a `honeycomb` from a beehive works too.
 - A cage with `bait_worms` in a forest draws pigs; catch one and you take its egg home.
 
 ## Trivia

@@ -33,7 +33,7 @@ dobla sus largas patas para tumbarse en la arena caliente.
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Cactus](item:cactus) `cactus`, ![Hierba alta](item:tall_grass) `tall_grass` | 1/3 |
+| ![Cactus](item:cactus) `cactus`, ![Hierba alta](item:tall_grass) `tall_grass`, ![Trigo](item:wheat) `wheat` | 1/3 |
 
 - **Cebo:** acude al `bait_seeds` (ver [Cebos y trampas](4)).
 - **Jaula:** **no** cabe: es demasiado grande.

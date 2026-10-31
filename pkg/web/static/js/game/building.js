@@ -311,6 +311,7 @@ Object.assign(Game.prototype, {
         if (bonusDrop) {
             this.spawnPickup(bonusDrop, { x: position.x + 0.25, y: position.y + 0.2, z: position.z + 0.25 }, 1);
         }
+        BLOCK_BREAK_HANDLERS.forEach((handler) => handler.call(this, blockType, position));
 
         this.showHitIndicator();
         this.lastSelectionUpdate = 0;

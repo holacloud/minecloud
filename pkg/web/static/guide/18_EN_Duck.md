@@ -27,7 +27,7 @@ A white duck with an orange bill and feet that waddles about in little groups. I
 
 | Food | Chance per try |
 |---|---|
-| ![Tall grass](item:tall_grass) `tall_grass`, ![Raw fish](item:raw_fish) `raw_fish`, ![Yellow flower](item:flower_yellow) `flower_yellow` | 1/3 |
+| ![Tall grass](item:tall_grass) `tall_grass`, ![Wheat seeds](item:wheat_seeds) `wheat_seeds`, ![Raw fish](item:raw_fish) `raw_fish`, ![Yellow flower](item:flower_yellow) `flower_yellow` | 1/3 |
 
 - **Baits:** it comes to `bait_seeds` and `bait_worms` (see [Baits and traps](4)).
 - **Cage:** it **does** fit in the `cage_trap`.

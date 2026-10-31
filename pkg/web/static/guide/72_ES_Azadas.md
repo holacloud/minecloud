@@ -2,7 +2,8 @@
 
 ![Azada de hierro](item:iron_hoe)
 
-La herramienta del jardinero. Corta deprisa las **hojas** y el **bloque de hierba**.
+La herramienta del jardinero. **Labra la tierra** para cultivar, y corta deprisa las **hojas** y el **bloque de
+hierba**.
 
 | | Azada | Id | Velocidad con su material |
 |---|---|---|---|
@@ -22,6 +23,17 @@ La herramienta del jardinero. Corta deprisa las **hojas** y el **bloque de hierb
 
 ## Cómo se usa
 
+### Labrar (clic derecho)
+
+Haz clic derecho en un bloque de **hierba** o de **tierra** con cualquier azada: se convierte en
+![Tierra de cultivo](item:farmland) **tierra de cultivo** (`farmland`), tierra oscura con surcos. El bloque de
+encima tiene que estar vacío: siega antes la hierba alta o arranca la flor. Las cuatro azadas labran igual, al
+instante.
+
+En la tierra de cultivo se plantan [semillas de trigo](108). Todo sobre el huerto: [Cultivar trigo](107).
+
+### Minar (clic izquierdo)
+
 Selecciónala y rompe con clic izquierdo. **No se gasta nunca.** Acelera las hojas de los nueve árboles y el bloque
 de hierba (`grass`).
 
@@ -34,7 +46,7 @@ de hierba (`grass`).
 
 **En otros bloques** ayuda menos: ×1 la de madera, ×1,05 la de piedra, ×1,43 la de hierro y ×1,76 la de oro.
 
-En esta versión la azada **no labra la tierra**: no hay cultivos.
+La tierra de cultivo se rompe antes con una [pala](69) que con una azada.
 
 ## Trucos
 
@@ -42,10 +54,11 @@ En esta versión la azada **no labra la tierra**: no hay cultivos.
   [huevo](74).
 - Una azada de hierro es suficiente para las hojas: la de oro no las rompe más rápido.
 - Las [tijeras de hierro](73) hacen lo mismo con las hojas y además cortan lana.
+- Para cultivar basta cualquier azada: la de madera labra exactamente igual que la de oro.
 
 ## Curiosidades
 
 - La azada es una de las herramientas agrícolas más antiguas: ya aparece en pinturas del antiguo Egipto.
 - Con una azada se quitan las malas hierbas y se airea la tierra para que las raíces respiren.
 
-Ver también: [Madera y hojas](54), [Hierba y tierra](49).
+Ver también: [Cultivar trigo](107), [Madera y hojas](54), [Hierba y tierra](49).

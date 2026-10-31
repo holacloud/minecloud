@@ -33,7 +33,7 @@ folds its long legs to lie down on the warm sand.
 
 | Food | Chance per try |
 |---|---|
-| ![Cactus](item:cactus) `cactus`, ![Tall grass](item:tall_grass) `tall_grass` | 1/3 |
+| ![Cactus](item:cactus) `cactus`, ![Tall grass](item:tall_grass) `tall_grass`, ![Wheat](item:wheat) `wheat` | 1/3 |
 
 - **Bait:** it comes to `bait_seeds` (see [Baits and traps](4)).
 - **Cage:** it does **not** fit: it is too big.

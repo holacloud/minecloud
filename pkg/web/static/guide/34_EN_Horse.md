@@ -33,7 +33,7 @@ There are **4 coats**:
 |---|---|
 | Right click with an empty hand | **You ride it.** Space jumps, Shift gets off. See [Riding](7). |
 | Hit it | **12 health**: 3 blows bare-handed, 2 with a stone sword or better ([Swords](71)); defeated, it drops **1 to 2** `leather`. Otherwise it gives a start and turns towards you. You cannot strike the horse you are riding. |
-| Tame it | Yes: `tall_grass`, `flower_yellow` or `honeycomb`, with a **1 in 4** chance per try. See [Taming and breeding](3). |
+| Tame it | Yes: `tall_grass`, `wheat`, `flower_yellow` or `honeycomb`, with a **1 in 4** chance per try. See [Taming and breeding](3). |
 | Make it sit (tamed) | **Shift + right click**, because a plain click rides it. |
 | Breed | Two tamed horses in love have a foal, which cannot be ridden until it grows up. |
 | `iron_shears` | 1 ![fur](item:fur) `fur` every 120 s. |

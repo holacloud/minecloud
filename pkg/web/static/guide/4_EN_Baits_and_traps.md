@@ -5,6 +5,7 @@
 | Result | Ingredients |
 |---|---|
 | 4 `bait_seeds` | 2 `tall_grass` |
+| 2 `bait_seeds` | 1 `wheat_seeds` |
 | 3 `bait_worms` | 2 `dirt` |
 | 2 `bait_meat` | `leather` + `mushroom_brown` |
 | 2 `bait_fish` | `raw_fish` |

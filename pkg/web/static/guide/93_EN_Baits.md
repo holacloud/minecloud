@@ -10,6 +10,7 @@ make fish bite sooner on the [rod](94). There are five.
 | Result | Ingredients |
 |---|---|
 | ![](item:bait_seeds) **4** `bait_seeds` | 2 `tall_grass` |
+| ![](item:bait_seeds) **2** `bait_seeds` | 1 [wheat seeds](108) `wheat_seeds` |
 | ![](item:bait_worms) **3** `bait_worms` | 2 `dirt` |
 | ![](item:bait_meat) **2** `bait_meat` | 1 `leather` + 1 `mushroom_brown` |
 | ![](item:bait_fish) **2** `bait_fish` | 1 `raw_fish` |

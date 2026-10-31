@@ -18,6 +18,12 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:cherry_sapling) [Brotes](55)
 - ![](item:flower_red) [Flores y setas](61)
 
+## Huerto
+
+- ![](item:farmland) [Cultivar trigo](107) (tierra labrada y trigo plantado)
+- ![](item:wheat_seeds) [Semillas de trigo](108)
+- ![](item:wheat) [Trigo](109)
+
 ## Bloques de construcción
 
 - ![](item:stone_slab) [Losas](56)
@@ -68,6 +74,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:cooked_fish) [Pescado cocinado](81)
 - ![](item:honey_bottle) [Tarro de miel](87)
 - ![](item:cheese) [Queso](88)
+- ![](item:bread) [Pan](110)
 - ![](item:antivenom) [Antídoto](89)
 
 ## Equipo

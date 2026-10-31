@@ -18,6 +18,12 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:cherry_sapling) [Saplings](55)
 - ![](item:flower_red) [Flowers and mushrooms](61)
 
+## Farm
+
+- ![](item:farmland) [Growing wheat](107) (farmland and the wheat crop)
+- ![](item:wheat_seeds) [Wheat seeds](108)
+- ![](item:wheat) [Wheat](109)
+
 ## Building blocks
 
 - ![](item:stone_slab) [Slabs](56)
@@ -68,6 +74,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:cooked_fish) [Cooked fish](81)
 - ![](item:honey_bottle) [Honey bottle](87)
 - ![](item:cheese) [Cheese](88)
+- ![](item:bread) [Bread](110)
 - ![](item:antivenom) [Antivenom](89)
 
 ## Gear

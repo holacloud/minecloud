@@ -28,7 +28,7 @@ Con la herramienta adecuada en la mano, minas más rápido:
 | ![](item:iron_pickaxe) [Pico](68) | piedra, minerales, ladrillos, bloques de elementos |
 | ![](item:iron_shovel) [Pala](69) | tierra, arena, hierba |
 | ![](item:iron_axe) [Hacha](70) | troncos y tablones |
-| ![](item:iron_hoe) [Azada](72) | hojas y hierba |
+| ![](item:iron_hoe) [Azada](72) | hojas y hierba (clic derecho: labra la tierra, ver [Cultivar trigo](107)) |
 | ![](item:iron_shears) [Tijeras](73) | hojas y lana |
 
 | Material | Bloque adecuado | Otro bloque |
@@ -43,7 +43,8 @@ Por ejemplo, un pico de oro rompe la piedra en unos 0,3 s. La [espada](71) no ac
 ## Lo que sueltan los bloques
 
 - Cada bloque roto suelta **el mismo bloque**, salvo la `stone`, que da `cobblestone` (se vuelve a fundir en
-  `stone` con carbón: ver [Piedra y roca madre](50)).
+  `stone` con carbón: ver [Piedra y roca madre](50)), la `farmland`, que da `dirt`, y el trigo plantado, que da
+  semillas o trigo (ver [Cultivar trigo](107)).
 - El agua y la roca madre no sueltan nada (el agua se puede llevar en un [cubo](111)).
 - **Bloques que caen:** si rompes un bloque por encima de tus ojos, cae al suelo antes de poder recogerlo.
 - **Imán:** los objetos a menos de 3,4 bloques vuelan hacia ti solos.

@@ -27,7 +27,7 @@ hacerle daño.
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Hierba alta](item:tall_grass) `tall_grass`, ![Pescado crudo](item:raw_fish) `raw_fish`, ![Flor amarilla](item:flower_yellow) `flower_yellow` | 1/3 |
+| ![Hierba alta](item:tall_grass) `tall_grass`, ![Semillas de trigo](item:wheat_seeds) `wheat_seeds`, ![Pescado crudo](item:raw_fish) `raw_fish`, ![Flor amarilla](item:flower_yellow) `flower_yellow` | 1/3 |
 
 - **Cebos:** acude al `bait_seeds` y al `bait_worms` (ver [Cebos y trampas](4)).
 - **Jaula:** **sí** cabe en la `cage_trap`.

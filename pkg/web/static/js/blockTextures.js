@@ -722,6 +722,12 @@ class BlockTextureFactory {
                 });
             }
         };
+        // Patterns from other files (js/extensions.js registerTexturePattern).
+        if (typeof TEXTURE_PATTERNS !== 'undefined') {
+            Object.entries(TEXTURE_PATTERNS).forEach(([name, pattern]) => {
+                this._patterns[name] = (s, tint, seed) => pattern.paint(f, s, tint, seed);
+            });
+        }
         return this._patterns;
     }
 

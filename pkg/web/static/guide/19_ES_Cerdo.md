@@ -25,7 +25,7 @@ Un cerdo rosado y redondo que hoza por bosques y prados. Es pacífico, asustadiz
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Seta marrón](item:mushroom_brown) `mushroom_brown`, ![Seta roja](item:mushroom_red) `mushroom_red`, ![Panal](item:honeycomb) `honeycomb` | 1/3 |
+| ![Seta marrón](item:mushroom_brown) `mushroom_brown`, ![Seta roja](item:mushroom_red) `mushroom_red`, ![Trigo](item:wheat) `wheat`, ![Panal](item:honeycomb) `honeycomb` | 1/3 |
 
 - **Cebos:** acude al `bait_seeds` y al `bait_worms` (ver [Cebos y trampas](4)).
 - **Jaula:** **sí** cabe en la `cage_trap`.
@@ -34,7 +34,7 @@ Un cerdo rosado y redondo que hoza por bosques y prados. Es pacífico, asustadiz
 ## Trucos
 
 - Las setas crecen en el bosque, justo donde vive: llévate unas cuantas para domesticarlo allí mismo.
-- Si no tienes setas, un `honeycomb` de una colmena también sirve.
+- Si no tienes setas, el `wheat` de tu [huerto](107) o un `honeycomb` de una colmena también sirven.
 - Una jaula con `bait_worms` en un bosque atrae a los cerdos; al atrapar uno te llevas su huevo a casa.
 
 ## Curiosidades

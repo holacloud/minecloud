@@ -38,7 +38,7 @@ point. Every now and then it lowers its head and **rams** you.
 
 | Food | Chance per try |
 |---|---|
-| ![Leaves](item:leaves) `leaves`, ![Tall grass](item:tall_grass) `tall_grass` | 1/3 |
+| ![Leaves](item:leaves) `leaves`, ![Tall grass](item:tall_grass) `tall_grass`, ![Wheat](item:wheat) `wheat` | 1/3 |
 
 - A tamed goat **never rams** its owner and follows you, leaping over the rocks.
 - **Bait:** it comes to `bait_seeds` (see [Baits and traps](4)).

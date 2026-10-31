@@ -38,7 +38,7 @@ alto. De vez en cuando baja la cabeza y te **embiste**.
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Hojas](item:leaves) `leaves`, ![Hierba alta](item:tall_grass) `tall_grass` | 1/3 |
+| ![Hojas](item:leaves) `leaves`, ![Hierba alta](item:tall_grass) `tall_grass`, ![Trigo](item:wheat) `wheat` | 1/3 |
 
 - Una cabra domesticada **nunca embiste** a su dueño y te sigue saltando por las rocas.
 - **Cebo:** acude al `bait_seeds` (ver [Cebos y trampas](4)).

@@ -28,7 +28,7 @@ Rómpelos con clic izquierdo: cada uno suelta **su mismo bloque** (la hierba sig
 |---|---|---|
 | `grass` | 0,35 s | 8 %: un [brote](55) al azar |
 | `dirt` | 0,45 s | — |
-| `tall_grass` | 0,12 s | 3,5 %: un [huevo de mob](74) al azar |
+| `tall_grass` | 0,12 s | 35 %: [semillas de trigo](108); 3,5 %: un [huevo de mob](74) al azar |
 
 ## Para qué sirven
 
@@ -42,6 +42,8 @@ Rómpelos con clic izquierdo: cada uno suelta **su mismo bloque** (la hierba sig
 - La **hierba alta** no es sólida: se atraviesa. Es comida para domesticar a la oveja, el pato, el camello, la
   cabra, el caballo y el conejo (ver [Domesticar y criar](3)).
 - La hierba y la tierra son sólidas y perfectas para rellenar, hacer colinas o tapar agujeros.
+- Con **clic derecho** y una [azada](72), la hierba o la tierra se labran y se convierten en tierra de cultivo,
+  donde crece el trigo. Ver [Cultivar trigo](107).
 
 ## Trucos
 
@@ -52,7 +54,7 @@ Rómpelos con clic izquierdo: cada uno suelta **su mismo bloque** (la hierba sig
 ## Curiosidades
 
 - En un puñado de tierra fértil viven más microorganismos que personas en todo el planeta.
-- El bambú, el trigo y el maíz son **hierbas**, de la misma familia que el césped.
+- El bambú, el [trigo](109) y el maíz son **hierbas**, de la misma familia que el césped.
 - **Rareza del juego:** el bloque de hierba cuenta como «piedra» para las herramientas, así que el pico también lo
   rompe deprisa, igual que la pala y la azada.
 

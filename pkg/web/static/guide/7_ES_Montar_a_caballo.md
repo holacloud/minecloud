@@ -12,7 +12,7 @@ El [caballo](34) es el único animal que se puede montar. Vive en manadas de 2 a
 - Si no hay hueco para caballo y jinete (un techo bajo), no podrás subir.
 - Las crías no se pueden montar hasta que crecen ("too young to ride").
 
-> Ojo: si llevas en la mano su comida favorita (`tall_grass`, `flower_yellow` o `honeycomb`), el clic
+> Ojo: si llevas en la mano su comida favorita (`tall_grass`, `wheat`, `flower_yellow` o `honeycomb`), el clic
 > derecho intenta **domesticarlo** en vez de montarlo.
 
 ## Velocidades

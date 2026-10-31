@@ -117,6 +117,7 @@ type persistedWorldState struct {
 	Blocks        map[string]Block      `json:"blocks"`
 	RemovedBlocks map[string]bool       `json:"removedBlocks"`
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
+	Crops         map[string]Crop       `json:"crops,omitempty"`
 }
 
 var (
@@ -154,6 +155,7 @@ func Initialize() error {
 	}
 
 	go runWorldClock()
+	go runCropGrowth()
 	return nil
 }
 
@@ -234,6 +236,7 @@ func loadWorldState() error {
 		gameState.SprayPaints = make(map[string]SprayPaint)
 	}
 	stateMu.Unlock()
+	loadCrops(persisted.Crops)
 
 	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
 	return nil
@@ -260,6 +263,7 @@ func saveWorldState() {
 		persisted.SprayPaints[key] = paint
 	}
 	stateMu.RUnlock()
+	persisted.Crops = snapshotCrops()
 
 	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
 		log.Printf("Failed to create world state directory: %v", err)
@@ -566,7 +570,8 @@ func handleMessage(client *Client, msg Message) {
 		json.Unmarshal(msg.Payload, &payload)
 
 		// The chunk store is the source of truth; never call it while holding stateMu.
-		if err := chunkStore.SetBlock(payload.X, payload.Y, payload.Z, ""); err != nil {
+		cropsChanged, err := setBlockTracked(payload.X, payload.Y, payload.Z, "")
+		if err != nil {
 			log.Printf("blockBreak: %v", err)
 			return
 		}
@@ -576,7 +581,7 @@ func handleMessage(client *Client, msg Message) {
 		delete(gameState.Blocks, key)
 		removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
 		stateMu.Unlock()
-		if hadMetadata {
+		if hadMetadata || cropsChanged {
 			saveWorldState()
 		}
 
@@ -621,7 +626,8 @@ func handleMessage(client *Client, msg Message) {
 		if payload.BlockType == "" {
 			return
 		}
-		if err := chunkStore.SetBlock(payload.X, payload.Y, payload.Z, payload.BlockType); err != nil {
+		cropsChanged, err := setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
+		if err != nil {
 			log.Printf("blockPlace: %v", err)
 			return
 		}
@@ -635,7 +641,7 @@ func handleMessage(client *Client, msg Message) {
 			delete(gameState.Blocks, key)
 		}
 		stateMu.Unlock()
-		if hadMetadata || hasBlockMetadata(payload) {
+		if hadMetadata || hasBlockMetadata(payload) || cropsChanged {
 			saveWorldState()
 		}
 		recordSignMessage(client, payload)
