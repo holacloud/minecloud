@@ -7,7 +7,7 @@ como un bloque más.
 
 | Nombre | Id | Rotura |
 |---|---|---|
-| Agua | `water` | 0,15 s, pero **no suelta nada** |
+| Agua | `water` | 0,15 s, pero al romperla **no suelta nada** |
 
 ## Dónde se encuentra
 
@@ -16,12 +16,16 @@ No hay agua en las montañas.
 
 ## Cómo conseguirla
 
-Empiezas la partida con **12 bloques de agua**. Romper agua la elimina, pero no te la llevas, así que esos 12
-bloques son todos los que tendrás: úsalos con cabeza.
+Empiezas la partida con **12 bloques de agua**. Romper agua la elimina, pero no te la llevas.
+
+Para llevarte más, usa un ![Cubo](item:bucket) [cubo](111) (3 `iron_ore`): haz clic derecho en el agua con el cubo
+vacío para recoger ese bloque y conseguir un `water_bucket`; haz clic derecho en la cara de un bloque con el cubo
+lleno para verterla ahí y recuperar el cubo vacío.
 
 ## Cómo funciona
 
-- **Colocarla:** clic derecho, como cualquier bloque. El agua **no fluye**: se queda justo donde la pones.
+- **Colocarla:** clic derecho, como cualquier bloque (o vertiéndola con un [cubo](111)). El agua **no fluye**: se
+  queda justo donde la pones.
 - **Nadar:** dentro del agua vas más despacio (55 % de la velocidad). Mantén **saltar** para subir; si no, te
   hundes poco a poco.
 - **Amortigua caídas:** el agua frena tu caída; con unos 2 bloques de profundidad se para incluso una caída muy
@@ -49,4 +53,4 @@ bloques son todos los que tendrás: úsalos con cabeza.
 - En el juego el agua es un bloque normal que no se derrama: puedes construir una cascada que se queda quieta en el
   aire.
 
-Ver también: [Pescar](6), [Salud, comida y peligros](9).
+Ver también: [Cubo](111), [Pescar](6), [Salud, comida y peligros](9).

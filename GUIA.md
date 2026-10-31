@@ -213,6 +213,9 @@ conejo, serpiente y topo.
 
 **No caben:** los animales grandes, los voladores y los peces.
 
+**Nunca caen:** los animales domesticados y los que se montan (el cebo de una jaula tampoco atrae a las mascotas).
+A las ranas, los lagartos y las tortugas, que se mueven a su manera, el cebo de la jaula los empuja hasta el centro.
+
 Las jaulas, también con su animal dentro, se guardan al recargar la página. Solo existen en tu navegador.
 
 ### Caña de pescar (`fishing_rod`)

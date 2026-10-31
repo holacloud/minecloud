@@ -15,8 +15,8 @@ They are all "synthesized" with the same recipe (C key); you pick the element in
 
 In the recipe list they show up as *Synthesize H Block*, *Synthesize HE Block*… (with the symbol in capitals).
 
-They need **smooth stone** (`stone`), and in this version mining stone gives cobblestone, so for now they cannot be
-crafted (see [Stone and bedrock](50)).
+They need **smooth stone** (`stone`). Mining stone gives cobblestone, so smelt it first: 1 `cobblestone` +
+1 `coal_ore` → 2 `stone` (see [Stone and bedrock](50)).
 
 ## The 36 elements
 

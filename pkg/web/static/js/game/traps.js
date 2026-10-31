@@ -6,7 +6,8 @@
 //   fly to honey bait instead of a flower. Species with their own behaviour only come if their
 //   update asks this.getMobGoal(mob, delta).
 // - Cage trap: right click the ground to set it, door towards you. A small ground mob that walks
-//   in (bait dropped inside lures it to the middle) is caught: the door snaps shut. Right click
+//   in (bait dropped inside lures it to the middle) is caught: the door snaps shut. Tamed and
+//   ridden mobs are never caught (nor lured by bait inside a cage). Right click
 //   the cage to collect the mob as its <species>_egg plus the cage, or an empty cage to take it.
 // - Fishing rod: right click water within 9 blocks to cast; when the bobber dips (splash),
 //   right click within the second to catch raw fish (sometimes a shell or junk). Worm or fish
@@ -376,7 +377,7 @@ Object.assign(Game.prototype, {
         let bestDistance = TRAPS_BAIT_RANGE;
         this.trapsBaits.forEach((bait) => {
             if (bait.amount <= 0 || !entry.baits.includes(bait.type)) return;
-            if (bait.cage && (!bait.cage.open || bait.cage.mob || !entry.cage)) return;
+            if (bait.cage && (!bait.cage.open || bait.cage.mob || !entry.cage || mob.userData.tamed)) return;
             const distance = Math.hypot(bait.position.x - mob.position.x, bait.position.z - mob.position.z);
             if (distance < bestDistance && Math.abs(bait.position.y - mob.position.y) < 6) {
                 best = bait;
@@ -435,6 +436,8 @@ Object.assign(Game.prototype, {
             }
             const distance = Math.hypot(bait.position.x - mob.position.x, bait.position.z - mob.position.z);
             const movement = getMobSpecies(species).movement;
+            // Hopping, darting and amphibious mobs are nudged; into a cage, right to its centre.
+            if (TRAPS_NUDGE_MODES.includes(movement) && (bait.cage || distance > 1.4)) this.trapsNudge(mob, bait.position, distance, delta, bait.cage ? 0 : 0.8);
             if (distance <= (bait.cage ? 0.5 : 1.4)) {
                 // Nibble: head down, bobbing, and the pile shrinks.
                 bait.amount = Math.max(0, bait.amount - delta / TRAPS_EAT_SECONDS);
@@ -449,16 +452,14 @@ Object.assign(Game.prototype, {
                     const near = Math.hypot(bait.position.x - this.camera.position.x, bait.position.z - this.camera.position.z);
                     if (near < 12) this.playNoiseBurst({ duration: 0.04, volume: 0.008 * (1 - near / 12), highpass: 1200, lowpass: 4200 });
                 }
-            } else if (TRAPS_NUDGE_MODES.includes(movement)) {
-                this.trapsNudge(mob, bait.position, distance, delta);
             }
         }
     },
 
     // Mobs with their own movement drift towards the bait on top of what their AI does.
-    trapsNudge(mob, target, distance, delta) {
-        const step = Math.min(distance - 0.8, 0.8 * delta);
-        if (step <= 0) return;
+    trapsNudge(mob, target, distance, delta, stop = 0.8) {
+        const step = Math.min(distance - stop, 0.8 * delta);
+        if (step <= 0.0001 || distance < 0.0001) return;
         const nx = mob.position.x + (target.x - mob.position.x) / distance * step;
         const nz = mob.position.z + (target.z - mob.position.z) / distance * step;
         const floor = this.cameraController.getFloorY(nx, nz, mob.position.y + 1.2);
@@ -592,7 +593,8 @@ Object.assign(Game.prototype, {
             if (!cage.open) continue;
             for (const mob of this.ambientMobs) {
                 const entry = TRAPS_SPECIES[mob.userData.species];
-                if (!entry || !entry.cage || mob.userData.trapsCage || mob.userData.rider || mob.userData.isHive) continue;
+                // Pets and the mob being ridden never end up in a cage.
+                if (!entry || !entry.cage || mob.userData.trapsCage || mob.userData.rider || mob.userData.tamed || mob === this.ridingMob || mob.userData.isHive) continue;
                 const feet = mob.position.y - (mob.userData.flyHeight || 0);
                 if (Math.abs(feet - cage.position.y) > 0.8) continue;
                 if (Math.hypot(mob.position.x - cage.position.x, mob.position.z - cage.position.z) > 0.42) continue;

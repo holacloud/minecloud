@@ -29,8 +29,8 @@ None of them appear in the world: they are all crafted.
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
 
-Polished stones come from cobblestone, which is plentiful. Metals and obsidian need **smooth stone** (`stone`), and
-in this version mining stone only gives cobblestone, so for now they cannot be crafted (see
+Polished stones come from cobblestone, which is plentiful. Metals and obsidian need **smooth stone** (`stone`):
+mining stone only gives cobblestone, so smelt it first, 1 `cobblestone` + 1 `coal_ore` → 2 `stone` (see
 [Stone and bedrock](50)).
 
 ## What they are for

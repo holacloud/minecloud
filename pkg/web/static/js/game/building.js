@@ -430,12 +430,26 @@ Object.assign(Game.prototype, {
         this.playMiningSound(blockType);
     },
 
+    // A tree only grows into air or small plants; it never replaces other blocks.
+    canTreeGrowAt(x, y, z) {
+        const type = this.world.getBlockTypeAt(x, y, z);
+        return !type || ['tall_grass', 'flower_red', 'flower_yellow'].includes(type);
+    },
+
     plantSaplingTree(itemDef, position) {
-        if (!this.world.hasSolidBlock(position.x, position.y - 1, position.z) || this.world.getBlockTypeAt(position.x, position.y, position.z)) return;
+        // Clicked on tall grass or a flower: the tree takes its place.
+        if (this.world.getBlockTypeAt(position.x, position.y - 1, position.z) && this.canTreeGrowAt(position.x, position.y - 1, position.z)) {
+            position = { x: position.x, y: position.y - 1, z: position.z };
+        }
+        if (!this.world.hasSolidBlock(position.x, position.y - 1, position.z) || !this.canTreeGrowAt(position.x, position.y, position.z)) return;
         const trunkHeight = itemDef.saplingWood === 'dark_oak_wood' ? 6 : 5;
         const payloads = [];
 
         for (let y = 0; y < trunkHeight; y++) {
+            if (!this.canTreeGrowAt(position.x, position.y + y, position.z)) {
+                this.receiveSystemMessage({ text: 'Not enough room for the tree to grow here' });
+                return;
+            }
             payloads.push({ x: position.x, y: position.y + y, z: position.z, blockType: itemDef.saplingWood });
         }
 
@@ -446,6 +460,7 @@ Object.assign(Game.prototype, {
                 for (let lz = -radius; lz <= radius; lz++) {
                     if (lx === 0 && lz === 0 && ly < 2) continue;
                     if (Math.abs(lx) === 2 && Math.abs(lz) === 2) continue;
+                    if (!this.canTreeGrowAt(position.x + lx, leavesStart + ly, position.z + lz)) continue;
                     payloads.push({ x: position.x + lx, y: leavesStart + ly, z: position.z + lz, blockType: itemDef.saplingLeaves });
                 }
             }

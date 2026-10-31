@@ -43,6 +43,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:iron_sword) [Espadas](71)
 - ![](item:iron_hoe) [Azadas](72)
 - ![](item:iron_shears) [Tijeras de hierro](73)
+- ![](item:bucket) [Cubo](111)
 
 ## Huevos
 

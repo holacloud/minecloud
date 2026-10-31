@@ -27,6 +27,8 @@ The ingredients are used up and the result goes to your inventory, your hotbar a
 | `sign` | 2 `planks` + 1 `wood` |
 | `sound_block` | 2 `planks` + 1 `cobblestone` + 1 `coal_ore` |
 | `spray_paint` | 1 `sand` + 1 `flower_red` + 1 `coal_ore` |
+| 2 `stone` | 1 `cobblestone` + 1 `coal_ore` ([Stone](50)) |
+| `bucket` | 3 `iron_ore` ([Bucket](111)) |
 
 ## Recipe families
 

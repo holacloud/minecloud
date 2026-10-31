@@ -29,8 +29,8 @@ Ninguno aparece en el mundo: todos se fabrican.
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
 
-Las piedras pulidas salen de adoquín, que abunda. Los metales y la obsidiana piden **piedra lisa** (`stone`), y en
-esta versión picar piedra solo da adoquín, así que de momento no se pueden fabricar (ver
+Las piedras pulidas salen de adoquín, que abunda. Los metales y la obsidiana piden **piedra lisa** (`stone`):
+picar piedra solo da adoquín, así que fúndelo primero, 1 `cobblestone` + 1 `coal_ore` → 2 `stone` (ver
 [Piedra y roca madre](50)).
 
 ## Para qué sirven

@@ -160,6 +160,14 @@ Page 48 is the items index. One page per item, or per family when the items are 
 
 Page 98 is the curiosities index; curiosity pages follow from 99.
 
+### Pages added later (107–)
+
+New topics after the first edition, listed in their index (16, 48 or 98).
+
+| Id | ES | EN | Items / topic |
+|---|---|---|---|
+| 111 | Cubo | Bucket | bucket, water_bucket (in the items index, 48) |
+
 ### Secret pages
 
 Codes are hinted at in other pages or in the world; no index lists them.

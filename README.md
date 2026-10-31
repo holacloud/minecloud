@@ -14,8 +14,15 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Visible biome variety, including plains, forests, rocky zones, and deserts with cactus.
 - Extra decorative flora, including tall grass, flowers, and mushrooms.
 - Ambient interactive mobs: sheep, ducks, pigs, adorable giraffes, colorful macaws, friendly dogs, and tiny cats.
+- 31 species in total, with their own behaviours: fish, frogs, turtles, camels, lizards, scorpions, goats, eagles, horses, bees and their hives, fireflies, bats, crabs, vultures, snakes, rabbits, foxes, owls, giant moles, and rare night creatures (wandering shadows, wisps, storm golems).
+- Mob resources: shear, milk and collect honey, feathers, scales and loot, and craft them into food, drinks and armour.
+- Taming and breeding: fed animals follow you, sit on command and raise babies; horses can be ridden.
+- Baits and traps: bait piles that lure animals, cage traps, a fishing rod, a bug net and firefly jars.
+- A bucket to scoop up water and pour it elsewhere (water stays static).
+- A bestiary (`B`) that records the species you meet, with portraits and field notes.
+- An in-game guide book (`H`) with pages for every mob, item and mechanic, in English and Spanish.
 - First-person movement with auto-step over 1-block ledges.
-- Optional third-person camera view.
+- Third-person camera views (from behind and from the front).
 - Sneak/crouch movement for careful building and edge safety.
 - Health system with fall damage, respawn, and a persistent safe-position restore.
 - Death screen with respawn countdown.
@@ -60,31 +67,34 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 ### Desktop
 
 - `WASD`: move.
-- `Shift`: sprint.
-- Double tap `W`: sprint.
-- `Ctrl`: crouch / sneak.
-- `Space`: jump.
-- Hold left click: mine block.
-- Right click: place block.
+- Double tap `W` (and keep it held): sprint.
+- `Shift` (hold): crouch / sneak. Hold it on a `ladder` to climb down.
+- `Shift` while riding: dismount.
+- `Space`: jump. Hold it in water to swim up.
+- Hold left click: mine block / hit a mob.
+- Right click: place the selected block, or use the selected item (bait, cage trap, fishing rod, bug net, bucket, egg...).
+- Right click on a mob: feed it, ride it, shear/milk it or use the held item on it.
+- `Shift` + right click on a tamed mount, empty-handed: make it sit / stand.
 - Right click with `spray_paint` selected: paint the block face you are aiming at.
 - Left click on another player: open chat with a prefilled mention.
-- Mouse wheel: select previous/next block.
-- Keys `1` to `8`: select a hotbar block.
-- `Q`: drop one unit of the selected block.
-- `G`: eat the selected edible item.
-- `Enter`: open chat / send message.
-- `C`: open crafting panel.
+- Mouse wheel: select previous/next hotbar slot.
+- Keys `1` to `8`: select a hotbar slot.
+- `Q`: drop one unit of the selected item.
+- `G`: eat or use the selected item (food, drinks, gear).
 - `E`: open/close the full inventory panel.
+- `C`: open/close the crafting panel.
+- `B`: open/close the bestiary.
+- `H`: open/close the guide book (`←` / `→` turn the pages).
+- `Enter`: open chat / send message.
 - `F`: read the full text of the sign you are aiming at.
 - `F` while aiming at a bed at night: sleep until dawn.
 - `F` while aiming at a `sound_block`: play its current sound for nearby players.
 - `Shift + F` while aiming at a `sound_block`: cycle its instrument and note.
 - `F` with `spray_paint` selected: cycle spray color.
-- Move into a `ladder` and hold `W` or `Space`: climb up.
-- Move into a `ladder` and hold `S` or `Ctrl`: climb down.
-- `V`: toggle third-person camera.
+- Move into a `ladder` and hold `W` or `Space`: climb up; hold `S` or `Shift`: climb down.
+- `V`: cycle the camera: first person, third person from the front, third person from behind.
 - `F2`: toggle photo mode.
-- `Esc`: open pause/settings menu.
+- `Esc`: close the open panel, or open the pause/settings menu.
 - Press `R` 3 times quickly: toggle RTX mode.
 - `Voice` button in the HUD: enable/disable proximity voice chat.
 
@@ -131,6 +141,8 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - `Build Sound Block`: `2 planks + 1 cobblestone + 1 coal_ore -> 1 sound_block`
 - `Mix Fluorescent Spray Paint`: `1 sand + 1 flower_red + 1 coal_ore -> 1 spray_paint`
 - `Build Ladders`: `1 wood -> 8 ladder`
+- `Smelt Stone`: `1 cobblestone + 1 coal_ore -> 2 stone`
+- `Craft Bucket`: `3 iron_ore -> 1 bucket`
 
 ### Torch
 
@@ -166,7 +178,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Ladders can only be placed on side faces of blocks.
 - Walk into a ladder to attach to it.
 - Hold `W` or `Space` to climb upward.
-- Hold `S` or `Ctrl` to climb downward.
+- Hold `S` or `Shift` to climb downward.
 - Ladders are saved with their facing direction.
 
 ## Survival

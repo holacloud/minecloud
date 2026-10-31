@@ -44,7 +44,7 @@ se pierde.
 ## Casos especiales
 
 - **Ranas, lagartos y tortugas** se mueven a su manera (saltos, carreras, nado), y el cebo los va empujando poco a
-  poco hacia él.
+  poco hacia él; el cebo de dentro de una [jaula](96) los lleva hasta su centro.
 - **Abejas:** el cebo de miel tiene que estar a menos de unos 20 bloques de su colmena. Las abejas que iban a una
   flor van al cebo y lo liban, más despacio que un animal que come.
 - **Animales con voluntad propia:** algunos tienen su comportamiento y no siempre hacen caso.

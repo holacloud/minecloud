@@ -20,6 +20,12 @@ puede romper.
 ## Cómo conseguirlos
 
 - Al romper **piedra** obtienes **adoquín** (`cobblestone`), no piedra.
+- La **piedra lisa** se consigue **fundiendo adoquín** con carbón (tecla C):
+
+| Resultado | Ingredientes |
+|---|---|
+| **2** `stone` | 1 `cobblestone` + 1 `coal_ore` |
+
 - El **adoquín** suelta adoquín.
 - La **roca madre** no se puede romper: el inspector de bloques dice «Unbreakable».
 - Al empezar llevas **24 adoquines**.
@@ -35,8 +41,8 @@ puede romper.
 | 2 `cobblestone_slab` | **1** `cobblestone` |
 
 Varias recetas piden **piedra lisa** (`stone`): los [bloques de metal y la obsidiana](59), los
-[bloques de elementos](60) y la losa de piedra. Pero en esta versión **picar piedra da adoquín y ninguna receta
-fabrica `stone`**, así que esas recetas todavía no se pueden completar.
+[bloques de elementos](60) y la losa de piedra. Picar piedra da adoquín, así que primero hay que fundirlo:
+**Smelt Stone**, 1 `cobblestone` + 1 `coal_ore` → 2 `stone`.
 
 ## Trucos
 

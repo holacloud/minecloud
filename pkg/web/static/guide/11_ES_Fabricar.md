@@ -29,6 +29,8 @@ Los ingredientes se gastan y el resultado va a tu inventario, a la barra y a tu 
 | `sign` | 2 `planks` + 1 `wood` |
 | `sound_block` | 2 `planks` + 1 `cobblestone` + 1 `coal_ore` |
 | `spray_paint` | 1 `sand` + 1 `flower_red` + 1 `coal_ore` |
+| 2 `stone` | 1 `cobblestone` + 1 `coal_ore` ([Piedra](50)) |
+| `bucket` | 3 `iron_ore` ([Cubo](111)) |
 
 ## Familias de recetas
 

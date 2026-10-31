@@ -44,7 +44,7 @@ is lost.
 ## Special cases
 
 - **Frogs, lizards and turtles** move in their own way (hops, dashes, swimming), and the bait nudges them towards it
-  little by little.
+  little by little; a bait inside a [cage](96) draws them right to its middle.
 - **Bees:** the honey bait must be within about 20 blocks of their hive. Bees on their way to a flower go to the bait
   instead and sip it, more slowly than an animal eats.
 - **Animals with a will of their own:** some have their own behaviour and do not always heed it.

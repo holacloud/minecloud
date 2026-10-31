@@ -43,7 +43,8 @@ One block makes two half blocks: nothing is wasted. Breaking a slab gives the sl
 
 - [Torch](62) light passes over slabs: they do not darken the room.
 - A floor of half-height slabs looks great for porches and stages.
-- The stone slab needs smooth stone (`stone`), which cannot be mined today: see [Stone and bedrock](50).
+- The stone slab needs smooth stone (`stone`): mining gives cobblestone, so smelt it first (1 `cobblestone` +
+  1 `coal_ore` → 2 `stone`). See [Stone and bedrock](50).
 
 ## Trivia
 

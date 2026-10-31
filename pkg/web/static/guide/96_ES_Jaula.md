@@ -55,7 +55,10 @@ abejas, luciérnagas, murciélagos, fuego fatuo), los peces y la sombra errante.
 - **Se guardan:** las jaulas, también con su animal dentro, siguen ahí al recargar la página. El cebo de dentro, no.
   Solo existen en tu navegador: los demás jugadores no las ven.
 - Si el animal enjaulado desaparece, la puerta se vuelve a abrir.
-- **Ojo con tus mascotas:** la jaula no distingue. Si tu perro domesticado pisa el centro, también queda atrapado.
+- **Tus mascotas están a salvo:** la jaula nunca atrapa a un animal domesticado ni a uno que alguien monta, y el
+  cebo de dentro de una jaula no atrae a las mascotas.
+- **Ranas, lagartos y tortugas** saltan, corren y nadan a su manera, pero el cebo de dentro de la jaula los va
+  empujando hasta el centro, así que también caen.
 
 ## Trucos
 

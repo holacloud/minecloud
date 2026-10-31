@@ -20,6 +20,12 @@ can break.
 ## How to get them
 
 - Breaking **stone** gives you **cobblestone**, not stone.
+- **Smooth stone** is made by **smelting cobblestone** with coal (C key):
+
+| Result | Ingredients |
+|---|---|
+| **2** `stone` | 1 `cobblestone` + 1 `coal_ore` |
+
 - **Cobblestone** drops cobblestone.
 - **Bedrock** cannot be broken: the block inspector says "Unbreakable".
 - You start with **24 cobblestone**.
@@ -35,8 +41,8 @@ can break.
 | 2 `cobblestone_slab` | **1** `cobblestone` |
 
 Several recipes ask for **smooth stone** (`stone`): the [metal blocks and obsidian](59), the
-[element blocks](60) and the stone slab. But in this version **mining stone gives cobblestone and no recipe makes
-`stone`**, so those recipes cannot be completed yet.
+[element blocks](60) and the stone slab. Mining stone gives cobblestone, so smelt it first: **Smelt Stone**,
+1 `cobblestone` + 1 `coal_ore` → 2 `stone`.
 
 ## Tips
 

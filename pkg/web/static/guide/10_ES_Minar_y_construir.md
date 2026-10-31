@@ -42,8 +42,9 @@ Por ejemplo, un pico de oro rompe la piedra en unos 0,3 s. La [espada](71) no ac
 
 ## Lo que sueltan los bloques
 
-- Cada bloque roto suelta **el mismo bloque**, salvo la `stone`, que da `cobblestone`.
-- El agua y la roca madre no sueltan nada.
+- Cada bloque roto suelta **el mismo bloque**, salvo la `stone`, que da `cobblestone` (se vuelve a fundir en
+  `stone` con carbón: ver [Piedra y roca madre](50)).
+- El agua y la roca madre no sueltan nada (el agua se puede llevar en un [cubo](111)).
 - **Bloques que caen:** si rompes un bloque por encima de tus ojos, cae al suelo antes de poder recogerlo.
 - **Imán:** los objetos a menos de 3,4 bloques vuelan hacia ti solos.
 - **Sorpresas:** al romper hierba u hojas sale a veces un [brote](55) (8 %), y de la hierba alta u hojas, muy

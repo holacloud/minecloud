@@ -48,6 +48,9 @@ and mole.
 
 **Do not fit:** large animals, flying ones and fish.
 
+**Never caught:** tamed animals and ridden ones. Frogs, lizards and turtles are nudged right to the middle
+of a baited cage.
+
 Cages, with their animal inside, are kept when the page reloads. They only exist in your browser.
 
 ## Fishing rod (`fishing_rod`)

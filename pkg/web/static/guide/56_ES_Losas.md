@@ -43,8 +43,8 @@ Un bloque da dos medios bloques: no se pierde nada. Al romper una losa recuperas
 
 - La luz de las [antorchas](62) pasa por encima de las losas: no oscurecen la habitación.
 - Un suelo de losas a media altura queda muy bien para porches y escenarios.
-- La losa de piedra necesita piedra lisa (`stone`), que hoy no se puede conseguir picando: ver
-  [Piedra y roca madre](50).
+- La losa de piedra necesita piedra lisa (`stone`): picar da adoquín, así que fúndelo primero (1 `cobblestone` +
+  1 `coal_ore` → 2 `stone`). Ver [Piedra y roca madre](50).
 
 ## Curiosidades
 

@@ -7,7 +7,7 @@ block.
 
 | Name | Id | Break |
 |---|---|---|
-| Water | `water` | 0.15 s, but it **drops nothing** |
+| Water | `water` | 0.15 s, but breaking it **drops nothing** |
 
 ## Where to find it
 
@@ -16,12 +16,16 @@ mountains.
 
 ## How to get it
 
-You start the game with **12 water blocks**. Breaking water removes it, but you do not keep it, so those 12 blocks
-are all you will have: use them wisely.
+You start the game with **12 water blocks**. Breaking water removes it, but you do not keep it.
+
+To carry more, use a ![Bucket](item:bucket) [bucket](111) (3 `iron_ore`): right click water with the empty
+bucket to scoop up that block and get a `water_bucket`; right click a block face with the water bucket to pour it
+there and get the empty bucket back.
 
 ## How it works
 
-- **Placing it:** right click, like any block. Water **does not flow**: it stays exactly where you put it.
+- **Placing it:** right click, like any block (or pour it from a [bucket](111)). Water **does not flow**: it stays
+  exactly where you put it.
 - **Swimming:** in water you move slower (55 % speed). Hold **jump** to rise; otherwise you sink slowly.
 - **Breaks falls:** water slows your fall; about 2 blocks deep stop even a very long fall. A pool at the foot of a
   tower saves your life!
@@ -46,4 +50,4 @@ are all you will have: use them wisely.
 - Ice floats because water **expands** when it freezes, something very rare in nature.
 - In the game, water is a plain block that never spills: you can build a waterfall that hangs still in the air.
 
-See also: [Fishing](6), [Health, food and dangers](9).
+See also: [Bucket](111), [Fishing](6), [Health, food and dangers](9).

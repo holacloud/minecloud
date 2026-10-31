@@ -15,8 +15,8 @@ Todos se «sintetizan» con la misma receta (tecla C); eliges el elemento en la 
 
 En la lista de recetas aparecen como *Synthesize H Block*, *Synthesize HE Block*… (con el símbolo en mayúsculas).
 
-Necesitan **piedra lisa** (`stone`), y en esta versión picar piedra da adoquín, así que de momento no se pueden
-fabricar (ver [Piedra y roca madre](50)).
+Necesitan **piedra lisa** (`stone`). Picar piedra da adoquín, así que primero hay que fundirlo: 1 `cobblestone` +
+1 `coal_ore` → 2 `stone` (ver [Piedra y roca madre](50)).
 
 ## Los 36 elementos
 

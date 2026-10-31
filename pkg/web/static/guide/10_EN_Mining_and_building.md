@@ -42,8 +42,9 @@ For example, a gold pickaxe breaks stone in about 0.3 s. The [sword](71) does no
 
 ## What blocks drop
 
-- Every broken block drops **the same block**, except `stone`, which gives `cobblestone`.
-- Water and bedrock drop nothing.
+- Every broken block drops **the same block**, except `stone`, which gives `cobblestone` (smelt it back into
+  `stone` with coal: see [Stone and bedrock](50)).
+- Water and bedrock drop nothing (water can be carried in a [bucket](111)).
 - **Falling blocks:** if you break a block above your eyes, it falls to the ground before you can pick it
   up.
 - **Magnet:** items within 3.4 blocks fly to you by themselves.

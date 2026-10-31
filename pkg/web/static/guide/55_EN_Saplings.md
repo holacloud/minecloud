@@ -31,7 +31,7 @@ For example, 2 `cherry_leaves` + 1 `dirt` = 1 `cherry_sapling`.
 ## How to use them
 
 1. Face a **solid block** with the sapling in your hand.
-2. Right click on top of it: the space must be empty.
+2. Right click on top of it: the space must be empty, or have tall grass or a flower (the tree replaces them).
 3. Poof! A tree appears: a trunk **5 blocks** tall (6 for dark oak) with a crown of leaves 5 × 5 below and 3 × 3
    on top. The chat says, for example, "Cherry tree planted".
 
@@ -39,8 +39,10 @@ The sapling is used up. The tree has the same wood and leaves as its species, so
 
 ## Tips
 
-- **Careful:** the tree appears all at once and **replaces any block** in its way. Do not plant next to your house,
-  or you will have leaves in the living room!
+- The tree **never replaces your blocks**: it only grows into air, tall grass and flowers. The trunk needs its
+  **5 free blocks** (6 for dark oak) straight up, or the sapling is not used and the chat says "Not enough room for
+  the tree to grow here". Leaves that would land on a block are simply left out, so next to a wall the crown comes
+  out lopsided.
 - A **wood farm**: plant, chop with an [axe](70), break the leaves (for more saplings) and plant again.
 - Planted trees all have the same round shape; the ones in the world have their own outlines (cones, flat crowns,
   hanging branches).

@@ -43,6 +43,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:iron_sword) [Swords](71)
 - ![](item:iron_hoe) [Hoes](72)
 - ![](item:iron_shears) [Iron shears](73)
+- ![](item:bucket) [Bucket](111)
 
 ## Eggs
 

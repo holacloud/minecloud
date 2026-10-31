@@ -56,7 +56,10 @@ wisp), fish and the wandering shadow.
 - **They are kept:** cages, with their animal inside too, are still there when the page reloads. The bait inside is
   not. They only exist in your browser: other players do not see them.
 - If the caged animal disappears, the door opens again.
-- **Mind your pets:** the cage does not tell them apart. If your tamed dog steps on the middle, it is caught too.
+- **Your pets are safe:** the cage never catches a tamed animal or one being ridden, and a bait inside a cage
+  does not draw pets in.
+- **Frogs, lizards and turtles** hop, dash and swim their own way, but a bait inside the cage nudges them right to
+  its middle, so they get caught too.
 
 ## Tips
 
