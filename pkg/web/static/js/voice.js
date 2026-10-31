@@ -1,3 +1,7 @@
+// Proximity voice chat, peer to peer between browsers (WebRTC). The server picks who is close
+// enough to talk (see pkg/network/voice.go: nearest first, a few peers at most) and sends each
+// player its list with "voicePeers"; this only connects to those players and drops the rest.
+// Volume fades with distance and pans left/right; a speaker icon lights up over whoever talks.
 class VoiceChatManager {
     constructor(game, network) {
         this.game = game;
@@ -6,7 +10,10 @@ class VoiceChatManager {
         this.localStream = null;
         this.peers = new Map();
         this.voiceStates = new Map();
-        this.maxDistance = 18;
+        // Who the server says we may talk to, and how far voices carry (updated by voicePeers).
+        this.allowedPeers = new Set();
+        this.maxDistance = 32;
+        this.full = false;
         this.button = null;
         this.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
         this.iceServersLoaded = false;
@@ -14,6 +21,7 @@ class VoiceChatManager {
 
     init() {
         window.minecloudVoice = this;
+        this.network.on('voicePeers', (payload) => this.setVoicePeers(payload || {}));
         this.button = document.getElementById('voice-toggle');
         if (this.button) {
             this.button.addEventListener('click', async () => {
@@ -69,6 +77,8 @@ class VoiceChatManager {
 
     disable() {
         this.enabled = false;
+        this.allowedPeers.clear();
+        this.full = false;
         this.network.setVoiceEnabled(false);
         if (this.localStream) {
             this.localStream.getTracks().forEach((track) => track.stop());
@@ -103,17 +113,30 @@ class VoiceChatManager {
         this.syncPeers();
     }
 
+    setVoicePeers(payload) {
+        this.allowedPeers = new Set(Array.isArray(payload.peers) ? payload.peers : []);
+        if (payload.range > 0) this.maxDistance = payload.range;
+        const full = Boolean(payload.full);
+        if (full && !this.full && this.enabled) {
+            this.game.receiveSystemMessage({ text: `Voice: many people nearby, you only hear the ${this.allowedPeers.size} closest` });
+        }
+        this.full = full;
+        this.syncPeers();
+    }
+
+    // Connected exactly to the peers the server allows; of each pair, the player with the lower
+    // id makes the offer (the other answers), so both never offer at once.
     syncPeers() {
         if (!this.enabled || !this.localStream) return;
 
-        for (const [playerId, enabled] of this.voiceStates) {
-            if (!enabled || playerId === this.network.playerId) {
-                this.removePeer(playerId);
-                continue;
-            }
-
+        for (const playerId of [...this.peers.keys()]) {
+            if (!this.allowedPeers.has(playerId) || this.voiceStates.get(playerId) === false) this.removePeer(playerId);
+        }
+        for (const playerId of this.allowedPeers) {
+            if (playerId === this.network.playerId || this.voiceStates.get(playerId) === false) continue;
             const peer = this.ensurePeer(playerId);
-            if (!peer.connected && !peer.makingOffer && !peer.awaitingAnswer && peer.pc.signalingState === 'stable') {
+            const offerer = String(this.network.playerId) < String(playerId);
+            if (offerer && !peer.connected && !peer.makingOffer && !peer.awaitingAnswer && peer.pc.signalingState === 'stable') {
                 this.createOffer(playerId);
             }
         }
@@ -138,7 +161,10 @@ class VoiceChatManager {
             gain: null,
             panner: null,
             remoteStream: null,
-            remoteAudio: null
+            remoteAudio: null,
+            analyser: null,
+            levels: null,
+            speakingUntil: 0
         };
 
         pc.onicecandidate = (event) => {
@@ -165,8 +191,9 @@ class VoiceChatManager {
             }
         };
 
+        // Only the offerer of the pair starts (or renegotiates) the call; the other side answers.
         pc.onnegotiationneeded = () => {
-            this.createOffer(playerId);
+            if (String(this.network.playerId) < String(playerId) || peerEntry.connected) this.createOffer(playerId);
         };
 
         pc.ontrack = (event) => {
@@ -185,6 +212,11 @@ class VoiceChatManager {
             peerEntry.source = audio.createMediaElementSource(peerEntry.remoteAudio);
             peerEntry.gain = audio.createGain();
             peerEntry.gain.gain.value = 0;
+            // Listens to the incoming voice (before the distance fade) to tell when they speak.
+            peerEntry.analyser = audio.createAnalyser();
+            peerEntry.analyser.fftSize = 512;
+            peerEntry.levels = new Uint8Array(peerEntry.analyser.fftSize);
+            peerEntry.source.connect(peerEntry.analyser);
 
             if (typeof audio.createStereoPanner === 'function') {
                 peerEntry.panner = audio.createStereoPanner();
@@ -235,6 +267,8 @@ class VoiceChatManager {
         if (!this.enabled || !this.localStream) return;
 
         const playerId = payload.fromPlayerId;
+        // An offer can arrive just before our own voicePeers update; the server decides anyway,
+        // and a peer it does not list is dropped on the next update.
         let peer = this.ensurePeer(playerId);
         try {
             const offerCollision = peer.makingOffer || peer.pc.signalingState !== 'stable';
@@ -320,13 +354,82 @@ class VoiceChatManager {
             if (peer.panner) {
                 peer.panner.pan.value = THREE.MathUtils.clamp(dx / this.maxDistance, -1, 1);
             }
+            this.showSpeaking(avatar, this.isSpeaking(peer) && factor > 0);
         }
+    }
+
+    // Loud enough in the last moments to count as talking (with a short hold, so the icon does
+    // not flicker between words).
+    isSpeaking(peer) {
+        if (!peer.analyser) return false;
+        peer.analyser.getByteTimeDomainData(peer.levels);
+        let sum = 0;
+        for (let i = 0; i < peer.levels.length; i++) {
+            const sample = (peer.levels[i] - 128) / 128;
+            sum += sample * sample;
+        }
+        const now = performance.now();
+        if (Math.sqrt(sum / peer.levels.length) > 0.035) peer.speakingUntil = now + 350;
+        return now < peer.speakingUntil;
+    }
+
+    showSpeaking(avatar, speaking) {
+        if (!avatar) return;
+        let icon = avatar.userData.voiceIcon;
+        if (!icon && !speaking) return;
+        if (!icon) {
+            icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.getSpeakerTexture(), transparent: true, depthWrite: false }));
+            icon.scale.set(0.42, 0.42, 1);
+            icon.position.set(0, 2.62, 0);
+            icon.renderOrder = 2001;
+            avatar.userData.voiceIcon = icon;
+            avatar.add(icon);
+        }
+        icon.visible = speaking;
+        if (speaking) icon.material.opacity = 0.75 + Math.sin(performance.now() / 90) * 0.25;
+    }
+
+    // A small green speaker with sound waves, shared by every icon.
+    getSpeakerTexture() {
+        if (this.speakerTexture) return this.speakerTexture;
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.arc(32, 32, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#7dff9a';
+        ctx.beginPath();
+        ctx.moveTo(12, 25);
+        ctx.lineTo(21, 25);
+        ctx.lineTo(31, 16);
+        ctx.lineTo(31, 48);
+        ctx.lineTo(21, 39);
+        ctx.lineTo(12, 39);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#7dff9a';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        [9, 17].forEach((radius) => {
+            ctx.beginPath();
+            ctx.arc(33, 32, radius, -Math.PI / 4, Math.PI / 4);
+            ctx.stroke();
+        });
+        this.speakerTexture = new THREE.CanvasTexture(canvas);
+        return this.speakerTexture;
     }
 
     removePeer(playerId) {
         const peer = this.peers.get(playerId);
         if (!peer) return;
 
+        this.showSpeaking(this.game.otherPlayerMeshes.get(playerId), false);
+        if (peer.analyser) {
+            try { peer.analyser.disconnect(); } catch (_error) {}
+        }
         if (peer.source) {
             try { peer.source.disconnect(); } catch (_error) {}
         }

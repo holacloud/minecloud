@@ -61,8 +61,12 @@ time.
 
 ## Voice chat
 
-- Press the **Voice** button on screen to turn on your microphone (the browser will ask for permission).
-- It is **proximity** chat: you hear others louder the closer they are, and beyond **18 blocks** you stop
-  hearing them.
+- Press the **Voice** button on screen to turn your microphone on (the browser asks for permission).
+- It is **proximity** chat: you talk with players who have voice on and are within **24 blocks**. The
+  closer they are, the louder you hear them, and the call ends when you are more than **32** apart.
+- It goes **straight between browsers**: the server only decides who is close; the audio never passes
+  through it.
+- You talk with **8 people at most** at once, the closest ones. If more are around, a message tells you.
+- A **green speaker** lights up above the name of whoever is talking.
 - Voices come from your left or right depending on where the other player is.
 - Press the button again to turn it off.

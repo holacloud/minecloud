@@ -63,7 +63,11 @@ vez.
 ## Chat de voz
 
 - Pulsa el botón **Voice** de la pantalla para activar el micrófono (el navegador te pedirá permiso).
-- Es **de proximidad**: oyes a los demás más fuerte cuanto más cerca están, y a más de **18 bloques**
-  dejas de oírlos.
+- Es **de proximidad**: hablas con los jugadores que tengan la voz activada y estén a menos de **24 bloques**.
+  Los oyes más fuerte cuanto más cerca están, y la conversación se corta cuando os separáis más de **32**.
+- Es **directo entre navegadores**: el servidor solo decide quién está cerca; el audio no pasa por él.
+- Como mucho hablas con **8 personas a la vez**, las más cercanas. Si hay más gente alrededor, un aviso te lo
+  dice.
+- Un **altavoz verde** se enciende sobre el nombre de quien está hablando.
 - La voz suena a tu izquierda o derecha según dónde esté el otro jugador.
 - Vuelve a pulsar el botón para apagarlo.

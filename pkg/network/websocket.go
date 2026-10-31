@@ -156,6 +156,7 @@ func Initialize() error {
 
 	go runWorldClock()
 	go runCropGrowth()
+	go runVoiceMesh()
 	return nil
 }
 

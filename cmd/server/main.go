@@ -15,15 +15,17 @@ import (
 )
 
 type Config struct {
-	Addr              string `usage:"Port to listen on"`
-	STUNURLs          string `usage:"Comma-separated STUN URLs for WebRTC voice"`
-	TURNURLs          string `usage:"Comma-separated TURN URLs for WebRTC voice"`
-	TURNUsername      string `usage:"TURN username for WebRTC voice"`
-	TURNCredential    string `usage:"TURN credential for WebRTC voice"`
-	MeteredAPIBase    string `usage:"Metered TURN API base URL"`
-	MeteredAPIKey     string `usage:"Metered TURN API key"`
-	SessionGlobalSalt string `usage:"Global secret salt for hashing session cookies"`
-	CreativeKey       string `usage:"Secret key for the hidden /creative chat command (empty disables it)"`
+	Addr              string  `usage:"Port to listen on"`
+	STUNURLs          string  `usage:"Comma-separated STUN URLs for WebRTC voice"`
+	TURNURLs          string  `usage:"Comma-separated TURN URLs for WebRTC voice"`
+	TURNUsername      string  `usage:"TURN username for WebRTC voice"`
+	TURNCredential    string  `usage:"TURN credential for WebRTC voice"`
+	MeteredAPIBase    string  `usage:"Metered TURN API base URL"`
+	MeteredAPIKey     string  `usage:"Metered TURN API key"`
+	SessionGlobalSalt string  `usage:"Global secret salt for hashing session cookies"`
+	CreativeKey       string  `usage:"Secret key for the hidden /creative chat command (empty disables it)"`
+	VoiceMaxPeers     int     `usage:"Most players one player talks to at once in proximity voice chat"`
+	VoiceRange        float64 `usage:"Distance in blocks within which players are connected for voice chat"`
 }
 
 func main() {
@@ -34,6 +36,8 @@ func main() {
 		TURNURLs:          "turn:global.relay.metered.ca:80,turn:global.relay.metered.ca:80?transport=tcp,turn:global.relay.metered.ca:443,turns:global.relay.metered.ca:443?transport=tcp",
 		MeteredAPIBase:    "https://minecloud.metered.live",
 		SessionGlobalSalt: "just-for-development",
+		VoiceMaxPeers:     8,
+		VoiceRange:        24,
 	}
 	goconfig.Read(config)
 	network.ConfigureICE(network.ICEConfig{
@@ -45,6 +49,11 @@ func main() {
 		MeteredAPIKey:  config.MeteredAPIKey,
 	})
 	network.ConfigureCreative(config.CreativeKey)
+	network.ConfigureVoice(network.VoiceConfig{
+		MaxPeers:  config.VoiceMaxPeers,
+		Range:     config.VoiceRange,
+		DropRange: config.VoiceRange * 4 / 3,
+	})
 	network.ConfigureAudit(network.AuditConfig{
 		SessionGlobalSalt: config.SessionGlobalSalt,
 	})
