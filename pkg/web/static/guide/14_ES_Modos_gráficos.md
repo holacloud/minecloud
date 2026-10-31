@@ -23,7 +23,7 @@ MineCloud tiene tres niveles de gráficos. Cuanto más alto, más bonito... y m�
 - Qué añade:
   - un **cielo atmosférico** que ilumina los materiales,
   - **bloom**: lo que brilla resplandece, como los frascos de luciérnagas o los ojos de los búhos,
-  - **rayos de sol** que atraviesan el aire,
+  - un **sol nítido** con un halo suave y **rayos de sol** que atraviesan el aire, sin que el cielo deslumbre,
   - tono de cine: gradación de color, viñeta y grano,
   - **sombras nítidas** muy detalladas,
   - texturas más finas, **viento** en las hojas y agua que se mueve.

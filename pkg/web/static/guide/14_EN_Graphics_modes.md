@@ -23,7 +23,7 @@ MineCloud has three graphics levels. The higher, the prettier... and the more wo
 - What it adds:
   - an **atmospheric sky** that lights the materials,
   - **bloom**: whatever glows shines, like firefly jars or owls' eyes,
-  - **sun rays** shafting through the air,
+  - a **crisp sun** with a soft halo and **sun rays** shafting through the air, without a dazzling sky,
   - a film look: colour grading, vignette and grain,
   - very detailed **crisp shadows**,
   - finer textures, **wind** in the leaves and moving water.

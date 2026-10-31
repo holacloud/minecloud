@@ -49,7 +49,8 @@ Shadows do not appear near placed torches. A good way to sleep soundly is to rin
 ## Ultra mode: real light
 
 In [Ultra mode](14) the scene is drawn with **high dynamic range** (HDR): lights can be "brighter than white".
-Whatever goes past that limit (the sun, torches, owls' eyes, the golem's cracks, the wisp) gets a **halo**
-(bloom). There are also shafts of sunlight (god rays) and crisp shadows that follow the player.
+Whatever goes past that limit (the sun disc, torches, owls' eyes, the golem's cracks, the wisp) gets a **halo**
+(bloom). The sky stays below that limit, so it does not dazzle you even when you look at the sun. There are
+also shafts of sunlight (god rays) and crisp shadows that follow the player.
 
 See also [Night life](101).

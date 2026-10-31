@@ -18,6 +18,65 @@ const ULTRA_LIBRARIES = [
     'objects/Sky.js'
 ].map((path) => `https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/${path}`);
 
+// Bloom only picks up pixels brighter than this (linear HDR, before exposure). The visible
+// sky is soft-capped below it, so only the sun disc and emissive things (fireflies, eyes,
+// wisps, lightning, all boosted to 1.5-6 in ultra) bloom.
+const ULTRA_BLOOM_THRESHOLD = 1.3;
+const ULTRA_SKY_KNEE = 0.75;
+const ULTRA_SKY_CAP = 1.15;
+
+// THREE.Sky outputs raw Preetham radiance meant for an exposure of ~0.5 (luminance 1-4
+// around the sun, ~200 on the 19000x sun disc). Rendered straight into our HDR target that
+// bloomed half the sky into a white ball. This scales the sky, soft-caps it below the bloom
+// threshold and draws the disc with its own controlled intensity.
+// The same scaled sky is baked into the environment map (image-based lighting), with a
+// ground below the horizon: the raw sky lit surfaces at 2-7x the RTX environment.
+function patchUltraSkyMaterial(material) {
+    const uniforms = material.uniforms;
+    uniforms.ultraSkyGain = { value: 0.45 };
+    uniforms.ultraGroundColor = { value: new THREE.Color(0.26, 0.23, 0.18) };
+    uniforms.ultraGroundMix = { value: 0 };
+    uniforms.ultraSkyKnee = { value: ULTRA_SKY_KNEE };
+    uniforms.ultraSkyCap = { value: ULTRA_SKY_CAP };
+    uniforms.ultraSunDisc = { value: 0 };
+    const discLine = 'L0 += ( vSunE * 19000.0 * Fex ) * sundisk;';
+    const outputLine = 'gl_FragColor = vec4( retColor, 1.0 );';
+    // Upstream assumes the camera sits at the origin; ours follows the player.
+    const directionLine = 'vec3 direction = normalize( vWorldPosition - cameraPos );';
+    const shader = material.fragmentShader;
+    if (!shader.includes(discLine) || !shader.includes(outputLine) || !shader.includes(directionLine)) {
+        console.warn('Ultra: unexpected Sky shader, sun glare control disabled');
+        return false;
+    }
+    material.fragmentShader = shader
+        .replace('uniform vec3 up;', [
+            'uniform vec3 up;',
+            'uniform float ultraSkyGain;',
+            'uniform float ultraSkyKnee;',
+            'uniform float ultraSkyCap;',
+            'uniform float ultraSunDisc;',
+            'uniform vec3 ultraGroundColor;',
+            'uniform float ultraGroundMix;'
+        ].join('\n'))
+        .replace(directionLine, 'vec3 direction = normalize( vWorldPosition - cameraPosition );')
+        .replace(discLine, '')
+        .replace(outputLine, [
+            'retColor *= ultraSkyGain;',
+            'float ultraPeak = max(retColor.r, max(retColor.g, retColor.b));',
+            'if (ultraPeak > ultraSkyKnee) {',
+            '    float ultraOver = ultraPeak - ultraSkyKnee;',
+            '    retColor *= (ultraSkyKnee + ultraOver / (1.0 + ultraOver / (ultraSkyCap - ultraSkyKnee))) / ultraPeak;',
+            '}',
+            'retColor = mix(retColor, ultraGroundColor, ultraGroundMix * (1.0 - smoothstep(-0.1, 0.0, direction.y)));',
+            // Disc tinted by atmospheric extinction (white at noon, orange-red at sunset).
+            'vec3 ultraDiscTint = Fex / max(max(Fex.r, Fex.g), max(Fex.b, 1e-4));',
+            'retColor += ultraDiscTint * ultraSunDisc * sundisk * clamp(vSunE / 300.0, 0.0, 1.0);',
+            outputLine
+        ].join('\n'));
+    material.needsUpdate = true;
+    return true;
+}
+
 const ULTRA_FINAL_SHADER = {
     vertexShader: `
         varying vec2 vUv;
@@ -38,6 +97,7 @@ const ULTRA_FINAL_SHADER = {
         varying vec2 vUv;
 
         const int RAY_SAMPLES = 48;
+        const float ULTRA_RAY_RADIUS = 0.6;
 
         vec3 aces(vec3 x) {
             return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
@@ -65,8 +125,9 @@ const ULTRA_FINAL_SHADER = {
                 }
                 light /= float(RAY_SAMPLES);
                 float aspect = resolution.x / resolution.y;
-                float falloff = 1.0 - smoothstep(0.0, 1.1, length((vUv - sunUv) * vec2(aspect, 1.0)));
-                color += sunColor * light * falloff * sunIntensity;
+                // Kept to a halo around the sun: open sky adds ~0.45 * sunIntensity at most.
+                float falloff = 1.0 - smoothstep(0.0, ULTRA_RAY_RADIUS, length((vUv - sunUv) * vec2(aspect, 1.0)));
+                color += sunColor * light * falloff * falloff * sunIntensity;
             }
 
             color = aces(color * exposure);
@@ -181,8 +242,8 @@ Object.assign(Game.prototype, {
             depthBuffer: true,
             depthTexture
         });
-        // Threshold above 1: only genuinely bright HDR areas (sun, sky glare, torches) bloom.
-        this.ultraBloom = new THREE.UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.45, 0.55, 1.0);
+        // Threshold above the capped sky: only the sun disc and emissive things bloom.
+        this.ultraBloom = new THREE.UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.45, 0.55, ULTRA_BLOOM_THRESHOLD);
         this.ultraFinalMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 tColor: { value: this.ultraTarget.texture },
@@ -208,6 +269,7 @@ Object.assign(Game.prototype, {
         skyUniforms.rayleigh.value = 1.6;
         skyUniforms.mieCoefficient.value = 0.004;
         skyUniforms.mieDirectionalG.value = 0.82;
+        this.ultraSkyPatched = patchUltraSkyMaterial(this.ultraSky.material);
         this.scene.add(this.ultraSky);
 
         this.ultraPmrem = new THREE.PMREMGenerator(this.renderer);
@@ -238,10 +300,15 @@ Object.assign(Game.prototype, {
         this.ultraEnvironment = null;
     },
 
-    // Re-bakes reflections from the current sky (cheap enough every few seconds).
+    // Re-bakes lighting and reflections from the current sky (cheap enough every few
+    // seconds). The bake sees the same scaled sky as the player, plus a ground below the
+    // horizon (THREE.Sky repeats the bright horizon there, which lit undersides).
     refreshUltraEnvironment() {
         const previous = this.ultraEnvironment;
+        const skyUniforms = this.ultraSky.material.uniforms;
+        if (this.ultraSkyPatched) skyUniforms.ultraGroundMix.value = 1;
         this.ultraEnvironment = this.ultraPmrem.fromScene(this.ultraEnvScene, 0.03).texture;
+        if (this.ultraSkyPatched) skyUniforms.ultraGroundMix.value = 0;
         this.scene.environment = this.ultraEnvironment;
         if (previous) previous.dispose();
     },
@@ -264,6 +331,15 @@ Object.assign(Game.prototype, {
         // Rain and dusk flatten the sky; clear noon is crisp.
         const raining = this.weatherState === 'rain';
         this.ultraSky.material.uniforms.turbidity.value = raining ? 12 : 4 + (1 - daylight) * 4;
+        if (this.ultraSkyPatched) {
+            // ~0.45 at day (THREE.Sky's intended exposure of ~0.5 once our 1.18 is applied),
+            // brighter near the horizon where the raw sky is dimmer; overcast in rain.
+            const skyUniforms = this.ultraSky.material.uniforms;
+            const low = 1 - THREE.MathUtils.smoothstep(sunDirection.y, 0, 0.35);
+            skyUniforms.ultraSkyGain.value = (0.45 + 0.35 * low) * (raining ? 0.75 : 1);
+            skyUniforms.ultraSunDisc.value = 28 * (raining ? 0.3 : 1);
+            skyUniforms.ultraGroundColor.value.setRGB(0.26, 0.23, 0.18).multiplyScalar((0.15 + 0.85 * daylight) * (raining ? 0.8 : 1));
+        }
 
         if (this.ultraTime >= this.ultraEnvRefreshAt) {
             this.ultraEnvRefreshAt = this.ultraTime + 4;
@@ -276,7 +352,7 @@ Object.assign(Game.prototype, {
         const inFront = sunPoint.z < 1;
         uniforms.sunUv.value.set(sunPoint.x * 0.5 + 0.5, sunPoint.y * 0.5 + 0.5);
         const elevation = THREE.MathUtils.clamp(sunDirection.y * 3, 0, 1);
-        const target = inFront ? elevation * daylight * (raining ? 0.25 : 1) * 0.9 : 0;
+        const target = inFront ? elevation * daylight * (raining ? 0.25 : 1) * 0.45 : 0;
         uniforms.sunIntensity.value = THREE.MathUtils.lerp(uniforms.sunIntensity.value, target, Math.min(1, delta * 6));
         uniforms.sunColor.value.copy(this.sunLight.color);
         uniforms.exposure.value = this.renderer.toneMappingExposure;

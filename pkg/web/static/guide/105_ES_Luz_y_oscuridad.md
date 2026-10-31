@@ -50,8 +50,9 @@ de antorchas.
 ## Modo Ultra: luz de verdad
 
 En el [modo Ultra](14), la escena se dibuja con **alto rango dinámico** (HDR): las luces pueden ser "más
-brillantes que el blanco". Lo que pasa de ese límite (el sol, las antorchas, los ojos de los búhos, las grietas
-del gólem, el fuego fatuo) se rodea de un **halo** (bloom). Además hay haces de luz del sol (god rays) y sombras
+brillantes que el blanco". Lo que pasa de ese límite (el disco del sol, las antorchas, los ojos de los búhos, las grietas
+del gólem, el fuego fatuo) se rodea de un **halo** (bloom). El cielo se queda por debajo de ese límite, así que no deslumbra aunque
+mires al sol. Además hay haces de luz del sol (god rays) y sombras
 nítidas que siguen al jugador.
 
 Ver también [La vida nocturna](101).
