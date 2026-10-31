@@ -764,6 +764,7 @@ Object.assign(Game.prototype, {
         if (data.health <= 0) {
             this.emitMobEvent('defeated', mob, 'player');
             this.stormGolemCrumble(mob, 'You toppled the storm golem', Infinity);
+            setTimeout(() => this.receiveSystemMessage({ text: 'Carved into the rubble, a glowing mark: Z3US' }), 2500);
             return;
         }
         if (!(data.angry > 0)) {

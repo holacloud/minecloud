@@ -220,7 +220,7 @@ Object.assign(Game.prototype, {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /spawn, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /guide [page], /spawn, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -228,6 +228,9 @@ Object.assign(Game.prototype, {
                 break;
             case 'mob':
                 this.spawnMobFromCommand(args);
+                break;
+            case 'guide':
+                this.guideShow(args[0] || null);
                 break;
             case 'rtx':
                 this.toggleRTXMode();

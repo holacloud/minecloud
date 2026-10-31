@@ -55,6 +55,7 @@ func main() {
 		http.Redirect(w, r, "/voice-test.html", http.StatusFound)
 	})
 	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(web.MustStaticFS()))))
+	http.HandleFunc("/guide/index.json", web.HandleGuideIndex)
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
 

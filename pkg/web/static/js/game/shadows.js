@@ -74,7 +74,9 @@ Object.assign(Game.prototype, {
         data.daylightGrace = Math.max(0, (data.daylightGrace || 0) - delta);
         const daylight = !this.isNightTime() && data.daylightGrace <= 0;
         if (daylight || heldTorch || placedTorch) {
-            this.dissolveShadow(mob, heldTorch || placedTorch ? 'The shadow fled from the light' : null);
+            // At dawn, one close enough to hear sometimes whispers a guide code as it goes.
+            const whisper = daylight && Math.random() < 0.3 && mob.position.distanceTo(this.camera.position) < 24;
+            this.dissolveShadow(mob, heldTorch || placedTorch ? 'The shadow fled from the light' : whisper ? 'As the sun rises, the shadow hisses: "S... H... 4... D..."' : null);
             return;
         }
 

@@ -391,6 +391,8 @@ Object.assign(Game.prototype, {
         this.emitMobEvent('defeated', mob, 'player');
         this.removeMob(mob);
         if (message) this.receiveSystemMessage({ text: message });
+        // Now and then it gives away a guide code as it bursts (see the guide's secret pages).
+        if (Math.random() < 0.35) setTimeout(() => this.receiveSystemMessage({ text: 'A fading whisper: "...U... R... 29..."' }), 1400);
     },
 
     wispUpdateSparks(delta) {

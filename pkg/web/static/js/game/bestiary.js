@@ -331,6 +331,10 @@ Object.assign(Game.prototype, {
         this.bestiarySave();
         if (isNew) {
             this.bestiaryAnnounce(species);
+            const list = this.bestiarySpeciesList();
+            if (list.every((other) => this.bestiaryData[other])) {
+                setTimeout(() => this.receiveSystemMessage({ text: 'Your bestiary is complete! Something is written on its last page...' }), 3500);
+            }
             if (this.bestiaryOpen) this.bestiaryRender();
         } else if (this.bestiaryOpen && this.bestiarySelected === species) {
             this.bestiaryRenderDetail();
@@ -457,7 +461,9 @@ Object.assign(Game.prototype, {
         const list = this.bestiarySpeciesList();
         const discovered = list.filter((species) => this.bestiaryData[species]).length;
         const progress = this.bestiaryPanel.querySelector('#bestiary-progress');
-        progress.innerHTML = `<b>${discovered}</b> / ${list.length} discovered`;
+        // A full notebook reveals a code for the guide's secret pages.
+        const complete = discovered === list.length ? ' &middot; on the last page, in faded ink: <b>B31X</b>' : '';
+        progress.innerHTML = `<b>${discovered}</b> / ${list.length} discovered${complete}`;
 
         const grid = this.bestiaryPanel.querySelector('#bestiary-grid');
         grid.innerHTML = '';

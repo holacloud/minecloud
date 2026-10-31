@@ -190,14 +190,14 @@ Con un cebo en la mano, haz clic derecho en el suelo para dejar un montoncito.
 
 | Cebo | Atrae a |
 |---|---|
-| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo, conejo |
-| `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión, peces, topo |
-| `bait_meat` | perro, gato, araña, monstruo de cueva, zorro, búho, buitre, serpiente |
-| `bait_fish` | gato, tortuga, águila, cangrejo |
+| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo |
+| `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión (y los peces, pero solo en el anzuelo de la caña) |
+| `bait_meat` | perro, gato, araña, monstruo de cueva |
+| `bait_fish` | gato, tortuga, cangrejo |
 | `bait_honey` | abejas (liban el cebo en lugar de las flores) |
 
-Algunos animales tienen un comportamiento propio y no siempre hacen caso al cebo. Las mascotas que te siguen
-también lo ignoran.
+Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo) no hacen
+caso a los cebos. Las mascotas que te siguen también los ignoran.
 
 ### Jaula (`cage_trap`)
 

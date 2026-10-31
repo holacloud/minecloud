@@ -294,7 +294,8 @@ Object.entries(RESOURCE_ITEMS).forEach(([id, item]) => {
         ...item,
         drawIcon: resourcesDrawSprite(RESOURCE_SPRITES[item.sprite], item.palette),
         displayMesh: resourcesDisplayMesh,
-        consume(type) { return this.resourcesConsume(type); }
+        // Only food and gear answer the G key; materials are not eaten.
+        ...(item.food || item.describe ? { consume(type) { return this.resourcesConsume(type); } } : {})
     });
 });
 
