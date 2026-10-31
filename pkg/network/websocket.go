@@ -826,6 +826,9 @@ func handleMessage(client *Client, msg Message) {
 			broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("El usuario %s ha votado %s", client.username, emojiLabel)}))
 		}
 
+	case "creativeAuth":
+		handleCreativeAuth(client, msg.Payload)
+
 	case "sleepInBed":
 		stateMu.Lock()
 		gameState.WorldTime = 0

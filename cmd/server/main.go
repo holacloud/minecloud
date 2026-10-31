@@ -23,6 +23,7 @@ type Config struct {
 	MeteredAPIBase    string `usage:"Metered TURN API base URL"`
 	MeteredAPIKey     string `usage:"Metered TURN API key"`
 	SessionGlobalSalt string `usage:"Global secret salt for hashing session cookies"`
+	CreativeKey       string `usage:"Secret key for the hidden /creative chat command (empty disables it)"`
 }
 
 func main() {
@@ -43,6 +44,7 @@ func main() {
 		MeteredAPIBase: config.MeteredAPIBase,
 		MeteredAPIKey:  config.MeteredAPIKey,
 	})
+	network.ConfigureCreative(config.CreativeKey)
 	network.ConfigureAudit(network.AuditConfig{
 		SessionGlobalSalt: config.SessionGlobalSalt,
 	})

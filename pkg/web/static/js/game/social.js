@@ -234,10 +234,10 @@ Object.assign(Game.prototype, {
                 break;
             // Testing aids, not listed in /help (see creative.js).
             case 'creative':
-                this.creativeToggle();
+                this.creativeCommand(normalized, args[0]);
                 break;
             case 'give':
-                this.creativeGive(args);
+                this.creativeGive(normalized, args);
                 break;
             case 'rtx':
                 this.toggleRTXMode();

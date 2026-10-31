@@ -1,28 +1,82 @@
-// Creative mode, for testing; deliberately left out of /help and the guide. "/creative" toggles
-// it (remembered in this browser): every item is stocked, nothing runs out, the player takes no
-// damage and blocks break almost at once. "/give <item> [amount]" adds any item.
+// Creative mode, for testing; deliberately left out of /help and the guide. "/creative <key>"
+// toggles it: every item is stocked, nothing runs out, the player takes no damage and blocks
+// break almost at once. "/give <item> [amount]" adds any item while it is on. The key is only
+// known to the server (-creativekey), which checks it (creativeAuth message); a wrong or
+// missing key, or /give outside creative mode, answers exactly like a command that does not
+// exist. The accepted key is remembered in this browser and checked again on every connection.
 // Mixed into Game.prototype; the chat commands are wired in social.js.
 
 const CREATIVE_STOCK = 999;
 
 Object.assign(Game.prototype, {
     creativeLoad() {
+        this.creativeMode = false;
         try {
-            this.creativeMode = window.localStorage.getItem('minecloud-creative') === '1';
+            this.creativeKey = window.localStorage.getItem('minecloud-creative') || '';
         } catch (_error) {
-            this.creativeMode = false;
+            this.creativeKey = '';
         }
     },
 
-    creativeToggle() {
-        this.creativeMode = !this.creativeMode;
+    creativeSaveKey(key) {
+        this.creativeKey = key;
         try {
-            window.localStorage.setItem('minecloud-creative', this.creativeMode ? '1' : '0');
+            window.localStorage.setItem('minecloud-creative', key);
         } catch (_error) {
             // Storage blocked: it lasts until the page reloads.
         }
-        if (this.creativeMode) this.creativeStock();
-        this.receiveSystemMessage({ text: `Creative mode ${this.creativeMode ? 'on' : 'off'}` });
+    },
+
+    // Answers from the server are wired the first time they are needed.
+    creativeListen() {
+        if (this.creativeListening || !this.network) return;
+        this.creativeListening = true;
+        this.network.on('creativeAuth', (reply) => this.creativeOnAuth(reply || {}));
+        // A remembered key is checked again on every (re)connection.
+        this.network.on('connected', () => this.creativeRecheck());
+    },
+
+    creativeRecheck() {
+        if (this.creativeKey && this.network && this.network.connected) {
+            this.network.send('creativeAuth', { key: this.creativeKey, command: 'creative', silent: true });
+        }
+    },
+
+    creativeCommand(command, key) {
+        this.creativeListen();
+        const normalized = (key || '').trim().toLowerCase();
+        // Turning it off needs no key check; anything else goes to the server.
+        if (this.creativeMode && normalized === this.creativeKey) {
+            this.creativeMode = false;
+            this.creativeSaveKey('');
+            this.receiveSystemMessage({ text: 'Creative mode off' });
+            return;
+        }
+        if (!normalized || !this.network || !this.network.connected) {
+            this.receiveSystemMessage({ text: `Unknown command: /${command}` });
+            return;
+        }
+        this.creativePendingKey = normalized;
+        this.network.send('creativeAuth', { key: normalized, command, silent: false });
+    },
+
+    creativeOnAuth(reply) {
+        if (reply.silent) {
+            // The remembered key: on, quietly, or forgotten if the server no longer takes it.
+            this.creativeMode = Boolean(reply.ok);
+            if (!reply.ok) this.creativeSaveKey('');
+            return;
+        }
+        const key = this.creativePendingKey;
+        this.creativePendingKey = null;
+        if (!reply.ok || !key) {
+            this.receiveSystemMessage({ text: `Unknown command: /${reply.command || 'creative'}` });
+            return;
+        }
+        this.creativeMode = true;
+        this.creativeSaveKey(key);
+        this.creativeStock();
+        this.receiveSystemMessage({ text: 'Creative mode on' });
     },
 
     // Every block and item that can be held, CREATIVE_STOCK of each.
@@ -40,7 +94,11 @@ Object.assign(Game.prototype, {
         this.saveInventoryState();
     },
 
-    creativeGive(args) {
+    creativeGive(command, args) {
+        if (!this.creativeMode) {
+            this.receiveSystemMessage({ text: `Unknown command: /${command}` });
+            return;
+        }
         const type = (args[0] || '').toLowerCase();
         const amount = Math.max(1, Math.min(9999, parseInt(args[1], 10) || 64));
         if (!this.world || !this.world.blockTypes[type] || type === 'air') {
@@ -72,4 +130,11 @@ registerDamageModifier(function (amount, type) {
 
 registerGameContent(function () {
     this.creativeLoad();
+});
+
+// The network exists once the game has started: listen, and check a remembered key.
+registerFrameUpdate(function () {
+    if (this.creativeListening || !this.network) return;
+    this.creativeListen();
+    this.creativeRecheck();
 });
