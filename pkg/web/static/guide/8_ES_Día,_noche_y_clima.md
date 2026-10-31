@@ -20,8 +20,8 @@ La noche cambia también a los animales:
 
 | Criatura | Qué hace de noche |
 |---|---|
-| [Sombra errante](37) | surge de la oscuridad, lejos de la luz, y te persigue |
-| [Fuego fatuo](41) | una llama que flota a lo lejos e intenta llevarte al peligro |
+| [Sombra errante](37) | una leyenda: muy de vez en cuando, en plena noche, surge de la oscuridad y te persigue |
+| [Fuego fatuo](41) | algunas noches, una llama que flota a lo lejos e intenta llevarte al peligro |
 | [Luciérnagas](36) | nubes de lucecitas sobre la hierba y los estanques, del anochecer al alba |
 | [Murciélagos](38) | despiertan al anochecer y revolotean cazando luciérnagas |
 | [Búho](46) | despierta, ulula, le brillan los ojos y caza |
@@ -35,11 +35,11 @@ lleva en la boca.
 
 ## La lluvia
 
-- El tiempo cambia solo: cada **uno o dos minutos** pasa de despejado a lluvia, o al revés.
+- La lluvia es **rara**: solo llueve en **uno de cada veinte días**, con un único chaparrón de uno o dos minutos y medio.
 - Cuando llueve, el sol se apaga un poco y la niebla se vuelve gris.
 - Las abejas se refugian en la colmena.
-- Con la lluvia llegan los [golems de tormenta](43): nacen de un rayo y, cuando para de llover, se
-  desmoronan.
+- De vez en cuando la lluvia trae un [golem de tormenta](43) (más o menos una tormenta de cada tres): nace de
+  un rayo y, cuando para de llover, se desmorona. La lluvia no trae sombras.
 
 La lluvia ocurre en tu navegador: puede que otro jugador no vea la misma lluvia a la vez que tú.
 

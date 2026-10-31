@@ -1,6 +1,8 @@
 // Sky, day/night cycle, weather, celestial bodies and RTX rendering mode.
 // Mixed into Game.prototype; `this` is the Game instance.
 
+const RAIN_DAY_CHANCE = 0.05;
+
 Object.assign(Game.prototype, {
     isNightTime() {
         const hour = ((this.timeOfDay * 24) + 6) % 24;
@@ -228,12 +230,15 @@ Object.assign(Game.prototype, {
     updateWeather(delta) {
         if (!this.rainSystem || !this.rainPositions) return;
 
-        this.weatherTimer += delta;
-        if (this.weatherTimer >= this.nextWeatherChange) {
-            this.weatherTimer = 0;
-            this.nextWeatherChange = 55 + Math.random() * 70;
-            this.weatherState = this.weatherState === 'clear' ? 'rain' : 'clear';
+        // Rain is rare: on 5% of days a single shower falls at some point of the day.
+        if (this.rainDayTime === undefined || this.timeOfDay < this.rainDayTime) {
+            const length = (60 + Math.random() * 90) / this.dayNightCycleDuration;
+            const start = Math.random() * (1 - length);
+            this.rainWindow = Math.random() < RAIN_DAY_CHANCE ? { start, end: start + length } : null;
         }
+        this.rainDayTime = this.timeOfDay;
+        const shower = this.rainWindow;
+        this.weatherState = shower && this.timeOfDay >= shower.start && this.timeOfDay < shower.end ? 'rain' : 'clear';
 
         const raining = this.weatherState === 'rain';
         this.rainSystem.visible = raining;

@@ -20,8 +20,8 @@ The night changes the animals too:
 
 | Creature | What it does at night |
 |---|---|
-| [Wandering shadow](37) | rises out of the dark, away from light, and stalks you |
-| [Wisp](41) | a flame floating far away that tries to lead you into danger |
+| [Wandering shadow](37) | a legend: very rarely, in the dead of night, it rises out of the dark and stalks you |
+| [Wisp](41) | some nights, a flame floating far away that tries to lead you into danger |
 | [Fireflies](36) | clouds of tiny lights over the grass and ponds, from dusk to dawn |
 | [Bats](38) | wake at dusk and flutter about chasing fireflies |
 | [Owl](46) | wakes up, hoots, its eyes glow and it hunts |
@@ -35,10 +35,11 @@ drops what it carries in its mouth.
 
 ## Rain
 
-- The weather changes on its own: every **one or two minutes** it goes from clear to rain, or back.
+- Rain is **rare**: it only rains on **one day in twenty**, a single shower lasting one to two and a half minutes.
 - When it rains, the sun dims a little and the fog turns grey.
 - Bees shelter in their hive.
-- Rain brings [storm golems](43): they are born from a lightning strike and crumble when the rain stops.
+- Now and then rain brings a [storm golem](43) (about one storm in three): it is born from a lightning strike
+  and crumbles when the rain stops. Rain does not bring shadows.
 
 Rain happens in your browser: another player may not see the same rain at the same time as you.
 

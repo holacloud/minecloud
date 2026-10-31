@@ -79,8 +79,6 @@ class Game {
         this.timeOfDay = 0.22;
         this.worldDay = 0;
         this.weatherState = 'clear';
-        this.weatherTimer = 0;
-        this.nextWeatherChange = 70;
         this.craftingOpen = false;
         this.craftingSearchTerm = '';
         this.inventorySearchTerm = '';

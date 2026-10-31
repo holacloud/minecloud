@@ -206,8 +206,6 @@ Object.assign(Game.prototype, {
         } else {
             this.timeOfDay = 0;
             this.weatherState = 'clear';
-            this.weatherTimer = 0;
-            this.nextWeatherChange = 55 + Math.random() * 70;
             this.receiveSystemMessage({ text: 'You slept until dawn' });
         }
         this.playTone({ frequency: 520, duration: 0.08, type: 'triangle', volume: 0.03, release: 0.08 });

@@ -232,6 +232,13 @@ Object.assign(Game.prototype, {
             case 'guide':
                 this.guideShow(args[0] || null);
                 break;
+            // Testing aids, not listed in /help (see creative.js).
+            case 'creative':
+                this.creativeToggle();
+                break;
+            case 'give':
+                this.creativeGive(args);
+                break;
             case 'rtx':
                 this.toggleRTXMode();
                 this.receiveSystemMessage({ text: `RTX mode ${this.rtxModeEnabled ? 'enabled' : 'disabled'}` });
