@@ -1,6 +1,6 @@
 # Mobs index
 
-Every species in the world, all **31**, in the order they arrived in the game. Click a name to go to its
+Every species in the world, all **32**, in the order they arrived in the game. Click a name to go to its
 page.
 
 To find out where each one lives, see [Biomes](15). To keep track of the ones you have seen, see
@@ -39,3 +39,4 @@ To find out where each one lives, see [Biomes](15). To keep track of the ones yo
 | ![](mob:fox) | [Fox](45) | a shy hunter; steals at night | 2026-10-30 |
 | ![](mob:owl) | [Owl](46) | keeps watch at night from the trees | 2026-10-30 |
 | ![](mob:mole) | [Giant mole](47) | digs beneath your feet | 2026-10-30 |
+| ![](mob:beaver) | [Beaver](137) | fells trees by the water and builds dams ([Beaver dams](138)) | 2026-11-01 |

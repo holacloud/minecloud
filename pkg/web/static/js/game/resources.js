@@ -348,7 +348,8 @@ const RESOURCE_DROPS = {
     snake: [['scale', 1, 2], ['venom_sac', 1, 1, 0.6]],
     storm_golem: [['glow_dust', 2, 3], ['iron_ore', 1, 2]],
     wisp: [], // wisp.js drops its own glow_dust when caught
-    mole: [['fur', 1, 2]]
+    mole: [['fur', 1, 2]],
+    beaver: [['fur', 1, 2], ['wood', 1, 1, 0.5]]
 };
 
 // Struck but not defeated, some creatures shed something: [item, chance, cooldown seconds].

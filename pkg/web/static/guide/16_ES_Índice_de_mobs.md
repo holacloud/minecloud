@@ -1,6 +1,6 @@
 # Índice de mobs
 
-Todas las especies del mundo, **31**, en el orden en que llegaron al juego. Pulsa un nombre para ir a su
+Todas las especies del mundo, **32**, en el orden en que llegaron al juego. Pulsa un nombre para ir a su
 página.
 
 Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las que has visto, ver
@@ -39,3 +39,4 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 | ![](mob:fox) | [Zorro](45) | cazador tímido; roba de noche | 2026-10-30 |
 | ![](mob:owl) | [Búho](46) | vigila de noche desde los árboles | 2026-10-30 |
 | ![](mob:mole) | [Topo gigante](47) | excava bajo tus pies | 2026-10-30 |
+| ![](mob:beaver) | [Castor](137) | tala árboles junto al agua y construye presas ([Presas de castor](138)) | 2026-11-01 |

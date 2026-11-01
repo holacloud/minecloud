@@ -171,6 +171,11 @@ const BESTIARY_ENTRIES = {
         name: 'Giant Mole', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
         hint: 'Fresh mounds of earth appear and vanish.',
         description: 'A giant burrower that pops out of the ground, leaving mounds of soil that crumble away after a while. Watch for the mounds to find it.'
+    },
+    beaver: {
+        name: 'Beaver', habitat: 'Rivers and lakes in forests and plains', activity: 'Day and night', temperament: 'Passive',
+        hint: 'A tree by the water has been gnawed to a stump.',
+        description: 'A busy builder of the riverbanks. It fells small trees near the water, carries the logs in its mouth and builds a dam across a narrow stream and a lodge with an underwater entrance. Come too close and it slaps its tail on the water and dives.'
     }
 };
 

@@ -179,6 +179,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 132 | Astronomía | Astronomy | the night sky (js/game/astronomy.js): constellations, named stars, planets, moon phases, shooting stars, comet and red moon (in the contents, 0) |
 | 133 | Telescopio | Telescope | telescope (in the items index, 48) |
 | 134 | Carta estelar | Star chart | star_chart (in the items index, 48) |
+| 137 | Castor | Beaver | mob page of `beaver` (arrived 2026-11-01), in the mobs index (16) |
+| 138 | Presas de castor | Beaver dams | how beavers choose trees, how to protect your builds, dams and lodges (linked from 16 and 137) |
 
 ### Secret pages
 

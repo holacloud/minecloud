@@ -54,7 +54,8 @@ const TAMING_DIET = {
     snake: null,
     storm_golem: null,
     wisp: null,
-    mole: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 }
+    mole: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 },
+    beaver: null // 'lodge': busy with its trees and dams, it does not follow goals
 };
 window.TAMING_DIET = TAMING_DIET;
 

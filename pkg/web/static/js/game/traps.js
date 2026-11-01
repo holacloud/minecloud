@@ -59,7 +59,8 @@ const TRAPS_SPECIES = {
     snake: { baits: ['bait_meat'], cage: true },
     storm_golem: { baits: [] },
     wisp: { baits: [], net: 'glow_dust' },
-    mole: { baits: ['bait_worms'], cage: true }
+    mole: { baits: ['bait_worms'], cage: true },
+    beaver: { baits: ['bait_seeds'], cage: true }
 };
 
 const TRAPS_BAIT_LIFE = 120;
