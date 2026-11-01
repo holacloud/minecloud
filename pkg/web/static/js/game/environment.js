@@ -144,8 +144,11 @@ Object.assign(Game.prototype, {
 
         this.timeOfDay = (this.timeOfDay + delta / this.dayNightCycleDuration) % 1;
 
+        // timeOfDay 0 is dawn (06:00, see isNightTime and /time), 0.25 noon, 0.5 dusk and
+        // 0.75 midnight; `orbit` turns the sun across the sky to match.
         const angle = this.timeOfDay * Math.PI * 2;
-        const sunHeight = Math.sin(angle - Math.PI / 2);
+        const sunHeight = Math.sin(angle);
+        const orbit = angle + Math.PI / 2;
         const daylight = THREE.MathUtils.clamp((sunHeight + 0.16) / 1.16, 0, 1);
         const sunset = Math.max(0, 1 - Math.abs(sunHeight) * 3.2) * (1 - daylight * 0.55);
         // Torch light is baked into chunk meshes; it shows mostly once the sun is down.
@@ -164,9 +167,9 @@ Object.assign(Game.prototype, {
         // origin, so shadows only existed near 0,0).
         const orbitRadius = 180;
         const sunOffset = new THREE.Vector3(
-            Math.cos(angle) * orbitRadius,
+            Math.cos(orbit) * orbitRadius,
             Math.max(18, sunHeight * orbitRadius + 24),
-            Math.sin(angle) * orbitRadius * 0.65
+            Math.sin(orbit) * orbitRadius * 0.65
         );
         this.sunDirection = (this.sunDirection || new THREE.Vector3()).copy(sunOffset).normalize();
         this.sunHeight = sunHeight;
