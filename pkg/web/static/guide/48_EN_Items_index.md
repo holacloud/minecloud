@@ -52,6 +52,8 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:bucket) [Bucket](111)
 - ![](item:breeding_notebook) [Breeding notebook](131)
 - ![](item:telescope) [Telescope](133)
+- ![](item:measuring_tape) [Measuring tape](192)
+- ![](item:written_blueprint) [Blueprints](191)
 - ![](item:star_chart) [Star chart](134)
 
 ## Weather instruments

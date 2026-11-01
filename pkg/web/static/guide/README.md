@@ -250,6 +250,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 188 | Fluorita | Fluorite | fluorite |
 | 189 | Batería de litio | Lithium battery | battery |
 | 190 | Hierro meteórico | Meteoric iron | meteoric_iron |
+| 191 | Planos | Blueprints | blueprint, written_blueprint, the blueprint library (L), projecting and building, sharing codes (contents 0 and items index 48) |
+| 192 | Cinta métrica | Measuring tape | measuring_tape (items index, 48) |
 
 ### Secret pages
 

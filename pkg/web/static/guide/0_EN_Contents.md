@@ -36,6 +36,7 @@ the pages.
 - [Weather station](112): thermometer, barometer, anemometer and the rain forecast.
 - [Astronomy](132): stars, constellations, planets, moon phases and rare events.
 - [Chemistry](115): the lab bench, the [periodic table](116) and the reactions.
+- [Blueprints](191): measure with the [measuring tape](192), save, share and build again.
 
 ---
 

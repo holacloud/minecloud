@@ -52,6 +52,8 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:bucket) [Cubo](111)
 - ![](item:breeding_notebook) [Cuaderno de cría](131)
 - ![](item:telescope) [Telescopio](133)
+- ![](item:measuring_tape) [Cinta métrica](192)
+- ![](item:written_blueprint) [Planos](191)
 - ![](item:star_chart) [Carta estelar](134)
 
 ## Instrumentos del tiempo

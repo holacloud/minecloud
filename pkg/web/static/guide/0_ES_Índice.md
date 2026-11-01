@@ -36,6 +36,7 @@ página.
 - [Estación meteorológica](112): termómetro, barómetro, anemómetro y el pronóstico de la lluvia.
 - [Astronomía](132): estrellas, constelaciones, planetas, fases de la luna y sucesos raros.
 - [Química](115): la mesa de laboratorio, la [tabla periódica](116) y las reacciones.
+- [Planos](191): medir con la [cinta métrica](192), guardar, compartir y volver a construir.
 
 ---
 
