@@ -31,6 +31,7 @@ then (on average, one every 6 or 7 minutes per bird). Just walk near a flock.
 |---|---|
 | [Feather cape](92) `feather_cape` | **6** `feather` + 2 `white_wool` |
 | Feather [bed](63) `bed` | **4** `feather` + 2 `white_wool` + 3 `planks` |
+| [Breeding notebook](131) `breeding_notebook` | **1** `feather` + 2 `planks` |
 
 A feather cannot be eaten and is not used for taming.
 

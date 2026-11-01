@@ -882,7 +882,7 @@ Object.assign(Game.prototype, {
         if (goal) {
             data.facing = Math.atan2(goal.z - position.z, goal.x - position.x);
             if (Math.hypot(goal.x - position.x, goal.z - position.z) <= (goal.stopDistance ?? 1)) return 0;
-            const speed = getMobSpecies('goat').speed * 2;
+            const speed = getMobSpecies('goat').speed * 2 * (data.geneticsSpeed || 1);
             if (this.walkStep(mob, data.facing, speed * delta, delta).moved || this.leapAhead(mob)) return speed;
             return 0;
         }

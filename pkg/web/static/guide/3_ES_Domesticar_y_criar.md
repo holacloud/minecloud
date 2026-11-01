@@ -46,9 +46,22 @@ La cría:
 - Nace a la mitad de tamaño y crece hasta adulta en unos **5 minutos**. Darle de comer acelera el crecimiento.
 - Sigue a uno de sus padres.
 - No puede criar ni ser montada hasta que crece ("too young to ride").
+- **Hereda los genes de sus padres:** el color del pelaje, el tamaño de adulta y la velocidad al andar salen de un
+  gen de cada padre. Por eso dos cabras blancas pueden tener un cabrito marrón. Ver [Genética](130).
+
+## Genes y cuaderno
+
+Cada animal domesticado lleva tres genes: **pelaje**, **tamaño** (pequeño, normal o grande) y **velocidad** (lento,
+normal o rápido). Un animal salvaje recibe sus genes al domesticarlo, de acuerdo con el color que muestra, y desde
+entonces puede verse un poco más grande, más pequeño, más rápido o más lento que otros. Un caballo rápido también
+galopa más deprisa contigo encima.
+
+Para leerlos, haz clic derecho sobre un animal domesticado con un [cuaderno de cría](131): verás sus genes, sus
+padres y abuelos y, después de leer a un segundo animal de la misma especie, cómo podrían ser sus crías.
 
 ## Convivencia con otros usos del clic derecho
 
 - Las `iron_shears` siguen esquilando y el `glass` sigue ordeñando (ver [Recursos de los mobs](2)).
 - La mano vacía sienta a los domesticados.
+- El [cuaderno de cría](131) lee sus genes.
 - Con el caballo, el clic con la mano vacía sigue montándolo.

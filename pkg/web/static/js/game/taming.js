@@ -4,7 +4,8 @@
 // teleport when left far behind) and sit / stand up with an empty-handed right click (mounts
 // need Shift + right click, so that a plain right click still rides them). Feeding a tamed
 // adult again puts it in love for a while: two adults of the same species in love walk to each
-// other and have a baby that grows up in a few minutes, following its parents. Tamed mobs are
+// other and have a baby that grows up in a few minutes, following its parents; its colour, adult
+// size and speed come from both parents' genes (js/game/genetics.js). Tamed mobs are
 // kept in localStorage and come back when the world around them has loaded.
 //
 // Only mobs that walk to registerMobGoal targets can be tamed: ground mobs and goats ('climb'),
@@ -245,10 +246,10 @@ Object.assign(Game.prototype, {
                 if (data.tamingAge >= TAMING.growTime) {
                     data.tamingAge = null;
                     data.tamingParent = null;
-                    mob.scale.setScalar(1);
+                    mob.scale.setScalar(this.tamingAdultScale(mob));
                     this.tamingSaveSoon();
                 } else {
-                    mob.scale.setScalar(TAMING.babyScale + (1 - TAMING.babyScale) * data.tamingAge / TAMING.growTime);
+                    mob.scale.setScalar(this.tamingAdultScale(mob) * (TAMING.babyScale + (1 - TAMING.babyScale) * data.tamingAge / TAMING.growTime));
                 }
             }
 
@@ -330,13 +331,21 @@ Object.assign(Game.prototype, {
         if (floor > -20) position.y = floor;
         else position.y -= a.userData.flyHeight;
         const parent = Math.random() < 0.5 ? a : b;
-        const baby = this.tamingSpawnBaby(a.userData.species, position, parent.userData.variant, 0, parent.userData.owner);
+        // Genetics (js/game/genetics.js) decides the baby's colour from both parents' genes.
+        const child = this.geneticsBreed ? this.geneticsBreed(a, b) : null;
+        const baby = this.tamingSpawnBaby(a.userData.species, position, child ? child.variant : parent.userData.variant, 0, parent.userData.owner);
+        if (child) this.geneticsBorn(baby, child);
         baby.userData.tamingParent = parent;
         this.tamingHearts(baby, 8);
         this.tamingChirp(1.5);
         setTimeout(() => this.tamingChirp(1.8), 260);
         this.receiveSystemMessage({ text: `A baby ${this.tamingName(a)} was born!` });
         this.tamingSaveSoon();
+    },
+
+    // Grown-up size: 1, or what its size genes say (js/game/genetics.js).
+    tamingAdultScale(mob) {
+        return mob.userData.geneticsScale || 1;
     },
 
     tamingSpawnBaby(species, position, variant, age, owner) {
@@ -465,6 +474,7 @@ Object.assign(Game.prototype, {
                 if (entry.owner) mob.userData.owner = entry.owner;
                 this.ambientMobs.push(mob);
             }
+            if (this.geneticsRestore) this.geneticsRestore(mob, entry.genetics);
             mob.userData.tamingBreedCooldown = entry.cooldown || 0;
             if (entry.sitting) {
                 mob.userData.tamingSitting = true;
@@ -492,7 +502,8 @@ Object.assign(Game.prototype, {
                 sitting: Boolean(data.tamingSitting),
                 age: this.tamingIsBaby(mob) ? Math.round(data.tamingAge) : null,
                 cooldown: Math.round(data.tamingBreedCooldown || 0),
-                owner: data.owner
+                owner: data.owner,
+                genetics: this.geneticsSave ? this.geneticsSave(mob) : undefined
             };
         });
         try {

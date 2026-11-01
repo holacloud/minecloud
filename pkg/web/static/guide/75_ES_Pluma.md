@@ -31,6 +31,7 @@ por su cuenta de vez en cuando (de media, una cada 6 o 7 minutos por ave). Basta
 |---|---|
 | [Capa de plumas](92) `feather_cape` | **6** `feather` + 2 `white_wool` |
 | [Cama](63) de plumas `bed` | **4** `feather` + 2 `white_wool` + 3 `planks` |
+| [Cuaderno de cría](131) `breeding_notebook` | **1** `feather` + 2 `planks` |
 
 La pluma no se come y no sirve para domesticar.
 

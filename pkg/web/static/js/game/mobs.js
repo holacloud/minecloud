@@ -576,7 +576,7 @@ Object.assign(Game.prototype, {
             }
             mob.userData.resting = Math.max(0, (mob.userData.resting || 0) - delta);
 
-            const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed;
+            const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed * (mob.userData.geneticsSpeed || 1);
             const goalReached = goal && Math.hypot(goal.x - mob.position.x, goal.z - mob.position.z) <= (goal.stopDistance ?? 1);
             const moveScale = mob.userData.resting > 0 || goalReached || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);

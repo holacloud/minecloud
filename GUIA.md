@@ -174,11 +174,28 @@ La cría:
 - Nace a la mitad de tamaño y crece hasta adulta en unos **5 minutos**. Darle de comer acelera el crecimiento.
 - Sigue a uno de sus padres.
 - No puede criar ni ser montada hasta que crece ("too young to ride").
+- Hereda los genes de sus padres: color del pelaje, tamaño de adulta y velocidad (ver Genética).
+
+### Genética
+
+Cada animal domesticado lleva tres genes, con dos alelos cada uno (uno de cada padre):
+
+- **Pelaje:** una cadena de dominancia por especie (cabra: blanco > marrón; caballo: tordo > castaño > negro >
+  alazán; gato: atigrado > naranja > crema; guacamayo: verde > azul > rojo > amarillo) y el alelo raro albino,
+  recesivo ante todos.
+- **Tamaño:** `L` / `l` con dominancia incompleta: `LL` grande (×1,15), `Ll` normal, `ll` pequeño (×0,85).
+- **Velocidad:** `N` normal > `f` rápido > `s` lento (×1, ×1,3, ×0,75), también al galopar.
+
+Los salvajes reciben genes al azar que concuerdan con su color al domesticarlos. El 2 % de las crías nace con una
+mutación: uno de sus alelos de pelaje pasa a albino. El **cuaderno de cría** (`breeding_notebook`: 2 `planks` + 1
+`feather`), con clic derecho sobre un domesticado, muestra su genotipo, fenotipo, padres y abuelos y, tras leer a
+otro de la misma especie, el cuadro de Punnett de sus crías.
 
 ### Convivencia con otros usos del clic derecho
 
 - Las `iron_shears` siguen esquilando y el `glass` sigue ordeñando (ver Recursos de los mobs).
 - La mano vacía sienta a los domesticados.
+- El cuaderno de cría lee sus genes.
 - Con el caballo, el clic con la mano vacía sigue montándolo.
 
 ## Cebos y trampas

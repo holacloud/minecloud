@@ -47,9 +47,21 @@ The baby:
 - Is born half size and grows into an adult in about **5 minutes**. Feeding it speeds that up.
 - Follows one of its parents.
 - Cannot breed or be ridden until it grows up ("too young to ride").
+- **Inherits its parents' genes:** its coat colour, its adult size and its walking speed come from one gene of
+  each parent. That is why two white goats can have a brown kid. See [Genetics](130).
+
+## Genes and the notebook
+
+Every tamed animal carries three genes: **coat**, **size** (small, normal or large) and **speed** (slow, normal
+or fast). A wild animal gets its genes when you tame it, matching the colour it shows, and from then on it may look
+a little bigger, smaller, faster or slower than others. A fast horse also gallops faster with you on it.
+
+To read them, right click a tamed animal with a [breeding notebook](131): you will see its genes, its parents and
+grandparents, and (after reading a second animal of the same species) what their babies could look like.
 
 ## Right click, shared
 
 - `iron_shears` still shear and `glass` still milks (see [Mob resources](2)).
 - An empty hand makes tamed animals sit.
+- The [breeding notebook](131) reads their genes.
 - On the horse, an empty-handed click still rides it.

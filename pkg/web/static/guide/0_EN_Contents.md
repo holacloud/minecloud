@@ -32,6 +32,7 @@ the pages.
 - [Items](48): blocks, tools, resources and traps.
 - [Curiosities](98): oddities and secrets of the world.
 - [Growing wheat](107): the hoe, seeds, the wheat field and bread.
+- [Genetics](130): genes, Punnett squares, mutations and the [breeding notebook](131).
 
 ---
 

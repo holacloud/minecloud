@@ -171,6 +171,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 109 | Trigo | Wheat | wheat |
 | 110 | Pan | Bread | bread |
 | 111 | Cubo | Bucket | bucket, water_bucket (in the items index, 48) |
+| 130 | Genética | Genetics | genes of tamed animals: dominance, Punnett squares, mutations (in the contents, 0) |
+| 131 | Cuaderno de cría | Breeding notebook | breeding_notebook (in the items index, 48) |
 
 ### Secret pages
 

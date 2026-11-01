@@ -15,7 +15,9 @@ Object.assign(Game.prototype, {
         const position = controller.camera.position;
         const previous = { x: position.x, y: position.y, z: position.z };
         position.set(mob.position.x, mob.position.y + controller.eyeHeight, mob.position.z);
-        controller.setMount(getMobSpecies(mob.userData.species).mount);
+        const mount = getMobSpecies(mob.userData.species).mount;
+        // A horse's speed genes (js/game/genetics.js) change its gallop too.
+        controller.setMount(mob.userData.geneticsSpeed ? { ...mount, speed: mount.speed * mob.userData.geneticsSpeed } : mount);
         if (!controller.canStandAt(position.x, position.z, mob.position.y)) {
             // No headroom for horse and rider.
             controller.setMount(null);
