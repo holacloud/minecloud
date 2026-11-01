@@ -176,6 +176,11 @@ const BESTIARY_ENTRIES = {
         name: 'Beaver', habitat: 'Rivers and lakes in forests and plains', activity: 'Day and night', temperament: 'Passive',
         hint: 'A tree by the water has been gnawed to a stump.',
         description: 'A busy builder of the riverbanks. It fells small trees near the water, carries the logs in its mouth and builds a dam across a narrow stream and a lodge with an underwater entrance. Come too close and it slaps its tail on the water and dives.'
+    },
+    ant: {
+        name: 'Ant', habitat: 'Anthills on plains, forests and deserts', activity: 'Day', temperament: 'Neutral',
+        hint: 'Lines of tiny walkers lead to a mound of soil.',
+        description: 'Ants live in colonies of 8 to 20 around an anthill. By day they follow scent trails to food and carry crumbs home; at night and in the rain they stay inside. Step on the anthill or swat one and the colony swarms over your feet with tiny bites.'
     }
 };
 

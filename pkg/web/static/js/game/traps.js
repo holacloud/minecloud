@@ -12,8 +12,8 @@
 // - Fishing rod: right click water within 9 blocks to cast; when the bobber dips (splash),
 //   right click within the second to catch raw fish (sometimes a shell or junk). Worm or fish
 //   bait in the inventory is used up for a quicker bite; nearby fish schools gather round.
-// - Bug net: right click a firefly cloud, a bee or a bat close by to catch it. Fireflies go
-//   into a firefly_jar: right click the ground to set it down as a glowing lamp; right click it
+// - Bug net: right click a firefly cloud, a bee, a bat or an anthill close by to catch it (ants
+//   go into an ant_colony_jar, see ants.js). Fireflies go into a firefly_jar: right click the ground to set it down as a glowing lamp; right click it
 //   to take it back, or with the net to set the fireflies free.
 // Cages (and the mob inside) and jars are kept in localStorage; baits and the line are not.
 // Mixed into Game.prototype; hooked through js/extensions.js.
@@ -26,7 +26,7 @@ const TRAPS_BAITS = {
     bait_honey: { name: 'Honey Bait', color: 0xe8a92a, pile: [0xe8a92a, 0xf2c650, 0xc88a18, 0xf6d880] }
 };
 
-// Per species (the 22 in mobSpecies.js and the 9 new ones):
+// Per species (the 22 in mobSpecies.js, the 9 new ones and the ant):
 //   baits  the baits it walks to   cage  a cage trap can hold it   net  what the bug net gives
 const TRAPS_SPECIES = {
     sheep: { baits: ['bait_seeds'], cage: true },
@@ -60,7 +60,8 @@ const TRAPS_SPECIES = {
     storm_golem: { baits: [] },
     wisp: { baits: [], net: 'glow_dust' },
     mole: { baits: ['bait_worms'], cage: true },
-    beaver: { baits: ['bait_seeds'], cage: true }
+    beaver: { baits: ['bait_seeds'], cage: true },
+    ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' }
 };
 
 const TRAPS_BAIT_LIFE = 120;
@@ -791,8 +792,9 @@ Object.assign(Game.prototype, {
             const entry = TRAPS_SPECIES[mob.userData.species];
             if (!entry || !entry.net || !mob.visible || mob.userData.isHive) continue;
             if (mob.position.distanceTo(ray.origin) > TRAPS_NET_RANGE + 3) continue;
-            if (mob.userData.flies) {
-                mob.userData.flies.forEach((fly) => consider(mob, fly.getWorldPosition(_trapsVec2)));
+            const points = mob.userData.flies || mob.userData.trapsNetPoints;
+            if (points) {
+                points.forEach((point) => consider(mob, point.getWorldPosition(_trapsVec2)));
             } else {
                 consider(mob, mob.position);
             }
@@ -820,6 +822,9 @@ Object.assign(Game.prototype, {
                 flies.splice(0, 4).forEach((fly) => mob.remove(fly));
             }
             this.playTone({ frequency: 1800, endFrequency: 2400, duration: 0.18, type: 'sine', volume: 0.01, release: 0.12 });
+        } else if (mob.userData.trapsNetCatch) {
+            // A colony of tiny animals (ants) hands over a few of them and stays.
+            if (!mob.userData.trapsNetCatch.call(this, mob)) return true;
         } else {
             this.removeMob(mob);
             this.playTone({ frequency: getMobSpecies(species).tone || 600, duration: 0.08, type: 'triangle', volume: 0.012, release: 0.06 });

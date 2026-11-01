@@ -3,7 +3,7 @@
 ![Red para insectos](item:bug_net)
 
 Una red de lana en un palo de madera. Sirve para atrapar **criaturas pequeñas y voladoras** sin hacerles daño:
-luciérnagas, abejas, murciélagos… y hasta un fuego fatuo.
+luciérnagas, abejas, murciélagos, hormigas… y hasta un fuego fatuo.
 
 ## Cómo conseguirla
 
@@ -30,6 +30,7 @@ La lana blanca sale de esquilar ovejas o se fabrica (2 `leaves` + 1 `flower_red`
 | ![Abeja](mob:bee) [Abeja](35) | `bee_egg` | Atrapar abejas con la red **no enfada** a la colonia. |
 | ![Murciélago](mob:bat) [Murciélago](38) | `bat_egg` | Son muy rápidos: espera a que pasen cerca. |
 | ![Fuego fatuo](mob:wisp) [Fuego fatuo](41) | 1 `glow_dust` | Directo al inventario. |
+| ![Hormiga](mob:ant) [Hormigas](135) | ![](item:ant_colony_jar) `ant_colony_jar` | Apunta al hormiguero o a las hormigas: una reina joven y cinco obreras para una [granja de hormigas](136). La colonia necesita al menos 6 hormigas. |
 
 Los huevos se colocan como cualquier [huevo de mob](74) para soltar al animal donde quieras.
 

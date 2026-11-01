@@ -174,13 +174,82 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 112 | Estación meteorológica | Weather station | weather_station; overview of the instruments, how the forecast and the wind work (contents 0 and items index 48) |
 | 113 | Termómetro | Thermometer | thermometer (items index, 48) |
 | 114 | Barómetro y anemómetro | Barometer and anemometer | barometer, anemometer (items index, 48) |
+| 115 | Química | Chemistry | the lab, discovery of its 30 reactions, the 4 known ones (in the contents, 0, and the items index, 48) |
+| 116 | Tabla periódica | Periodic table | the 36 `element_*`, each linked to its page (139–174) |
+| 117 | Mesa de laboratorio | Lab bench | lab_bench |
+| 118 | Frasco de agua | Water flask | water_flask (and water_bucket from the lab) |
+| 119 | Sal | Salt | salt |
+| 120 | Lingote de acero | Steel ingot | steel_ingot |
+| 121 | Bronce | Bronze | bronze_ingot |
+| 122 | Fertilizante | Fertilizer | fertilizer |
+| 123 | Agua con gas | Soda water | soda_water |
+| 124 | Globo de helio | Helium balloon | helium_balloon |
+| 125 | Lámpara de neón | Neon lamp | neon_lamp |
+| 126 | Lámpara de argón | Argon lamp | argon_lamp |
+| 127 | Pescado en salazón | Salted fish | salted_fish |
+| 128 | Herramientas de acero | Steel tools | steel_pickaxe, steel_shovel, steel_axe, steel_sword |
+| 129 | Ocre rojo | Red ochre | rust_pigment |
 | 130 | Genética | Genetics | genes of tamed animals: dominance, Punnett squares, mutations (in the contents, 0) |
 | 131 | Cuaderno de cría | Breeding notebook | breeding_notebook (in the items index, 48) |
 | 132 | Astronomía | Astronomy | the night sky (js/game/astronomy.js): constellations, named stars, planets, moon phases, shooting stars, comet and red moon (in the contents, 0) |
 | 133 | Telescopio | Telescope | telescope (in the items index, 48) |
 | 134 | Carta estelar | Star chart | star_chart (in the items index, 48) |
+| 135 | Hormiga | Ant | the `ant` colony and its anthill (in the mobs index, 16; arrived 2026-11-01) |
+| 136 | Granja de hormigas | Ant farm | ant_farm, ant_colony_jar (linked from the mobs index, 16) |
 | 137 | Castor | Beaver | mob page of `beaver` (arrived 2026-11-01), in the mobs index (16) |
 | 138 | Presas de castor | Beaver dams | how beavers choose trees, how to protect your builds, dams and lodges (linked from 16 and 137) |
+| 139 | Hidrógeno | Hydrogen | `element_h` (Z = 1) |
+| 140 | Helio | Helium | `element_he` (Z = 2) |
+| 141 | Litio | Lithium | `element_li` (Z = 3) |
+| 142 | Berilio | Beryllium | `element_be` (Z = 4) |
+| 143 | Boro | Boron | `element_b` (Z = 5) |
+| 144 | Carbono | Carbon | `element_c` (Z = 6) |
+| 145 | Nitrógeno | Nitrogen | `element_n` (Z = 7) |
+| 146 | Oxígeno | Oxygen | `element_o` (Z = 8) |
+| 147 | Flúor | Fluorine | `element_f` (Z = 9) |
+| 148 | Neón | Neon | `element_ne` (Z = 10) |
+| 149 | Sodio | Sodium | `element_na` (Z = 11) |
+| 150 | Magnesio | Magnesium | `element_mg` (Z = 12) |
+| 151 | Aluminio | Aluminium | `element_al` (Z = 13) |
+| 152 | Silicio | Silicon | `element_si` (Z = 14) |
+| 153 | Fósforo | Phosphorus | `element_p` (Z = 15) |
+| 154 | Azufre | Sulfur | `element_s` (Z = 16) |
+| 155 | Cloro | Chlorine | `element_cl` (Z = 17) |
+| 156 | Argón | Argon | `element_ar` (Z = 18) |
+| 157 | Potasio | Potassium | `element_k` (Z = 19) |
+| 158 | Calcio | Calcium | `element_ca` (Z = 20) |
+| 159 | Titanio | Titanium | `element_ti` (Z = 22) |
+| 160 | Cromo | Chromium | `element_cr` (Z = 24) |
+| 161 | Manganeso | Manganese | `element_mn` (Z = 25) |
+| 162 | Hierro | Iron | `element_fe` (Z = 26) |
+| 163 | Cobalto | Cobalt | `element_co` (Z = 27) |
+| 164 | Níquel | Nickel | `element_ni` (Z = 28) |
+| 165 | Cobre | Copper | `element_cu` (Z = 29) |
+| 166 | Zinc | Zinc | `element_zn` (Z = 30) |
+| 167 | Plata | Silver | `element_ag` (Z = 47) |
+| 168 | Estaño | Tin | `element_sn` (Z = 50) |
+| 169 | Yodo | Iodine | `element_i` (Z = 53) |
+| 170 | Wolframio | Tungsten | `element_w` (Z = 74) |
+| 171 | Platino | Platinum | `element_pt` (Z = 78) |
+| 172 | Oro | Gold | `element_au` (Z = 79) |
+| 173 | Mercurio | Mercury | `element_hg` (Z = 80) |
+| 174 | Plomo | Lead | `element_pb` (Z = 82) |
+| 175 | Rubí | Ruby | ruby |
+| 176 | Zafiro | Sapphire | sapphire |
+| 177 | Célula solar | Solar cell | solar_cell |
+| 178 | Sulfato de cobre | Copper sulfate | copper_sulfate |
+| 179 | Latón | Brass | brass_ingot |
+| 180 | Pan de oro | Gold leaf | gold_leaf |
+| 181 | Espejo de plata | Silver mirror | mirror |
+| 182 | Bicarbonato | Baking soda | baking_soda |
+| 183 | Cal viva | Quicklime | quicklime |
+| 184 | Pirita | Pyrite | pyrite |
+| 185 | Vidrio de cobalto | Cobalt glass | cobalt_glass |
+| 186 | Tintura de yodo | Iodine tincture | iodine_tincture |
+| 187 | Bombilla | Light bulb | light_bulb |
+| 188 | Fluorita | Fluorite | fluorite |
+| 189 | Batería de litio | Lithium battery | battery |
+| 190 | Hierro meteórico | Meteoric iron | meteoric_iron |
 
 ### Secret pages
 

@@ -2,8 +2,8 @@
 
 ![Bug net](item:bug_net)
 
-A wool net on a wooden stick. It catches **small flying creatures** without hurting them: fireflies, bees, bats…
-and even a wisp.
+A wool net on a wooden stick. It catches **small flying creatures** without hurting them: fireflies, bees, bats,
+ants… and even a wisp.
 
 ## How to get it
 
@@ -31,6 +31,7 @@ out**.
 | ![Bee](mob:bee) [Bee](35) | `bee_egg` | Netting bees **does not anger** the colony. |
 | ![Bat](mob:bat) [Bat](38) | `bat_egg` | They are very fast: wait for them to fly close. |
 | ![Wisp](mob:wisp) [Wisp](41) | 1 `glow_dust` | Straight into your inventory. |
+| ![Ant](mob:ant) [Ants](135) | ![](item:ant_colony_jar) `ant_colony_jar` | Aim at the anthill or the ants: a young queen and five workers for an [ant farm](136). The colony needs at least 6 ants. |
 
 Eggs are placed like any other [mob egg](74) to release the animal wherever you like.
 

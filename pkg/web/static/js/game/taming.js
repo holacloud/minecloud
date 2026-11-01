@@ -55,7 +55,8 @@ const TAMING_DIET = {
     storm_golem: null,
     wisp: null,
     mole: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 },
-    beaver: null // 'lodge': busy with its trees and dams, it does not follow goals
+    beaver: null, // 'lodge': busy with its trees and dams, it does not follow goals
+    ant: null // a colony; keep them in an ant farm instead (ants.js)
 };
 window.TAMING_DIET = TAMING_DIET;
 
