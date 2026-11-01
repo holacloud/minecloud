@@ -50,6 +50,11 @@ class CameraController {
         
         this.blockChecker = null;
         this.blockHeightGetter = null;
+        // (x, y, z) -> collision boxes of that cell (see setCollisionBoxGetter).
+        this.collisionBoxGetter = null;
+        // Step-ups (slabs, stairs) lift the body at once; the view follows over a few frames
+        // so stairs feel like a ramp. Physics never sees this offset (see update).
+        this.stepSmoothing = 0;
         this.eyeHeight = this.standingEyeHeight;
         this.isCrouching = false;
         this.isOnLadder = false;
@@ -62,6 +67,9 @@ class CameraController {
     setBlockChecker(fn) { this.blockChecker = fn; }
     setBlockTypeGetter(fn) { this.blockTypeGetter = fn; }
     setBlockHeightGetter(fn) { this.blockHeightGetter = fn; }
+    // fn(x, y, z) returns the boxes [x0, y0, z0, x1, y1, z1] (relative to the cell's minimum
+    // corner, y up to 1.5) that block movement in that cell; it replaces the height getter.
+    setCollisionBoxGetter(fn) { this.collisionBoxGetter = fn; }
     setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
     setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
     addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
@@ -137,21 +145,36 @@ class CameraController {
         return this.hasBlock(x, y, z) ? 1 : 0;
     }
 
+    // Collision boxes of a cell, relative to its minimum corner. Without a box getter, a block
+    // is one box as tall as its height.
+    getCellBoxes(x, y, z) {
+        if (this.collisionBoxGetter) return this.collisionBoxGetter(x, y, z);
+        const height = this.getBlockHeight(x, y, z);
+        return height > 0 ? [[0, 0, 0, 1, height, 1]] : [];
+    }
+
+    // Footprints ({ minX, maxX, minZ, maxZ }) of the boxes that overlap a body standing at feetY.
     getCollisionBlocks(x, z, feetY) {
         const blocks = [];
-        const minX = Math.floor(x - this.collisionRadius);
-        const maxX = Math.floor(x + this.collisionRadius);
-        const minZ = Math.floor(z - this.collisionRadius);
-        const maxZ = Math.floor(z + this.collisionRadius);
-        const minY = Math.floor(feetY + 0.02);
-        const maxY = Math.floor(feetY + this.bodyHeight - 0.02);
+        const r = this.collisionRadius;
+        const minX = Math.floor(x - r);
+        const maxX = Math.floor(x + r);
+        const minZ = Math.floor(z - r);
+        const maxZ = Math.floor(z + r);
+        const bottom = feetY + 0.02;
+        const top = feetY + this.bodyHeight - 0.02;
+        // One layer lower too: fences and gates reach half a block into the cell above them.
+        const minY = Math.floor(bottom) - 1;
+        const maxY = Math.floor(top);
 
         for (let by = minY; by <= maxY; by++) {
             for (let bx = minX; bx <= maxX; bx++) {
                 for (let bz = minZ; bz <= maxZ; bz++) {
-                    const height = this.getBlockHeight(bx, by, bz);
-                    if (height > 0 && feetY + 0.02 < by + height) {
-                        blocks.push({ x: bx, z: bz });
+                    for (const box of this.getCellBoxes(bx, by, bz)) {
+                        if (by + box[4] <= bottom || by + box[1] >= top) continue;
+                        const block = { minX: bx + box[0], maxX: bx + box[3], minZ: bz + box[2], maxZ: bz + box[5] };
+                        if (block.maxX <= x - r || block.minX >= x + r || block.maxZ <= z - r || block.minZ >= z + r) continue;
+                        blocks.push(block);
                     }
                 }
             }
@@ -169,10 +192,7 @@ class CameraController {
             let moved = false;
             const blocks = this.getCollisionBlocks(resolvedX, resolvedZ, feetY);
             for (const block of blocks) {
-                const minX = block.x;
-                const maxX = block.x + 1;
-                const minZ = block.z;
-                const maxZ = block.z + 1;
+                const { minX, maxX, minZ, maxZ } = block;
                 const closestX = Math.max(minX, Math.min(resolvedX, maxX));
                 const closestZ = Math.max(minZ, Math.min(resolvedZ, maxZ));
                 let dx = resolvedX - closestX;
@@ -212,15 +232,20 @@ class CameraController {
     // Whether a block of the given height placed at (x, y, z) would overlap the body of a
     // player whose eyes are at `eye` (head included, so the camera never ends up in a block).
     intersectsBody(eye, x, y, z, height = 1) {
+        return this.intersectsBoxes(eye, x, y, z, [[0, 0, 0, 1, height, 1]]);
+    }
+
+    // Same for a shaped block: its boxes (relative to the cell (x, y, z)).
+    intersectsBoxes(eye, x, y, z, boxes) {
         const r = this.collisionRadius;
         const px = eye.x;
         const pz = eye.z;
         const feetY = eye.y - this.eyeHeight;
         const topY = Math.max(feetY + this.bodyHeight, eye.y + 0.15);
         const epsilon = 0.001;
-        return px + r > x + epsilon && px - r < x + 1 - epsilon &&
-            pz + r > z + epsilon && pz - r < z + 1 - epsilon &&
-            topY > y + epsilon && feetY < y + height - epsilon;
+        return boxes.some((box) => px + r > x + box[0] + epsilon && px - r < x + box[3] - epsilon &&
+            pz + r > z + box[2] + epsilon && pz - r < z + box[5] - epsilon &&
+            topY > y + box[1] + epsilon && feetY < y + box[4] - epsilon);
     }
 
     canStandAt(x, z, feetY) {
@@ -228,6 +253,8 @@ class CameraController {
     }
 
     applyStepUp(targetFeetY) {
+        const rise = targetFeetY + this.eyeHeight - this.camera.position.y;
+        this.stepSmoothing = Math.max(-0.6, this.stepSmoothing - rise);
         this.camera.position.y = targetFeetY + this.eyeHeight;
         this.velocityY = Math.max(0, this.velocityY);
         this.onGround = true;
@@ -275,17 +302,34 @@ class CameraController {
         }
     }
 
+    // Top of the highest box under the point (x, z), searching down from the cell at startY.
+    // Points beside a thin box (a pane, a fence post) fall through to the floor below it.
     getFloorY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
+        const lx = x - ix;
+        const lz = z - iz;
         for (let y = Math.floor(startY); y >= -16; y--) {
-            const height = this.getBlockHeight(ix, y, iz);
-            if (height > 0) return y + height;
+            let top = -Infinity;
+            for (const box of this.getCellBoxes(ix, y, iz)) {
+                if (lx >= box[0] && lx <= box[3] && lz >= box[2] && lz <= box[5]) top = Math.max(top, box[4]);
+            }
+            if (top > -Infinity) return y + top;
         }
         return -100;
     }
     
+    // Runs the physics on the real eye position, then lowers the view by what is left of the
+    // last step-up's smoothing.
     update(delta) {
+        this.camera.position.y -= this.stepSmoothing;
+        this.updatePhysics(delta);
+        this.stepSmoothing *= Math.exp(-delta * 16);
+        if (Math.abs(this.stepSmoothing) < 0.002 || this.isOnLadder || this.mount) this.stepSmoothing = 0;
+        this.camera.position.y += this.stepSmoothing;
+    }
+
+    updatePhysics(delta) {
         const wasCrouching = this.isCrouching;
         this.isCrouching = this.keys.crouch && !this.mount;
         if (wasCrouching !== this.isCrouching) {
@@ -515,6 +559,7 @@ class CameraController {
     }
 
     setPosition(position) {
+        this.stepSmoothing = 0;
         this.camera.position.set(position.x, position.y, position.z);
         this.yaw = position.yaw ?? this.yaw;
         this.pitch = position.pitch ?? this.pitch;

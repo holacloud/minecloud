@@ -93,7 +93,13 @@ class WorldRenderer {
             ladder: { color: 0xB98548, name: 'Ladder', transparent: true, breakDuration: 0.25, solid: false },
         };
         this.registerExpansionBlockTypes();
+        // Stairs, doors, fences...: one block type per state (js/blockShapes.js).
+        expandBlockStates(this.blockTypes);
         this.registry = new BlockRegistry(this.blockTypes);
+        this.shapes = new BlockShapeSet(this.blockTypes, this.registry);
+        for (let id = 1; id < this.registry.names.length; id++) {
+            if (this.registry.shaped[id] && this.registry.solid[id]) this.registry.height[id] = this.shapes.maxHeight(id);
+        }
         this.chunkDecoder.postMessage({ type: 'init', ids: this.registry.ids });
         // Chunks are requested by update() around the player's actual position.
     }
@@ -250,7 +256,23 @@ class WorldRenderer {
         return geometry;
     }
 
-    getGeometry(type) {
+    // `mask`: connections of a shaped block (fences, panes) to its neighbours, see blockShapes.js.
+    // `centered`: a shaped block centred on its footprint (held and dropped items: a door panel
+    // sits at the edge of its cell, but should not hang off the hand).
+    getGeometry(type, mask = null, centered = false) {
+        const shapeId = this.registry.shaped[this.registry.id(type)] ? this.registry.id(type) : 0;
+        if (shapeId) {
+            const shape = this.shapes.shapes[shapeId];
+            const shapeMask = mask ?? shape.iconMask ?? 0;
+            const key = `${type}|${shapeMask}|${centered ? 'c' : ''}`;
+            let shaped = this.cutoutGeometries.get(key);
+            if (!shaped) {
+                shaped = this.createBoxesGeometry(this.shapes.boxes(shapeId, shapeMask), centered);
+                this.cutoutGeometries.set(key, shaped);
+            }
+            return shaped;
+        }
+
         let geometry = this.cutoutGeometries.get(type);
         if (geometry) return geometry;
 
@@ -294,6 +316,49 @@ class WorldRenderer {
         }
 
         this.cutoutGeometries.set(type, geometry);
+        return geometry;
+    }
+
+    // A shaped block as one geometry centred on the origin like BoxGeometry(1, 1, 1), with a
+    // group per face direction in BoxGeometry order, so the block's material arrays apply.
+    createBoxesGeometry(boxes, centered = false) {
+        let offsetX = 0.5;
+        let offsetZ = 0.5;
+        if (centered) {
+            offsetX = (Math.min(...boxes.map((box) => box[0])) + Math.max(...boxes.map((box) => box[3]))) / 2;
+            offsetZ = (Math.min(...boxes.map((box) => box[2])) + Math.max(...boxes.map((box) => box[5]))) / 2;
+        }
+        const positions = [];
+        const normals = [];
+        const uvs = [];
+        const byFace = [[], [], [], [], [], []];
+        for (const box of boxes) {
+            for (let f = 0; f < 6; f++) {
+                const face = MESH_FACES[f];
+                const start = positions.length / 3;
+                for (const corner of face.corners) {
+                    const x = corner[0] ? box[3] : box[0];
+                    const y = corner[1] ? box[4] : box[1];
+                    const z = corner[2] ? box[5] : box[2];
+                    positions.push(x - offsetX, y - 0.5, z - offsetZ);
+                    normals.push(...face.normal);
+                    uvs.push(...ChunkMesher.boxFaceUV(f, x, y, z));
+                }
+                byFace[f].push(start, start + 1, start + 2, start, start + 2, start + 3);
+            }
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        const indices = [];
+        byFace.forEach((faceIndices, f) => {
+            geometry.addGroup(indices.length, faceIndices.length, f);
+            indices.push(...faceIndices);
+        });
+        geometry.setIndex(indices);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
         return geometry;
     }
 
@@ -487,6 +552,17 @@ class WorldRenderer {
 
         if (def.itemOnly) {
             this.textureFactory.drawItemIcon(ctx, size, def);
+        } else if (def.drawBlockIcon) {
+            def.drawBlockIcon(ctx, size, this);
+        } else if (def.shape && this.registry.shaped[this.registry.id(type)]) {
+            // Stairs, fences, panes...: their boxes in the cube icon's view.
+            const id = this.registry.id(type);
+            const shape = this.shapes.shapes[id];
+            const iconType = shape.iconState ? shapeStateName(def.variantOf || type, shape, shape.iconState) : type;
+            const iconId = this.registry.id(iconType) || id;
+            drawShapeIcon(ctx, size, this.shapes.boxes(iconId, shape.iconMask || 0), {
+                top: this.generateFaceCanvas(faces.top), side: this.generateFaceCanvas(faces.side)
+            });
         } else if (this.isAlphaCutoutType(type) && type !== 'leaves' && !type.endsWith('_leaves') || type === 'spray_paint') {
             ctx.drawImage(this.generateFaceCanvas(faces.side), size * 0.1, size * 0.1, size * 0.8, size * 0.8);
         } else {
@@ -600,12 +676,18 @@ class WorldRenderer {
     // Returns { top, side, bottom }, each { pattern, tint, label }.
     getFaceTextureSpecs(type) {
         const def = this.blockTypes[type] || {};
-        if (def.slabSource) return this.getFaceTextureSpecs(def.slabSource);
+        if (def.textureOf || def.slabSource) return this.getFaceTextureSpecs(def.textureOf || def.slabSource);
 
         const spec = (pattern, tint = null, label = null) => ({ pattern, tint, label });
         const uniform = (face) => ({ top: face, side: face, bottom: face });
         const category = def.category;
-        if (def.faces) return { top: spec(def.faces.top), side: spec(def.faces.side), bottom: spec(def.faces.bottom || def.faces.side) };
+        if (def.faces) {
+            // Entries are pattern names or { pattern, tint } ({ pattern, tintOf: 'spruce_planks' }
+            // borrows the tint of another block's texture).
+            const face = (entry) => typeof entry === 'string' ? spec(entry)
+                : spec(entry.pattern, entry.tintOf ? this.getFaceTextureSpecs(entry.tintOf).side.tint : entry.tint ?? null, entry.label ?? null);
+            return { top: face(def.faces.top), side: face(def.faces.side), bottom: face(def.faces.bottom || def.faces.side) };
+        }
 
         switch (type) {
             case 'grass': return { top: spec('grass_top'), side: spec('grass_side'), bottom: spec('dirt') };
@@ -689,7 +771,7 @@ class WorldRenderer {
         return type === 'leaves' || type.endsWith('_leaves') ||
             type === 'tall_grass' || type === 'flower_red' || type === 'flower_yellow' ||
             type === 'mushroom_red' || type === 'mushroom_brown' || type === 'torch' || type === 'ladder' ||
-            Boolean(this.blockTypes[type] && this.blockTypes[type].cross);
+            Boolean(this.blockTypes[type] && (this.blockTypes[type].cross || this.blockTypes[type].cutout));
     }
 
     getRTXMaterialProps(pattern) {
@@ -755,7 +837,10 @@ class WorldRenderer {
     // Returns a single material, or an array in BoxGeometry face order
     // (+x, -x, +y, -y, +z, -z) when the block has distinct top/side/bottom faces.
     getMaterial(type) {
-        let material = this.materials.get(type);
+        // The states of one block (stairs facing four ways...) share its materials.
+        const def = this.blockTypes[type];
+        const cacheKey = (def && def.materialKey) || type;
+        let material = this.materials.get(cacheKey);
         if (material) return material;
 
         const faces = this.getFaceTextureSpecs(type);
@@ -769,7 +854,7 @@ class WorldRenderer {
             material = [side, side, top, bottom, side, side];
         }
 
-        this.materials.set(type, material);
+        this.materials.set(cacheKey, material);
         return material;
     }
 
@@ -894,7 +979,9 @@ class WorldRenderer {
     }
 
     getChunkMaterial(type) {
-        let material = this.chunkMaterials.get(type);
+        const def = this.blockTypes[type];
+        const cacheKey = (def && def.materialKey) || type;
+        let material = this.chunkMaterials.get(cacheKey);
         if (material) return material;
 
         // Leaves sway as a whole; plants bend from the ground up.
@@ -919,7 +1006,7 @@ class WorldRenderer {
             material = withVertexColors(base);
         }
 
-        this.chunkMaterials.set(type, material);
+        this.chunkMaterials.set(cacheKey, material);
         return material;
     }
 
@@ -1303,6 +1390,58 @@ class WorldRenderer {
         return this.registry.height[this.getBlockId(Math.round(x), Math.round(y), Math.round(z))];
     }
 
+    // Collision boxes of the block at integer (x, y, z), relative to the cell's minimum corner
+    // ([x0, y0, z0, x1, y1, z1]; may rise above 1). Empty for blocks you walk through.
+    getCollisionBoxes(x, y, z) {
+        const id = this.getBlockId(x, y, z);
+        if (!this.registry.shaped[id]) return this.shapes.collision(id);
+        return this.shapes.collision(id, this.getShapeMask(id, x, y, z));
+    }
+
+    // Which horizontal neighbours a shaped block joins (fences, panes; see blockShapes.js).
+    getShapeMask(id, x, y, z) {
+        return this.shapes.mask(id,
+            this.getBlockId(x, y, z - 1), this.getBlockId(x + 1, y, z), this.getBlockId(x, y, z + 1), this.getBlockId(x - 1, y, z));
+    }
+
+    // Block name of the shaped block `base` in `state` (oak_door + { half: 'upper', ... }), or
+    // null if that state does not exist.
+    getShapeStateType(base, state) {
+        const def = this.blockTypes[base];
+        const shape = def && BLOCK_SHAPES[def.shape];
+        if (!shape) return base;
+        const type = shapeStateName(def.variantOf || base, shape, state);
+        return this.blockTypes[type] ? type : null;
+    }
+
+    // Blocks to place for the item `type` at cell (x, y, z): [{ x, y, z, blockType }], or null
+    // when it does not fit. Plain blocks place themselves; shaped ones choose their state (and
+    // extra cells, like the upper half of a door) from the click: ctx { normal, hit, look }.
+    getPlacementBlocks(type, x, y, z, ctx) {
+        const def = this.blockTypes[type];
+        const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
+        if (!shape || !shape.place) return [{ x, y, z, blockType: type }];
+        const parts = shape.place({
+            x, y, z, def,
+            normal: ctx.normal, hit: ctx.hit, look: ctx.look,
+            defAt: (bx, by, bz) => this.blockTypes[this.getBlockTypeAt(bx, by, bz)] || null,
+            // Air, or a small plant the block may replace.
+            isFree: (bx, by, bz) => {
+                const other = this.getBlockTypeAt(bx, by, bz);
+                return !other || (this.isCrossGeometry(other) && other !== 'torch');
+            },
+            isSolid: (bx, by, bz) => this.hasSolidBlock(bx, by, bz)
+        });
+        if (!parts) return null;
+        const blocks = [];
+        for (const part of parts) {
+            const blockType = this.getShapeStateType(def.variantOf || type, part.state);
+            if (!blockType) return null;
+            blocks.push({ x: x + part.dx, y: y + part.dy, z: z + part.dz, blockType });
+        }
+        return blocks;
+    }
+
     hasSolidBlock(x, y, z) {
         return this.registry.solid[this.getBlockId(Math.round(x), Math.round(y), Math.round(z))] === 1;
     }
@@ -1348,7 +1487,7 @@ class WorldRenderer {
 
         const shared = this.getMaterial(type);
         const material = Array.isArray(shared) ? shared.map((m) => m.clone()) : shared.clone();
-        const mesh = new THREE.Mesh(this.getGeometry(type), material);
+        const mesh = new THREE.Mesh(this.getGeometry(type, null, true), material);
         mesh.scale.setScalar(scale);
         mesh.castShadow = this.rtxModeEnabled && type !== 'water';
         mesh.receiveShadow = this.rtxModeEnabled;

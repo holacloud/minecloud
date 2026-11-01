@@ -86,6 +86,13 @@ function registerFrameUpdate(updater) {
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
 //   glow                          emissive strength: the block lights up its own texture
+//   faces entries                 may also be { pattern, tint } to tint a shared pattern
+//   textureOf                     another block type whose textures it reuses (slabs, stairs)
+//   shape                         a non-cube shape from registerBlockShape ('stairs', 'door',
+//                                 'trapdoor', 'fence', 'fence_gate', 'pane'; see js/blockShapes.js)
+//   lightPasses                   lets sky and torch light through without a see-through material
+//   cutout                        alpha-cutout material (holes in the texture, like iron bars)
+//   drawBlockIcon(ctx, size, world)  draws its inventory icon instead of the cube/shape view
 const BLOCK_TYPES = {};
 function registerBlockType(id, definition) {
     BLOCK_TYPES[id] = definition;
@@ -104,4 +111,23 @@ function registerTexturePattern(name, paint, options = {}) {
 const BLOCK_BREAK_HANDLERS = [];
 function registerBlockBreakHandler(handler) {
     BLOCK_BREAK_HANDLERS.push(handler);
+}
+
+// Non-cube block shapes (stairs, doors, fences...): registerBlockShape(name, shape). Boxes are
+// [x0, y0, z0, x1, y1, z1] in block units from the cell's minimum corner. The shape's states
+// (orientation, open/closed...) become part of the block name, so they are stored and synced
+// like any block. Fields (all optional except boxes); js/blockShapes.js documents them in full:
+//   states            [[key, [values...]], ...]: one block type per combination, first = default
+//   boxes(state, mask)       visual boxes; mask = neighbours it connects to (N 1, E 2, S 4, W 8)
+//   collision(state, mask)   collision boxes (default: boxes); may rise to 1.5 (fences)
+//   connects(def, other, dir) whether it joins neighbour `other` ({ def, cube }) towards dir
+//   variant(state, def)      extra block-type fields for one state (solid, faces...)
+//   materialKey(state)       states that look different (door halves) get their own materials
+//   place(ctx)               [{ dx, dy, dz, state }] to place, or null when it does not fit
+//   linked(state)            [[dx, dy, dz]] cells that form one object with it (door halves)
+//   toggle(state, ctx)       the state after a right click (doors, gates), or null
+//   iconState, iconMask      state and connections shown in the inventory icon
+const BLOCK_SHAPES = {};
+function registerBlockShape(name, shape) {
+    BLOCK_SHAPES[name] = shape;
 }

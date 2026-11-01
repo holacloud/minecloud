@@ -363,13 +363,17 @@ class ChunkMesher {
         const baseX = chunkX * CHUNK_SIZE;
         const baseZ = chunkZ * CHUNK_SIZE;
         const hiddenBlock = options.hiddenBlock;
+        this.hiddenPadded = -1;
         if (hiddenBlock) {
             // Treat the hidden block as air so the faces around it are drawn (no see-through gaps).
             const hx = hiddenBlock.x - baseX + 1;
             const hz = hiddenBlock.z - baseZ + 1;
             if (hx >= 0 && hz >= 0 && hx < this.paddedSize && hz < this.paddedSize &&
                 hiddenBlock.y >= WORLD_MIN_Y && hiddenBlock.y <= WORLD_MAX_Y) {
-                this.padded[this.paddedIndex(hx, hiddenBlock.y, hz)] = AIR_ID;
+                // Fences and panes next to it keep joining it (connectionIdAt).
+                this.hiddenPadded = this.paddedIndex(hx, hiddenBlock.y, hz);
+                this.hiddenId = this.padded[this.hiddenPadded];
+                this.padded[this.hiddenPadded] = AIR_ID;
             }
         }
         this.originX = baseX;
@@ -444,6 +448,11 @@ class ChunkMesher {
                 continue;
             }
 
+            if (registry.shaped[id]) {
+                this.addShapedBlock(bucketFor, id, type, px, y, pz, lx, lz, worldX, worldZ, cellLight, cellSky);
+                continue;
+            }
+
             if (world.isCrossGeometry(type)) {
                 const cutout = world.getGeometry(type);
                 this.addCutout(bucketFor(world.getChunkMaterial(type)), cutout, lx, y, lz, worldX, worldZ, cellLight(worldX, y, worldZ), cellSky(lx, y, lz));
@@ -484,6 +493,99 @@ class ChunkMesher {
         }
 
         return { buckets: Array.from(buckets.values()), water, special };
+    }
+
+    // Non-cube blocks (stairs, doors, fences...): the faces of their boxes (js/blockShapes.js).
+    // A face is skipped when it lies on the cell border against an opaque cube or towards a
+    // neighbour it connects to (fence rails, panes meeting), or when it is buried in another
+    // box of the same block. Faces on the border get the usual corner AO and light; inner faces
+    // take the light of their own cell.
+    addShapedBlock(bucketFor, id, type, px, y, pz, lx, lz, worldX, worldZ, cellLight, cellSky) {
+        const world = this.world;
+        const registry = world.registry;
+        const shapes = world.shapes;
+        const mask = shapes.mask(id,
+            this.connectionIdAt(px, y, pz - 1), this.connectionIdAt(px + 1, y, pz), this.connectionIdAt(px, y, pz + 1), this.connectionIdAt(px - 1, y, pz));
+        const boxes = shapes.boxes(id, mask);
+        const material = world.getChunkMaterial(type);
+        const ownLight = cellLight(worldX, y, worldZ);
+        const ownSky = cellSky(lx, y, lz);
+        for (const box of boxes) {
+            for (let f = 0; f < 6; f++) {
+                const face = MESH_FACES[f];
+                const [nx, ny, nz] = face.normal;
+                const axis = nx !== 0 ? 0 : ny !== 0 ? 1 : 2;
+                const positive = nx + ny + nz > 0;
+                const plane = box[positive ? axis + 3 : axis];
+                const onBorder = positive ? plane >= 1 - 1e-6 : plane <= 1e-6;
+                if (onBorder) {
+                    const neighborId = this.idAt(px + nx, y + ny, pz + nz);
+                    if (registry.fullCube[neighborId]) continue;
+                    if (ny === 0 && (mask & ChunkMesher.directionBit(nx, nz))) continue;
+                } else if (ChunkMesher.faceBuried(boxes, box, axis, positive)) {
+                    continue;
+                }
+
+                const bucket = bucketFor(Array.isArray(material) ? material[f] : material);
+                // Inner tops (the tread of a stair) sample their own layer, like slab tops.
+                const flatTop = f === 2 && !onBorder;
+                const v = face.corners.map((corner) => {
+                    const x = corner[0] ? box[3] : box[0];
+                    const yy = corner[1] ? box[4] : box[1];
+                    const z = corner[2] ? box[5] : box[2];
+                    const near = [x >= 0.5 ? 1 : 0, yy >= 0.5 ? 1 : 0, z >= 0.5 ? 1 : 0];
+                    const lit = onBorder || flatTop;
+                    const ao = lit ? this.vertexAO(px, y, pz, face, near, flatTop) : 3;
+                    const [u, uvV] = ChunkMesher.boxFaceUV(f, x, yy, z);
+                    return bucket.addVertex(
+                        lx + x, y + yy, lz + z, nx, ny, nz, u, uvV,
+                        AO_LEVELS[ao],
+                        lit ? this.vertexLight(px, y, pz, face, near, flatTop) : ownLight,
+                        lit ? this.vertexSky(px, y, pz, face, near, flatTop) : ownSky
+                    );
+                });
+                bucket.addTriangle(v[0], v[1], v[2], worldX, y, worldZ);
+                bucket.addTriangle(v[0], v[2], v[3], worldX, y, worldZ);
+            }
+        }
+    }
+
+    // Neighbour id for connections: the block being mined (cut out of the mesh) still counts.
+    connectionIdAt(px, y, pz) {
+        if (this.hiddenPadded >= 0 && y >= WORLD_MIN_Y && y <= WORLD_MAX_Y && this.paddedIndex(px, y, pz) === this.hiddenPadded) return this.hiddenId;
+        return this.idAt(px, y, pz);
+    }
+
+    // Connection-mask bit of the horizontal direction (dx, dz) (see SHAPE_MASK).
+    static directionBit(dx, dz) {
+        if (dz < 0) return 1;
+        if (dx > 0) return 2;
+        if (dz > 0) return 4;
+        return dx < 0 ? 8 : 0;
+    }
+
+    // Whether the face of `box` on `axis` (its max side if `positive`) is covered by another box
+    // of the same block: the point just outside the face's centre lies inside that box.
+    static faceBuried(boxes, box, axis, positive) {
+        const point = [(box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2];
+        point[axis] = positive ? box[axis + 3] + 1e-4 : box[axis] - 1e-4;
+        return boxes.some((other) => other !== box &&
+            point[0] > other[0] && point[0] < other[3] &&
+            point[1] > other[1] && point[1] < other[4] &&
+            point[2] > other[2] && point[2] < other[5]);
+    }
+
+    // Texture coordinates of a box corner on face f, laid out like full-cube faces
+    // (MESH_FACE_UVS), so a box shows the part of the texture it would cut from a whole block.
+    static boxFaceUV(f, x, y, z) {
+        switch (f) {
+            case 0: return [1 - z, y];
+            case 1: return [z, y];
+            case 2: return [x, 1 - z];
+            case 3: return [x, z];
+            case 4: return [x, y];
+            default: return [1 - x, y];
+        }
     }
 
     // Copies a cross-plane template (plants, torches) into the bucket at the block position.

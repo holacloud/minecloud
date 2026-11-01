@@ -37,17 +37,22 @@ class BlockRegistry {
         this.solid = new Uint8Array(count);
         this.transparent = new Uint8Array(count);
         this.fluid = new Uint8Array(count);
-        // Collision/visual height of solid blocks (1 for full cubes, 0.5 for slabs).
+        // Collision/visual height of solid blocks (1 for full cubes, 0.5 for slabs; for shaped
+        // blocks, the top of their collision boxes, e.g. 1.5 for fences).
         this.height = new Float32Array(count);
         // Opaque full cubes: the only blocks that hide neighbouring faces and cast AO.
         this.fullCube = new Uint8Array(count);
+        // Non-cube shapes (stairs, doors, fences...; js/blockShapes.js), meshed and collided as boxes.
+        this.shaped = new Uint8Array(count);
         for (let id = 1; id < count; id++) {
             const def = blockTypes[this.names[id]];
             this.fluid[id] = def.fluid ? 1 : 0;
             this.solid[id] = !def.fluid && def.solid !== false ? 1 : 0;
-            this.transparent[id] = def.transparent ? 1 : 0;
-            this.height[id] = this.solid[id] ? (def.height ?? 1) : 0;
-            this.fullCube[id] = this.solid[id] && !this.transparent[id] && this.height[id] === 1 ? 1 : 0;
+            // `lightPasses`: sky and torch light go through it although its material is opaque.
+            this.transparent[id] = def.transparent || def.lightPasses ? 1 : 0;
+            this.shaped[id] = def.shape ? 1 : 0;
+            this.height[id] = this.solid[id] ? (def.collisionHeight ?? def.height ?? 1) : 0;
+            this.fullCube[id] = this.solid[id] && !this.transparent[id] && !this.shaped[id] && this.height[id] === 1 ? 1 : 0;
         }
     }
 

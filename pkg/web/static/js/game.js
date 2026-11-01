@@ -729,6 +729,8 @@ class Game {
         this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
         this.cameraController.setBlockTypeGetter((x, y, z) => this.world.getBlockTypeAt(x, y, z));
         this.cameraController.setBlockHeightGetter((x, y, z) => this.world.getCollisionHeight(x, y, z));
+        // Box collisions: stairs, doors, fences and panes are not whole cubes.
+        this.cameraController.setCollisionBoxGetter((x, y, z) => this.world.getCollisionBoxes(x, y, z));
         this.applyLookSensitivity();
     }
 

@@ -39,6 +39,10 @@ Los ingredientes se gastan y el resultado va a tu inventario, a la barra y a tu 
 | ![](item:cherry_planks) Tablones de colores | 1 `*_wood` → 4 `*_planks` | [Madera y hojas](54) |
 | ![](item:cherry_sapling) Brotes | 2 `*_leaves` + 1 `dirt` | [Brotes](55) |
 | ![](item:stone_slab) Losas | 1 bloque → 2 losas | [Losas](56) |
+| ![](item:oak_stairs) Escaleras | 3 bloques → 4 escaleras | [Escaleras](196) |
+| ![](item:oak_door) Puertas y trampillas | 6 tablones → 3 puertas; 3 `planks` → 2 trampillas; 2 `iron_ore` → 1 de hierro | [Puertas y trampillas](197) |
+| ![](item:glass_pane) Paneles y barrotes | 3 `glass` → 8 paneles; 3 `iron_ore` → 8 barrotes | [Ventanas](198) |
+| ![](item:oak_fence) Vallas y portones | 2 tablones + 1 tronco → 3 vallas; 2 tablones + 2 troncos → 1 portón | [Vallas y portones](199) |
 | ![](item:red_brick) Ladrillos de colores | 1 `brick` + 1 `sand` → 4 | [Ladrillos](57) |
 | ![](item:red_wool) Lanas de colores | 2 `leaves` + 1 `flower_red` → 4 | [Lanas](58) |
 | ![](item:marble) Piedras nobles y metales | 2 `stone` o `cobblestone` + 1 `sand` → 2 | [Piedras nobles](59) |

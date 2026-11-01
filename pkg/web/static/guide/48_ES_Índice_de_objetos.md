@@ -27,6 +27,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 ## Bloques de construcción
 
 - ![](item:stone_slab) [Losas](56)
+- ![](item:oak_stairs) [Escaleras](196)
 - ![](item:brick) [Ladrillos](57)
 - ![](item:red_wool) [Lanas de colores](58)
 - ![](item:marble) [Piedras nobles y metales](59)
@@ -38,6 +39,9 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:bed) [Cama](63)
 - ![](item:sign) [Cartel](64)
 - ![](item:ladder) [Escalera de mano](65)
+- ![](item:oak_door) [Puertas y trampillas](197)
+- ![](item:glass_pane) [Ventanas](198) (paneles de vidrio y barrotes)
+- ![](item:oak_fence) [Vallas y portones](199)
 - ![](item:sound_block) [Bloque de sonido](66)
 - ![](item:spray_paint) [Pintura en spray](67)
 

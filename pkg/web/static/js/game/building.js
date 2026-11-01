@@ -175,7 +175,10 @@ Object.assign(Game.prototype, {
             this.resetMiningBlockVisual(true);
         }
 
-        const mesh = new THREE.Mesh(this.world.getGeometry(type), this.world.getMaterial(type));
+        // Shaped blocks (fences, panes) keep their connections while they shake.
+        const id = this.world.registry.id(type);
+        const mask = this.world.registry.shaped[id] ? this.world.getShapeMask(id, position.x, position.y, position.z) : null;
+        const mesh = new THREE.Mesh(this.world.getGeometry(type, mask), this.world.getMaterial(type));
         mesh.position.set(position.x + 0.5, position.y + 0.5, position.z + 0.5);
         mesh.castShadow = this.rtxModeEnabled;
         mesh.receiveShadow = this.rtxModeEnabled;
@@ -520,9 +523,37 @@ Object.assign(Game.prototype, {
             }
             if (itemDef && itemDef.itemOnly) return;
 
+            // Shaped blocks (stairs, doors...) take their state, and maybe more cells, from the click.
+            const ray = this.getInteractionRay();
+            const parts = this.world.getPlacementBlocks(blockType, newPos.x, newPos.y, newPos.z, {
+                normal, hit: hit.point, look: { x: ray.direction.x, z: ray.direction.z }
+            });
+            if (!parts) return;
             // Solid blocks may not be placed where the player stands (it would trap the camera).
-            const collisionHeight = this.world.registry.height[this.world.registry.id(blockType)];
-            if (collisionHeight > 0 && this.cameraController.intersectsBody(this.getLocalPlayerPosition(), newPos.x, newPos.y, newPos.z, collisionHeight)) return;
+            const eye = this.getLocalPlayerPosition();
+            for (const part of parts) {
+                const partId = this.world.registry.id(part.blockType);
+                if (this.world.registry.shaped[partId]) {
+                    // Only into air, water or a small plant (clicks on inner faces of a shape
+                    // point at cells that may be taken).
+                    const taken = this.world.getBlockTypeAt(part.x, part.y, part.z);
+                    if (taken && taken !== 'water' && !(this.world.isCrossGeometry(taken) && taken !== 'torch')) return;
+                    if (this.cameraController.intersectsBoxes(eye, part.x, part.y, part.z, this.world.shapes.collision(partId))) return;
+                    continue;
+                }
+                const collisionHeight = this.world.registry.height[partId];
+                if (collisionHeight > 0 && this.cameraController.intersectsBody(eye, part.x, part.y, part.z, collisionHeight)) return;
+            }
+            if (parts.length > 1 || parts[0].blockType !== blockType) {
+                if (!parts.map((part) => this.world.addBlock(part)).some(Boolean)) return;
+                this.consumeSelectedBlock();
+                this.playPlaceSound(blockType);
+                this.placeActionTimer = 0.35;
+                this.showHitIndicator();
+                this.lastSelectionUpdate = 0;
+                if (this.network.connected) parts.forEach((part) => this.network.send('blockPlace', part));
+                return;
+            }
 
             const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
             if (blockType === 'sign') {

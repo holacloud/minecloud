@@ -81,3 +81,59 @@ func TestLegacyEditsAppliedOnGeneration(t *testing.T) {
 		t.Fatalf("legacy edits requested %d times, want once per generated chunk", calls)
 	}
 }
+
+// Block states (js/blockShapes.js) live in the block name, so a door toggled open or stairs
+// facing east survive a save and reload, and replacing one state with another (opening a door)
+// leaves no trace of the old one.
+func TestBlockStateNamesPersist(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[[3]int]string{
+		{5, 9, 5}:  "oak_door",
+		{5, 10, 5}: "oak_door:upper:n:left:open",
+		{6, 10, 5}: "stone_stairs:e:top",
+		{7, 10, 5}: "oak_fence",
+	}
+	if err := s.SetBlock(5, 10, 5, "oak_door:upper:n:left:closed"); err != nil {
+		t.Fatal(err)
+	}
+	for pos, name := range want {
+		if err := s.SetBlock(pos[0], pos[1], pos[2], name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := Open(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for pos, name := range want {
+		if got, _ := reopened.Block(pos[0], pos[1], pos[2]); got != name {
+			t.Fatalf("block at %v: got %q, want %q", pos, got, name)
+		}
+	}
+	data, err := reopened.Encoded(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chunk, err := Decode(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, name := range chunk.Palette {
+		if name != "oak_door:upper:n:left:closed" {
+			continue
+		}
+		for _, id := range chunk.Blocks {
+			if int(id) == i {
+				t.Fatalf("the replaced state is still in the chunk")
+			}
+		}
+	}
+}

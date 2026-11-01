@@ -60,4 +60,4 @@ La arena es uno de los ingredientes más usados:
 
 > **En el laboratorio:** Si + 2 O → SiO₂ da 4 `glass` (ver [Química](115)).
 
-Ver también: [Recursos de los mobs](2), [Biomas](15).
+Ver también: [Ventanas](198), [Recursos de los mobs](2), [Biomas](15).

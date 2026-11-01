@@ -37,6 +37,10 @@ The ingredients are used up and the result goes to your inventory, your hotbar a
 | ![](item:cherry_planks) Coloured planks | 1 `*_wood` → 4 `*_planks` | [Wood and leaves](54) |
 | ![](item:cherry_sapling) Saplings | 2 `*_leaves` + 1 `dirt` | [Saplings](55) |
 | ![](item:stone_slab) Slabs | 1 block → 2 slabs | [Slabs](56) |
+| ![](item:oak_stairs) Stairs | 3 blocks → 4 stairs | [Stairs](196) |
+| ![](item:oak_door) Doors and trapdoors | 6 planks → 3 doors; 3 `planks` → 2 trapdoors; 2 `iron_ore` → 1 iron one | [Doors and trapdoors](197) |
+| ![](item:glass_pane) Panes and bars | 3 `glass` → 8 panes; 3 `iron_ore` → 8 bars | [Windows](198) |
+| ![](item:oak_fence) Fences and gates | 2 planks + 1 log → 3 fences; 2 planks + 2 logs → 1 gate | [Fences and gates](199) |
 | ![](item:red_brick) Coloured bricks | 1 `brick` + 1 `sand` → 4 | [Bricks](57) |
 | ![](item:red_wool) Coloured wool | 2 `leaves` + 1 `flower_red` → 4 | [Wool](58) |
 | ![](item:marble) Fine stones and metals | 2 `stone` or `cobblestone` + 1 `sand` → 2 | [Fine stones](59) |

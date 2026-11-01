@@ -60,11 +60,23 @@ Por ejemplo, un pico de oro rompe la piedra en unos 0,3 s. La [espada](71) no ac
 - No puedes poner un bloque sólido donde estás de pie.
 - Algunos objetos hacen algo especial al colocarlos: la [cama](63) fija tu punto de reaparición, el
   [cartel](64) pide un texto, un [brote](55) se convierte en árbol y un [huevo](74) hace nacer su animal.
+- **Bloques con orientación:** las [escaleras](196), las [puertas y trampillas](197) y los
+  [portones](199) se colocan según hacia dónde miras y dónde haces clic.
 
-## Losas y escalones
+## Losas, escaleras y escalones
 
 - Las [losas](56) ocupan medio bloque. **Se suben andando**, sin saltar.
+- Las [escaleras](196) son una losa con un escalón detrás: se suben andando como una rampa, un bloque por cada
+  bloque de avance.
 - Para subir un bloque entero hace falta **saltar** (Espacio).
+
+## Puertas, ventanas y vallas
+
+- **Clic derecho** abre y cierra [puertas, trampillas](197) y [portones](199), para todos los jugadores. Agachado
+  (Shift), el clic derecho pone un bloque contra ellos en vez de abrirlos.
+- Los [paneles de vidrio y los barrotes](198) y las [vallas](199) se unen solos con lo que tienen al lado.
+- Las vallas y los portones cerrados miden bloque y medio: ni tú ni los animales podéis saltarlos.
+- Los mobs no abren puertas ni portones.
 
 ## Escaleras de mano
 

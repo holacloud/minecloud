@@ -255,6 +255,10 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 193 | Robot programable | Programmable robot | robot: crafting, placing and picking up, the programming panel, safety rules (contents 0 and items index 48) |
 | 194 | Programar el robot | Programming the robot | every instruction and condition, loops for kids, examples: 3×3 tunnel, wall, staircase, bridge |
 | 195 | Retos de programación | Coding challenges | 8 challenges with hints, solutions at the end of the page |
+| 196 | Escaleras | Stairs | the 13 `*_stairs` (9 woods, stone, cobblestone, brick, stone brick); how they are placed (facing, upside down) and climbed (items index, 48) |
+| 197 | Puertas y trampillas | Doors and trapdoors | the 9 wooden `*_door`, iron_door, oak_trapdoor, iron_trapdoor; hinges, double doors, opening (items index, 48) |
+| 198 | Ventanas | Windows | glass_pane, iron_bars and how panes join their neighbours (items index, 48) |
+| 199 | Vallas y portones | Fences and gates | the 9 `*_fence` and `*_fence_gate`; the 1.5-block barrier, opening gates (items index, 48) |
 
 ### Secret pages
 

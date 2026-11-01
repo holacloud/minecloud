@@ -60,4 +60,4 @@ Sand is one of the most used ingredients:
 
 > **In the lab:** Si + 2 O → SiO₂ gives 4 `glass` (see [Chemistry](115)).
 
-See also: [Mob resources](2), [Biomes](15).
+See also: [Windows](198), [Mob resources](2), [Biomes](15).

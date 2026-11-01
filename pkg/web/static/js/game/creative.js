@@ -83,7 +83,8 @@ Object.assign(Game.prototype, {
     creativeStock() {
         if (!this.world) return;
         Object.keys(this.world.blockTypes).forEach((type) => {
-            if (type === 'air' || /^wheat_\d$/.test(type)) return;
+            // Block states (a door's upper half, stairs facing east...) are not items.
+            if (type === 'air' || /^wheat_\d$/.test(type) || this.world.blockTypes[type].variantOf) return;
             this.ensureInventorySlot(type);
             this.inventoryCounts[type] = Math.max(this.getInventoryCount(type), CREATIVE_STOCK);
         });

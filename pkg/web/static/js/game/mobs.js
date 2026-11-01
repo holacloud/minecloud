@@ -594,7 +594,12 @@ Object.assign(Game.prototype, {
             const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, feetY + 1);
             const homeDistance = Math.hypot(candidate.x - mob.userData.home.x, candidate.z - mob.userData.home.z);
             const leashed = !isChasing && !isFollowingDog && !isFollowingCat && !goal;
-            const walkable = floorY > -20 && floorY - feetY <= 1.01 && feetY - floorY <= 3;
+            // A whisker a little ahead also has to be climbable: thin barriers (fences, closed
+            // doors) are narrower than one frame's step after a hitch.
+            const aheadY = moveScale > 0
+                ? this.cameraController.getFloorY(candidate.x + Math.cos(mob.userData.direction) * 0.3, candidate.z + Math.sin(mob.userData.direction) * 0.3, feetY + 1)
+                : floorY;
+            const walkable = floorY > -20 && floorY - feetY <= 1.01 && feetY - floorY <= 3 && aheadY - feetY <= 1.01;
             if (walkable && (!leashed || homeDistance < 18 || homeDistance < Math.hypot(mob.position.x - mob.userData.home.x, mob.position.z - mob.userData.home.z))) {
                 mob.position.x = candidate.x;
                 mob.position.z = candidate.z;

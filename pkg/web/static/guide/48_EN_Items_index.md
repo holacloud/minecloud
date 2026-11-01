@@ -27,6 +27,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 ## Building blocks
 
 - ![](item:stone_slab) [Slabs](56)
+- ![](item:oak_stairs) [Stairs](196)
 - ![](item:brick) [Bricks](57)
 - ![](item:red_wool) [Coloured wool](58)
 - ![](item:marble) [Fine stones and metals](59)
@@ -38,6 +39,9 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:bed) [Bed](63)
 - ![](item:sign) [Sign](64)
 - ![](item:ladder) [Ladder](65)
+- ![](item:oak_door) [Doors and trapdoors](197)
+- ![](item:glass_pane) [Windows](198) (glass panes and iron bars)
+- ![](item:oak_fence) [Fences and gates](199)
 - ![](item:sound_block) [Sound block](66)
 - ![](item:spray_paint) [Spray paint](67)
 

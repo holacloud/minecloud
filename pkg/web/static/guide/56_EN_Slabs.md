@@ -51,4 +51,4 @@ One block makes two half blocks: nothing is wasted. Breaking a slab gives the sl
 - In architecture, a *slab* is the flat concrete plate that forms the floors and ceilings of a building.
 - The stairs of old cathedrals are worn down in the middle by centuries of footsteps.
 
-See also: [Bricks](57), [Wood and leaves](54).
+See also: [Stairs](196), [Bricks](57), [Wood and leaves](54).

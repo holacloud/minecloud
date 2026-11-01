@@ -61,11 +61,23 @@ For example, a gold pickaxe breaks stone in about 0.3 s. The [sword](71) does no
 - You cannot place a solid block where you are standing.
 - Some items do something special when placed: the [bed](63) sets your respawn point, the [sign](64) asks
   for a text, a [sapling](55) becomes a tree and an [egg](74) hatches its animal.
+- **Blocks with a direction:** [stairs](196), [doors and trapdoors](197) and [gates](199) are placed
+  according to where you look and where you click.
 
-## Slabs and steps
+## Slabs, stairs and steps
 
 - [Slabs](56) take half a block. **You walk up them**, without jumping.
+- [Stairs](196) are a slab with a step at the back: you walk up them like a ramp, one block up for every block
+  forward.
 - To climb a full block you need to **jump** (Space).
+
+## Doors, windows and fences
+
+- **Right click** opens and closes [doors, trapdoors](197) and [gates](199), for every player. Crouching
+  (Shift), a right click places a block against them instead.
+- [Glass panes and iron bars](198) and [fences](199) join up by themselves with what is next to them.
+- Fences and closed gates are a block and a half tall: neither you nor animals can jump them.
+- Mobs do not open doors or gates.
 
 ## Ladders
 

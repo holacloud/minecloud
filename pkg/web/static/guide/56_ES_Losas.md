@@ -51,4 +51,4 @@ Un bloque da dos medios bloques: no se pierde nada. Al romper una losa recuperas
 - En arquitectura, una *losa* es la placa plana de hormigón que forma los suelos y techos de un edificio.
 - Las escaleras de las catedrales antiguas están gastadas en el centro por siglos de pisadas.
 
-Ver también: [Ladrillos](57), [Madera y hojas](54).
+Ver también: [Escaleras](196), [Ladrillos](57), [Madera y hojas](54).
