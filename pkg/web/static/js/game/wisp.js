@@ -360,6 +360,11 @@ Object.assign(Game.prototype, {
         }
     },
 
+    // Now and then a caught wisp gives away a guide code (see the guide's secret pages).
+    wispWhisper() {
+        if (Math.random() < 0.35) setTimeout(() => this.receiveSystemMessage({ text: 'A fading whisper: "...U... R... 29..."' }), 1400);
+    },
+
     wispStruck(mob) {
         const w = mob.userData.wisp;
         if (!w || w.leaving || w.fade < 0.3) return;
@@ -392,8 +397,7 @@ Object.assign(Game.prototype, {
         this.emitMobEvent('defeated', mob, 'player');
         this.removeMob(mob);
         if (message) this.receiveSystemMessage({ text: message });
-        // Now and then it gives away a guide code as it bursts (see the guide's secret pages).
-        if (Math.random() < 0.35) setTimeout(() => this.receiveSystemMessage({ text: 'A fading whisper: "...U... R... 29..."' }), 1400);
+        this.wispWhisper();
     },
 
     wispUpdateSparks(delta) {

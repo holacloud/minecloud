@@ -43,7 +43,7 @@ solo **engaña**. Si la sigues, te llevará hacia el agua profunda o al borde de
 - **Corre (sprint) hacia él:** huye más rápido que tú andando, pero se cansa enseguida. Cuando afloje, alcánzalo.
 - **No lo sigas a ciegas:** mira dónde pisas, sobre todo cerca de ríos y barrancos de noche.
 - Su `glow_dust` con `wood` da 4 `torch`.
-- Quien atrapa un fuego fatuo con las manos (tocándolo o golpeándolo), a veces le oye **susurrar un código** al
+- Quien atrapa un fuego fatuo (tocándolo, golpeándolo o con la red), a veces le oye **susurrar un código** al
   apagarse. Lee el chat con atención.
 
 ## Curiosidades

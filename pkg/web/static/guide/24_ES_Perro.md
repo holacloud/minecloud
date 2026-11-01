@@ -43,8 +43,8 @@ todas partes y hasta te defiende.
 - La amistad espontánea no se guarda al recargar la página. **Domestícalo** para que sea tuyo de verdad: se
   guarda, se puede sentar con un clic derecho con la mano vacía y puede tener cachorros.
 - Es, con el gato, el animal más fácil de domesticar: 1 de cada 2 intentos.
-- Si vas a las colinas rocosas, llévate el perro: te ayudará con los monstruos de cueva. Pero lo que derrota el
-  perro no deja botín.
+- Si vas a las colinas rocosas, llévate el perro: te ayudará con los monstruos de cueva, y lo que derrota el
+  perro cuenta como tuyo: deja su botín.
 
 ## Curiosidades
 

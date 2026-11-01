@@ -626,6 +626,9 @@ Object.assign(Game.prototype, {
                     enemy.userData.direction = Math.atan2(enemy.position.z - mob.position.z, enemy.position.x - mob.position.x);
                     mob.userData.defendCooldown = 0.8;
                     if (enemy.userData.health <= 0) {
+                        // The dog fights for its owner: it counts as the player's victory (loot,
+                        // bestiary, vultures).
+                        this.emitMobEvent('defeated', enemy, 'player');
                         this.removeMob(enemy);
                         this.receiveSystemMessage({ text: 'Your dog defended you from the cave monster' });
                     }

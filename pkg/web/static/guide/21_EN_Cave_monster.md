@@ -40,7 +40,7 @@ It is the toughest of the game's first creatures.
 - Since it stops 4 blocks away, you choose when to fight: step in, strike and step back.
 - **Your dog defends you:** if a [Dog](24) that is your friend gets within 2 blocks of a cave monster, it bites
   it (4 damage less than every second) until it is gone. The message "Your dog defended you from the cave
-  monster" appears. Mind you: if the dog defeats it, there is no loot.
+  monster" appears. What the dog defeats counts as yours: it leaves its loot.
 - Its `leather` is the base of the `warm_coat` (see [Leather](76)), and `glow_dust` makes 4 torches from a single
   `wood`.
 

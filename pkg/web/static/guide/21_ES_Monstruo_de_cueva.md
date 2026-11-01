@@ -40,7 +40,7 @@ tiene unos brazos larguísimos. Es la criatura más resistente de las primeras d
 - Como se para a 4 bloques, puedes elegir cuándo pelear: acércate, da un golpe y retrocede.
 - **Tu perro te defiende:** si un [Perro](24) amigo tuyo está a menos de 2 bloques de un monstruo de cueva, le
   muerde (4 de daño cada menos de un segundo) hasta acabar con él. Sale el mensaje "Your dog defended you from the
-  cave monster". Eso sí: si lo derrota el perro, no deja botín.
+  cave monster". Lo que derrota el perro cuenta como tuyo: deja su botín.
 - Su `leather` es la base del `warm_coat` (ver [Cuero](76)), y el `glow_dust` hace 4 antorchas con una sola
   `wood`.
 

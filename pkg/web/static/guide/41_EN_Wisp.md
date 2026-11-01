@@ -43,7 +43,7 @@ attacks: it only **deceives**. Follow it and it will lead you to deep water or t
 - **Sprint at it:** it flees faster than you walk, but it tires quickly. When it slows down, catch it.
 - **Don't follow it blindly:** watch your step, especially near rivers and ravines at night.
 - Its `glow_dust` with `wood` makes 4 `torch`.
-- Those who catch a wisp with their own hands (touching or hitting it) sometimes hear it **whisper a code** as it
+- Those who catch a wisp (touching it, hitting it or with the net) sometimes hear it **whisper a code** as it
   fades. Read the chat carefully.
 
 ## Trivia

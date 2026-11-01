@@ -43,8 +43,8 @@ follows you everywhere and even defends you.
 - The spontaneous friendship is not kept when the page reloads. **Tame it** to make it truly yours: it is saved,
   it can sit with an empty-handed right click and it can have puppies.
 - Together with the cat, it is the easiest animal to tame: 1 try in 2.
-- If you head for the rocky hills, take the dog: it will help you with cave monsters. But whatever the dog
-  defeats leaves no loot.
+- If you head for the rocky hills, take the dog: it will help you with cave monsters, and whatever the dog
+  defeats counts as yours: it leaves its loot.
 
 ## Trivia
 

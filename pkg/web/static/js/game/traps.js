@@ -823,6 +823,7 @@ Object.assign(Game.prototype, {
             this.removeMob(mob);
             this.playTone({ frequency: getMobSpecies(species).tone || 600, duration: 0.08, type: 'triangle', volume: 0.012, release: 0.06 });
         }
+        if (species === 'wisp' && this.wispWhisper) this.wispWhisper();
         this.addInventory(reward);
         this.receiveSystemMessage({ text: `Caught with the net: ${this.trapsItemName(reward)}` });
         return true;

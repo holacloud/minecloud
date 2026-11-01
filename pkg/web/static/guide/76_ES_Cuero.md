@@ -35,8 +35,8 @@ El pelo se saca con las tijeras de muchos animales sin hacerles daño: mira [Pel
 - **Curtir es el camino pacífico:** con unas `iron_shears` y una granja de cabras o perros, tendrás cuero sin entrar
   en ninguna cueva.
 - Un abrigo cálido completo cuesta 3 cueros + 2 pelos = **8 pelos y 3 maderas** si todo sale del curtido.
-- Un **perro** que te sigue ataca a los monstruos de cueva, pero si es él quien acaba con uno **no hay botín**:
-  solo cuenta si lo derrotas tú.
+- Un **perro** que te sigue ataca a los monstruos de cueva, y si es él quien acaba con uno **cuenta como tuyo**:
+  el cuero cae igual.
 
 ## Curiosidades
 

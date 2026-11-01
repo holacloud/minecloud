@@ -35,8 +35,8 @@ Fur is trimmed with shears from many animals without hurting them: see [Fur](77)
 - **Tanning is the peaceful way:** with `iron_shears` and a farm of goats or dogs you get leather without setting
   foot in a cave.
 - A whole warm coat costs 3 leather + 2 fur = **8 fur and 3 wood** if everything comes from tanning.
-- A **dog** that follows you attacks cave monsters, but if the dog finishes one off there is **no loot**: it only
-  counts when you defeat it.
+- A **dog** that follows you attacks cave monsters, and when the dog finishes one off it **counts as yours**: the
+  leather drops just the same.
 
 ## Trivia
 
