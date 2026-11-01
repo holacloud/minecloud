@@ -38,7 +38,9 @@ Object.assign(Game.prototype, {
         ctx.arc(64, 64, 36, 0, Math.PI * 2);
         ctx.fill();
 
-        const shadowOffset = (phase / 7 - 0.5) * 72;
+        // Phase 0 is the full moon (shadow out of the disc) and 4 the new moon; the shadow
+        // slides in from one side and out of the other (astronomy.js names the phases).
+        const shadowOffset = phase === 0 ? 200 : (phase < 4 ? 1 - phase / 4 : -(phase - 4) / 4) * 72;
         ctx.fillStyle = '#07111f';
         ctx.beginPath();
         ctx.arc(64 + shadowOffset, 64, 36, 0, Math.PI * 2);

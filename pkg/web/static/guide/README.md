@@ -176,6 +176,9 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 114 | Barómetro y anemómetro | Barometer and anemometer | barometer, anemometer (items index, 48) |
 | 130 | Genética | Genetics | genes of tamed animals: dominance, Punnett squares, mutations (in the contents, 0) |
 | 131 | Cuaderno de cría | Breeding notebook | breeding_notebook (in the items index, 48) |
+| 132 | Astronomía | Astronomy | the night sky (js/game/astronomy.js): constellations, named stars, planets, moon phases, shooting stars, comet and red moon (in the contents, 0) |
+| 133 | Telescopio | Telescope | telescope (in the items index, 48) |
+| 134 | Carta estelar | Star chart | star_chart (in the items index, 48) |
 
 ### Secret pages
 
@@ -189,3 +192,4 @@ Codes are hinted at in other pages or in the world; no index lists them.
 | SH4D | Antes del alba | Before dawn | a shadow sometimes whispers it as it dissolves at dawn |
 | Z3US | El corazón de la tormenta | The heart of the storm | carved in the rubble of a toppled storm golem |
 | M0LE | Bajo tus pies | Beneath your feet | an acrostic on the giant mole page (47) |
+| C0M3T | Lo que cruza la noche | What crosses the night | the sky spells it when you watch the comet or the red moon through the telescope; page 132 hints at it |

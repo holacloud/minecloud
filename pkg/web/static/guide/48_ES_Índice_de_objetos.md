@@ -51,6 +51,8 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:iron_shears) [Tijeras de hierro](73)
 - ![](item:bucket) [Cubo](111)
 - ![](item:breeding_notebook) [Cuaderno de cría](131)
+- ![](item:telescope) [Telescopio](133)
+- ![](item:star_chart) [Carta estelar](134)
 
 ## Instrumentos del tiempo
 

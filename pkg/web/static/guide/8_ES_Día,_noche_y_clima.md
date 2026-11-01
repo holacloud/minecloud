@@ -9,6 +9,7 @@
   reloj de la pantalla también te orientan.
 
 El sol y la luna son cubos que cruzan el cielo. La luna cambia de **fase** cada día, en un ciclo de 8 días.
+De noche salen las estrellas: ver [Astronomía](132).
 
 ## Al caer la noche
 

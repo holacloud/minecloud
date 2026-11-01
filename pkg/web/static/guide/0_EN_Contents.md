@@ -34,6 +34,7 @@ the pages.
 - [Growing wheat](107): the hoe, seeds, the wheat field and bread.
 - [Genetics](130): genes, Punnett squares, mutations and the [breeding notebook](131).
 - [Weather station](112): thermometer, barometer, anemometer and the rain forecast.
+- [Astronomy](132): stars, constellations, planets, moon phases and rare events.
 
 ---
 

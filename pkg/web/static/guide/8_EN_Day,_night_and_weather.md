@@ -9,6 +9,7 @@
   clock on screen help you too.
 
 The sun and the moon are cubes that cross the sky. The moon changes **phase** every day, in an 8-day cycle.
+At night the stars come out: see [Astronomy](132).
 
 ## When night falls
 

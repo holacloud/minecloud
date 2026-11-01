@@ -51,6 +51,8 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:iron_shears) [Iron shears](73)
 - ![](item:bucket) [Bucket](111)
 - ![](item:breeding_notebook) [Breeding notebook](131)
+- ![](item:telescope) [Telescope](133)
+- ![](item:star_chart) [Star chart](134)
 
 ## Weather instruments
 
