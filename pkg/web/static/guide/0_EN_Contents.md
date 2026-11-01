@@ -35,6 +35,7 @@ the pages.
 - [Genetics](130): genes, Punnett squares, mutations and the [breeding notebook](131).
 - [Weather station](112): thermometer, barometer, anemometer and the rain forecast.
 - [Astronomy](132): stars, constellations, planets, moon phases and rare events.
+- [Chemistry](115): the lab bench, the [periodic table](116) and the reactions.
 
 ---
 

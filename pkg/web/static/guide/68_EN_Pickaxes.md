@@ -50,4 +50,7 @@ and ×1.76 for gold.
 - The builders of Stonehenge dug with picks made of **red deer antlers**.
 - Pickaxes have barely changed shape in thousands of years: a pointed head on a long handle.
 
+> **Even faster:** the **steel pickaxe** (`steel_pickaxe`, ×3.6) is forged from steel ingots made at the
+> [lab bench](117): see [Steel tools](128).
+
 See also: [Mining and building](10), [Shovels](69), [Axes](70).

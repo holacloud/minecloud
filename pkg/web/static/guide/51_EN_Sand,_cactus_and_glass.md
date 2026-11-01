@@ -58,4 +58,6 @@ Sand is one of the most used ingredients:
 - When lightning strikes sand it melts it into glass tubes called **fulgurites**.
 - The saguaro cactus can live for more than 150 years and grow over 12 metres tall.
 
+> **In the lab:** Si + 2 O → SiO₂ gives 4 `glass` (see [Chemistry](115)).
+
 See also: [Mob resources](2), [Biomes](15).

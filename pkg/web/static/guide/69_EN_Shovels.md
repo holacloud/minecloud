@@ -44,4 +44,7 @@ Select it and dig with a left click. **It never wears out.** It speeds up only t
 - The first shovels were made from the **shoulder blades** of cattle or deer.
 - The deepest hole ever dug, the Kola Superdeep Borehole in Russia, went down more than 12 kilometres.
 
+> **Even faster:** the **steel shovel** (`steel_shovel`, ×3.6) is forged from steel ingots made at the
+> [lab bench](117): see [Steel tools](128).
+
 See also: [Grass and dirt](49), [Sand, cactus and glass](51), [Pickaxes](68).

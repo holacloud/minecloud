@@ -44,4 +44,7 @@ Selecciónala y cava con clic izquierdo. **No se gasta nunca.** Acelera solo tre
 - Las primeras palas se hacían con **omóplatos** de vaca o de ciervo.
 - La excavación más profunda jamás hecha, el pozo de Kola (Rusia), llegó a más de 12 kilómetros.
 
+> **Aún más rápida:** la **pala de acero** (`steel_shovel`, ×3,6) se forja con lingotes de acero de la
+> [mesa de laboratorio](117): ver [Herramientas de acero](128).
+
 Ver también: [Hierba y tierra](49), [Arena, cactus y vidrio](51), [Picos](68).

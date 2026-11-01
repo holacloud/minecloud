@@ -728,8 +728,10 @@ class WorldRenderer {
             side: alphaCutout ? THREE.DoubleSide : THREE.FrontSide
         };
 
+        // Glowing blocks (registerBlockType `glow`: emissive strength) light up their own texture.
+        const glow = def.glow ? { emissive: 0xffffff, emissiveMap: common.map, emissiveIntensity: def.glow } : null;
         if (!this.rtxModeEnabled) {
-            return new THREE.MeshLambertMaterial(common);
+            return new THREE.MeshLambertMaterial(glow ? { ...common, ...glow, emissiveIntensity: Math.min(1, def.glow) } : common);
         }
 
         const props = this.getRTXMaterialProps(faceSpec.pattern);
@@ -745,7 +747,8 @@ class WorldRenderer {
             metalness: props.metalness,
             envMapIntensity: props.metalness > 0.5 || props.roughness < 0.2 ? 1 : 0.45,
             emissive: props.emissive || 0x000000,
-            emissiveMap: props.emissive ? common.map : null
+            emissiveMap: props.emissive ? common.map : null,
+            ...glow
         });
     }
 

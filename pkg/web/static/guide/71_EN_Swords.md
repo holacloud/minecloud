@@ -63,4 +63,7 @@ They are the cheapest tools: they need **2** of the material instead of 3.
 - Toledo, in Spain, was famous for centuries for its steel swords.
 - Real gold swords were only ceremonial: gold is far too soft for fighting.
 
+> **Even stronger:** the **steel sword** (`steel_sword`) deals **9** damage and is forged from steel ingots made
+> at the [lab bench](117): see [Steel tools](128).
+
 See also: [Health, food and dangers](9), [Pickaxes](68).

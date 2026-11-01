@@ -35,6 +35,7 @@ página.
 - [Genética](130): genes, cuadros de Punnett, mutaciones y el [cuaderno de cría](131).
 - [Estación meteorológica](112): termómetro, barómetro, anemómetro y el pronóstico de la lluvia.
 - [Astronomía](132): estrellas, constelaciones, planetas, fases de la luna y sucesos raros.
+- [Química](115): la mesa de laboratorio, la [tabla periódica](116) y las reacciones.
 
 ---
 

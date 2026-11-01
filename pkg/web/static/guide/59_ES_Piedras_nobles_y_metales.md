@@ -63,4 +63,7 @@ La obsidiana es el bloque **más duro** que se puede romper en el juego. Para to
 - La cúpula del Panteón de Roma, de **hormigón** sin armar, sigue en pie después de casi 2.000 años.
 - El **cobre** se vuelve verde con el tiempo: por eso la Estatua de la Libertad es verde.
 
+> **En el laboratorio** también se puede obtener caliza: es una de las reacciones por descubrir de la
+> [Química](115). Pista: las conchas y la tiza guardan calcio, carbono y mucho oxígeno.
+
 Ver también: [Bloques de elementos](60), [Ladrillos](57).

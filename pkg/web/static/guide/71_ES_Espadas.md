@@ -63,4 +63,7 @@ Son las herramientas más baratas: piden **2** de material en vez de 3.
 - Toledo fue famosa durante siglos por sus espadas de acero.
 - Las espadas de oro de verdad solo eran ceremoniales: el oro es demasiado blando para luchar.
 
+> **Aún más fuerte:** la **espada de acero** (`steel_sword`) hace **9** de daño y se forja con lingotes de acero
+> de la [mesa de laboratorio](117): ver [Herramientas de acero](128).
+
 Ver también: [Salud, comida y peligros](9), [Picos](68).

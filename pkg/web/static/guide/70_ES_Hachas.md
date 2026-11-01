@@ -46,4 +46,7 @@ hojas no cuentan como madera: para ellas, mejor la [azada](72) o las [tijeras](7
   la humanidad.
 - Ötzi, el hombre de los hielos de hace 5.300 años, llevaba un hacha de **cobre** casi puro.
 
+> **Aún más rápida:** el **hacha de acero** (`steel_axe`, ×3,6) se forja con lingotes de acero de la
+> [mesa de laboratorio](117): ver [Herramientas de acero](128).
+
 Ver también: [Madera y hojas](54), [Picos](68).

@@ -52,4 +52,7 @@ quedan.
 - La pintura en spray la inventó Edward Seymour en 1949 para pintar radiadores; la idea fue de su mujer, Bonnie.
 - Los colores fluorescentes parecen brillar porque convierten luz ultravioleta, que no vemos, en luz visible.
 
+> **En el laboratorio** también sale pintura: es una de las reacciones por descubrir de la [Química](115).
+> Pista: el blanco más blanco de los pintores sale del titanio cuando abraza a dos oxígenos.
+
 Ver también: [Jugar con otros](13).

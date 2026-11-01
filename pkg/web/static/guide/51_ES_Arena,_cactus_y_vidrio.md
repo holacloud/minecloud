@@ -58,4 +58,6 @@ La arena es uno de los ingredientes más usados:
 - Cuando un rayo cae en la arena, la funde y forma tubos de vidrio llamados **fulguritas**.
 - El cactus saguaro puede vivir más de 150 años y superar los 12 metros de altura.
 
+> **En el laboratorio:** Si + 2 O → SiO₂ da 4 `glass` (ver [Química](115)).
+
 Ver también: [Recursos de los mobs](2), [Biomas](15).

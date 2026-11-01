@@ -51,4 +51,7 @@ much as you like. With the can in your hand, the block inspector shows the colou
 - Spray paint was invented by Edward Seymour in 1949 to paint radiators; the idea came from his wife, Bonnie.
 - Fluorescent colours seem to glow because they turn ultraviolet light, which we cannot see, into visible light.
 
+> Paint can also be made **in the lab**: it is one of the reactions to discover in [Chemistry](115).
+> Hint: painters' whitest white comes from titanium hugging two oxygens.
+
 See also: [Playing together](13).

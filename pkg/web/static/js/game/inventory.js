@@ -271,7 +271,8 @@ Object.assign(Game.prototype, {
         const blockDef = this.getItemDefinition(blockType);
         if (!toolDef || !toolDef.toolType || !blockDef) return 1;
 
-        const tier = { wood: 1.45, stone: 1.9, iron: 2.6, gold: 3.2 }[toolDef.toolMaterial] || 1;
+        // Tools registered from other files may bring their own tier (miningTier).
+        const tier = toolDef.miningTier || { wood: 1.45, stone: 1.9, iron: 2.6, gold: 3.2 }[toolDef.toolMaterial] || 1;
         const category = blockDef.category || (blockType.includes('wood') || blockType.includes('planks') ? 'wood' : blockType.includes('leaves') ? 'leaves' : blockType === 'dirt' || blockType === 'sand' ? 'soil' : 'stone');
         const effective = (toolDef.toolType === 'pickaxe' && (category === 'stone' || category === 'element')) ||
             (toolDef.toolType === 'shovel' && (category === 'soil' || blockType === 'dirt' || blockType === 'sand' || blockType === 'grass')) ||

@@ -51,4 +51,7 @@ piedra, ×1,43 el de hierro y ×1,76 el de oro.
 - Los constructores de Stonehenge cavaban con picos hechos de **astas de ciervo**.
 - La palabra «pico» viene del pico de las aves, que también golpean para abrir agujeros.
 
+> **Aún más rápido:** el **pico de acero** (`steel_pickaxe`, ×3,6) se forja con lingotes de acero de la
+> [mesa de laboratorio](117): ver [Herramientas de acero](128).
+
 Ver también: [Minar y construir](10), [Palas](69), [Hachas](70).

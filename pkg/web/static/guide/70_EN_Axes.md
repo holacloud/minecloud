@@ -44,4 +44,7 @@ count as wood: for them, better a [hoe](72) or the [shears](73).
 - Stone **hand axes** are over 1.7 million years old: one of humanity's oldest tools.
 - Ötzi, the 5,300-year-old iceman, carried an axe of almost pure **copper**.
 
+> **Even faster:** the **steel axe** (`steel_axe`, ×3.6) is forged from steel ingots made at the
+> [lab bench](117): see [Steel tools](128).
+
 See also: [Wood and leaves](54), [Pickaxes](68).

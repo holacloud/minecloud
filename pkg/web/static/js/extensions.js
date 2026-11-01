@@ -85,6 +85,7 @@ function registerFrameUpdate(updater) {
 //   cross                         drawn as crossed planes like tall grass (alpha cutout, sways)
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
+//   glow                          emissive strength: the block lights up its own texture
 const BLOCK_TYPES = {};
 function registerBlockType(id, definition) {
     BLOCK_TYPES[id] = definition;

@@ -61,4 +61,7 @@ Obsidian is the **hardest** breakable block in the game. For all of them, the ri
 - The dome of the Pantheon in Rome, made of unreinforced **concrete**, still stands after almost 2,000 years.
 - **Copper** turns green over time: that is why the Statue of Liberty is green.
 
+> Limestone can also be made **in the lab**: it is one of the reactions to discover in
+> [Chemistry](115). Hint: shells and chalk hold calcium, carbon and plenty of oxygen.
+
 See also: [Element blocks](60), [Bricks](57).
