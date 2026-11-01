@@ -54,6 +54,8 @@ nube de tormenta** girando sobre la cabeza. Solo camina por el mundo **mientras 
 - **Golpea seguido:** mientras está enfadado no llama a los rayos, así que no se cura.
 - **Aléjate de tus bloques de metal** durante una tormenta con golems cerca.
 - Es una buena fuente de `iron_ore` sin minar. Ver [Día, noche y clima](8).
+- **El barómetro te avisa:** "Storm brewing" significa que con la lluvia de hoy puede venir un golem. Ver
+  [Barómetro y anemómetro](114).
 
 ## Curiosidades
 

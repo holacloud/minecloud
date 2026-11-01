@@ -171,6 +171,9 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 109 | Trigo | Wheat | wheat |
 | 110 | Pan | Bread | bread |
 | 111 | Cubo | Bucket | bucket, water_bucket (in the items index, 48) |
+| 112 | Estación meteorológica | Weather station | weather_station; overview of the instruments, how the forecast and the wind work (contents 0 and items index 48) |
+| 113 | Termómetro | Thermometer | thermometer (items index, 48) |
+| 114 | Barómetro y anemómetro | Barometer and anemometer | barometer, anemometer (items index, 48) |
 | 130 | Genética | Genetics | genes of tamed animals: dominance, Punnett squares, mutations (in the contents, 0) |
 | 131 | Cuaderno de cría | Breeding notebook | breeding_notebook (in the items index, 48) |
 

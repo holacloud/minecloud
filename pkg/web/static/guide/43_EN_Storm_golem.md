@@ -53,6 +53,8 @@ swirling over its head. It only walks the world **while it rains**, and it draws
 - **Keep hitting:** while it is angry it does not call the lightning, so it does not heal.
 - **Keep away from your metal blocks** during a storm with golems around.
 - It is a good source of `iron_ore` without mining. See [Day, night and weather](8).
+- **A barometer warns you:** "Storm brewing" means a golem can come with today's rain. See
+  [Barometer and anemometer](114).
 
 ## Trivia
 

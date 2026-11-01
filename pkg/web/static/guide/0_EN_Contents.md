@@ -33,6 +33,7 @@ the pages.
 - [Curiosities](98): oddities and secrets of the world.
 - [Growing wheat](107): the hoe, seeds, the wheat field and bread.
 - [Genetics](130): genes, Punnett squares, mutations and the [breeding notebook](131).
+- [Weather station](112): thermometer, barometer, anemometer and the rain forecast.
 
 ---
 

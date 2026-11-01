@@ -41,7 +41,9 @@ drops what it carries in its mouth.
 - Now and then rain brings a [storm golem](43) (about one storm in three): it is born from a lightning strike
   and crumbles when the rain stops. Rain does not bring shadows.
 
-Rain happens in your browser: another player may not see the same rain at the same time as you.
+The day's shower is decided at dawn from the day number, so **it rains at the same time for every player**, and
+a [barometer](114) can tell you in the morning whether and when it will rain. The **wind** blows harder before and
+during the rain and slants it: see [Weather station](112).
 
 ## Sleeping
 

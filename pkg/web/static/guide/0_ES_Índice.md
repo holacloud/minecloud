@@ -33,6 +33,7 @@ página.
 - [Curiosidades](98): rarezas y secretos del mundo.
 - [Cultivar trigo](107): la azada, las semillas, el trigal y el pan.
 - [Genética](130): genes, cuadros de Punnett, mutaciones y el [cuaderno de cría](131).
+- [Estación meteorológica](112): termómetro, barómetro, anemómetro y el pronóstico de la lluvia.
 
 ---
 

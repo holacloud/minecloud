@@ -52,6 +52,12 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:bucket) [Cubo](111)
 - ![](item:breeding_notebook) [Cuaderno de cría](131)
 
+## Instrumentos del tiempo
+
+- ![](item:weather_station) [Estación meteorológica](112)
+- ![](item:thermometer) [Termómetro](113)
+- ![](item:barometer) [Barómetro y anemómetro](114)
+
 ## Huevos
 
 - ![](item:sheep_egg) [Huevos de mobs](74)

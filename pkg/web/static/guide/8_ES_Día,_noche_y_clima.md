@@ -41,7 +41,9 @@ lleva en la boca.
 - De vez en cuando la lluvia trae un [golem de tormenta](43) (más o menos una tormenta de cada tres): nace de
   un rayo y, cuando para de llover, se desmorona. La lluvia no trae sombras.
 
-La lluvia ocurre en tu navegador: puede que otro jugador no vea la misma lluvia a la vez que tú.
+El chaparrón del día se decide al amanecer a partir del número de día, así que **llueve a la vez para todos los
+jugadores**, y un [barómetro](114) te dice por la mañana si va a llover y cuándo. El **viento** sopla más fuerte
+antes de la lluvia y mientras llueve, y la inclina: ver [Estación meteorológica](112).
 
 ## Dormir
 

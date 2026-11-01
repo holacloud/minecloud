@@ -52,6 +52,12 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:bucket) [Bucket](111)
 - ![](item:breeding_notebook) [Breeding notebook](131)
 
+## Weather instruments
+
+- ![](item:weather_station) [Weather station](112)
+- ![](item:thermometer) [Thermometer](113)
+- ![](item:barometer) [Barometer and anemometer](114)
+
 ## Eggs
 
 - ![](item:sheep_egg) [Mob eggs](74)

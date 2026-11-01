@@ -341,3 +341,27 @@ se guarda en el navegador.
 | 2 `bait_seeds` | `wheat_seeds` |
 
 El `wheat` doma y enamora a ovejas, cerdos, camellos, cabras y caballos; las `wheat_seeds`, a los patos.
+
+## Tiempo y estación meteorológica
+
+El chaparrón del día (uno de cada veinte días) se decide al amanecer a partir del número de día: llueve a la vez
+para todos y se puede pronosticar. El viento es el mismo para todos (sigue al reloj del mundo): cambia de dirección
+despacio, sopla más en lo alto y antes y durante la lluvia, y casi nada bajo techo o en cuevas.
+
+| Resultado | Ingredientes |
+|---|---|
+| `thermometer` | 2 `glass` + 1 `element_hg` |
+| `barometer` | 1 `glass` + 1 `element_hg` + 2 `planks` |
+| `anemometer` | 1 `copper_block` + 1 `iron_ore` + 1 `planks` |
+| `weather_station` | 1 `thermometer` + 1 `barometer` + 1 `anemometer` + 1 `glass` + 2 `planks` |
+
+- **En la mano**, cada instrumento muestra sus lecturas en un panel abajo a la derecha; **clic derecho** las
+  escribe en el chat.
+- **Termómetro:** según el bioma, la hora, la altitud, la lluvia, el agua y las cuevas.
+- **Barómetro:** presión y tendencia, y el pronóstico ("Rain expected today around 16:15", "Clear skies
+  today"); la presión baja en las tres horas previas al chaparrón, deprisa en la última. Avisa "Storm brewing"
+  cuando puede nacer un golem de tormenta.
+- **Anemómetro:** velocidad (m/s, km/h, Beaufort) y de dónde viene el viento.
+- **Estación:** se monta encima de un bloque; la veleta y las cazoletas siguen al viento y el pluviómetro mide la
+  lluvia del día. Al mirarla muestra todo; clic derecho, informe en el chat; Mayúsculas + clic derecho, se recoge.
+  Se guarda en el navegador.

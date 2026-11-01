@@ -3,6 +3,22 @@
 
 const RAIN_DAY_CHANCE = 0.05;
 
+// The day's shower, picked from the world day: { start, end } as timeOfDay fractions, or null on
+// a dry day. Every player gets the same weather, a time sync never re-rolls it, and the
+// barometer (weather.js) can forecast it.
+function environmentRainWindow(day, cycleDuration) {
+    const random = (salt) => {
+        let h = Math.imul(day | 0, 374761393) ^ Math.imul(salt, 668265263);
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296;
+    };
+    if (random(1) >= RAIN_DAY_CHANCE) return null;
+    const length = (60 + random(2) * 90) / cycleDuration;
+    const start = random(3) * (1 - length);
+    return { start, end: start + length };
+}
+
 Object.assign(Game.prototype, {
     isNightTime() {
         const hour = ((this.timeOfDay * 24) + 6) % 24;
@@ -233,12 +249,17 @@ Object.assign(Game.prototype, {
     updateWeather(delta) {
         if (!this.rainSystem || !this.rainPositions) return;
 
-        // Rain is rare: on 5% of days a single shower falls at some point of the day.
-        if (this.rainDayTime === undefined || this.timeOfDay < this.rainDayTime) {
-            const length = (60 + Math.random() * 90) / this.dayNightCycleDuration;
-            const start = Math.random() * (1 - length);
-            this.rainWindow = Math.random() < RAIN_DAY_CHANCE ? { start, end: start + length } : null;
+        // Rain is rare: on 5% of days a single shower falls at some point of the day. The local
+        // clock may reach dawn a moment before the server's day count follows: count it ahead.
+        const syncedDay = this.worldDay || 0;
+        if (this.rainDayTime > 0.9 && this.timeOfDay < 0.1 && syncedDay === this.rainSyncedDay) this.rainDayAhead = syncedDay + 1;
+        if (this.rainDayAhead !== undefined && syncedDay >= this.rainDayAhead) this.rainDayAhead = undefined;
+        const day = this.rainDayAhead ?? syncedDay;
+        if (day !== this.rainWindowDay) {
+            this.rainWindowDay = day;
+            this.rainWindow = environmentRainWindow(day, this.dayNightCycleDuration);
         }
+        this.rainSyncedDay = syncedDay;
         this.rainDayTime = this.timeOfDay;
         const shower = this.rainWindow;
         this.weatherState = shower && this.timeOfDay >= shower.start && this.timeOfDay < shower.end ? 'rain' : 'clear';
