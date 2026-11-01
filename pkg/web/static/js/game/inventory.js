@@ -41,6 +41,19 @@ Object.assign(Game.prototype, {
         }));
     },
 
+    // A saved inventory can hold items that no longer exist (removed in an update, or from a
+    // test build): drop them so nothing tries to draw an unknown item.
+    pruneUnknownInventoryTypes() {
+        if (!this.world || !this.world.blockTypes) return;
+        const known = (type) => Boolean(this.world.blockTypes[type]);
+        const selectedType = this.inventory[this.selectedSlot];
+        this.inventory = this.inventory.filter(known);
+        this.hotbarPinnedTypes = (this.hotbarPinnedTypes || []).filter(known);
+        if (this.hotbarPrimaryType && !known(this.hotbarPrimaryType)) this.hotbarPrimaryType = null;
+        const index = this.inventory.indexOf(selectedType);
+        this.selectedSlot = index >= 0 ? index : 0;
+    },
+
     getBlockDisplayName(type) {
         const def = this.world && this.world.blockTypes[type];
         return def ? def.name : type;
@@ -52,6 +65,7 @@ Object.assign(Game.prototype, {
     },
 
     initHotbar() {
+        this.pruneUnknownInventoryTypes();
         const hotbar = document.getElementById('hotbar');
         hotbar.innerHTML = '';
         this.hotbarSlotElements = [];
