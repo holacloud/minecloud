@@ -995,6 +995,8 @@ class WorldRenderer {
         this.activeChunks = new Set();
         this.lastPlayerChunkX = null;
         this.lastPlayerChunkZ = null;
+        // A new connection starts with no focus on the server: send it again.
+        this.sentChunkFocus = null;
     }
 
     // Columns are kept a little beyond the render distance so turning around is cheap.
@@ -1225,8 +1227,17 @@ class WorldRenderer {
 
     update(playerX, playerZ) {
         this.processRebuildQueue();
-        this.flushChunkRequests();
         const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
+        // The server serves pending chunks nearest to this point first and forgets requests
+        // beyond the retention radius; mirror that so they are requested again on return. It is
+        // sent whenever it changes and again after every (re)connection (a new connection starts
+        // focused on 0,0), always before the requests it should order.
+        const focusKey = `${playerChunkX},${playerChunkZ}`;
+        if (this.chunkSource && this.chunkSource.connected() && this.sentChunkFocus !== focusKey) {
+            this.sentChunkFocus = focusKey;
+            this.chunkSource.focus(playerChunkX, playerChunkZ, this.renderDistance + 2);
+        }
+        this.flushChunkRequests();
 
         if (playerChunkX === this.lastPlayerChunkX && playerChunkZ === this.lastPlayerChunkZ) {
             return;
@@ -1234,11 +1245,6 @@ class WorldRenderer {
 
         this.lastPlayerChunkX = playerChunkX;
         this.lastPlayerChunkZ = playerChunkZ;
-        // The server serves pending chunks nearest to this point first and forgets requests
-        // beyond the retention radius; mirror that so they are requested again on return.
-        if (this.chunkSource && this.chunkSource.connected()) {
-            this.chunkSource.focus(playerChunkX, playerChunkZ, this.renderDistance + 2);
-        }
         for (const key of Array.from(this.generatingChunks)) {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             if (!this.isWithinRetention(chunkX, chunkZ)) this.generatingChunks.delete(key);

@@ -148,14 +148,19 @@ func (s *chunkStream) distance(c [2]int) int {
 	return max(abs(c[0]-s.focusX), abs(c[1]-s.focusZ))
 }
 
+// next is the pending chunk closest to the focus as the crow flies (ties broken by position,
+// so the order is stable), which loads the world in growing circles around the player.
 func (s *chunkStream) next() ([2]int, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var best [2]int
+	bestDistance := 0
 	found := false
 	for c := range s.pending {
-		if !found || s.distance(c) < s.distance(best) {
-			best, found = c, true
+		dx, dz := c[0]-s.focusX, c[1]-s.focusZ
+		distance := dx*dx + dz*dz
+		if !found || distance < bestDistance || (distance == bestDistance && (c[0] < best[0] || (c[0] == best[0] && c[1] < best[1]))) {
+			best, bestDistance, found = c, distance, true
 		}
 	}
 	if found {
