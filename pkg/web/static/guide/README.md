@@ -252,6 +252,9 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 190 | Hierro meteórico | Meteoric iron | meteoric_iron |
 | 191 | Planos | Blueprints | blueprint, written_blueprint, the blueprint library (L), projecting and building, sharing codes (contents 0 and items index 48) |
 | 192 | Cinta métrica | Measuring tape | measuring_tape (items index, 48) |
+| 193 | Robot programable | Programmable robot | robot: crafting, placing and picking up, the programming panel, safety rules (contents 0 and items index 48) |
+| 194 | Programar el robot | Programming the robot | every instruction and condition, loops for kids, examples: 3×3 tunnel, wall, staircase, bridge |
+| 195 | Retos de programación | Coding challenges | 8 challenges with hints, solutions at the end of the page |
 
 ### Secret pages
 

@@ -122,6 +122,12 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:battery) [Batería de litio](189)
 - ![](item:meteoric_iron) [Hierro meteórico](190)
 
+## Robótica
+
+- ![](item:robot) [Robot programable](193)
+- ![](item:robot) [Programar el robot](194)
+- ![](item:robot) [Retos de programación](195)
+
 ## Equipo
 
 - ![](item:warm_coat) [Abrigo cálido](90)

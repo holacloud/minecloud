@@ -122,6 +122,12 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:battery) [Lithium battery](189)
 - ![](item:meteoric_iron) [Meteoric iron](190)
 
+## Robotics
+
+- ![](item:robot) [Programmable robot](193)
+- ![](item:robot) [Programming the robot](194)
+- ![](item:robot) [Coding challenges](195)
+
 ## Gear
 
 - ![](item:warm_coat) [Warm coat](90)
