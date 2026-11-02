@@ -40,6 +40,8 @@ página.
 - [Robot programable](193): prográmalo con bloques ([cómo](194)) y supera los [retos](195).
 - [Electricidad](200): [generadores](201), [cables](202), [baterías](203), [consumidores](204), el
   [multímetro](205) y [proyectos](206).
+- [Interruptores](207), [sensores](208) y [puertas lógicas](209): [memoria y retardos](210),
+  [circuitos de ejemplo](211) y [lógica para curiosos](212).
 
 ---
 

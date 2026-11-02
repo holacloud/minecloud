@@ -266,6 +266,12 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 204 | Consumidores | Consumers | electric_lamp, grow_lamp, electric_motor (and their `:on` states) |
 | 205 | Multímetro | Multimeter | multimeter: how to read a network |
 | 206 | Proyectos eléctricos | Electric projects | 5 builds: crank lamp, night lights, windmill farm, water mill, night greenhouse |
+| 207 | Interruptores | Switches | lever, push_button, pressure_plate (and their `:on` states); a switch cuts or joins networks (contents 0 and items index 48) |
+| 208 | Sensores | Sensors | daylight_sensor (day/night mode), proximity_sensor, rain_sensor |
+| 209 | Puertas lógicas | Logic gates | and_gate, or_gate, xor_gate, not_gate: faces, signals, truth tables, timing |
+| 210 | Memoria y retardos | Memory and delays | delay_gate (1–4 s), latch (SR); the blinker |
+| 211 | Circuitos de ejemplo | Example circuits | 4 builds: street lights, staircase light (XOR), automatic door (OR + delay), alarm (AND) |
+| 212 | Lógica para curiosos | Logic for the curious | bits, binary, Boole and Shannon, the half adder, gates in computers |
 | 213 | Anguila eléctrica | Electric eel | mob page of `eel` (arrived 2026-11-02), in the mobs index (16); knifefish, 860 V, electrocytes |
 | 214 | Tanque de anguila | Eel tank | eel_tank (`eel_tank:full` with an eel), eel_bucket: catching, the 25/50 W generator, feeding (items index 48, generators 201) |
 

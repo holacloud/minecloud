@@ -842,6 +842,8 @@ func handleMessage(client *Client, msg Message) {
 
 	case "powerFeed":
 		handlePowerFeed(msg.Payload)
+	case "logicPress":
+		handleLogicPress(msg.Payload)
 
 	case "sleepInBed":
 		stateMu.Lock()

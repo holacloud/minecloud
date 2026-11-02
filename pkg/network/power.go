@@ -21,20 +21,25 @@ import (
 //   charge.
 // - Blocks that touch on a face (6 neighbours) belong to the same network. Every electric
 //   block conducts, so a lamp next to a solar panel works without a wire.
-// - Once a second, for each network: generation (W) from the sun, the wind, the water and
-//   the hand cranks (and eels in their tanks); demand (W) of every consumer; then the
-//   batteries take the surplus or cover the deficit. A network is all or nothing: if generation plus what the batteries
-//   can give does not cover the whole demand, every consumer goes off (a blackout) and what
-//   is generated charges the batteries.
+// - Five times a second (powerTickInterval), for each network: generation (W) from the sun,
+//   the wind, the water, the hand cranks and eels in their tanks; demand (W) of every consumer; then the batteries
+//   take the surplus or cover the deficit (energy scaled by the tick's length). A network
+//   is all or nothing: if generation plus what the batteries can give does not cover the
+//   whole demand, every consumer goes off (a blackout) and what is generated charges the
+//   batteries.
 // - What players see is part of the block name, changed through the chunk store and a normal
 //   blockPlace broadcast (only when it changes): "electric_lamp:on", "battery_block:3"
 //   (charge in quarters). Lit lamps then light the world like torches.
 // - A motor that switches on opens the iron doors and trapdoors it touches; switching off
 //   closes them. Lit grow lamps make the wheat under them grow twice as fast (crops.go).
+// - Logic blocks (logic.go: levers, buttons, plates, sensors, gates) are switches: they
+//   conduct only while they are on, and a gate never conducts through its input faces. So
+//   networks are built from face neighbours that both conduct towards each other (joins),
+//   and rebuilt (relink) whenever a switch changes.
 //
 // powerKinds is the one table of electric blocks. js/game/electricity.js mirrors it
-// (ELECTRIC_KINDS) and test/js/electricity.test.js checks both agree. Logic blocks (gates,
-// sensors) will join it with the role "logic".
+// (ELECTRIC_KINDS) and test/js/electricity.test.js checks both agree. Logic blocks are added
+// to it by logic.go (init) with the role "logic", mirrored by js/game/logic.js.
 
 type powerRole string
 
@@ -43,7 +48,7 @@ const (
 	powerConductor powerRole = "conductor"
 	powerStorage   powerRole = "storage"
 	powerConsumer  powerRole = "consumer"
-	// powerLogic is reserved for logic gates and sensors: they conduct like a wire today.
+	// powerLogic: switches, sensors and gates (logic.go); they conduct only while on.
 	powerLogic powerRole = "logic"
 )
 
@@ -83,7 +88,8 @@ var powerKinds = map[string]powerKind{
 }
 
 const (
-	powerTickInterval = time.Second
+	// Logic (switches, gates) needs to feel immediate, so the grid runs 5 times a second.
+	powerTickInterval = 200 * time.Millisecond
 	// A network bigger than this does not work at all (the multimeter says so).
 	powerMaxNetwork = 512
 	// The most electric blocks the server tracks in the whole world.
@@ -148,6 +154,8 @@ type powerEnvironment struct {
 	Days float64 // worldDay + timeOfDay
 	Time float64 // timeOfDay: 0 dawn, 0.25 noon, 0.5 dusk, 0.75 midnight
 	Rain float64 // 0..1
+	// Players' eye positions, for pressure plates and proximity sensors (logic.go).
+	Players [][3]float64
 }
 
 // Surroundings of a generator, looked at every powerEnvRefresh.
@@ -168,24 +176,31 @@ type powerNetwork struct {
 	capacity float64
 	powered  bool
 	sources  map[string]float64
+	// signal: the network has power available or holds a switched-on logic block (logic.go).
+	signal bool
 }
 
+// size: members of the network when the hold was taken. A network whose shape changed (a
+// switch joined or split it) starts afresh, so a light switch acts at once.
 type powerHold struct {
 	powered bool
 	since   time.Time
+	size    int
 }
 
 // powerGrid holds every electric block and the networks they form.
 type powerGrid struct {
 	blocks    map[powerPos]*PowerBlock
-	dirty     bool // networks must be rebuilt
+	dirty     bool // blocks were added or removed: networks must be rebuilt (and saved)
+	relink    bool // a switch changed: networks must be rebuilt (nothing new to save)
 	networks  []*powerNetwork
 	netOf     map[powerPos]*powerNetwork
 	env       map[powerPos]*powerSurroundings
 	crank     map[powerPos]time.Time
 	holds     map[powerPos]powerHold
 	growLamps map[powerPos]bool
-	// Battery charge changed since the last save.
+	logic     *logicState
+	// Battery charge (or a logic block's name) changed since the last save.
 	energyChanged bool
 }
 
@@ -198,6 +213,7 @@ func newPowerGrid() *powerGrid {
 		crank:     make(map[powerPos]time.Time),
 		holds:     make(map[powerPos]powerHold),
 		growLamps: make(map[powerPos]bool),
+		logic:     newLogicState(),
 	}
 }
 
@@ -222,6 +238,9 @@ func (g *powerGrid) track(x, y, z int, name string) bool {
 		return true
 	}
 	if had && old.Kind == kind {
+		if old.Name != name && powerKinds[kind].Role == powerLogic {
+			g.relink = true // a lever set from a blueprint, say
+		}
 		old.Name = name
 		return false
 	}
@@ -247,7 +266,8 @@ func (g *powerGrid) forget(p powerPos) {
 
 var powerSteps = [6]powerPos{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}
 
-// rebuild groups the blocks into networks (flood fill over face neighbours).
+// rebuild groups the blocks into networks (flood fill over face neighbours that join, see
+// logic.go: switches that are off do not).
 func (g *powerGrid) rebuild() {
 	g.networks = g.networks[:0]
 	g.netOf = make(map[powerPos]*powerNetwork, len(g.blocks))
@@ -269,7 +289,7 @@ func (g *powerGrid) rebuild() {
 			network.members = append(network.members, p)
 			for _, step := range powerSteps {
 				n := powerPos{p[0] + step[0], p[1] + step[1], p[2] + step[2]}
-				if g.blocks[n] == nil || g.netOf[n] != nil {
+				if g.blocks[n] == nil || g.netOf[n] != nil || !g.joins(p, n) {
 					continue
 				}
 				g.netOf[n] = network
@@ -290,6 +310,7 @@ func (g *powerGrid) rebuild() {
 		}
 	}
 	g.dirty = false
+	g.relink = false
 }
 
 func powerLess(a, b powerPos) bool {
@@ -403,8 +424,11 @@ func powerWindWatts(speed, peak float64) float64 {
 func (g *powerGrid) tick(w cropWorld, env powerEnvironment, now time.Time, dt float64) ([]Block, bool) {
 	save := false
 	if g.dirty {
+		g.followLogicNames(w)
 		g.rebuild()
 		save = true
+	} else if g.relink {
+		g.rebuild()
 	}
 	for p, until := range g.crank {
 		if !now.Before(until) {
@@ -462,7 +486,21 @@ func (g *powerGrid) tick(w cropWorld, env powerEnvironment, now time.Time, dt fl
 		}
 	}
 	g.growLamps = litGrowLamps
+	updates = append(updates, g.logicStep(w, env, now)...)
 	return updates, save
+}
+
+// followLogicNames reads the logic blocks' names from the world before the networks are
+// rebuilt (after loading world.json, a lever switched in a saved chunk is what counts).
+func (g *powerGrid) followLogicNames(w cropWorld) {
+	for _, b := range g.blocks {
+		if powerKinds[b.Kind].Role != powerLogic {
+			continue
+		}
+		if current, err := w.Block(b.X, b.Y, b.Z); err == nil && current != b.Name {
+			g.track(b.X, b.Y, b.Z, current)
+		}
+	}
 }
 
 // simulate balances one network for dt seconds (see the header).
@@ -501,12 +539,15 @@ func (g *powerGrid) simulate(network *powerNetwork, w cropWorld, env powerEnviro
 	}
 	// Switching on again waits powerSwitchHold after the last change (no flicker in gusts).
 	hold, known := g.holds[network.root]
+	if known && hold.size != len(network.members) {
+		known = false
+	}
 	if known && powered && !hold.powered && now.Sub(hold.since) < powerSwitchHold {
 		powered = false
 		_, stored = powerBalance(network.gen, 0, network.stored, network.capacity, rate, dt)
 	}
 	if !known || hold.powered != powered {
-		g.holds[network.root] = powerHold{powered: powered, since: now}
+		g.holds[network.root] = powerHold{powered: powered, since: now, size: len(network.members)}
 	}
 	network.powered = powered && network.demand > 0
 	if len(batteries) > 0 {
@@ -691,6 +732,7 @@ type powerReport struct {
 	Stored    float64            `json:"stored"`
 	Capacity  float64            `json:"capacity"`
 	Powered   bool               `json:"powered"`
+	Signal    bool               `json:"signal"`
 	Counts    map[string]int     `json:"counts,omitempty"`
 	Sources   map[string]float64 `json:"sources,omitempty"`
 	// What this block gives or takes right now (W).
@@ -722,6 +764,7 @@ func (g *powerGrid) probe(x, y, z int, w cropWorld, env powerEnvironment, now ti
 	report.Stored = network.stored
 	report.Capacity = network.capacity
 	report.Powered = network.powered
+	report.Signal = network.signal
 	report.Sources = network.sources
 	report.Counts = make(map[string]int)
 	for _, member := range network.members {
@@ -865,7 +908,9 @@ func currentPowerEnvironment() powerEnvironment {
 	stateMu.RLock()
 	day, time := gameState.WorldDay, gameState.WorldTime
 	stateMu.RUnlock()
-	return powerEnvironmentAt(day, time)
+	env := powerEnvironmentAt(day, time)
+	env.Players = logicPlayers()
+	return env
 }
 
 func runPowerGrid() {

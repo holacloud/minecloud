@@ -40,6 +40,8 @@ the pages.
 - [Programmable robot](193): program it with blocks ([how](194)) and beat the [challenges](195).
 - [Electricity](200): [generators](201), [wires](202), [batteries](203), [consumers](204), the
   [multimeter](205) and [projects](206).
+- [Switches](207), [sensors](208) and [logic gates](209): [memory and delays](210), [example circuits](211) and
+  [logic for the curious](212).
 
 ---
 

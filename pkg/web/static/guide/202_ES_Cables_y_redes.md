@@ -28,6 +28,8 @@ Todos los bloques eléctricos que se tocan **cara con cara** (este, oeste, norte
 - Una red es todo o nada: si no puede alimentar a **todos** los consumidores, se apagan todos (ver
   [Electricidad](200)). Si quieres que las lámparas sigan encendidas cuando arranca un motor, ponlos en **redes
   distintas**.
+- Los **interruptores, sensores y puertas lógicas** son la excepción: solo conducen **mientras están encendidos**.
+  Una palanca apagada parte la red en dos (ver [Interruptores](207)).
 
 ## ¿Y el más y el menos?
 

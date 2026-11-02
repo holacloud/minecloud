@@ -23,6 +23,7 @@ Switch to another item to put it away.
 | **Stored** | energy in the batteries, in kJ and Wh, and the percentage |
 | **Batteries last** / **Full in** | how long until the batteries run out (or fill up) at the current pace |
 | **Status** | **ON** (every consumer works) or **OFF** (blackout: not enough power) |
+| **Signal** | on logic blocks, or when it carries one: whether [gate](209) inputs touching this network are on |
 | **Network** | how many blocks it has, and of which kinds |
 
 If it says the network is **too big**, it has more than 512 blocks and does not work: split it (see

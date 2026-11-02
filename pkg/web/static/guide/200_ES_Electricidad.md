@@ -36,18 +36,20 @@ julios, más generación que demanda) son las de verdad; solo los tamaños está
 | **Conductores** | la llevan de bloque en bloque | ![](item:copper_wire) ![](item:wire_post) [Cables y redes](202) |
 | **Almacenes** | guardan la energía para después | ![](item:battery_block) [Baterías](203) |
 | **Consumidores** | la usan: luz, plantas, movimiento | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) [Consumidores](204) |
+| **Lógica** | encienden y apagan redes: a mano, solos o pensando | ![](item:lever) ![](item:daylight_sensor) ![](item:and_gate) [Interruptores](207), [Sensores](208), [Puertas lógicas](209) |
 
 Y una herramienta para ver qué pasa: el ![](item:multimeter) [multímetro](205).
 
 ## Redes
 
 Los bloques eléctricos que **se tocan cara con cara** (de lado, por arriba o por abajo) forman una **red**. Todos
-los bloques eléctricos conducen, así que una lámpara pegada a una placa solar ya funciona; los cables solo sirven
+los bloques eléctricos conducen (los de lógica, solo cuando están encendidos: una palanca apagada parte la red en
+dos), así que una lámpara pegada a una placa solar ya funciona; los cables solo sirven
 para llevar la electricidad más lejos. Dos grupos que no se tocan son dos redes distintas y no comparten nada.
 
 ## Cómo lo calcula el juego
 
-El **servidor** hace las cuentas para todos, **una vez por segundo**, en cada red:
+El **servidor** hace las cuentas para todos, **5 veces por segundo**, en cada red:
 
 1. **Generación**: suma lo que da ahora mismo cada generador (el sol, el viento, el agua...).
 2. **Demanda**: suma lo que necesita cada consumidor.
@@ -72,6 +74,8 @@ los jugadores ven lo mismo y se guarda con el mundo. Jugando sin conexión a un 
 4. [Consumidores](204): lámparas, lámparas de cultivo y motores.
 5. [Multímetro](205): mide tu red.
 6. [Proyectos eléctricos](206): cinco construcciones para probar.
+7. [Interruptores](207), [Sensores](208), [Puertas lógicas](209), [Memoria y retardos](210) y
+   [Circuitos de ejemplo](211): enciende luces y puertas a mano, solas o con lógica.
 
 Ver también: [Química](115) (células solares, bombillas y baterías de litio), [Estación meteorológica](112) (el
 viento).

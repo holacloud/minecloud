@@ -23,6 +23,7 @@ con el multímetro en la mano. Cambia de objeto para guardarlo.
 | **Stored** (guardado) | la energía de las baterías, en kJ y Wh, y el porcentaje |
 | **Batteries last** / **Full in** | cuánto falta para que las baterías se vacíen (o se llenen) a este ritmo |
 | **Status** (estado) | **ON** (todos los consumidores funcionan) u **OFF** (apagón: no llega la potencia) |
+| **Signal** (señal) | en bloques de lógica, o si la lleva: si las entradas de las [puertas](209) que tocan esta red están encendidas |
 | **Network** (red) | cuántos bloques tiene y de qué tipos |
 
 Si dice que la red es **demasiado grande** (*too big*), tiene más de 512 bloques y no funciona: divídela (ver

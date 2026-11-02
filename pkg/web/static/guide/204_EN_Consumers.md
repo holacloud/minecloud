@@ -28,8 +28,8 @@ say how. You do not need them: every consumer also has a recipe with ordinary ma
 A glass globe on a copper base. With power it **lights up** and lights the area around it **like a torch**. Without
 power it is a dark globe.
 
-It stays lit whenever its network has power, **day or night**: in the daytime it spends energy for nothing. (Light
-sensors will come in a later update.)
+It stays lit whenever its network has power, **day or night**: in the daytime it spends energy for nothing. To light it only at night, give it a
+[daylight sensor](208) in night mode, or a [switch](207).
 
 ## Grow lamp
 

@@ -36,18 +36,20 @@ real ones; only the sizes are made to fit the game.
 | **Conductors** | carry it from block to block | ![](item:copper_wire) ![](item:wire_post) [Wires and networks](202) |
 | **Storage** | keeps the energy for later | ![](item:battery_block) [Batteries](203) |
 | **Consumers** | use it: light, plants, motion | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) [Consumers](204) |
+| **Logic** | switch networks on and off: by hand, by themselves or by thinking | ![](item:lever) ![](item:daylight_sensor) ![](item:and_gate) [Switches](207), [Sensors](208), [Logic gates](209) |
 
 And one tool to see what is going on: the ![](item:multimeter) [multimeter](205).
 
 ## Networks
 
 Electric blocks that **touch face to face** (side, top or bottom) form one **network**. Every electric block
-conducts, so a lamp right next to a solar panel already works; wires just take the electricity further. Two groups
+conducts (logic blocks only while they are on: a lever that is off cuts the network in two), so a lamp right next to
+a solar panel already works; wires just take the electricity further. Two groups
 that do not touch are two separate networks, and they share nothing.
 
 ## How the game works it out
 
-The **server** does the maths for everybody, **once a second**, for each network:
+The **server** does the maths for everybody, **5 times a second**, for each network:
 
 1. **Generation**: it adds up what every generator gives right now (the sun, the wind, the water...).
 2. **Demand**: it adds up what every consumer needs.
@@ -72,5 +74,7 @@ electricity.
 4. [Consumers](204): lamps, grow lamps and motors.
 5. [Multimeter](205): measure your network.
 6. [Electric projects](206): five builds to try.
+7. [Switches](207), [Sensors](208), [Logic gates](209), [Memory and delays](210) and [Example circuits](211):
+   switch lights and doors by hand, by themselves or with logic.
 
 See also: [Chemistry](115) (solar cells, light bulbs and lithium batteries), [Weather station](112) (the wind).

@@ -27,6 +27,8 @@ All the electric blocks that touch **face to face** (east, west, north, south, a
 - Two separate networks share nothing: a battery on one does not help the other.
 - A network is all or nothing: if it cannot feed **every** consumer, they all switch off (see
   [Electricity](200)). If you want the lamps to stay lit when a motor starts, put them on **separate networks**.
+- **Switches, sensors and logic gates** are the exception: they conduct only **while they are on**. A lever that is
+  off splits the network in two (see [Switches](207)).
 
 ## And the plus and minus?
 

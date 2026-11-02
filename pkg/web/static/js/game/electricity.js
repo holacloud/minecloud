@@ -1,5 +1,5 @@
 // Electricity: generators, wires, batteries and consumers joined into networks.
-// - The simulation runs on the SERVER (pkg/network/power.go), once a second, for everyone:
+// - The simulation runs on the SERVER (pkg/network/power.go), 5 times a second, for everyone:
 //   generation (W) from solar panels, wind turbines, water wheels and hand cranks; demand (W)
 //   of lamps, grow lamps and motors; batteries (J) take the surplus or cover the deficit. A
 //   network is all or nothing: when it cannot feed every consumer, all of them go off.
@@ -19,7 +19,8 @@
 // - A motor that switches on opens the iron doors and trapdoors it touches; off, it closes
 //   them. Lit grow lamps make wheat up to 4 blocks below them grow twice as fast.
 // ELECTRIC_KINDS mirrors powerKinds in power.go (test/js/electricity.test.js checks it). Logic
-// gates and sensors will join with role 'logic' (they conduct; see the report in power.go).
+// blocks (levers, sensors, gates) join it with role 'logic' from js/game/logic.js: switches
+// that conduct only while on (pkg/network/logic.go).
 // Mixed into Game.prototype; hooked through js/extensions.js.
 
 const ELECTRIC_KINDS = {
@@ -589,6 +590,8 @@ Object.assign(Game.prototype, {
         let status = 'no consumers';
         if (r.demand > 0) status = r.powered ? 'ON: every consumer has power' : 'OFF: not enough power (blackout)';
         lines.push(['Status', status]);
+        // Logic (js/game/logic.js): whether this network switches gate inputs on.
+        if (kind.role === 'logic' || r.signal) lines.push(['Signal', r.signal ? 'ON (gate inputs touching it are on)' : 'off']);
         const counts = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1])
             .map(([name, count]) => `${count} ${this.electricKindName(name)}`).join(', ');
         lines.push(['Network', `${r.blocks} blocks: ${counts}`]);

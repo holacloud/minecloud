@@ -30,8 +30,8 @@ receta con materiales corrientes.
 Un globo de vidrio sobre una base de cobre. Con corriente **se enciende** e ilumina lo que tiene alrededor **como una
 antorcha**. Sin corriente es un globo apagado.
 
-Está encendida siempre que su red tiene corriente, **de día o de noche**: de día gasta energía para nada. (Los
-sensores de luz llegarán en una próxima versión.)
+Está encendida siempre que su red tiene corriente, **de día o de noche**: de día gasta energía para nada. Para que se
+encienda solo de noche, ponle un [sensor de luz diurna](208) en modo noche, o un [interruptor](207).
 
 ## Lámpara de cultivo
 
