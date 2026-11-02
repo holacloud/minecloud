@@ -2,3 +2,6 @@
 /.idea/
 /data/
 
+
+# Server data written next to wherever the server runs (never commit it)
+data/
