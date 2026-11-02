@@ -118,6 +118,7 @@ type persistedWorldState struct {
 	RemovedBlocks map[string]bool       `json:"removedBlocks"`
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
 	Crops         map[string]Crop       `json:"crops,omitempty"`
+	Power         map[string]PowerBlock `json:"power,omitempty"`
 }
 
 var (
@@ -156,6 +157,7 @@ func Initialize() error {
 
 	go runWorldClock()
 	go runCropGrowth()
+	go runPowerGrid()
 	go runVoiceMesh()
 	return nil
 }
@@ -238,6 +240,7 @@ func loadWorldState() error {
 	}
 	stateMu.Unlock()
 	loadCrops(persisted.Crops)
+	loadPower(persisted.Power)
 
 	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
 	return nil
@@ -265,6 +268,7 @@ func saveWorldState() {
 	}
 	stateMu.RUnlock()
 	persisted.Crops = snapshotCrops()
+	persisted.Power = snapshotPower()
 
 	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
 		log.Printf("Failed to create world state directory: %v", err)
@@ -829,6 +833,12 @@ func handleMessage(client *Client, msg Message) {
 
 	case "creativeAuth":
 		handleCreativeAuth(client, msg.Payload)
+
+	case "powerProbe":
+		handlePowerProbe(client, msg.Payload)
+
+	case "powerCrank":
+		handlePowerCrank(msg.Payload)
 
 	case "sleepInBed":
 		stateMu.Lock()

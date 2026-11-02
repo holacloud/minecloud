@@ -16,7 +16,7 @@ At the [lab bench](117), with a reaction you have to **discover**: it shows as "
 
 ## What it is for
 
-For now it is a **collectible**: keep it for when machines and electricity arrive.
+Two solar cells make two [solar panels](201), a generator of [electricity](200).
 
 ## Trivia
 

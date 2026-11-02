@@ -38,6 +38,8 @@ página.
 - [Química](115): la mesa de laboratorio, la [tabla periódica](116) y las reacciones.
 - [Planos](191): medir con la [cinta métrica](192), guardar, compartir y volver a construir.
 - [Robot programable](193): prográmalo con bloques ([cómo](194)) y supera los [retos](195).
+- [Electricidad](200): [generadores](201), [cables](202), [baterías](203), [consumidores](204), el
+  [multímetro](205) y [proyectos](206).
 
 ---
 

@@ -259,6 +259,13 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 197 | Puertas y trampillas | Doors and trapdoors | the 9 wooden `*_door`, iron_door, oak_trapdoor, iron_trapdoor; hinges, double doors, opening (items index, 48) |
 | 198 | Ventanas | Windows | glass_pane, iron_bars and how panes join their neighbours (items index, 48) |
 | 199 | Vallas y portones | Fences and gates | the 9 `*_fence` and `*_fence_gate`; the 1.5-block barrier, opening gates (items index, 48) |
+| 200 | Electricidad | Electricity | energy vs power, the four roles, networks, how the server simulates them (contents 0 and items index 48) |
+| 201 | Generadores | Generators | solar_panel, wind_turbine, water_wheel, hand_crank, with their numbers |
+| 202 | Cables y redes | Wires and networks | copper_wire, wire_post; what a network is, the 512-block limit |
+| 203 | Baterías | Batteries | battery_block (and its charge states `battery_block:1` … `:4`) |
+| 204 | Consumidores | Consumers | electric_lamp, grow_lamp, electric_motor (and their `:on` states) |
+| 205 | Multímetro | Multimeter | multimeter: how to read a network |
+| 206 | Proyectos eléctricos | Electric projects | 5 builds: crank lamp, night lights, windmill farm, water mill, night greenhouse |
 
 ### Secret pages
 

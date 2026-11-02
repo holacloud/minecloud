@@ -16,7 +16,7 @@ En la [mesa de laboratorio](117), con una reacción que hay que **descubrir**: e
 
 ## Para qué sirve
 
-De momento es una pieza de **colección**: guárdala para cuando lleguen las máquinas y la electricidad.
+Con dos células solares se fabrican dos [placas solares](201), un generador de [electricidad](200).
 
 ## Curiosidades
 

@@ -86,6 +86,7 @@ function registerFrameUpdate(updater) {
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
 //   glow                          emissive strength: the block lights up its own texture
+//   lightEmission                 gives torch light to the world around it (lit lamps)
 //   faces entries                 may also be { pattern, tint } to tint a shared pattern
 //   textureOf                     another block type whose textures it reuses (slabs, stairs)
 //   shape                         a non-cube shape from registerBlockShape ('stairs', 'door',

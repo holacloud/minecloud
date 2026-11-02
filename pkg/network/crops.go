@@ -132,15 +132,33 @@ func growCropsLocked(registry map[string]Crop, w cropWorld, now time.Time, rng f
 	return grown, changed
 }
 
-// setBlockTracked writes a player edit to the chunk store and keeps the crop registry in step.
-// cropsChanged tells the caller to save world.json.
-func setBlockTracked(x, y, z int, blockType string) (cropsChanged bool, err error) {
+// boostCropsLocked brings the next stage of every crop under a lit grow lamp (power.go) one
+// tick nearer, so those crops grow about twice as fast. Returns whether any changed.
+func boostCropsLocked(registry map[string]Crop, lit func(x, y, z int) bool, step time.Duration) bool {
+	changed := false
+	for key, crop := range registry {
+		if lit(crop.X, crop.Y, crop.Z) {
+			crop.NextGrowth -= int64(step / time.Second)
+			registry[key] = crop
+			changed = true
+		}
+	}
+	return changed
+}
+
+// setBlockTracked writes a player edit to the chunk store and keeps the crop and power
+// registries in step. changed tells the caller to save world.json.
+func setBlockTracked(x, y, z int, blockType string) (changed bool, err error) {
 	cropMu.Lock()
 	defer cropMu.Unlock()
+	powerMu.Lock()
+	defer powerMu.Unlock()
 	if err := chunkStore.SetBlock(x, y, z, blockType); err != nil {
 		return false, err
 	}
-	return trackBlockLocked(crops, x, y, z, blockType, time.Now(), rand.Float64), nil
+	cropsChanged := trackBlockLocked(crops, x, y, z, blockType, time.Now(), rand.Float64)
+	powerChanged := grid.track(x, y, z, blockType)
+	return cropsChanged || powerChanged, nil
 }
 
 func runCropGrowth() {
@@ -148,6 +166,7 @@ func runCropGrowth() {
 	defer ticker.Stop()
 	for range ticker.C {
 		cropMu.Lock()
+		boostCropsLocked(crops, powerGrowLampNear, cropTickInterval)
 		grown, changed := growCropsLocked(crops, chunkStore, time.Now(), rand.Float64)
 		cropMu.Unlock()
 		if changed {

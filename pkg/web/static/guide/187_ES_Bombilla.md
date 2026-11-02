@@ -18,6 +18,8 @@ En la [mesa de laboratorio](117), con una reacción que hay que **descubrir**: e
 
 - Se coloca como cualquier bloque. Rotura: **0,2 s**.
 - Brilla por sí misma en todos los modos (con bloom en Ultra), pero **no ilumina** su alrededor: para eso, la [antorcha](62).
+- Con vidrio y cable de cobre se convierte en dos [lámparas eléctricas](204), que sí iluminan cuando tienen
+  corriente.
 
 ## Curiosidades
 

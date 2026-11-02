@@ -38,6 +38,8 @@ the pages.
 - [Chemistry](115): the lab bench, the [periodic table](116) and the reactions.
 - [Blueprints](191): measure with the [measuring tape](192), save, share and build again.
 - [Programmable robot](193): program it with blocks ([how](194)) and beat the [challenges](195).
+- [Electricity](200): [generators](201), [wires](202), [batteries](203), [consumers](204), the
+  [multimeter](205) and [projects](206).
 
 ---
 

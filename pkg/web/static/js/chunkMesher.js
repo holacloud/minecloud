@@ -20,7 +20,8 @@ const MAX_BLOCK_LIGHT = 14;
 // How far (in blocks) open sky still lights cells sideways, e.g. into a cave mouth.
 const SKY_REACH = 3;
 
-// Torch light around one chunk: a breadth-first flood from every torch within reach,
+// Torch light around one chunk: a breadth-first flood from every torch (and other light
+// emitter, registry.lightEmitter) within reach,
 // losing one level per block and stopped by opaque full cubes.
 class LightField {
     constructor(world, chunkX, chunkZ) {
@@ -32,7 +33,7 @@ class LightField {
         this.empty = true;
 
         const registry = world.registry;
-        const torchId = registry.id('torch');
+        const emitters = registry.lightEmitter;
         // Light never travels further than one chunk, so the 3x3 neighbourhood suffices.
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
@@ -43,7 +44,7 @@ class LightField {
                 const column = world.columns.get(world.chunkKey(chunkX + dx, chunkZ + dz));
                 this.neighborhood.push(column || null);
                 if (!column) continue;
-                for (const index of column.getEmitters(torchId)) {
+                for (const index of column.getEmitters(emitters)) {
                     const x = (chunkX + dx) * CHUNK_SIZE + index % CHUNK_SIZE;
                     const z = (chunkZ + dz) * CHUNK_SIZE + Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
                     const y = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;

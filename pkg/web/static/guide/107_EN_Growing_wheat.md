@@ -35,6 +35,7 @@ day (a day lasts 4 minutes). It grows by day and by night, and also while you ar
 - **Farmland** breaks in 0.45 s and gives **dirt** back; a [shovel](69) speeds it up. If you break the farmland
   under a crop, the crop pops off too and drops what it would drop.
 - Wheat only grows on farmland: if the soil under it stops being farmland, it stops growing.
+- Under a lit [grow lamp](204) (up to 4 blocks above and 2 to the sides) it grows **twice as fast**.
 - The crop is not solid: you walk through it, like tall grass. It breaks in 0.1 s.
 - Seeds only go on farmland. Right clicking anything else with them just reminds you to till first.
 

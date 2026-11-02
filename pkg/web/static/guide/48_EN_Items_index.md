@@ -126,6 +126,16 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:battery) [Lithium battery](189)
 - ![](item:meteoric_iron) [Meteoric iron](190)
 
+## Electricity
+
+- ![](item:solar_panel) [Electricity](200)
+- ![](item:wind_turbine) [Generators](201): solar_panel, wind_turbine, water_wheel, hand_crank
+- ![](item:copper_wire) [Wires and networks](202): copper_wire, wire_post
+- ![](item:battery_block) [Batteries](203)
+- ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor
+- ![](item:multimeter) [Multimeter](205)
+- ![](item:electric_motor) [Electric projects](206)
+
 ## Robotics
 
 - ![](item:robot) [Programmable robot](193)

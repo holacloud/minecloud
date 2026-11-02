@@ -126,6 +126,16 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:battery) [Batería de litio](189)
 - ![](item:meteoric_iron) [Hierro meteórico](190)
 
+## Electricidad
+
+- ![](item:solar_panel) [Electricidad](200)
+- ![](item:wind_turbine) [Generadores](201): solar_panel, wind_turbine, water_wheel, hand_crank
+- ![](item:copper_wire) [Cables y redes](202): copper_wire, wire_post
+- ![](item:battery_block) [Baterías](203)
+- ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor
+- ![](item:multimeter) [Multímetro](205)
+- ![](item:electric_motor) [Proyectos eléctricos](206)
+
 ## Robótica
 
 - ![](item:robot) [Robot programable](193)

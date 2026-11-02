@@ -44,6 +44,8 @@ class BlockRegistry {
         this.fullCube = new Uint8Array(count);
         // Non-cube shapes (stairs, doors, fences...; js/blockShapes.js), meshed and collided as boxes.
         this.shaped = new Uint8Array(count);
+        // Blocks that give torch light (torches, and `lightEmission` blocks such as lit lamps).
+        this.lightEmitter = new Uint8Array(count);
         for (let id = 1; id < count; id++) {
             const def = blockTypes[this.names[id]];
             this.fluid[id] = def.fluid ? 1 : 0;
@@ -53,6 +55,7 @@ class BlockRegistry {
             this.shaped[id] = def.shape ? 1 : 0;
             this.height[id] = this.solid[id] ? (def.collisionHeight ?? def.height ?? 1) : 0;
             this.fullCube[id] = this.solid[id] && !this.transparent[id] && !this.shaped[id] && this.height[id] === 1 ? 1 : 0;
+            this.lightEmitter[id] = this.names[id] === 'torch' || def.lightEmission ? 1 : 0;
         }
     }
 
@@ -72,6 +75,8 @@ class ChunkColumn {
         this.blocks = blocks || new Uint16Array(CHUNK_VOLUME);
         // Indices of light-emitting blocks; rebuilt lazily after edits.
         this.emitters = null;
+        // Other cached block searches (findBlocks), by key; cleared after edits.
+        this.found = null;
         // Highest non-air y; recomputed lazily after edits (null = unknown).
         this.cachedMaxY = null;
     }
@@ -79,6 +84,7 @@ class ChunkColumn {
     // Marks derived data stale after the block array changed.
     invalidate() {
         this.emitters = null;
+        this.found = null;
         this.cachedMaxY = null;
     }
 
@@ -97,14 +103,33 @@ class ChunkColumn {
         return this.cachedMaxY;
     }
 
-    getEmitters(emitterId) {
-        if (!this.emitters) {
-            this.emitters = [];
-            for (let index = 0; index < this.blocks.length; index++) {
-                if (this.blocks[index] === emitterId) this.emitters.push(index);
-            }
-        }
+    // Indices of the light emitters: `emitters` is a block id or a flag array by id
+    // (registry.lightEmitter). The list is cached, so always pass the same argument.
+    getEmitters(emitters) {
+        if (!this.emitters) this.emitters = this.scanBlocks(emitters);
         return this.emitters;
+    }
+
+    // Indices of the blocks flagged in `flags` (a Uint8Array by block id), cached under `key`
+    // until the next edit.
+    findBlocks(flags, key) {
+        if (!this.found) this.found = new Map();
+        let list = this.found.get(key);
+        if (!list) {
+            list = this.scanBlocks(flags);
+            this.found.set(key, list);
+        }
+        return list;
+    }
+
+    scanBlocks(match) {
+        const list = [];
+        const single = typeof match === 'number';
+        for (let index = 0; index < this.blocks.length; index++) {
+            const id = this.blocks[index];
+            if (single ? id === match : id !== AIR_ID && match[id] === 1) list.push(index);
+        }
+        return list;
     }
 
     get(lx, y, lz) {

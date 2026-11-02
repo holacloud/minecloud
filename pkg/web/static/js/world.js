@@ -1130,15 +1130,20 @@ class WorldRenderer {
         return true;
     }
 
+    // Whether a block type gives light (torches, lit lamps: registerBlockType `lightEmission`).
+    isLightEmitterType(type) {
+        return Boolean(type) && this.registry.lightEmitter[this.registry.id(type)] === 1;
+    }
+
     // Whether a torch is close enough for a change at this block to alter its light.
     hasLightEmitterNear(x, y, z) {
-        const torchId = this.registry.id('torch');
+        const emitters = this.registry.lightEmitter;
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
         for (let dx = -1; dx <= 1; dx++) {
             for (let dz = -1; dz <= 1; dz++) {
                 const column = this.columns.get(this.chunkKey(chunkX + dx, chunkZ + dz));
                 if (!column) continue;
-                for (const index of column.getEmitters(torchId)) {
+                for (const index of column.getEmitters(emitters)) {
                     const tx = (chunkX + dx) * CHUNK_SIZE + index % CHUNK_SIZE;
                     const tz = (chunkZ + dz) * CHUNK_SIZE + Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
                     const ty = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;
@@ -1659,7 +1664,7 @@ class WorldRenderer {
 
         if (!changed) return false;
 
-        this.rebuildAfterChange(x, z, payload.blockType === 'torch' || previousType === 'torch' || this.hasLightEmitterNear(x, y, z));
+        this.rebuildAfterChange(x, z, this.isLightEmitterType(payload.blockType) || this.isLightEmitterType(previousType) || this.hasLightEmitterNear(x, y, z));
         return true;
     }
 
@@ -1714,7 +1719,7 @@ class WorldRenderer {
 
         if (!changed) return false;
 
-        this.rebuildAfterChange(blockX, blockZ, previousType === 'torch' || this.hasLightEmitterNear(blockX, blockY, blockZ));
+        this.rebuildAfterChange(blockX, blockZ, this.isLightEmitterType(previousType) || this.hasLightEmitterNear(blockX, blockY, blockZ));
         return true;
     }
 

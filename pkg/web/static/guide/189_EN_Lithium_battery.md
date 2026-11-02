@@ -16,7 +16,7 @@ At the [lab bench](117), with a reaction you have to **discover**: it shows as "
 
 ## What it is for
 
-For now it is a **collectible**: keep it for when machines and electricity arrive.
+Two lithium batteries make two [battery blocks](203), which store the energy of an [electric](200) network.
 
 ## Trivia
 

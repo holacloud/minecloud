@@ -18,6 +18,8 @@ At the [lab bench](117), with a reaction you have to **discover**: it shows as "
 
 - Place it like any block. Breaking: **0.2 s**.
 - It shines by itself in every mode (with bloom in Ultra), but **does not light up** its surroundings: for that, the [torch](62).
+- With glass and copper wire it becomes two [electric lamps](204), which do light up their surroundings when they
+  have power.
 
 ## Trivia
 

@@ -36,6 +36,8 @@ menos un día del juego (un día dura 4 minutos). Crece de día y de noche, y ta
 - La **tierra de cultivo** se rompe en 0,45 s y devuelve **tierra** (`dirt`); con una [pala](69) va más rápido. Si
   rompes la tierra de cultivo de debajo de una planta, la planta salta también y suelta lo que le toque.
 - El trigo solo crece sobre tierra de cultivo: si el suelo deja de serlo, deja de crecer.
+- Bajo una [lámpara de cultivo](204) encendida (hasta 4 bloques por encima y 2 a los lados) crece **el doble de
+  rápido**.
 - La planta no es sólida: se atraviesa, como la hierba alta. Se rompe en 0,1 s.
 - Las semillas solo se plantan en tierra de cultivo. Si haces clic derecho en otra cosa, el juego te recuerda que
   antes hay que labrar.

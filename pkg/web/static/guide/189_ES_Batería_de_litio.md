@@ -16,7 +16,8 @@ En la [mesa de laboratorio](117), con una reacción que hay que **descubrir**: e
 
 ## Para qué sirve
 
-De momento es una pieza de **colección**: guárdala para cuando lleguen las máquinas y la electricidad.
+Con dos baterías de litio se fabrican dos [bloques de batería](203), que guardan la energía de una red
+[eléctrica](200).
 
 ## Curiosidades
 

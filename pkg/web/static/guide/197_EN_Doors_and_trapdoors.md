@@ -42,7 +42,8 @@ hole in the floor or the ceiling.
   walk straight through.
 - **Crouching (Shift)**, a right click does not open it: it places the block you hold against it.
 - Breaking either half breaks the whole door, and you get **one** door.
-- The iron door opens by hand too, for now.
+- The iron door opens by hand too. An [electric motor](204) touching it opens it when the motor switches on and
+  closes it when it switches off (iron trapdoors too).
 
 ## Trapdoors
 
