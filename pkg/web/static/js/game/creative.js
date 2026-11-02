@@ -65,6 +65,8 @@ Object.assign(Game.prototype, {
             // The remembered key: on, quietly, or forgotten if the server no longer takes it.
             this.creativeMode = Boolean(reply.ok);
             if (!reply.ok) this.creativeSaveKey('');
+            // Stock up again: items added by an update since creative mode was turned on.
+            else this.creativeStock();
             return;
         }
         const key = this.creativePendingKey;
