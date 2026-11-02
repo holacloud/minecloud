@@ -22,8 +22,8 @@ import (
 // - Blocks that touch on a face (6 neighbours) belong to the same network. Every electric
 //   block conducts, so a lamp next to a solar panel works without a wire.
 // - Once a second, for each network: generation (W) from the sun, the wind, the water and
-//   the hand cranks; demand (W) of every consumer; then the batteries take the surplus or
-//   cover the deficit. A network is all or nothing: if generation plus what the batteries
+//   the hand cranks (and eels in their tanks); demand (W) of every consumer; then the
+//   batteries take the surplus or cover the deficit. A network is all or nothing: if generation plus what the batteries
 //   can give does not cover the whole demand, every consumer goes off (a blackout) and what
 //   is generated charges the batteries.
 // - What players see is part of the block name, changed through the chunk store and a normal
@@ -76,6 +76,10 @@ var powerKinds = map[string]powerKind{
 	"electric_lamp":  {Role: powerConsumer, Watts: 10, Switch: true},
 	"grow_lamp":      {Role: powerConsumer, Watts: 30, Switch: true},
 	"electric_motor": {Role: powerConsumer, Watts: 50, Switch: true},
+	// --- Living generators (task #14, js/game/eel.js) ---
+	// An electric eel in its glass tank ("eel_tank:full" while occupied): powerEelSteady W all
+	// the time, Watts (the peak) for powerEelFeedBurst after it is fed (powerFeed).
+	"eel_tank": {Role: powerGenerator, Source: "eel", Watts: 50},
 }
 
 const (
@@ -91,6 +95,11 @@ const (
 	// One turn of a hand crank: power for this long, up to powerCrankMax ahead.
 	powerCrankBurst = 4 * time.Second
 	powerCrankMax   = 12 * time.Second
+	// Eel tank: steady power while occupied, the peak (Watts) for a while after a meal, up to
+	// powerEelFeedMax ahead.
+	powerEelSteady    = 25.0
+	powerEelFeedBurst = 10 * time.Second
+	powerEelFeedMax   = 30 * time.Second
 	// Water wheel: power per side touching water.
 	powerWaterPerSide = 35.0
 	// Wind turbine: P = powerWindFactor * v^3 (W, v in m/s), nothing below powerWindCutIn.
@@ -356,6 +365,15 @@ func (g *powerGrid) generation(b *PowerBlock, w cropWorld, env powerEnvironment,
 		if until, ok := g.crank[b.pos()]; ok && now.Before(until) {
 			return kind.Watts
 		}
+	case "eel":
+		// Only an occupied tank; a fed eel is livelier (its deadline shares the crank map).
+		if !powerEelInside(b.Name) {
+			return 0
+		}
+		if until, ok := g.crank[b.pos()]; ok && now.Before(until) {
+			return kind.Watts
+		}
+		return powerEelSteady
 	}
 	return 0
 }
@@ -741,6 +759,45 @@ func (g *powerGrid) crankTurn(x, y, z int, now time.Time) bool {
 	}
 	g.crank[p] = until
 	return true
+}
+
+// ---------------------------------------------------------------------------------------
+// Eel tanks (task #14, js/game/eel.js)
+
+// powerEelInside reports whether an eel_tank block name holds an eel.
+func powerEelInside(name string) bool {
+	return strings.HasSuffix(name, ":full")
+}
+
+// eelFeed feeds the eel in an occupied tank: it gives its peak power for powerEelFeedBurst
+// more, up to powerEelFeedMax ahead. Returns whether there was an eel to feed.
+func (g *powerGrid) eelFeed(x, y, z int, now time.Time) bool {
+	p := powerPos{x, y, z}
+	b := g.blocks[p]
+	if b == nil || powerKinds[b.Kind].Source != "eel" || !powerEelInside(b.Name) {
+		return false
+	}
+	until := g.crank[p]
+	if until.Before(now) {
+		until = now
+	}
+	until = until.Add(powerEelFeedBurst)
+	if limit := now.Add(powerEelFeedMax); until.After(limit) {
+		until = limit
+	}
+	g.crank[p] = until
+	return true
+}
+
+// handlePowerFeed feeds the eel of a tank (a player gave it raw fish).
+func handlePowerFeed(raw json.RawMessage) {
+	var target powerTarget
+	if err := json.Unmarshal(raw, &target); err != nil {
+		return
+	}
+	powerMu.Lock()
+	grid.eelFeed(target.X, target.Y, target.Z, time.Now())
+	powerMu.Unlock()
 }
 
 // ---------------------------------------------------------------------------------------

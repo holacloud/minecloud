@@ -135,6 +135,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor
 - ![](item:multimeter) [Multimeter](205)
 - ![](item:electric_motor) [Electric projects](206)
+- ![](item:eel_tank) [Eel tank](214): eel_tank, eel_bucket
 
 ## Robotics
 

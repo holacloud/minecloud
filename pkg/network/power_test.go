@@ -361,3 +361,44 @@ func TestPowerGrowLamp(t *testing.T) {
 		t.Fatalf("boosted crop: %+v", registry)
 	}
 }
+
+func TestPowerEelTank(t *testing.T) {
+	// Task #14: an eel tank gives 25 W while occupied, 50 W for a while after a meal.
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "eel_tank", {1, 0, 0}: "electric_lamp"})
+	now := time.Unix(1000, 0)
+	tank := g.blocks[powerPos{0, 0, 0}]
+	if got := g.generation(tank, w, powerMidnight, now); got != 0 {
+		t.Fatalf("an empty tank gives %v W", got)
+	}
+	if g.eelFeed(0, 0, 0, now) {
+		t.Fatal("an empty tank has no eel to feed")
+	}
+	w.SetBlock(0, 0, 0, "eel_tank:full")
+	if g.track(0, 0, 0, "eel_tank:full") {
+		t.Fatal("filling the tank keeps the same kind")
+	}
+	if got := g.generation(tank, w, powerMidnight, now); got != powerEelSteady {
+		t.Fatalf("an occupied tank gives %v W, want %v", got, powerEelSteady)
+	}
+	if !g.eelFeed(0, 0, 0, now) {
+		t.Fatal("feeding the eel should work")
+	}
+	if got := g.generation(tank, w, powerMidnight, now.Add(5*time.Second)); got != 50 {
+		t.Fatalf("a fed eel gives %v W, want 50", got)
+	}
+	if got := g.generation(tank, w, powerMidnight, now.Add(11*time.Second)); got != powerEelSteady {
+		t.Fatalf("the meal wears off: %v W", got)
+	}
+	// Several meals add up, but never more than powerEelFeedMax ahead.
+	for i := 0; i < 6; i++ {
+		g.eelFeed(0, 0, 0, now)
+	}
+	if until := g.crank[powerPos{0, 0, 0}]; until.After(now.Add(powerEelFeedMax)) {
+		t.Fatalf("fed until %v, more than %v ahead", until.Sub(now), powerEelFeedMax)
+	}
+	g.tick(w, powerMidnight, now, 1)
+	if !g.netOf[powerPos{0, 0, 0}].powered {
+		t.Fatal("the eel should light the 10 W lamp at night")
+	}
+}

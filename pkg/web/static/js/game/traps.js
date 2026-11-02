@@ -28,6 +28,7 @@ const TRAPS_BAITS = {
 
 // Per species (the 22 in mobSpecies.js, the 9 new ones and the ant):
 //   baits  the baits it walks to   cage  a cage trap can hold it   net  what the bug net gives
+//   bucket what an empty bucket catches it as (eel.js does the catching)
 const TRAPS_SPECIES = {
     sheep: { baits: ['bait_seeds'], cage: true },
     duck: { baits: ['bait_seeds', 'bait_worms'], cage: true },
@@ -61,7 +62,8 @@ const TRAPS_SPECIES = {
     wisp: { baits: [], net: 'glow_dust' },
     mole: { baits: ['bait_worms'], cage: true },
     beaver: { baits: ['bait_seeds'], cage: true },
-    ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' }
+    ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' },
+    eel: { baits: [], bucket: 'eel_bucket' }
 };
 
 const TRAPS_BAIT_LIFE = 120;

@@ -840,6 +840,9 @@ func handleMessage(client *Client, msg Message) {
 	case "powerCrank":
 		handlePowerCrank(msg.Payload)
 
+	case "powerFeed":
+		handlePowerFeed(msg.Payload)
+
 	case "sleepInBed":
 		stateMu.Lock()
 		gameState.WorldTime = 0

@@ -135,6 +135,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor
 - ![](item:multimeter) [Multímetro](205)
 - ![](item:electric_motor) [Proyectos eléctricos](206)
+- ![](item:eel_tank) [Tanque de anguila](214): eel_tank, eel_bucket
 
 ## Robótica
 

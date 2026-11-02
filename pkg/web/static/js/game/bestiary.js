@@ -181,6 +181,11 @@ const BESTIARY_ENTRIES = {
         name: 'Ant', habitat: 'Anthills on plains, forests and deserts', activity: 'Day', temperament: 'Neutral',
         hint: 'Lines of tiny walkers lead to a mound of soil.',
         description: 'Ants live in colonies of 8 to 20 around an anthill. By day they follow scent trails to food and carry crumbs home; at night and in the rain they stay inside. Step on the anthill or swat one and the colony swarms over your feet with tiny bites.'
+    },
+    eel: {
+        name: 'Electric Eel', habitat: 'Deep lakes and rivers', activity: 'Day and night (more at night)', temperament: 'Neutral',
+        hint: 'Something long lies on the bottom of deep water, and it crackles.',
+        description: 'A long, dark knifefish that cruises slowly along the bottom and rises now and then to gulp air. Touch it or strike it and it discharges: blue arcs crackle through the water and shock anyone swimming close. Catch one with a bucket and keep it in an eel tank: a living generator.'
     }
 };
 

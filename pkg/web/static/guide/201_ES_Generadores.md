@@ -3,7 +3,7 @@
 ![Aerogenerador](item:wind_turbine)
 
 Un generador convierte otro tipo de energía en electricidad. Cada uno depende de algo distinto: el sol, el viento, el
-agua o tu propio brazo.
+agua, tu propio brazo... o un pez.
 
 | | Generador | Id | Potencia máxima | Depende de |
 |---|---|---|---|---|
@@ -11,6 +11,7 @@ agua o tu propio brazo.
 | ![](item:wind_turbine) | Aerogenerador | `wind_turbine` | 150 W | la velocidad del viento (¡al cubo!) |
 | ![](item:water_wheel) | Rueda hidráulica | `water_wheel` | 105 W | el agua que la toca |
 | ![](item:hand_crank) | Manivela | `hand_crank` | 100 W | que tú la gires |
+| ![](item:eel_tank) | Tanque de anguila | `eel_tank` | 25 W (50 W si come) | una [anguila eléctrica](213) que vive dentro |
 
 Los números están ajustados para jugar, porque un día de MineCloud dura solo 4 minutos (ver [Electricidad](200)).
 
@@ -23,6 +24,7 @@ Los números están ajustados para jugar, porque un día de MineCloud dura solo 
 | 1 `wind_turbine` | 3 `iron_ore` + 3 `planks` + 1 `copper_block` |
 | 1 `water_wheel` | 6 `planks` + 1 `copper_block` |
 | 1 `hand_crank` | 2 `planks` + 1 `iron_ore` + 2 `copper_wire` |
+| 1 `eel_tank` | 4 `glass` + 1 `water_bucket` + 2 `copper_wire` (la anguila se atrapa con un cubo) |
 
 - El bloque de **silicio** (`element_si`) se sintetiza con piedra y carbón (ver [Bloques de elementos](60) y
   [Silicio](152)): no hace falta el laboratorio.
@@ -82,5 +84,11 @@ durante 4 segundos** (400 J). Si la giras varias veces seguidas, aguanta hasta 1
 una batería: ¡nota cuánto trabajo cuesta la energía!
 
 Agáchate (Shift) para colocar bloques junto a ella sin girarla.
+
+## Tanque de anguila
+
+Una pecera de vidrio con una [anguila eléctrica](213) nadando dentro: un **generador vivo**. Da **25 W** de día y de
+noche, y **50 W** durante 10 segundos cada vez que le das un `raw_fish` (clic derecho en el tanque). Vacío no da nada.
+Cómo atrapar la anguila, meterla y sacarla: [Tanque de anguila](214).
 
 Ver también: [Electricidad](200), [Cables y redes](202), [Baterías](203).

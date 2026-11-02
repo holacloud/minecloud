@@ -32,7 +32,10 @@ const ELECTRIC_KINDS = {
     battery_block: { role: 'storage', capacity: 3000, rate: 200, levels: 4 },
     electric_lamp: { role: 'consumer', watts: 10, switch: true },
     grow_lamp: { role: 'consumer', watts: 30, switch: true },
-    electric_motor: { role: 'consumer', watts: 50, switch: true }
+    electric_motor: { role: 'consumer', watts: 50, switch: true },
+    // --- Living generators (task #14, js/game/eel.js) ---
+    // An eel in its tank (`eel_tank:full`): 25 W steady, the 50 W peak for a while once fed.
+    eel_tank: { role: 'generator', source: 'eel', watts: 50 }
 };
 
 const ELECTRIC_PX = 1 / 16;

@@ -1,6 +1,6 @@
 # Índice de mobs
 
-Todas las especies del mundo, **33**, en el orden en que llegaron al juego. Pulsa un nombre para ir a su
+Todas las especies del mundo, **34**, en el orden en que llegaron al juego. Pulsa un nombre para ir a su
 página.
 
 Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las que has visto, ver
@@ -41,5 +41,6 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 | ![](mob:mole) | [Topo gigante](47) | excava bajo tus pies | 2026-10-30 |
 | ![](mob:ant) | [Hormiga](135) | colonias en hormigueros; caminos de feromonas | 2026-11-01 |
 | ![](mob:beaver) | [Castor](137) | tala árboles junto al agua y construye presas ([Presas de castor](138)) | 2026-11-01 |
+| ![](mob:eel) | [Anguila eléctrica](213) | acecha en aguas hondas y da descargas; un generador vivo ([Tanque de anguila](214)) | 2026-11-02 |
 
 Y para criar hormigas en casa: [Granja de hormigas](136).

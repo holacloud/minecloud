@@ -350,7 +350,8 @@ const RESOURCE_DROPS = {
     wisp: [], // wisp.js drops its own glow_dust when caught
     mole: [['fur', 1, 2]],
     beaver: [['fur', 1, 2], ['wood', 1, 1, 0.5]],
-    ant: [] // a squashed ant leaves nothing (ants.js)
+    ant: [], // a squashed ant leaves nothing (ants.js)
+    eel: [['raw_fish', 1, 2]]
 };
 
 // Struck but not defeated, some creatures shed something: [item, chance, cooldown seconds].
@@ -425,7 +426,7 @@ Object.assign(Game.prototype, {
         const data = mob.userData;
         if (data.resourcesDropped) return;
         data.resourcesDropped = true;
-        const inWater = data.species === 'fish';
+        const inWater = data.species === 'fish' || data.species === 'eel';
         (RESOURCE_DROPS[data.species] || []).forEach(([type, min, max, chance = 1]) => {
             if (Math.random() >= chance) return;
             const amount = min + Math.floor(Math.random() * (max - min + 1));
