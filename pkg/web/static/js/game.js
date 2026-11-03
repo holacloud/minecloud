@@ -1386,6 +1386,12 @@ class Game {
             return;
         }
 
+        // A cinematic camera shot (creative mode, js/game/cinematic.js) drives the camera instead.
+        if (this.cinematic) {
+            this.cinematicFrame(delta);
+            return;
+        }
+
         this.cameraController.update(delta);
         this.updateWaterInteraction(delta);
         if (this.cameraController.onGround === false && this.wasOnGround === true && this.cameraController.velocityY > 0) {

@@ -32,6 +32,11 @@ class CameraController {
         this.lastForwardTapAt = 0;
         
         this.velocityY = 0;
+        // Free flight (creative mode only, toggled by double-tapping Space): no gravity, Space
+        // rises, Shift sinks, faster horizontal speed. `flightAllowed` is set by the game.
+        this.flightAllowed = false;
+        this.flying = false;
+        this.lastJumpTapAt = -Infinity;
         // Horizontal push from being hit (blocks per second), decaying quickly.
         this.knockbackX = 0;
         this.knockbackZ = 0;
@@ -102,7 +107,17 @@ class CameraController {
             if (e.code === 'KeyA') this.keys.left = true;
             if (e.code === 'KeyD') this.keys.right = true;
             if (e.code === 'Space') {
-                if (!e.repeat) this.jumpPressedAt = performance.now();
+                if (!e.repeat) {
+                    const now = performance.now();
+                    this.jumpPressedAt = now;
+                    if (this.flightAllowed && !this.mount && now - this.lastJumpTapAt < 300) {
+                        this.flying = !this.flying;
+                        this.velocityY = 0;
+                        this.lastJumpTapAt = -Infinity;
+                    } else {
+                        this.lastJumpTapAt = now;
+                    }
+                }
                 this.keys.jump = true;
             }
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.crouch = true;
@@ -331,7 +346,8 @@ class CameraController {
 
     updatePhysics(delta) {
         const wasCrouching = this.isCrouching;
-        this.isCrouching = this.keys.crouch && !this.mount;
+        if (!this.flightAllowed || this.mount) this.flying = false;
+        this.isCrouching = this.keys.crouch && !this.mount && !this.flying;
         if (wasCrouching !== this.isCrouching) {
             const previousEyeHeight = this.eyeHeight;
             this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
@@ -362,6 +378,7 @@ class CameraController {
 
         let baseSpeed = this.isCrouching ? this.moveSpeed * this.crouchSpeedFactor : (isSprinting ? this.sprintSpeed : this.moveSpeed);
         if (this.mount) baseSpeed = this.mount.speed * (isSprinting ? 1.25 : 1);
+        if (this.flying) baseSpeed = isSprinting ? 22 : 10;
         const speed = this.isInWater ? baseSpeed * (this.mount ? 0.35 : 0.55) : baseSpeed;
         
         const forward = new THREE.Vector3(0, 0, -1);
@@ -449,7 +466,12 @@ class CameraController {
             this.onGround = false;
         }
         
-        if (this.isOnLadder) {
+        if (this.flying) {
+            const up = this.keys.jump || this.touchJump;
+            const down = this.keys.crouch;
+            this.velocityY = up ? (isSprinting ? 14 : 8) : down ? -(isSprinting ? 14 : 8) : 0;
+            this.onGround = false;
+        } else if (this.isOnLadder) {
             const wantsUp = this.keys.forward || this.keys.jump || this.moveInput.y > 0.05;
             const wantsDown = this.keys.backward || this.keys.crouch || this.moveInput.y < -0.05;
             this.velocityY = wantsUp ? 3.2 : wantsDown ? -2.2 : 0;
@@ -477,7 +499,7 @@ class CameraController {
             }
         }
         
-        if (!this.isOnLadder) {
+        if (!this.isOnLadder && !this.flying) {
             this.velocityY -= (this.isInWater ? 3.2 : 20) * delta;
         }
         
