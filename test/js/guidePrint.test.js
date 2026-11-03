@@ -136,3 +136,36 @@ test('the game scripts run without a game and know every mob and item the pages 
     for (const species of refs('mob')) assert.ok(context.printModels.mobBuilders[species], `mob:${species}`);
     assert.equal(typeof context.printGame.prototype.bestiaryRenderPortrait, 'function');
 });
+
+// Stacks a booklet's folios, folds them and reads it like a book: the outer folio's front right
+// half is the first page; then each spread is (back left of folio i, ...) down to the centre.
+function readFolded(booklet) {
+    const n = booklet.folios;
+    const fronts = booklet.sides.filter((side) => !side.back);
+    const backs = booklet.sides.filter((side) => side.back);
+    const order = [];
+    for (let i = 0; i < n; i++) order.push(fronts[i].right, backs[i].left);
+    for (let i = n - 1; i >= 0; i--) order.push(backs[i].right, fronts[i].left);
+    return order;
+}
+
+test('booklet imposition: folded folios read in order, the last booklet only as long as needed', () => {
+    const booklets = print.bookletImposition(24, 6);
+    assert.equal(booklets.length, 1);
+    assert.equal(booklets[0].folios, 6);
+    // Outer folio: 24 | 1 on the front, 2 | 23 on the back (1-based).
+    assert.deepEqual(booklets[0].sides[0], { folio: 0, back: false, left: 23, right: 0 });
+    assert.deepEqual(booklets[0].sides[1], { folio: 0, back: true, left: 1, right: 22 });
+    assert.deepEqual(readFolded(booklets[0]), [...Array(24).keys()]);
+
+    const many = print.bookletImposition(57, 6);
+    assert.deepEqual(many.map((booklet) => booklet.folios), [6, 6, 3]);
+    assert.deepEqual(many.map((booklet) => booklet.first), [0, 24, 48]);
+    const pages = many.flatMap(readFolded);
+    // Every page once, in order, then the blanks at the very end of the last booklet.
+    assert.deepEqual(pages.slice(0, 57), [...Array(57).keys()]);
+    assert.deepEqual(pages.slice(57), [null, null, null]);
+    for (const booklet of many) assert.equal(booklet.sides.length, booklet.folios * 2);
+    assert.deepEqual(print.bookletImposition(0, 6), []);
+    assert.deepEqual(print.bookletImposition(1, 6)[0].sides[0], { folio: 0, back: false, left: null, right: 0 });
+});

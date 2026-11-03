@@ -1,4 +1,4 @@
-// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4): every public page of the
+// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET): every public page of the
 // in-game book as a paper book, with a cover, a "how to use this book" sheet and a table of
 // contents. Secret pages (non-numeric ids) are never shown, listed or linked.
 //
@@ -11,6 +11,12 @@
 // The only numbers printed are sheet numbers (the cover is sheet 1, unnumbered): the contents
 // and every link ("→ p. N") point to them; the header shows the in-game page discreetly.
 //
+// BOOKLET lays the book out in A5 and then imposes it on A4 landscape for saddle-stitched
+// booklets: each A4 folio carries four A5 pages (two per side), in the order that makes them
+// read straight once the folios of a booklet are printed on both sides, stacked and folded
+// in half. The number of folios per booklet is a setting; the last booklet only takes the
+// folios it needs, with blank pages at its end.
+//
 // Mob portraits and item icons are drawn by the game's own code, run here without a game: the
 // page loads the scripts index.html loads (except game.js, the network and the book) over a
 // stub `class Game {}`, builds a WorldRenderer for the item icons and uses the bestiary's
@@ -21,7 +27,9 @@
     'use strict';
 
     const LANGS = ['ES', 'EN'];
-    const PAPERS = ['A5', 'A4'];
+    const PAPERS = ['A5', 'A4', 'BOOKLET'];
+    const FOLIOS_DEFAULT = 6;
+    const FOLIOS_MAX = 15;
     const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     // Sheet-number placeholder while measuring: as wide as the widest real number.
     const NUMBER_PLACEHOLDER = '000';
@@ -37,7 +45,8 @@
             edition: (date, count) => `Edición en papel · ${date} · ${count} páginas de la guía`,
             contents: 'Índice', inGame: (id) => `Guía nº ${id}`, otherLang: 'Esta página aún no está traducida; se muestra en inglés.',
             more: 'Más páginas', print: 'Imprimir', inkSaver: 'Ahorrar tinta', pixelFont: 'Fuente pixel', clearFont: 'Fuente clara',
-            paper: 'Papel', introTitle: 'Cómo usar este libro',
+            paper: 'Papel', booklet: 'Librillos A4', folios: 'Folios por librillo', longEdge: 'Volteo por borde largo',
+            introTitle: 'Cómo usar este libro',
             intro: (count, paper) => `
                 <h1>Cómo usar este libro</h1>
                 <p>Este libro reúne las <strong>${count} páginas</strong> de la guía que hay dentro del juego, en el mismo orden:
@@ -51,9 +60,12 @@
                 <code>/guide 34</code> en el chat.</li>
                 </ul>
                 <h2>El papel</h2>
-                <p>Esta copia está maquetada en <strong>${paper}</strong>. El tamaño <strong>A5</strong> es el de un libro de bolsillo:
-                imprime en hojas A5, o en A4 con «2 páginas por hoja», y dóblalas por la mitad. Con <strong>A4</strong> las hojas
-                son más grandes y hay menos.</p>
+                ${paper === 'BOOKLET' ? `<p>Esta copia está maquetada en <strong>librillos</strong>: cada folio A4, impreso por las
+                dos caras, lleva cuatro páginas A5. Apila los folios de cada librillo en orden, dóblalos por la mitad y grápalos
+                por el doblez: las páginas quedan seguidas. Luego pon un librillo detrás de otro.</p>` : `<p>Esta copia está maquetada
+                en <strong>${paper}</strong>. El tamaño <strong>A5</strong> es el de un libro de bolsillo: imprime en hojas A5, o
+                elige <strong>Librillos A4</strong> para imprimir en A4 y doblar. Con <strong>A4</strong> las hojas son más grandes
+                y hay menos.</p>`}
                 <h2>Lo que no está</h2>
                 <p>Las <strong>páginas secretas</strong> no se imprimen: se esconden tras códigos y hay que encontrarlas jugando.
                 Y el juego sigue creciendo: el libro del juego (tecla <strong>H</strong>) siempre tiene las páginas más nuevas.</p>`,
@@ -61,6 +73,10 @@
             drawing: (done, total) => `Dibujando imágenes: ${done} / ${total}`, waiting: 'Esperando a las imágenes y las fuentes…',
             paginating: (done, total) => `Maquetando: ${done} / ${total}`,
             ready: (sheets, paper) => `Listo: ${sheets} páginas en ${paper}. Pulsa Imprimir y elige papel ${paper}, márgenes «Ninguno» y escala 100 %.`,
+            readyBooklet: (pages, folios, total, longEdge) => `Listo: ${pages} páginas A5 en ${folios.length} librillos (folios: ${folios.join(', ')}), ${total} folios A4. ` +
+                `Pulsa Imprimir y elige papel A4 horizontal, a doble cara con volteo por el borde ${longEdge ? 'largo' : 'corto'}, márgenes «Ninguno» y escala 100 %. ` +
+                'Dobla cada librillo por la mitad con sus folios en el orden impreso.',
+            bookletLabel: (booklet, count, folio, folios, back) => `Librillo ${booklet} de ${count} · folio ${folio} de ${folios} · cara ${back ? 'trasera' : 'delantera'}`,
             partial: (missing) => `${missing} imágenes no se pudieron dibujar y salen como un hueco.`,
             offline: 'No se pudo cargar la guía. ¿Está el servidor en marcha?', noEngine: 'Sin motor 3D: los dibujos de mobs y objetos saldrán como huecos.'
         },
@@ -69,7 +85,8 @@
             edition: (date, count) => `Paper edition · ${date} · ${count} guide pages`,
             contents: 'Contents', inGame: (id) => `In-game page ${id}`, otherLang: 'This page is not translated yet; it is shown in Spanish.',
             more: 'More pages', print: 'Print', inkSaver: 'Ink saver', pixelFont: 'Pixel font', clearFont: 'Clear font',
-            paper: 'Paper', introTitle: 'How to use this book',
+            paper: 'Paper', booklet: 'A4 booklets', folios: 'Folios per booklet', longEdge: 'Flip on long edge',
+            introTitle: 'How to use this book',
             intro: (count, paper) => `
                 <h1>How to use this book</h1>
                 <p>This book gathers the <strong>${count} pages</strong> of the guide inside the game, in the same order: the basics,
@@ -83,8 +100,11 @@
                 <code>/guide 34</code> in the chat.</li>
                 </ul>
                 <h2>The paper</h2>
-                <p>This copy is laid out for <strong>${paper}</strong>. <strong>A5</strong> is pocket-book size: print on A5 sheets,
-                or on A4 with "2 pages per sheet", and fold them in half. With <strong>A4</strong> the sheets are bigger and fewer.</p>
+                ${paper === 'BOOKLET' ? `<p>This copy is laid out in <strong>booklets</strong>: each A4 folio, printed on both
+                sides, carries four A5 pages. Stack the folios of each booklet in order, fold them in half and staple them along the
+                fold: the pages follow on. Then put one booklet after another.</p>` : `<p>This copy is laid out for
+                <strong>${paper}</strong>. <strong>A5</strong> is pocket-book size: print on A5 sheets, or choose <strong>A4
+                booklets</strong> to print on A4 and fold. With <strong>A4</strong> the sheets are bigger and fewer.</p>`}
                 <h2>What is missing</h2>
                 <p><strong>Secret pages</strong> are not printed: they hide behind codes and you have to find them by playing. And the
                 game keeps growing: the book inside the game (key <strong>H</strong>) always has the newest pages.</p>`,
@@ -92,6 +112,10 @@
             drawing: (done, total) => `Drawing pictures: ${done} / ${total}`, waiting: 'Waiting for pictures and fonts…',
             paginating: (done, total) => `Laying out: ${done} / ${total}`,
             ready: (sheets, paper) => `Ready: ${sheets} pages in ${paper}. Press Print and choose ${paper} paper, margins "None" and scale 100%.`,
+            readyBooklet: (pages, folios, total, longEdge) => `Ready: ${pages} A5 pages in ${folios.length} booklets (folios: ${folios.join(', ')}), ${total} A4 folios. ` +
+                `Press Print and choose A4 landscape, two-sided with ${longEdge ? 'long' : 'short'}-edge flip, margins "None" and scale 100%. ` +
+                'Fold each booklet in half with its folios in the printed order.',
+            bookletLabel: (booklet, count, folio, folios, back) => `Booklet ${booklet} of ${count} · folio ${folio} of ${folios} · ${back ? 'back' : 'front'}`,
             partial: (missing) => `${missing} pictures could not be drawn and show as a blank.`,
             offline: 'The guide could not be loaded. Is the server running?', noEngine: 'No 3D engine: mob and item pictures will show as blanks.'
         }
@@ -116,7 +140,9 @@
         [196, 199, 'Bloques de construcción', 'Building blocks'],
         [200, 206, 'Electricidad', 'Electricity'],
         [207, 212, 'Lógica y sensores', 'Logic and sensors'],
-        [213, 214, 'La anguila eléctrica', 'The electric eel']
+        [213, 214, 'La anguila eléctrica', 'The electric eel'],
+        [215, 216, 'El golem de cobre', 'The copper golem'],
+        [217, 220, 'Máquinas y energía', 'Machines and power']
     ];
 
     // ---------------------------------------------------------------- pure helpers (tested)
@@ -231,6 +257,28 @@
         return { sheets, starts };
     }
 
+    // Saddle-stitch imposition of `pageCount` pages (0-based) in booklets of `folios` folios.
+    // Each folio has a front and a back side with a left and a right page (null: blank). For
+    // a booklet of n folios starting at page b, folio i carries b+4n-1-2i | b+2i on the front
+    // and b+2i+1 | b+4n-2-2i on the back: stacked and folded, they read b, b+1, ... in order.
+    // The last booklet takes only the folios it needs.
+    function bookletImposition(pageCount, folios) {
+        const booklets = [];
+        let base = 0;
+        while (base < pageCount) {
+            const n = Math.min(folios, Math.ceil((pageCount - base) / 4));
+            const page = (k) => (base + k < pageCount ? base + k : null);
+            const sides = [];
+            for (let i = 0; i < n; i++) {
+                sides.push({ folio: i, back: false, left: page(4 * n - 1 - 2 * i), right: page(2 * i) });
+                sides.push({ folio: i, back: true, left: page(2 * i + 1), right: page(4 * n - 2 - 2 * i) });
+            }
+            booklets.push({ first: base, folios: n, sides });
+            base += 4 * n;
+        }
+        return booklets;
+    }
+
     function escapeHtml(text) {
         return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -241,7 +289,7 @@
         return `data:image/svg+xml,${encodeURIComponent(svg)}`;
     }
 
-    const api = { publicPages, sectionsFor, paginateChapter, paginate, SECTIONS, TEXT, SKIP_SCRIPTS };
+    const api = { publicPages, sectionsFor, paginateChapter, paginate, bookletImposition, SECTIONS, TEXT, SKIP_SCRIPTS };
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
         return;
@@ -270,6 +318,12 @@
         if (options.includes(fromUrl)) return fromUrl;
         const saved = loadSetting(storageKey);
         return options.includes(saved) ? saved : fallback;
+    }
+
+    function initialFolios() {
+        const fromUrl = Number(new URLSearchParams(window.location.search).get('folios'));
+        const value = Number.isInteger(fromUrl) && fromUrl > 0 ? fromUrl : Number(loadSetting('minecloud-guide-print-folios'));
+        return Number.isInteger(value) && value >= 1 && value <= FOLIOS_MAX ? value : FOLIOS_DEFAULT;
     }
 
     const nextFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -343,6 +397,8 @@
     const state = {
         lang: initialChoice('lang', 'minecloud-guide-lang', LANGS, /^es\b/i.test(navigator.language || '') ? 'ES' : 'EN'),
         paper: initialChoice('paper', 'minecloud-guide-print-paper', PAPERS, 'A5'),
+        folios: initialFolios(),
+        longEdge: loadSetting('minecloud-guide-print-long-edge') === '1',
         build: 0,
         engine: undefined,
         enginePromise: null,
@@ -364,20 +420,32 @@
         const text = TEXT[state.lang];
         const root = document.documentElement;
         root.lang = state.lang.toLowerCase();
+        const booklet = state.paper === 'BOOKLET';
         root.classList.toggle('gp-a4', state.paper === 'A4');
-        root.classList.toggle('gp-a5', state.paper === 'A5');
-        document.getElementById('gp-page-style').textContent = `@page { size: ${state.paper} portrait; margin: 0; }`;
+        root.classList.toggle('gp-a5', state.paper !== 'A4');
+        root.classList.toggle('gp-booklet', booklet);
+        document.getElementById('gp-page-style').textContent = booklet
+            ? '@page { size: A4 landscape; margin: 0; }'
+            : `@page { size: ${state.paper} portrait; margin: 0; }`;
         document.title = text.book;
         elements.print.textContent = `🖨 ${text.print}`;
         elements.inkLabel.textContent = text.inkSaver;
         elements.paperLabel.textContent = text.paper;
+        elements.foliosLabel.textContent = text.folios;
+        elements.longEdgeLabel.textContent = text.longEdge;
+        elements.folios.value = String(state.folios);
+        elements.longEdge.checked = state.longEdge;
+        elements.bookletOptions.hidden = !booklet;
         const pixel = root.classList.contains('gp-pixel');
         elements.fonts.forEach((button) => {
             button.textContent = button.dataset.pixel === '1' ? text.pixelFont : text.clearFont;
             button.classList.toggle('active', (button.dataset.pixel === '1') === pixel);
         });
         elements.langs.forEach((button) => button.classList.toggle('active', button.dataset.lang === state.lang));
-        elements.papers.forEach((button) => button.classList.toggle('active', button.dataset.paper === state.paper));
+        elements.papers.forEach((button) => {
+            if (button.dataset.paper === 'BOOKLET') button.textContent = text.booklet;
+            button.classList.toggle('active', button.dataset.paper === state.paper);
+        });
     }
 
     async function loadIndex() {
@@ -680,15 +748,46 @@
         // One numbering: the contents and the links point at the sheet where a page starts.
         book.querySelectorAll('.gp-toc-num').forEach((num) => { num.textContent = String(starts.get(`gp-${num.dataset.target}`) || '?'); });
         book.querySelectorAll('a.gp-link').forEach((link) => { link.dataset.sheet = String(starts.get(`gp-${link.dataset.target}`) || '?'); });
-        elements.book.replaceChildren(book);
+        if (state.paper === 'BOOKLET') elements.book.replaceChildren(imposeBooklets([...book.children]));
+        else elements.book.replaceChildren(book);
 
         const overflowing = [...elements.book.querySelectorAll('.gp-sheet-body')].filter((body) => body.scrollHeight > body.clientHeight + 2);
         if (overflowing.length) console.warn('[guide-print] sheets whose content overflows:', overflowing.map((body) => body.parentNode.querySelector('.gp-foot').textContent));
         elements.print.disabled = false;
-        const notes = [text.ready(sheetNumber, state.paper)];
+        const notes = [state.paper === 'BOOKLET'
+            ? text.readyBooklet(sheetNumber, bookletImposition(sheetNumber, state.folios).map((b) => b.folios),
+                Math.ceil(sheetNumber / 4), state.longEdge)
+            : text.ready(sheetNumber, state.paper)];
         if (!state.engine) notes.push(text.noEngine);
         else if (missing) notes.push(text.partial(missing));
         setStatus(notes.join(' '), null);
+    }
+
+    // The A5 sheets, two by two on A4 landscape sides in booklet order (bookletImposition).
+    // With a long-edge flip the backs are turned upside down, so they still come out upright.
+    function imposeBooklets(sheets) {
+        const text = TEXT[state.lang];
+        const booklets = bookletImposition(sheets.length, state.folios);
+        const out = document.createDocumentFragment();
+        const slot = (index) => {
+            if (index !== null) return sheets[index];
+            const blank = document.createElement('div');
+            blank.className = 'gp-sheet gp-blank';
+            return blank;
+        };
+        booklets.forEach((booklet, b) => {
+            for (const side of booklet.sides) {
+                const label = document.createElement('div');
+                label.className = 'gp-spread-label';
+                label.textContent = text.bookletLabel(b + 1, booklets.length, side.folio + 1, booklet.folios, side.back);
+                const spread = document.createElement('div');
+                spread.className = 'gp-spread';
+                spread.classList.toggle('gp-turned', side.back && state.longEdge);
+                spread.append(slot(side.left), slot(side.right));
+                out.append(label, spread);
+            }
+        });
+        return out;
     }
 
     function setUrlParam(key, value) {
@@ -713,6 +812,24 @@
         build();
     }
 
+    function setFolios(value) {
+        const folios = Math.max(1, Math.min(FOLIOS_MAX, Math.round(Number(value)) || FOLIOS_DEFAULT));
+        if (folios === state.folios) {
+            elements.folios.value = String(folios);
+            return;
+        }
+        state.folios = folios;
+        saveSetting('minecloud-guide-print-folios', folios);
+        setUrlParam('folios', folios);
+        build();
+    }
+
+    function setLongEdge(on) {
+        state.longEdge = on;
+        saveSetting('minecloud-guide-print-long-edge', on ? '1' : '0');
+        build();
+    }
+
     function setInkSaver(on) {
         document.documentElement.classList.toggle('gp-parchment', !on);
         saveSetting('minecloud-guide-print-ink', on ? '1' : '0');
@@ -734,6 +851,11 @@
         elements.fonts = [...document.querySelectorAll('.gp-font')];
         elements.langs = [...document.querySelectorAll('.gp-lang')];
         elements.papers = [...document.querySelectorAll('.gp-paper')];
+        elements.bookletOptions = document.getElementById('gp-booklet-options');
+        elements.folios = document.getElementById('gp-folios');
+        elements.foliosLabel = document.getElementById('gp-folios-label');
+        elements.longEdge = document.getElementById('gp-long-edge');
+        elements.longEdgeLabel = document.getElementById('gp-long-edge-label');
 
         const ink = loadSetting('minecloud-guide-print-ink') !== '0';
         elements.ink.checked = ink;
@@ -742,6 +864,8 @@
 
         elements.langs.forEach((button) => button.addEventListener('click', () => setLang(button.dataset.lang)));
         elements.papers.forEach((button) => button.addEventListener('click', () => setPaper(button.dataset.paper)));
+        elements.folios.addEventListener('change', () => setFolios(elements.folios.value));
+        elements.longEdge.addEventListener('change', () => setLongEdge(elements.longEdge.checked));
         // Every setting re-paginates: colours too, so what is printed is what was measured.
         elements.ink.addEventListener('change', () => {
             setInkSaver(elements.ink.checked);

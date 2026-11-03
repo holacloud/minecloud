@@ -39,6 +39,8 @@
         #gp-toolbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
         #gp-toolbar .gp-status-row { flex-basis: 100%; display: flex; align-items: center; gap: 10px; font-size: 14px; color: #e8d6aa; }
         #gp-progress { width: 180px; height: 10px; }
+        #gp-folios { width: 3.4em; font: inherit; }
+        #gp-booklet-options[hidden] { display: none; }
 
         /* ---- sheets ---- */
         #gp-book { padding: 24px 12px 60px; }
@@ -105,6 +107,13 @@
         .gp-toc-dots { flex: 1; border-bottom: 1.5px dotted var(--rule); min-width: 6mm; transform: translateY(-3px); }
         .gp-toc-num { font-variant-numeric: tabular-nums; color: var(--accent); min-width: 2.2em; text-align: right; }
 
+        /* ---- booklets: two A5 sheets side by side on an A4 landscape side ---- */
+        .gp-spread { width: 297mm; height: 210mm; margin: 0 auto 24px; display: flex; background: var(--paper);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); }
+        .gp-spread > .gp-sheet { margin: 0; box-shadow: none; flex: none; }
+        .gp-spread > .gp-sheet + .gp-sheet { border-left: 1px dashed #d6cbb3; }
+        .gp-spread.gp-turned { transform: rotate(180deg); }
+        .gp-spread-label { width: 297mm; margin: 0 auto 6px; color: #f1e3c0; font: 13px 'Segoe UI', Verdana, sans-serif; }
         @media (max-width: 820px) {
             #gp-book { overflow-x: auto; }
         }
@@ -116,6 +125,11 @@
             /* A hair shorter than the paper, so rounding never spills a blank page. */
             .gp-sheet { margin: 0; box-shadow: none; height: calc(var(--paper-h) - 0.5mm); break-after: page; page-break-after: always; }
             .gp-sheet:last-child { break-after: auto; page-break-after: auto; }
+            .gp-spread-label { display: none; }
+            .gp-spread { margin: 0; box-shadow: none; height: calc(210mm - 0.5mm); overflow: hidden; break-after: page; page-break-after: always; }
+            .gp-spread:last-child { break-after: auto; page-break-after: auto; }
+            .gp-spread > .gp-sheet { height: calc(var(--paper-h) - 0.5mm); break-after: auto; page-break-after: auto; }
+            .gp-spread > .gp-sheet + .gp-sheet { border-left: 0; }
         }
     </style>
 </head>
@@ -123,7 +137,9 @@
     <div id="gp-toolbar">
         <span class="gp-brand">MineCloud</span>
         <span class="gp-group"><button class="gp-lang" type="button" data-lang="ES">ES</button><button class="gp-lang" type="button" data-lang="EN">EN</button></span>
-        <span class="gp-group"><span id="gp-paper-label">Papel</span> <button class="gp-paper" type="button" data-paper="A5">A5</button><button class="gp-paper" type="button" data-paper="A4">A4</button></span>
+        <span class="gp-group"><span id="gp-paper-label">Papel</span> <button class="gp-paper" type="button" data-paper="A5">A5</button><button class="gp-paper" type="button" data-paper="A4">A4</button><button class="gp-paper" type="button" data-paper="BOOKLET">Librillos A4</button></span>
+        <span id="gp-booklet-options" class="gp-group" hidden><label><span id="gp-folios-label">Folios por librillo</span> <input id="gp-folios" type="number" min="1" max="15" step="1" value="6"></label>
+            <label><input id="gp-long-edge" type="checkbox"> <span id="gp-long-edge-label">Volteo por borde largo</span></label></span>
         <label><input id="gp-ink" type="checkbox" checked> <span id="gp-ink-label">Ahorrar tinta</span></label>
         <span class="gp-group"><button class="gp-font" type="button" data-pixel="0">Fuente clara</button><button class="gp-font" type="button" data-pixel="1">Fuente pixel</button></span>
         <button id="gp-print" type="button" disabled>🖨 Imprimir</button>
