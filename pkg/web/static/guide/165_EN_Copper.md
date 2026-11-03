@@ -40,4 +40,4 @@ It takes part in **3** reactions you have to discover by mixing in the flask. Hi
 
 ◀ [Nickel](164) · [Zinc](166) ▶
 
-See also: [Periodic table](116), [Chemistry](115), [Element blocks](60).
+See also: [Rust and patina](216), [Periodic table](116), [Chemistry](115), [Element blocks](60).

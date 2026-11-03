@@ -351,7 +351,8 @@ const RESOURCE_DROPS = {
     mole: [['fur', 1, 2]],
     beaver: [['fur', 1, 2], ['wood', 1, 1, 0.5]],
     ant: [], // a squashed ant leaves nothing (ants.js)
-    eel: [['raw_fish', 1, 2]]
+    eel: [['raw_fish', 1, 2]],
+    copper_golem: [] // never defeated: Shift + right click packs it back into its core (copper_golem.js)
 };
 
 // Struck but not defeated, some creatures shed something: [item, chance, cooldown seconds].

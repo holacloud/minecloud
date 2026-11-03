@@ -63,7 +63,8 @@ const TRAPS_SPECIES = {
     mole: { baits: ['bait_worms'], cage: true },
     beaver: { baits: ['bait_seeds'], cage: true },
     ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' },
-    eel: { baits: [], bucket: 'eel_bucket' }
+    eel: { baits: [], bucket: 'eel_bucket' },
+    copper_golem: { baits: [] } // a machine: no bait, no cage
 };
 
 const TRAPS_BAIT_LIFE = 120;

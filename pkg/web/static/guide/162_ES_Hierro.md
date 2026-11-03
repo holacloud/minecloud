@@ -45,4 +45,4 @@ Participa en **4** reacciones que hay que descubrir mezclando en el matraz. Pist
 
 ◀ [Manganeso](161) · [Cobalto](163) ▶
 
-Ver también: [Tabla periódica](116), [Química](115), [Bloques de elementos](60).
+Ver también: [Óxido y pátina](216), [Tabla periódica](116), [Química](115), [Bloques de elementos](60).

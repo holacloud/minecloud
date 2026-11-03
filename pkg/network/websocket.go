@@ -459,7 +459,12 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		log.Printf("Received message: %s", message)
+		// Never log a creative key.
+		if msg.Type == "creativeAuth" {
+			log.Printf("Received message: creativeAuth (key hidden)")
+		} else {
+			log.Printf("Received message: %s", message)
+		}
 		handleMessage(c, msg)
 	}
 }

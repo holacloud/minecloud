@@ -38,6 +38,7 @@ the pages.
 - [Chemistry](115): the lab bench, the [periodic table](116) and the reactions.
 - [Blueprints](191): measure with the [measuring tape](192), save, share and build again.
 - [Programmable robot](193): program it with blocks ([how](194)) and beat the [challenges](195).
+- [Copper golem](215): a helper you build and charge; its copper weathers ([rust and patina](216)).
 - [Electricity](200): [generators](201), [wires](202), [batteries](203), [consumers](204), the
   [multimeter](205) and [projects](206).
 - [Switches](207), [sensors](208) and [logic gates](209): [memory and delays](210), [example circuits](211) and

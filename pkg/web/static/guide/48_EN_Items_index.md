@@ -146,6 +146,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:robot) [Programmable robot](193)
 - ![](item:robot) [Programming the robot](194)
 - ![](item:robot) [Coding challenges](195)
+- ![](item:copper_golem_core) [Copper golem](215): copper_golem_core, copper_wrench
 
 ## Gear
 

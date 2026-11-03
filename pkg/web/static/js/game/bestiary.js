@@ -186,6 +186,11 @@ const BESTIARY_ENTRIES = {
         name: 'Electric Eel', habitat: 'Deep lakes and rivers', activity: 'Day and night (more at night)', temperament: 'Neutral',
         hint: 'Something long lies on the bottom of deep water, and it crackles.',
         description: 'A long, dark knifefish that cruises slowly along the bottom and rises now and then to gulp air. Touch it or strike it and it discharges: blue arcs crackle through the water and shock anyone swimming close. Catch one with a bucket and keep it in an eel tank: a living generator.'
+    },
+    copper_golem: {
+        name: 'Copper Golem', habitat: 'Wherever its builder goes', activity: 'While it has charge', temperament: 'Friendly',
+        hint: 'It is not found: it is built, from a copper golem core.',
+        description: 'A small helper of copper with big round eyes, a lightning-rod antenna and a coil on its back. It follows you, waits, or gathers the items lying around and brings them to you, opening doors on its way. It runs on charge (a battery block, coal or a lithium battery), and over the days its copper turns brown and then green, unless you wax it with honeycomb.'
     }
 };
 

@@ -146,6 +146,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:robot) [Robot programable](193)
 - ![](item:robot) [Programar el robot](194)
 - ![](item:robot) [Retos de programación](195)
+- ![](item:copper_golem_core) [Golem de cobre](215): copper_golem_core, copper_wrench
 
 ## Equipo
 

@@ -279,6 +279,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 212 | Lógica para curiosos | Logic for the curious | bits, binary, Boole and Shannon, the half adder, gates in computers |
 | 213 | Anguila eléctrica | Electric eel | mob page of `eel` (arrived 2026-11-02), in the mobs index (16); knifefish, 860 V, electrocytes |
 | 214 | Tanque de anguila | Eel tank | eel_tank (`eel_tank:full` with an eel), eel_bucket: catching, the 25/50 W generator, feeding (items index 48, generators 201) |
+| 215 | Golem de cobre | Copper golem | mob page of `copper_golem` (arrived 2026-11-02; mobs index 16, contents 0): copper_golem_core and copper_wrench (items index 48), building, charge, modes, patina and wax |
+| 216 | Óxido y pátina | Rust and patina | the chemistry of copper patina and iron rust, protection, home experiments (linked from 162 Fe, 165 Cu, 215) |
 
 ### Secret pages
 
