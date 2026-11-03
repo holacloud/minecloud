@@ -41,6 +41,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
 - [Copper golem](215): a helper you build and charge; its copper weathers ([rust and patina](216)).
 - [Electricity](200): [generators](201), [wires](202), [batteries](203), [consumers](204), the
   [multimeter](205) and [projects](206).
+- [Radioisotope generator](220): power that never stops, as in Voyager and the Mars rovers.
 - [Switches](207), [sensors](208) and [logic gates](209): [memory and delays](210), [example circuits](211) and
   [logic for the curious](212).
 - [Motor rams](217) and [lifts](218): electricity that moves blocks, with [mechanical projects](219).

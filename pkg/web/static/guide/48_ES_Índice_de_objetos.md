@@ -136,6 +136,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:multimeter) [Multímetro](205)
 - ![](item:electric_motor) [Proyectos eléctricos](206)
 - ![](item:eel_tank) [Tanque de anguila](214): eel_tank, eel_bucket
+- ![](item:rtg) [Generador de radioisótopos](220): rtg
 - ![](item:lever) [Interruptores](207): lever, push_button, pressure_plate
 - ![](item:daylight_sensor) [Sensores](208): daylight_sensor, proximity_sensor, rain_sensor
 - ![](item:and_gate) [Puertas lógicas](209): and_gate, or_gate, xor_gate, not_gate

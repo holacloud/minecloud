@@ -41,6 +41,7 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 - [Golem de cobre](215): un ayudante que construyes y cargas; su cobre envejece ([óxido y pátina](216)).
 - [Electricidad](200): [generadores](201), [cables](202), [baterías](203), [consumidores](204), el
   [multímetro](205) y [proyectos](206).
+- [Generador de radioisótopos](220): energía que nunca para, como en las Voyager y los robots de Marte.
 - [Interruptores](207), [sensores](208) y [puertas lógicas](209): [memoria y retardos](210),
   [circuitos de ejemplo](211) y [lógica para curiosos](212).
 - [Empujadores](217) y [ascensores](218): electricidad que mueve bloques, con [proyectos mecánicos](219).

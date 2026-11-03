@@ -32,7 +32,7 @@ real ones; only the sizes are made to fit the game.
 
 | Kind | What it does | Blocks |
 |---|---|---|
-| **Generators** | turn sun, wind, water or your arm into electricity | ![](item:solar_panel) ![](item:wind_turbine) ![](item:water_wheel) ![](item:hand_crank) [Generators](201) |
+| **Generators** | turn sun, wind, water or your arm into electricity | ![](item:solar_panel) ![](item:wind_turbine) ![](item:water_wheel) ![](item:hand_crank) ![](item:rtg) [Generators](201), [Radioisotope generator](220) |
 | **Conductors** | carry it from block to block | ![](item:copper_wire) ![](item:wire_post) [Wires and networks](202) |
 | **Storage** | keeps the energy for later | ![](item:battery_block) [Batteries](203) |
 | **Consumers** | use it: light, plants, motion | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) [Consumers](204) |
@@ -68,7 +68,7 @@ electricity.
 
 ## Learn more
 
-1. [Generators](201): solar, wind, water and the hand crank, with their numbers.
+1. [Generators](201): solar, wind, water, the hand crank and the [radioisotope generator](220), with their numbers.
 2. [Wires and networks](202): how to join blocks, and the 512-block limit.
 3. [Batteries](203): capacity, charge and discharge.
 4. [Consumers](204): lamps, grow lamps and motors.

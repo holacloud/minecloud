@@ -22,7 +22,7 @@ import (
 // - Blocks that touch on a face (6 neighbours) belong to the same network. Every electric
 //   block conducts, so a lamp next to a solar panel works without a wire.
 // - Five times a second (powerTickInterval), for each network: generation (W) from the sun,
-//   the wind, the water, the hand cranks and eels in their tanks; demand (W) of every consumer; then the batteries
+//   the wind, the water, the hand cranks, eels in their tanks and radioisotope generators; demand (W) of every consumer; then the batteries
 //   take the surplus or cover the deficit (energy scaled by the tick's length). A network
 //   is all or nothing: if generation plus what the batteries can give does not cover the
 //   whole demand, every consumer goes off (a blackout) and what is generated charges the
@@ -56,7 +56,8 @@ const (
 
 type powerKind struct {
 	Role powerRole
-	// Generators: what drives them ("solar", "wind", "water", "crank") and their peak power.
+	// Generators: what drives them ("solar", "wind", "water", "crank", "eel", "radioisotope")
+	// and their peak power.
 	Source string
 	// Generators: peak power (W). Consumers: demand (W).
 	Watts float64
@@ -87,6 +88,11 @@ var powerKinds = map[string]powerKind{
 	// An electric eel in its glass tank ("eel_tank:full" while occupied): powerEelSteady W all
 	// the time, Watts (the peak) for powerEelFeedBurst after it is fed (powerFeed).
 	"eel_tank": {Role: powerGenerator, Source: "eel", Watts: 50},
+	// --- Radioisotope generator (RTG, guide 220) ---
+	// Decay heat through thermocouples: Watts all the time, day and night, with no fuel and
+	// nothing to do. 80 W runs a 60 W winch or a 50 W motor on its own, without batteries, but
+	// it is twice what a solar panel gives at noon, so its recipe is dear.
+	"rtg": {Role: powerGenerator, Source: "radioisotope", Watts: 80},
 }
 
 const (
@@ -399,6 +405,9 @@ func (g *powerGrid) generation(b *PowerBlock, w cropWorld, env powerEnvironment,
 			return kind.Watts
 		}
 		return powerEelSteady
+	case "radioisotope":
+		// The isotope decays at the same pace whatever happens around it.
+		return kind.Watts
 	}
 	return 0
 }

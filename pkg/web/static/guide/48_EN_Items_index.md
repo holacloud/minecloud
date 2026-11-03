@@ -136,6 +136,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:multimeter) [Multimeter](205)
 - ![](item:electric_motor) [Electric projects](206)
 - ![](item:eel_tank) [Eel tank](214): eel_tank, eel_bucket
+- ![](item:rtg) [Radioisotope generator](220): rtg
 - ![](item:lever) [Switches](207): lever, push_button, pressure_plate
 - ![](item:daylight_sensor) [Sensors](208): daylight_sensor, proximity_sensor, rain_sensor
 - ![](item:and_gate) [Logic gates](209): and_gate, or_gate, xor_gate, not_gate

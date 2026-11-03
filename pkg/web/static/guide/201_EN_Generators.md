@@ -12,6 +12,7 @@ wind, the water, your own arm... or a fish.
 | ![](item:water_wheel) | Water Wheel | `water_wheel` | 105 W | water touching it |
 | ![](item:hand_crank) | Hand Crank | `hand_crank` | 100 W | you turning it |
 | ![](item:eel_tank) | Eel Tank | `eel_tank` | 25 W (50 W fed) | an [electric eel](213) living inside |
+| ![](item:rtg) | Radioisotope Generator | `rtg` | 80 W, always | nothing: decaying atoms inside ([page](220)) |
 
 The numbers are scaled for play, because a MineCloud day lasts only 4 minutes (see [Electricity](200)).
 
@@ -25,6 +26,7 @@ The numbers are scaled for play, because a MineCloud day lasts only 4 minutes (s
 | 1 `water_wheel` | 6 `planks` + 1 `copper_block` |
 | 1 `hand_crank` | 2 `planks` + 1 `iron_ore` + 2 `copper_wire` |
 | 1 `eel_tank` | 4 `glass` + 1 `water_bucket` + 2 `copper_wire` (the eel is caught with a bucket) |
+| 1 `rtg` | 4 `element_pb` + 2 `element_si` + 1 `element_pt` + 2 `iron_block` + 4 `copper_wire` |
 
 - The **silicon** block (`element_si`) is synthesised from stone and coal (see [Element blocks](60) and
   [Silicon](152)): no lab needed.
@@ -89,5 +91,11 @@ Crouch (Shift) to place blocks against it without turning it.
 A glass tank with an [electric eel](213) swimming inside: a **living generator**. It gives **25 W** day and night, and
 **50 W** for 10 seconds every time you feed it a `raw_fish` (right click the tank). Empty, it gives nothing. How to
 catch the eel, put it in and take it out: [Eel tank](214).
+
+## Radioisotope generator
+
+A finned steel drum with a warm glow: it gives **80 W** day and night, rain or shine, anywhere, with no fuel and
+nothing to do. Enough to run a motor ram or a lift winch on its own, without batteries. It is dear to build. How it
+works, and how real ones power space probes like Voyager and the Mars rovers: [Radioisotope generator](220).
 
 See also: [Electricity](200), [Wires and networks](202), [Batteries](203).

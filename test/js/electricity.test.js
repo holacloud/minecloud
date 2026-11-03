@@ -80,7 +80,8 @@ test('the client table mirrors powerKinds in power.go', () => {
 test('every electric block and state is a world block', () => {
     const world = makeWorld();
     const names = ['copper_wire', 'wire_post', 'solar_panel', 'wind_turbine', 'water_wheel', 'water_wheel:z', 'hand_crank',
-        'battery_block', 'battery_block:1', 'battery_block:4', 'electric_lamp', 'electric_lamp:on', 'grow_lamp:on', 'electric_motor:on'];
+        'battery_block', 'battery_block:1', 'battery_block:4', 'electric_lamp', 'electric_lamp:on', 'grow_lamp:on', 'electric_motor:on',
+        'rtg'];
     for (const name of names) {
         assert.ok(world.registry.id(name) > 0, name);
         assert.equal(ctx.electricKindOf(name), name.split(':')[0]);
@@ -90,6 +91,16 @@ test('every electric block and state is a world block', () => {
     assert.equal(world.blockTypes['battery_block:3'].variantOf, 'battery_block');
     assert.equal(ctx.electricKindOf('stone'), null);
     assert.ok(world.blockTypes.multimeter.itemOnly);
+});
+
+test('the radioisotope generator is a steady, glowing full cube', () => {
+    const world = makeWorld();
+    assert.deepEqual({ ...ctx.ELECTRIC_KINDS.rtg }, { role: 'generator', source: 'radioisotope', watts: 80 });
+    const rtg = world.blockTypes.rtg;
+    assert.equal(rtg.name, 'Radioisotope Generator');
+    assert.ok(rtg.glow > 0 && !rtg.shape, 'a glowing full cube');
+    // Its glow is on its own texture: it does not light the world like a lamp.
+    assert.ok(!world.isLightEmitterType('rtg'));
 });
 
 test('lit lamps give light, unlit ones do not', () => {

@@ -1,6 +1,7 @@
 // Electricity: generators, wires, batteries and consumers joined into networks.
 // - The simulation runs on the SERVER (pkg/network/power.go), 5 times a second, for everyone:
-//   generation (W) from solar panels, wind turbines, water wheels and hand cranks; demand (W)
+//   generation (W) from solar panels, wind turbines, water wheels, hand cranks and
+//   radioisotope generators (`rtg`: a steady 80 W, day and night, guide 220); demand (W)
 //   of lamps, grow lamps and motors; batteries (J) take the surplus or cover the deficit. A
 //   network is all or nothing: when it cannot feed every consumer, all of them go off.
 // - Electric blocks that touch on a face form one network (every electric block conducts;
@@ -36,7 +37,10 @@ const ELECTRIC_KINDS = {
     electric_motor: { role: 'consumer', watts: 50, switch: true },
     // --- Living generators (task #14, js/game/eel.js) ---
     // An eel in its tank (`eel_tank:full`): 25 W steady, the 50 W peak for a while once fed.
-    eel_tank: { role: 'generator', source: 'eel', watts: 50 }
+    eel_tank: { role: 'generator', source: 'eel', watts: 50 },
+    // --- Radioisotope generator (RTG, guide 220) ---
+    // Decay heat through thermocouples: 80 W always, with no fuel and nothing to do.
+    rtg: { role: 'generator', source: 'radioisotope', watts: 80 }
 };
 
 const ELECTRIC_PX = 1 / 16;
@@ -201,6 +205,55 @@ registerTexturePattern('electric_motor_top', (f, s, tint, seed) => {
         if (d < 0.38 && d > 0.08 && (d * 20) % 2 < 1) k -= 0.35; // fan grill
         if (d < 0.08) k += 0.2;
         f.put(s, x, y, f.tone(s, steel, k), 0.5);
+    });
+});
+
+// A radioisotope generator: a dark steel drum with cooling fins all round, warm light glowing
+// between their roots (the hot core inside) and a yellow radiation label.
+registerTexturePattern('rtg_side', (f, s, tint, seed) => {
+    const steel = f.rgb(0x4a5058);
+    const hot = f.rgb(0xff8a2a);
+    const label = f.rgb(0xf2c230);
+    const px = 1 / s.size;
+    f.each(s, (x, y, u, v) => {
+        // Six fins: lit ridges with a dark gap between them, where the warm glow shows.
+        const fin = (u * 6) % 1;
+        let color = f.tone(s, steel, (fin < 0.5 ? 0.18 - fin * 0.3 : -0.25) + (f.stretchedNoise(u, v, 2, 20, seed) - 0.5) * 0.1);
+        let h = fin < 0.5 ? 0.75 : 0.25;
+        if (fin > 0.62 && fin < 0.88) {
+            // Brighter in the middle of the drum, where the heat source sits.
+            const heat = Math.max(0, 1 - Math.abs(v - 0.5) * 2.4);
+            color = f.mix(f.tone(s, steel, -0.35), hot, heat * 0.85);
+            h = 0.1;
+        }
+        // Bands at the top and the bottom hold the fins.
+        if (v < 0.12 || v > 0.88) { color = f.tone(s, steel, Math.min(v, 1 - v) < 1.5 * px ? -0.3 : 0.05); h = 0.6; }
+        // The radiation label: a yellow disc with a black trefoil.
+        const dx = u - 0.5, dy = v - 0.5;
+        const d = Math.hypot(dx, dy);
+        if (d < 0.17) {
+            const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 120;
+            const blade = d > 0.05 && d < 0.14 && angle < 60;
+            color = f.tone(s, blade || d < 0.03 ? f.rgb(0x1a1a1a) : label, (f.hash(x, y, seed) - 0.5) * 0.06);
+            h = 0.85;
+        }
+        f.put(s, x, y, color, h);
+    });
+});
+
+registerTexturePattern('rtg_top', (f, s, tint, seed) => {
+    const steel = f.rgb(0x4a5058);
+    const hot = f.rgb(0xff8a2a);
+    f.each(s, (x, y, u, v) => {
+        const d = Math.hypot(u - 0.5, v - 0.5);
+        const angle = Math.atan2(v - 0.5, u - 0.5);
+        // Fins spread out like a star from the round cap of the heat source.
+        const fin = ((angle / (2 * Math.PI)) * 12 + 12) % 1;
+        let color = f.tone(s, steel, (fin < 0.5 ? 0.12 : -0.28) + (f.hash(x, y, seed) - 0.5) * 0.08);
+        let h = fin < 0.5 ? 0.7 : 0.25;
+        if (d < 0.22) { color = f.tone(s, steel, 0.1 - d); h = 0.8; }
+        if (d < 0.08) { color = f.mix(f.tone(s, steel, -0.2), hot, 0.75 - d * 4); h = 0.5; }
+        f.put(s, x, y, color, h);
     });
 });
 
@@ -378,6 +431,11 @@ registerBlockType('hand_crank', {
     color: 0xB48A56, name: 'Hand Crank', shape: 'electric_crank', lightPasses: true, breakDuration: 0.4,
     category: 'electric', electric: true, faces: { top: { pattern: 'metal', tint: 0x8d969e }, side: { pattern: 'planks', tintOf: 'planks' } }
 });
+// A full cube. `glow` lights up its texture a little (the warm slots most), so it shows in the dark.
+registerBlockType('rtg', {
+    color: 0x4A5058, name: 'Radioisotope Generator', breakDuration: 0.9, category: 'electric', electric: true, glow: 0.3,
+    faces: { top: 'rtg_top', side: 'rtg_side', bottom: 'rtg_top' }
+});
 registerBlockType('battery_block', {
     color: 0x2B2F36, name: 'Battery Block', breakDuration: 0.7, category: 'electric', electric: true,
     faces: { top: 'battery_top', side: 'battery_side_0', bottom: 'battery_top' }
@@ -439,6 +497,9 @@ registerGameContent(function ({ addRecipe }) {
     addRecipe('wind_turbine', 'Build Wind Turbine', 'wind_turbine', 1, [{ type: 'iron_ore', amount: 3 }, { type: 'planks', amount: 3 }, { type: 'copper_block', amount: 1 }]);
     addRecipe('water_wheel', 'Build Water Wheel', 'water_wheel', 1, [{ type: 'planks', amount: 6 }, { type: 'copper_block', amount: 1 }]);
     addRecipe('hand_crank', 'Build Hand Crank', 'hand_crank', 1, [{ type: 'planks', amount: 2 }, { type: 'iron_ore', amount: 1 }, { type: 'copper_wire', amount: 2 }]);
+    // Lead shielding, silicon thermocouples (Voyager's were silicon-germanium), platinum for the
+    // fuel's metal cladding (real ones use iridium, its neighbour), an iron drum with fins.
+    addRecipe('rtg', 'Build Radioisotope Generator', 'rtg', 1, [{ type: 'element_pb', amount: 4 }, { type: 'element_si', amount: 2 }, { type: 'element_pt', amount: 1 }, { type: 'iron_block', amount: 2 }, { type: 'copper_wire', amount: 4 }]);
     addRecipe('battery_block_lithium', 'Build Battery Block (Lithium)', 'battery_block', 2, [{ type: 'battery', amount: 2 }, { type: 'iron_ore', amount: 2 }, { type: 'copper_wire', amount: 2 }]);
     addRecipe('battery_block', 'Build Battery Block (Copper and Iron)', 'battery_block', 1, [{ type: 'copper_block', amount: 2 }, { type: 'iron_block', amount: 2 }, { type: 'coal_ore', amount: 1 }]);
     addRecipe('electric_lamp', 'Build Electric Lamps', 'electric_lamp', 2, [{ type: 'light_bulb', amount: 1 }, { type: 'glass', amount: 1 }, { type: 'copper_wire', amount: 1 }]);

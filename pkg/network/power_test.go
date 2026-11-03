@@ -402,3 +402,26 @@ func TestPowerEelTank(t *testing.T) {
 		t.Fatal("the eel should light the 10 W lamp at night")
 	}
 }
+
+func TestPowerRadioisotopeGenerator(t *testing.T) {
+	// An RTG gives its 80 W day and night, rain or shine, under a roof, with nothing to do.
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "rtg", {1, 0, 0}: "electric_motor", {2, 0, 0}: "electric_lamp"})
+	w.SetBlock(0, 3, 0, "stone")
+	rtg := g.blocks[powerPos{0, 0, 0}]
+	now := time.Unix(1000, 0)
+	for _, env := range []powerEnvironment{powerNoon, powerMidnight, {Days: 3.75, Time: 0.75, Rain: 1}} {
+		if got := g.generation(rtg, w, env, now); got != 80 {
+			t.Fatalf("the RTG gives %v W in %+v, want 80", got, env)
+		}
+	}
+	// A 50 W motor and a 10 W lamp at midnight, without batteries.
+	g.tick(w, powerMidnight, now, 1)
+	if w[[3]int{1, 0, 0}] != "electric_motor:on" || w[[3]int{2, 0, 0}] != "electric_lamp:on" {
+		t.Fatalf("the RTG should run the motor and the lamp at night: %v", w)
+	}
+	report := g.probe(0, 0, 0, w, powerMidnight, now)
+	if report.Own != 80 || report.Sources["radioisotope"] != 80 || report.Demand != 60 {
+		t.Fatalf("unexpected report %+v", report)
+	}
+}

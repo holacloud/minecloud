@@ -12,6 +12,7 @@ agua, tu propio brazo... o un pez.
 | ![](item:water_wheel) | Rueda hidráulica | `water_wheel` | 105 W | el agua que la toca |
 | ![](item:hand_crank) | Manivela | `hand_crank` | 100 W | que tú la gires |
 | ![](item:eel_tank) | Tanque de anguila | `eel_tank` | 25 W (50 W si come) | una [anguila eléctrica](213) que vive dentro |
+| ![](item:rtg) | Generador de radioisótopos | `rtg` | 80 W, siempre | nada: átomos que se desintegran dentro ([página](220)) |
 
 Los números están ajustados para jugar, porque un día de MineCloud dura solo 4 minutos (ver [Electricidad](200)).
 
@@ -25,6 +26,7 @@ Los números están ajustados para jugar, porque un día de MineCloud dura solo 
 | 1 `water_wheel` | 6 `planks` + 1 `copper_block` |
 | 1 `hand_crank` | 2 `planks` + 1 `iron_ore` + 2 `copper_wire` |
 | 1 `eel_tank` | 4 `glass` + 1 `water_bucket` + 2 `copper_wire` (la anguila se atrapa con un cubo) |
+| 1 `rtg` | 4 `element_pb` + 2 `element_si` + 1 `element_pt` + 2 `iron_block` + 4 `copper_wire` |
 
 - El bloque de **silicio** (`element_si`) se sintetiza con piedra y carbón (ver [Bloques de elementos](60) y
   [Silicio](152)): no hace falta el laboratorio.
@@ -90,5 +92,12 @@ Agáchate (Shift) para colocar bloques junto a ella sin girarla.
 Una pecera de vidrio con una [anguila eléctrica](213) nadando dentro: un **generador vivo**. Da **25 W** de día y de
 noche, y **50 W** durante 10 segundos cada vez que le das un `raw_fish` (clic derecho en el tanque). Vacío no da nada.
 Cómo atrapar la anguila, meterla y sacarla: [Tanque de anguila](214).
+
+## Generador de radioisótopos
+
+Un bidón de acero con aletas y un brillo cálido: da **80 W** de día y de noche, con lluvia o con sol, en cualquier
+sitio, sin combustible y sin hacer nada. Basta para mover un ariete de motor o un torno de ascensor él solo, sin
+baterías. Es caro de construir. Cómo funciona, y cómo alimentan los de verdad sondas como las Voyager y los robots
+de Marte: [Generador de radioisótopos](220).
 
 Ver también: [Electricidad](200), [Cables y redes](202), [Baterías](203).
