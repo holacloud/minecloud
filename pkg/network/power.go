@@ -32,6 +32,8 @@ import (
 //   (charge in quarters). Lit lamps then light the world like torches.
 // - A motor that switches on opens the iron doors and trapdoors it touches; switching off
 //   closes them. Lit grow lamps make the wheat under them grow twice as fast (crops.go).
+// - Rams and lift winches (mechanics.go) are consumers that move blocks: a powered ram pushes
+//   the blocks in front of it, a powered winch hoists its lift platform.
 // - Logic blocks (logic.go: levers, buttons, plates, sensors, gates) are switches: they
 //   conduct only while they are on, and a gate never conducts through its input faces. So
 //   networks are built from face neighbours that both conduct towards each other (joins),
@@ -200,6 +202,7 @@ type powerGrid struct {
 	holds     map[powerPos]powerHold
 	growLamps map[powerPos]bool
 	logic     *logicState
+	mech      *mechState
 	// Battery charge (or a logic block's name) changed since the last save.
 	energyChanged bool
 }
@@ -214,6 +217,7 @@ func newPowerGrid() *powerGrid {
 		holds:     make(map[powerPos]powerHold),
 		growLamps: make(map[powerPos]bool),
 		logic:     newLogicState(),
+		mech:      newMechState(),
 	}
 }
 
@@ -486,6 +490,7 @@ func (g *powerGrid) tick(w cropWorld, env powerEnvironment, now time.Time, dt fl
 		}
 	}
 	g.growLamps = litGrowLamps
+	updates = append(updates, g.mechanicsStep(w, env, now)...)
 	updates = append(updates, g.logicStep(w, env, now)...)
 	return updates, save
 }
@@ -921,6 +926,7 @@ func runPowerGrid() {
 		env := currentPowerEnvironment()
 		powerMu.Lock()
 		updates, save := grid.tick(chunkStore, env, now, powerTickInterval.Seconds())
+		moves := grid.mechanicsDrain()
 		if grid.energyChanged && now.Sub(lastSave) >= powerSaveEvery {
 			save = true
 		}
@@ -931,6 +937,10 @@ func runPowerGrid() {
 		if save {
 			lastSave = now
 			saveWorldState()
+		}
+		// What moved first (mechanics.go), so clients carry players before the blocks arrive.
+		for _, move := range moves {
+			broadcastToAll(createMessage("mechMove", move))
 		}
 		for _, block := range updates {
 			broadcastToAll(createMessage("blockPlace", block))

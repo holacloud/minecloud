@@ -140,6 +140,9 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:daylight_sensor) [Sensores](208): daylight_sensor, proximity_sensor, rain_sensor
 - ![](item:and_gate) [Puertas lógicas](209): and_gate, or_gate, xor_gate, not_gate
 - ![](item:latch) [Memoria y retardos](210): delay_gate, latch
+- ![](item:motor_ram) [Empujadores](217): motor_ram, sticky_ram
+- ![](item:lift_winch) [Ascensores](218): lift_winch, lift_platform
+- ![](item:sticky_ram) [Proyectos mecánicos](219)
 
 ## Robótica
 

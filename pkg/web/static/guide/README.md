@@ -281,6 +281,9 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 214 | Tanque de anguila | Eel tank | eel_tank (`eel_tank:full` with an eel), eel_bucket: catching, the 25/50 W generator, feeding (items index 48, generators 201) |
 | 215 | Golem de cobre | Copper golem | mob page of `copper_golem` (arrived 2026-11-02; mobs index 16, contents 0): copper_golem_core and copper_wrench (items index 48), building, charge, modes, patina and wax |
 | 216 | Óxido y pátina | Rust and patina | the chemistry of copper patina and iron rust, protection, home experiments (linked from 162 Fe, 165 Cu, 215) |
+| 217 | Empujadores | Motor rams | motor_ram, sticky_ram (and `ram_arm`): facing, pushing up to 12 blocks, what never moves, players on top (contents 0 and items index 48) |
+| 218 | Ascensores | Lifts | lift_winch, lift_platform: building the shaft, up and down, call buttons with a latch, riding (items index 48) |
+| 219 | Proyectos mecánicos | Mechanical projects | 4 builds: secret door, rising step, two-storey lift, night shutter |
 | 222 | Controles táctiles | Touch controls | phones and tablets: joystick, drag / tap / hold on the world, Mine, Use, Jump, Sneak, Run, the ☰ menu and the chat bar (contents 0, js/game/touch.js) |
 
 ### Secret pages

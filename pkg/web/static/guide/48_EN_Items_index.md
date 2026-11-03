@@ -140,6 +140,9 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:daylight_sensor) [Sensors](208): daylight_sensor, proximity_sensor, rain_sensor
 - ![](item:and_gate) [Logic gates](209): and_gate, or_gate, xor_gate, not_gate
 - ![](item:latch) [Memory and delays](210): delay_gate, latch
+- ![](item:motor_ram) [Motor rams](217): motor_ram, sticky_ram
+- ![](item:lift_winch) [Lifts](218): lift_winch, lift_platform
+- ![](item:sticky_ram) [Mechanical projects](219)
 
 ## Robotics
 

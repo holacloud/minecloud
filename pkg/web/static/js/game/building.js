@@ -526,7 +526,7 @@ Object.assign(Game.prototype, {
             // Shaped blocks (stairs, doors...) take their state, and maybe more cells, from the click.
             const ray = this.getInteractionRay();
             const parts = this.world.getPlacementBlocks(blockType, newPos.x, newPos.y, newPos.z, {
-                normal, hit: hit.point, look: { x: ray.direction.x, z: ray.direction.z }
+                normal, hit: hit.point, look: { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z }
             });
             if (!parts) return;
             // Solid blocks may not be placed where the player stands (it would trap the camera).

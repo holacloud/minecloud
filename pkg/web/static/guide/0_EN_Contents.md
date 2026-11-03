@@ -43,6 +43,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
   [multimeter](205) and [projects](206).
 - [Switches](207), [sensors](208) and [logic gates](209): [memory and delays](210), [example circuits](211) and
   [logic for the curious](212).
+- [Motor rams](217) and [lifts](218): electricity that moves blocks, with [mechanical projects](219).
 
 ---
 
