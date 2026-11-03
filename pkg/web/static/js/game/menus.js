@@ -372,6 +372,9 @@ Object.assign(Game.prototype, {
             document.getElementById('appearance-panel'),
             document.getElementById('pause-menu'),
             document.getElementById('chat-input'),
+            // The touch chat's send and close buttons (js/game/touch.js).
+            document.getElementById('touch-chat-row'),
+            document.getElementById('chat-log'),
             document.getElementById('sign-reader'),
             document.getElementById('inventory-panel'),
             document.getElementById('crafting-panel'),

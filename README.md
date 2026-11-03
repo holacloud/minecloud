@@ -100,13 +100,17 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 
 ### Mobile
 
-- Left virtual joystick: move.
-- Right touch zone: look around.
-- `Mine`: hold to mine.
-- `Place`: place selected block.
-- `Jump`: jump.
+Phones and tablets get touch controls (guide page 222); add `?touch=1` or `?touch=0` to the URL to force them on
+or off.
+
+- Left side: a floating joystick appears under the thumb; push it to the edge, or tap `Run`, to run.
+- Drag on the world: look around. Tap: use / place (or hit a mob). Touch and hold still: mine (a ring fills
+  around the crosshair).
+- `Mine` (hold) and `Use`: the left and right mouse buttons.
+- `Jump` (double tap in creative: fly; then `Up` / `Down`), `Sneak` (toggle; gets off a mount).
 - Tap hotbar slots: change selected block.
-- `Place` with `spray_paint` selected: paint the aimed block face.
+- `☰`: inventory, crafting, guide, bestiary, chat, blueprints, interact (`F`), eat, drop, camera view, photo mode,
+  players, voice, full screen and settings. `🎒`: inventory. `💬`: chat with Send and ✕ (commands work).
 
 ## Crafting And Special Blocks
 

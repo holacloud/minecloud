@@ -82,6 +82,19 @@ class CameraController {
     setTouchSprint(active) { this.touchSprint = active; }
     setLookSpeed(speed) { this.lookSpeed = speed; }
     canInteract() { return this.isLocked || this.touchControlsEnabled; }
+
+    // A new press of the jump control (Space or the touch Jump button): buffers the jump, and
+    // a double tap toggles free flight where it is allowed.
+    pressJump(now = performance.now()) {
+        this.jumpPressedAt = now;
+        if (this.flightAllowed && !this.mount && now - this.lastJumpTapAt < 300) {
+            this.flying = !this.flying;
+            this.velocityY = 0;
+            this.lastJumpTapAt = -Infinity;
+        } else {
+            this.lastJumpTapAt = now;
+        }
+    }
     
     init() {
         document.addEventListener('keydown', e => {
@@ -107,17 +120,7 @@ class CameraController {
             if (e.code === 'KeyA') this.keys.left = true;
             if (e.code === 'KeyD') this.keys.right = true;
             if (e.code === 'Space') {
-                if (!e.repeat) {
-                    const now = performance.now();
-                    this.jumpPressedAt = now;
-                    if (this.flightAllowed && !this.mount && now - this.lastJumpTapAt < 300) {
-                        this.flying = !this.flying;
-                        this.velocityY = 0;
-                        this.lastJumpTapAt = -Infinity;
-                    } else {
-                        this.lastJumpTapAt = now;
-                    }
-                }
+                if (!e.repeat) this.pressJump();
                 this.keys.jump = true;
             }
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.crouch = true;

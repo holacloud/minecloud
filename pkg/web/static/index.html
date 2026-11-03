@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MineCloud</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%2367a83f' d='M8 1l7 3.5-7 3.5-7-3.5z'/%3E%3Cpath fill='%237a5233' d='M1 4.5l7 3.5v7l-7-3.5z'/%3E%3Cpath fill='%235e3f27' d='M15 4.5l-7 3.5v7l7-3.5z'/%3E%3C/svg%3E">
     <style>
@@ -881,96 +881,427 @@
             font-size: 28px;
         }
 
-        #mobile-controls {
-            position: absolute;
-            inset: 0;
+        /* Touch controls (phones and tablets; js/game/touch.js). Nothing here applies on a
+           desktop: the controls stay hidden and every other rule is scoped to body.touch-ui.
+           The --touch-* sizes and offsets are set by touchApplyLayout (computeTouchLayout in
+           js/touchInput.js) so the buttons never cover the hotbar. */
+        #mobile-controls,
+        #touch-menu {
             display: none;
+        }
+        html.touch-ui,
+        html.touch-ui body {
+            overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+        }
+        body.touch-ui {
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body.touch-ui input,
+        body.touch-ui textarea,
+        body.touch-ui select,
+        body.touch-ui [contenteditable] {
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
+        body.touch-ui #game-container {
+            position: fixed;
+            inset: 0;
+            width: auto;
+            height: auto;
+            touch-action: none;
+        }
+        body.touch-ui #mobile-controls {
+            position: fixed;
+            inset: 0;
+            display: block;
             pointer-events: none;
             z-index: 160;
             touch-action: none;
         }
-        #mobile-controls.enabled {
-            display: block;
+        body.touch-ui.touch-paused #mobile-controls,
+        body.photo-mode #mobile-controls {
+            display: none;
         }
-        .mobile-zone {
+        #mobile-look-zone {
             position: absolute;
-            bottom: 0;
-            width: 50vw;
-            height: 48vh;
+            inset: 0;
             pointer-events: auto;
             touch-action: none;
         }
         #mobile-move-zone {
+            position: absolute;
             left: 0;
-        }
-        #mobile-look-zone {
-            right: 0;
-        }
-        #mobile-joystick {
-            position: absolute;
-            left: 26px;
-            bottom: 34px;
-            width: 132px;
-            height: 132px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.24);
-            border: 2px solid rgba(255, 255, 255, 0.18);
-            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.06);
-        }
-        #mobile-joystick-knob {
-            position: absolute;
-            left: 40px;
-            top: 40px;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.7);
-            border: 2px solid rgba(255, 255, 255, 0.55);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        }
-        #mobile-buttons {
-            position: absolute;
-            right: 18px;
-            bottom: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: flex-end;
-            pointer-events: none;
-        }
-        .mobile-button-row {
-            display: flex;
-            gap: 12px;
-        }
-        .mobile-button {
-            min-width: 74px;
-            height: 56px;
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            border-radius: 16px;
-            background: rgba(18, 24, 36, 0.5);
-            color: #fff;
-            font: 600 14px/1 'Consolas', monospace;
-            letter-spacing: 0.02em;
-            backdrop-filter: blur(8px);
+            bottom: 0;
+            top: 32%;
+            width: var(--touch-move-width, 45vw);
             pointer-events: auto;
             touch-action: none;
         }
-        .mobile-button:active,
+        #mobile-joystick {
+            position: absolute;
+            left: var(--touch-side-left, 12px);
+            bottom: var(--touch-controls-bottom, 90px);
+            width: var(--touch-joystick, 124px);
+            height: var(--touch-joystick, 124px);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.22);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.06);
+            opacity: 0.75;
+            transition: opacity 0.15s ease;
+            pointer-events: none;
+        }
+        #mobile-joystick.active {
+            opacity: 1;
+        }
+        #mobile-joystick-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 40%;
+            height: 40%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.72);
+            border: 2px solid rgba(255, 255, 255, 0.55);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transform: translate(-50%, -50%);
+        }
+        #mobile-joystick.sprinting #mobile-joystick-knob {
+            background: rgba(255, 214, 110, 0.9);
+        }
+        .mobile-button {
+            position: relative;
+            width: var(--touch-button, 60px);
+            height: var(--touch-button, 60px);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 50%;
+            background: rgba(18, 24, 36, 0.48);
+            color: #fff;
+            font: 700 12px/1 'Consolas', monospace;
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 2px #000;
+            pointer-events: auto;
+            touch-action: none;
+            overflow: hidden;
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        .mobile-button .icon {
+            display: block;
+            font-size: 20px;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
         .mobile-button.active {
-            background: rgba(95, 135, 220, 0.7);
+            background: rgba(95, 135, 220, 0.72);
+            border-color: rgba(190, 215, 255, 0.7);
+        }
+        .mobile-button.latched {
+            background: rgba(214, 160, 52, 0.62);
+            border-color: rgba(255, 224, 150, 0.8);
+        }
+        #mobile-buttons {
+            position: absolute;
+            right: var(--touch-side-right, 12px);
+            bottom: var(--touch-controls-bottom, 90px);
+            display: grid;
+            grid-template-columns: repeat(2, var(--touch-button, 60px));
+            gap: var(--touch-button-gap, 10px);
+            pointer-events: none;
+        }
+        /* Mining progress: fills the Mine button and a ring around the crosshair. */
+        #mobile-break::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(rgba(255, 210, 90, 0.55) calc(var(--mine-progress, 0) * 1turn), transparent 0);
+            pointer-events: none;
+        }
+        #mobile-break > span {
+            position: relative;
+        }
+        #mobile-mine-ring {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            width: 40px;
+            height: 40px;
+            margin: -20px 0 0 -20px;
+            border-radius: 50%;
+            background: conic-gradient(rgba(255, 220, 120, 0.9) calc(var(--mine-progress, 0) * 1turn), rgba(255, 255, 255, 0.18) 0);
+            -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px);
+            mask: radial-gradient(circle, transparent 15px, #000 16px);
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            pointer-events: none;
+        }
+        #mobile-mine-ring.visible {
+            opacity: 1;
+        }
+        #mobile-sprint {
+            position: absolute;
+            left: var(--touch-side-left, 12px);
+            bottom: calc(var(--touch-controls-bottom, 90px) + var(--touch-joystick, 124px) + 10px);
+            width: var(--touch-sprint, 44px);
+            height: var(--touch-sprint, 44px);
+            font-size: 10px;
+        }
+        #mobile-sprint .icon {
+            font-size: 16px;
+            margin-bottom: 1px;
+        }
+        #touch-topbar {
+            position: absolute;
+            left: var(--touch-side-left, 12px);
+            top: var(--touch-top, 8px);
+            display: flex;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .touch-top-button {
+            width: var(--touch-top-button, 44px);
+            height: var(--touch-top-button, 44px);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 12px;
+            background: rgba(10, 14, 22, 0.55);
+            color: #fff;
+            font: 700 20px/1 system-ui, sans-serif;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        .touch-top-button:active {
+            background: rgba(95, 135, 220, 0.72);
         }
 
-        @media (pointer: coarse) {
-            #hotbar {
-                bottom: 88px;
-                gap: 6px;
-                padding: 6px;
-                z-index: 220;
-            }
-            .hotbar-slot {
-                width: 44px;
-                height: 44px;
-            }
+        /* The HUD rearranged around the controls. */
+        body.touch-ui #hotbar {
+            position: fixed;
+            bottom: var(--touch-hotbar-bottom, 10px);
+            gap: 4px;
+            padding: 4px;
+            z-index: 220;
+            touch-action: none;
+        }
+        body.touch-ui .hotbar-slot {
+            width: var(--touch-slot, 40px);
+            height: var(--touch-slot, 40px);
+        }
+        body.touch-ui .hotbar-slot .slot-num {
+            display: none;
+        }
+        body.touch-ui.touch-hide-hotbar #hotbar,
+        body.touch-ui.touch-paused #crosshair,
+        body.touch-ui #debug {
+            display: none;
+        }
+        body.touch-ui #player-list-container {
+            position: fixed;
+            top: calc(var(--touch-chat-top, 60px) + 36px);
+            right: var(--touch-side-right, 12px);
+            display: none;
+            max-height: 40vh;
+            overflow-y: auto;
+            z-index: 230;
+        }
+        body.touch-ui.touch-players #player-list-container {
+            display: block;
+        }
+        body.touch-ui #player-list li {
+            padding: 6px 0;
+        }
+        body.touch-ui #health-hud {
+            position: fixed;
+            left: auto;
+            bottom: auto;
+            top: var(--touch-top, 8px);
+            right: var(--touch-side-right, 12px);
+            width: min(150px, 30vw);
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+        /* Compass and clock under the health bar, clear of the top buttons. */
+        body.touch-ui #nav-hud {
+            position: fixed;
+            top: var(--touch-chat-top, 60px);
+            left: auto;
+            right: var(--touch-side-right, 12px);
+            transform: none;
+            gap: 10px;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+        body.touch-ui #block-inspector {
+            position: fixed;
+            top: calc(var(--touch-chat-top, 60px) + 36px);
+            right: var(--touch-side-right, 12px);
+            width: min(240px, 44vw);
+            font-size: 11px;
+        }
+        body.touch-ui #chat-container {
+            position: fixed;
+            left: var(--touch-side-left, 12px);
+            top: var(--touch-chat-top, 60px);
+            bottom: auto;
+            width: min(340px, 50vw);
+        }
+        body.touch-ui #chat-log {
+            max-height: var(--touch-chat-max, 120px);
+            font-size: 11px;
+            padding: 6px 8px;
+        }
+        body.touch-ui.touch-paused:not(.touch-chat-open) #chat-container {
+            display: none;
+        }
+        body.touch-ui.touch-chat-open #chat-container {
+            top: var(--touch-top, 8px);
+            right: var(--touch-side-right, 12px);
+            width: auto;
+            max-width: 640px;
+            z-index: 400;
+        }
+        body.touch-ui.touch-chat-open #chat-container::before {
+            display: none;
+        }
+        body.touch-ui.touch-chat-open #chat-log {
+            max-height: 34vh;
+            pointer-events: auto;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+            font-size: 13px;
+        }
+        #touch-chat-row {
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+        #touch-chat-row #chat-input {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+        }
+        #touch-chat-row button {
+            display: none;
+            min-width: 48px;
+            height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(10, 14, 22, 0.84);
+            color: #fff;
+            font: 700 15px/1 'Consolas', monospace;
+            touch-action: manipulation;
+        }
+        #touch-chat-row #touch-chat-send {
+            padding: 0 14px;
+            background: rgba(72, 140, 230, 0.9);
+        }
+        body.touch-chat-open #touch-chat-row button {
+            display: block;
+        }
+        body.touch-ui #weather-panel,
+        body.touch-ui #electric-panel {
+            position: fixed !important;
+            top: calc(var(--touch-chat-top, 60px) + 36px) !important;
+            bottom: auto !important;
+            right: var(--touch-side-right, 12px) !important;
+            width: min(240px, 44vw) !important;
+            font-size: 11px !important;
+        }
+
+        /* Panels: fit the screen, scroll with a finger, close with the ✕. */
+        body.touch-ui #inventory-panel,
+        body.touch-ui #crafting-panel,
+        body.touch-ui #pause-menu,
+        body.touch-ui #sign-reader {
+            position: fixed;
+            max-height: calc(100% - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+        .touch-panel-close {
+            float: right;
+            width: 40px;
+            height: 40px;
+            margin: -8px -8px 0 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font: 700 18px/1 system-ui, sans-serif;
+        }
+        body.touch-ui .inventory-item,
+        body.touch-ui #pause-menu button {
+            min-height: 44px;
+        }
+
+        /* The touch menu: every panel that a desktop opens with a key. */
+        body.touch-ui #touch-menu.visible {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: calc(8px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+            background: rgba(4, 8, 14, 0.5);
+            z-index: 300;
+        }
+        .touch-menu-sheet {
+            width: min(560px, 100%);
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(8, 12, 20, 0.94);
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            overflow: hidden;
+        }
+        .touch-menu-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .touch-menu-head .touch-panel-close {
+            float: none;
+            margin: 0;
+        }
+        .touch-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+            gap: 8px;
+            padding: 12px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+        .touch-menu-item {
+            min-height: 68px;
+            padding: 8px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            font: 600 12px/1.2 'Consolas', monospace;
+        }
+        .touch-menu-item .icon {
+            display: block;
+            font-size: 22px;
+            margin-bottom: 6px;
+        }
+        .touch-menu-item:active {
+            background: rgba(95, 135, 220, 0.6);
         }
     </style>
 </head>
@@ -1097,23 +1428,35 @@
         </div>
     </div>
     <div id="mobile-controls">
-        <div id="mobile-move-zone" class="mobile-zone">
+        <div id="mobile-look-zone"></div>
+        <div id="mobile-move-zone">
             <div id="mobile-joystick">
                 <div id="mobile-joystick-knob"></div>
             </div>
         </div>
-        <div id="mobile-look-zone" class="mobile-zone"></div>
+        <button id="mobile-sprint" class="mobile-button" type="button"><span class="icon">»</span>Run</button>
         <div id="mobile-buttons">
-            <div class="mobile-button-row">
-                <button id="mobile-break" class="mobile-button" type="button">Mine</button>
-                <button id="mobile-place" class="mobile-button" type="button">Place</button>
-            </div>
-            <div class="mobile-button-row">
-                <button id="mobile-jump" class="mobile-button" type="button">Jump</button>
-            </div>
+            <button id="mobile-sneak" class="mobile-button" type="button"><span class="icon">⇣</span><span class="label">Sneak</span></button>
+            <button id="mobile-place" class="mobile-button" type="button"><span class="icon">✋</span>Use</button>
+            <button id="mobile-break" class="mobile-button" type="button"><span><span class="icon">⛏</span>Mine</span></button>
+            <button id="mobile-jump" class="mobile-button" type="button"><span class="icon">⇡</span><span class="label">Jump</span></button>
+        </div>
+        <div id="mobile-mine-ring"></div>
+        <div id="touch-topbar">
+            <button id="touch-menu-button" class="touch-top-button" type="button" aria-label="Menu">☰</button>
+            <button id="touch-inventory-button" class="touch-top-button" type="button" aria-label="Inventory">🎒</button>
+            <button id="touch-chat-button" class="touch-top-button" type="button" aria-label="Chat">💬</button>
         </div>
     </div>
-    
+    <div id="touch-menu">
+        <div class="touch-menu-sheet">
+            <div class="touch-menu-head">
+                <span>Menu</span>
+                <button class="touch-panel-close" type="button" aria-label="Close">✕</button>
+            </div>
+            <div class="touch-menu-grid"></div>
+        </div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/extensions.js"></script>
     <script src="js/camera.js"></script>
@@ -1125,6 +1468,7 @@
     <script src="js/blockTextures.js"></script>
     <script src="js/world.js"></script>
     <script src="js/guideMarkdown.js"></script>
+    <script src="js/touchInput.js"></script>
     <script src="js/websocket.js"></script>
     <script src="js/voice.js"></script>
     <script src="js/game.js"></script>
@@ -1173,6 +1517,7 @@
     <script src="js/game/inventory.js"></script>
     <script src="js/game/social.js"></script>
     <script src="js/game/building.js"></script>
+    <script src="js/game/touch.js"></script>
     <script src="js/game/ultra.js"></script>
     <script src="js/game/water.js"></script>
     <script>

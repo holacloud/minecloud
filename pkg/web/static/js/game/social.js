@@ -566,7 +566,8 @@ Object.assign(Game.prototype, {
 
     onChatKeyDown(event) {
         event.stopPropagation();
-        if (event.code === 'Enter') {
+        // Phone keyboards often send Enter with an empty `code`.
+        if (event.code === 'Enter' || (event.key === 'Enter' && !event.code)) {
             event.preventDefault();
             this.submitChatMessage();
         } else if (event.code === 'Escape') {

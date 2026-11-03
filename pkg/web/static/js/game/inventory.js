@@ -232,7 +232,8 @@ Object.assign(Game.prototype, {
         }
         this.renderInventoryPanel();
         const search = document.getElementById('inventory-search');
-        if (search) search.focus();
+        // On a phone, focusing would pop up the keyboard over the items.
+        if (search && !this.touchControlsEnabled) search.focus();
     },
 
     closeInventoryPanel() {
@@ -680,7 +681,7 @@ Object.assign(Game.prototype, {
         }
         this.renderCraftingPanel();
         const search = document.getElementById('crafting-search');
-        if (search) search.focus();
+        if (search && !this.touchControlsEnabled) search.focus();
     },
 
     closeCraftingPanel() {

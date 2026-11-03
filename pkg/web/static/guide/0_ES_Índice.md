@@ -6,7 +6,7 @@ Este libro explica el mundo de MineCloud: cómo sobrevivir, construir y convivir
 página trata un tema; pulsa un enlace para ir a ella.
 
 **¿Primera vez?** Lee [Cómo usar la guía](1). En resumen: **H** abre y cierra el libro, y **◀ ▶** pasan de
-página.
+página. En un móvil o tableta, mira [Controles táctiles](222).
 
 ## Lo básico
 

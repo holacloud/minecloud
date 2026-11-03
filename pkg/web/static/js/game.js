@@ -68,12 +68,8 @@ class Game {
         this.rtxToggleWindowMs = 1200;
         this.wheelSlotAccumulator = 0;
         this.lastWheelStepAt = 0;
+        // Phones and tablets: see js/game/touch.js.
         this.touchControlsEnabled = false;
-        this.mobileMovePointerId = null;
-        this.mobileLookPointerId = null;
-        this.mobileLookLast = { x: 0, y: 0 };
-        this.mobileJoystickTravel = 42;
-        this.resetTouchJoystick = null;
         this.dayNightCycleEnabled = true;
         this.dayNightCycleDuration = 240;
         this.timeOfDay = 0.22;
@@ -883,134 +879,9 @@ class Game {
         this.initTouchControls();
     }
 
-    initTouchControls() {
-        const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-        if (!isCoarsePointer && (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0)) {
-            return;
-        }
-
-        this.touchControlsEnabled = true;
-        this.cameraController.setTouchControlsEnabled(true);
-        this.renderer.domElement.style.touchAction = 'none';
-
-        const controls = document.getElementById('mobile-controls');
-        const moveZone = document.getElementById('mobile-move-zone');
-        const lookZone = document.getElementById('mobile-look-zone');
-        const joystick = document.getElementById('mobile-joystick');
-        const knob = document.getElementById('mobile-joystick-knob');
-        const jumpButton = document.getElementById('mobile-jump');
-        const breakButton = document.getElementById('mobile-break');
-        const placeButton = document.getElementById('mobile-place');
-
-        controls.classList.add('enabled');
-
-        const resetJoystick = () => {
-            this.cameraController.setMoveInput(0, 0);
-            this.cameraController.setTouchSprint(false);
-            knob.style.transform = 'translate(0px, 0px)';
-        };
-        this.resetTouchJoystick = resetJoystick;
-
-        const updateJoystick = (clientX, clientY) => {
-            const rect = joystick.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            let dx = clientX - centerX;
-            let dy = clientY - centerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const maxDistance = this.mobileJoystickTravel;
-
-            if (distance > maxDistance && distance > 0) {
-                dx = (dx / distance) * maxDistance;
-                dy = (dy / distance) * maxDistance;
-            }
-
-            knob.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            const moveX = dx / maxDistance;
-            const moveY = -dy / maxDistance;
-            this.cameraController.setMoveInput(moveX, moveY);
-            this.cameraController.setTouchSprint(Math.sqrt(moveX * moveX + moveY * moveY) > 0.78);
-        };
-
-        moveZone.addEventListener('pointerdown', (event) => {
-            if (this.mobileMovePointerId !== null) return;
-            this.mobileMovePointerId = event.pointerId;
-            moveZone.setPointerCapture(event.pointerId);
-            updateJoystick(event.clientX, event.clientY);
-            event.preventDefault();
-        });
-        moveZone.addEventListener('pointermove', (event) => {
-            if (event.pointerId !== this.mobileMovePointerId) return;
-            updateJoystick(event.clientX, event.clientY);
-            event.preventDefault();
-        });
-        const releaseMove = (event) => {
-            if (event.pointerId !== this.mobileMovePointerId) return;
-            this.mobileMovePointerId = null;
-            resetJoystick();
-        };
-        moveZone.addEventListener('pointerup', releaseMove);
-        moveZone.addEventListener('pointercancel', releaseMove);
-
-        lookZone.addEventListener('pointerdown', (event) => {
-            if (this.mobileLookPointerId !== null) return;
-            this.mobileLookPointerId = event.pointerId;
-            this.mobileLookLast.x = event.clientX;
-            this.mobileLookLast.y = event.clientY;
-            lookZone.setPointerCapture(event.pointerId);
-            event.preventDefault();
-        });
-        lookZone.addEventListener('pointermove', (event) => {
-            if (event.pointerId !== this.mobileLookPointerId) return;
-            const deltaX = (event.clientX - this.mobileLookLast.x) * 1.15;
-            const deltaY = (event.clientY - this.mobileLookLast.y) * 1.15;
-            this.mobileLookLast.x = event.clientX;
-            this.mobileLookLast.y = event.clientY;
-            this.cameraController.addLookDelta(deltaX, deltaY);
-            event.preventDefault();
-        });
-        const releaseLook = (event) => {
-            if (event.pointerId !== this.mobileLookPointerId) return;
-            this.mobileLookPointerId = null;
-        };
-        lookZone.addEventListener('pointerup', releaseLook);
-        lookZone.addEventListener('pointercancel', releaseLook);
-
-        const bindHoldButton = (button, onPress, onRelease) => {
-            button.addEventListener('pointerdown', (event) => {
-                button.classList.add('active');
-                button.setPointerCapture(event.pointerId);
-                onPress();
-                event.preventDefault();
-            });
-            const release = (event) => {
-                button.classList.remove('active');
-                onRelease();
-                event.preventDefault();
-            };
-            button.addEventListener('pointerup', release);
-            button.addEventListener('pointercancel', release);
-        };
-
-        bindHoldButton(jumpButton, () => this.cameraController.setTouchJump(true), () => this.cameraController.setTouchJump(false));
-        bindHoldButton(breakButton, () => { this.isBreakInputActive = true; }, () => this.stopMining());
-        placeButton.addEventListener('pointerdown', (event) => {
-            placeButton.classList.add('active');
-            this.placeBlock();
-            event.preventDefault();
-        });
-        const releasePlace = (event) => {
-            placeButton.classList.remove('active');
-            event.preventDefault();
-        };
-        placeButton.addEventListener('pointerup', releasePlace);
-        placeButton.addEventListener('pointercancel', releasePlace);
-
-        resetJoystick();
-    }
-
     onMouseDown(event) {
+        // Taps on a phone also fire mouse events; the touch controls handle those touches.
+        if (this.touchControlsEnabled && this.touchIsEmulatedMouse(event)) return;
         if (this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) return;
         
         if (!this.cameraController.canInteract()) {
@@ -1037,6 +908,7 @@ class Game {
     }
 
     onMouseUp(event) {
+        if (this.touchControlsEnabled && this.touchIsEmulatedMouse(event)) return;
         if (event.button === 0) {
             this.stopMining();
         }
@@ -1088,16 +960,7 @@ class Game {
 
         if (event.code === 'KeyF' && !event.repeat) {
             event.preventDefault();
-            if (this.tryCycleSprayColor()) {
-                return;
-            }
-            if (this.tryUseSoundBlock(event.shiftKey)) {
-                return;
-            }
-            if (this.trySleepInBed()) {
-                return;
-            }
-            this.tryReadSign();
+            this.interactWithTarget(event.shiftKey);
             return;
         }
 
@@ -1162,6 +1025,15 @@ class Game {
         }
     }
 
+    // F: cycle the spray colour, play (or with `tune`, retune) a sound block, sleep in a bed
+    // or read a sign, whichever applies first.
+    interactWithTarget(tune = false) {
+        if (this.tryCycleSprayColor()) return;
+        if (this.tryUseSoundBlock(tune)) return;
+        if (this.trySleepInBed()) return;
+        this.tryReadSign();
+    }
+
     onWheel(event) {
         // ?debugInput in the URL logs every wheel event and why it was (not) used.
         const debug = this.debugInput ?? (this.debugInput = new URLSearchParams(location.search).has('debugInput'));
@@ -1205,15 +1077,6 @@ class Game {
         const startIndex = currentAvailableIndex === -1 ? 0 : currentAvailableIndex;
         const nextSlot = availableSlots[(startIndex + direction + availableSlots.length) % availableSlots.length];
         this.selectSlot(nextSlot);
-    }
-
-    resetTouchTransientInput() {
-        this.mobileMovePointerId = null;
-        this.mobileLookPointerId = null;
-        this.cameraController.setTouchJump(false);
-        if (this.resetTouchJoystick) {
-            this.resetTouchJoystick();
-        }
     }
 
     onWindowResize() {

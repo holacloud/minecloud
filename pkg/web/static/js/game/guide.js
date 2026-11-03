@@ -94,6 +94,15 @@ const GUIDE_CSS = `
     #guide-book .guide-page h1 { font-size: 32px; }
     #guide-book .guide-head { padding: 10px 14px 6px 20px; }
 }
+/* Phones held sideways: the whole book on a short screen. */
+@media (max-height: 520px) {
+    #guide-book .guide-cover { padding: 8px; height: calc(100vh - 16px); height: calc(100dvh - 16px); }
+    #guide-book .guide-cover::before { display: none; }
+    #guide-book .guide-head { padding: 6px 14px 4px 20px; }
+    #guide-book .guide-head .guide-book-title { font-size: 22px; }
+    #guide-book .guide-page { padding: 8px 20px 14px 26px; font-size: 22px; }
+    #guide-book .guide-nav { padding: 6px 10px 8px; }
+}
 `;
 
 Object.assign(Game.prototype, {
@@ -202,7 +211,7 @@ Object.assign(Game.prototype, {
         if (this.guideOpen) {
             const typing = event.target && event.target.classList && event.target.classList.contains('guide-goto');
             // This listener runs before the input's own, so the "go to" box is handled here.
-            if (typing && (event.code === 'Enter' || event.code === 'NumpadEnter')) {
+            if (typing && (event.code === 'Enter' || event.code === 'NumpadEnter' || (event.key === 'Enter' && !event.code))) {
                 const page = this.guidePageId(event.target.value);
                 event.target.value = '';
                 event.target.blur();
