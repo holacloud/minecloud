@@ -566,14 +566,19 @@ class ChunkMesher {
     }
 
     // Whether the face of `box` on `axis` (its max side if `positive`) is covered by another box
-    // of the same block: the point just outside the face's centre lies inside that box.
+    // of the same block: that box reaches just past the face's plane and spans the whole face
+    // (a box covering only its middle, like a crank's shaft on its base, leaves it visible).
     static faceBuried(boxes, box, axis, positive) {
-        const point = [(box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2];
-        point[axis] = positive ? box[axis + 3] + 1e-4 : box[axis] - 1e-4;
-        return boxes.some((other) => other !== box &&
-            point[0] > other[0] && point[0] < other[3] &&
-            point[1] > other[1] && point[1] < other[4] &&
-            point[2] > other[2] && point[2] < other[5]);
+        const plane = positive ? box[axis + 3] + 1e-4 : box[axis] - 1e-4;
+        const e = 1e-6;
+        return boxes.some((other) => {
+            if (other === box || plane <= other[axis] || plane >= other[axis + 3]) return false;
+            for (let a = 0; a < 3; a++) {
+                if (a === axis) continue;
+                if (other[a] > box[a] + e || other[a + 3] < box[a + 3] - e) return false;
+            }
+            return true;
+        });
     }
 
     // Texture coordinates of a box corner on face f, laid out like full-cube faces

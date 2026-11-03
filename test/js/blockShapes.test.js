@@ -314,3 +314,19 @@ test('a fence keeps its rails towards a neighbour that is being mined', () => {
     const alone = (() => { setBlock(world, 3, 1, 2, null); return count({}); })();
     assert.ok(hidden > alone, `hidden ${hidden}, alone ${alone}, both ${both}`);
 });
+
+test('a face is hidden only when another box of the block covers all of it', () => {
+    const { ChunkMesher } = loadGame();
+    // A crank: a base with a thin shaft on top. The base's top stays visible around the shaft.
+    const base = [0.2, 0, 0.2, 0.8, 0.4, 0.8];
+    const shaft = [0.45, 0.4, 0.45, 0.55, 0.8, 0.55];
+    assert.equal(ChunkMesher.faceBuried([base, shaft], base, 1, true), false);
+    // The shaft's underside sits fully on the base: hidden.
+    assert.equal(ChunkMesher.faceBuried([base, shaft], shaft, 1, false), true);
+    // A plate against a wider casing: hidden; against a smaller connector: visible.
+    const casing = [0, 0, 0.3, 1, 1, 1];
+    const plate = [0.1, 0.1, 0.2, 0.9, 0.9, 0.3];
+    const connector = [0.3, 0.3, 0.25, 0.7, 0.7, 0.3];
+    assert.equal(ChunkMesher.faceBuried([casing, plate], plate, 2, true), true);
+    assert.equal(ChunkMesher.faceBuried([casing, connector], casing, 2, false), false);
+});
