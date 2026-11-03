@@ -103,7 +103,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 Phones and tablets get touch controls (guide page 222); add `?touch=1` or `?touch=0` to the URL to force them on
 or off.
 
-- Left side: a floating joystick appears under the thumb; push it to the edge, or tap `Run`, to run.
+- Left side: a floating joystick appears under the thumb; up/down walk, left/right turn the body; push it to the edge, or tap `Run`, to run.
 - Drag on the world: look around. Tap: use / place (or hit a mob). Touch and hold still: mine (a ring fills
   around the crosshair).
 - `Mine` (hold) and `Use`: the left and right mouse buttons.

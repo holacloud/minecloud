@@ -25,6 +25,21 @@ function touchJoystickVector(dx, dy, radius, deadZone = 0.12) {
     return { x: dx / distance * strength, y: -dy / distance * strength, magnitude, knobX, knobY };
 }
 
+// The joystick drives like a vehicle: its vertical axis walks forward and back, its horizontal
+// axis turns the body. Each axis has its own dead zone so walking straight never drifts into a
+// turn, and the turn grows with the square of the push for fine aiming. Returns
+// { forward, turn } in -1..1, turn > 0 to the right.
+function touchJoystickDrive(vector, deadZone = 0.18) {
+    const axis = (value) => {
+        const size = Math.abs(value);
+        if (size <= deadZone) return 0;
+        return Math.sign(value) * Math.min(1, (size - deadZone) / (1 - deadZone));
+    };
+    const forward = axis(vector.y);
+    const turn = axis(vector.x);
+    return { forward, turn: Math.sign(turn) * turn * turn };
+}
+
 // How much a finger drag turns the view, as "mouse pixels" per screen pixel (the camera then
 // applies the look sensitivity). A swipe across the short side of the screen turns about
 // 120 degrees at sensitivity 1, whatever the screen size.
@@ -174,7 +189,7 @@ function touchRectsOverlap(a, b) {
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        shouldUseTouchControls, touchJoystickVector, touchLookScale, isDoubleTap, TouchGesture,
+        shouldUseTouchControls, touchJoystickVector, touchJoystickDrive, touchLookScale, isDoubleTap, TouchGesture,
         computeTouchLayout, touchLayoutRects, touchRectsOverlap, touchHotbarWidth
     };
 }

@@ -517,3 +517,13 @@ Object.assign(Game.prototype, {
         return false;
     }
 });
+
+// While any window is open, the floating HUD (health, block inspector, hotbar...) drops behind it.
+registerFrameUpdate(function () {
+    const open = Boolean(this.inventoryOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen ||
+        this.appearanceMenuOpen || this.getOpenModalPanel());
+    if (open !== this.windowOpenClass) {
+        this.windowOpenClass = open;
+        document.body.classList.toggle('window-open', open);
+    }
+});

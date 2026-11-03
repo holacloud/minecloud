@@ -6,7 +6,8 @@ in **portrait and landscape**, and you can move, look and act at the same time w
 ## Moving
 
 - Put your **left thumb** anywhere on the lower left part of the screen: the **joystick** appears under it.
-  Slide it to walk.
+  **Up and down** walk forward and back; **left and right turn your body**. To look up and down, or turn
+  quickly, drag on the screen with your right thumb.
 - Push it **all the way forward** to **run**, or tap **» Run** (above the joystick) to keep running until you
   stop.
 - **⇡ Jump** jumps; hold it in water to swim up. **Double tap** it in creative mode to **fly**: then hold

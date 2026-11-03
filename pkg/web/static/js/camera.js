@@ -24,6 +24,7 @@ class CameraController {
         
         this.keys = { forward: false, backward: false, left: false, right: false, jump: false, sprint: false, crouch: false };
         this.moveInput = { x: 0, y: 0 };
+        this.turnInput = 0;
         this.lookInput = { deltaX: 0, deltaY: 0 };
         this.touchJump = false;
         this.touchSprint = false;
@@ -77,6 +78,8 @@ class CameraController {
     setCollisionBoxGetter(fn) { this.collisionBoxGetter = fn; }
     setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
     setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
+    // -1..1 from the touch joystick: turns the body left or right at TOUCH_TURN_RATE.
+    setTurnInput(turn) { this.turnInput = turn; }
     addLookDelta(deltaX, deltaY) { this.lookInput.deltaX += deltaX; this.lookInput.deltaY += deltaY; }
     setTouchJump(active) { this.touchJump = active; }
     setTouchSprint(active) { this.touchSprint = active; }
@@ -359,6 +362,8 @@ class CameraController {
             }
         }
 
+        // Full joystick turn: about 150 degrees a second, scaled by the look sensitivity.
+        this.yaw -= this.turnInput * 2.6 * (this.lookSpeed / 0.002) * delta;
         this.yaw -= this.lookInput.deltaX * this.lookSpeed;
         this.pitch -= this.lookInput.deltaY * this.lookSpeed;
         this.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.pitch));

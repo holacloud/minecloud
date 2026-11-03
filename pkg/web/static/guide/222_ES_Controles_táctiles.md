@@ -6,7 +6,8 @@ menú. Funcionan **en vertical y en horizontal**, y puedes moverte, mirar y actu
 ## Moverse
 
 - Apoya el **pulgar izquierdo** en cualquier punto de la parte inferior izquierda de la pantalla: el
-  **joystick** aparece debajo. Deslízalo para andar.
+  **joystick** aparece debajo. **Arriba y abajo** avanzan y retroceden; **izquierda y derecha giran el
+  cuerpo**. Para mirar arriba y abajo, o girar rápido, arrastra por la pantalla con el pulgar derecho.
 - Empújalo **hasta el fondo hacia delante** para **correr**, o toca **» Run** (encima del joystick) para seguir
   corriendo hasta que te pares.
 - **⇡ Jump** salta; mantenlo en el agua para nadar hacia arriba. **Tócalo dos veces** en modo creativo para

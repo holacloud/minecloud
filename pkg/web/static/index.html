@@ -1057,6 +1057,27 @@
             font-size: 16px;
             margin-bottom: 1px;
         }
+        /* Any open window sits above every floating HUD element. */
+        body.window-open #health-hud,
+        body.window-open #nav-hud,
+        body.window-open #block-inspector,
+        body.window-open #hotbar,
+        body.window-open #player-list-container,
+        body.window-open #debug,
+        body.window-open #voice-toggle,
+        body.window-open #crosshair,
+        body.window-open #hit-indicator,
+        body.window-open #blueprint-hud,
+        body.window-open #weather-panel,
+        body.window-open #electric-panel,
+        body.window-open #robot-hud,
+        body.window-open #astro-hud,
+        body.window-open #astro-label,
+        body.window-open #pointer-lock-hint,
+        body.window-open #mobile-controls,
+        body.window-open:not(.touch-chat-open) #chat-container {
+            z-index: 1 !important;
+        }
         #touch-topbar {
             position: absolute;
             left: var(--touch-side-left, 12px);

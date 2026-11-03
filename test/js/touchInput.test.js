@@ -177,3 +177,15 @@ test('jump: a double tap toggles flight only where it is allowed', () => {
     controller.pressJump(7100);
     assert.equal(controller.flying, false);
 });
+
+test('joystick drive: vertical axis walks, horizontal axis turns, separate dead zones', () => {
+    const straight = T.touchJoystickDrive({ x: 0.1, y: 1 });
+    assert.equal(straight.turn, 0);
+    assert.equal(straight.forward, 1);
+    const right = T.touchJoystickDrive({ x: 1, y: 0 });
+    assert.equal(right.forward, 0);
+    assert.equal(right.turn, 1);
+    const halfLeft = T.touchJoystickDrive({ x: -0.59, y: 0 });
+    assert.ok(halfLeft.turn < -0.2 && halfLeft.turn > -0.3);
+    assert.deepEqual(T.touchJoystickDrive({ x: 0, y: 0 }), { forward: 0, turn: 0 });
+});

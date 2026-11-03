@@ -206,9 +206,12 @@ Object.assign(Game.prototype, {
             const radius = joystick.offsetWidth * 0.36;
             const vector = touchJoystickVector(clientX - this.touchJoystickCenter.x, clientY - this.touchJoystickCenter.y, radius);
             this.touchUi.knob.style.transform = `translate(calc(-50% + ${vector.knobX}px), calc(-50% + ${vector.knobY}px))`;
-            this.cameraController.setMoveInput(vector.x, vector.y);
+            // Up and down walk; left and right turn the body (the look drag turns the head too).
+            const drive = touchJoystickDrive(vector);
+            this.cameraController.setMoveInput(0, drive.forward);
+            this.cameraController.setTurnInput(drive.turn);
             // Pushing forward to the edge runs, like the Run toggle.
-            this.touchSprintPushed = vector.magnitude > 0.95 && vector.y > 0.4;
+            this.touchSprintPushed = vector.magnitude > 0.95 && drive.forward > 0.6;
             this.touchApplySprint();
             joystick.classList.toggle('sprinting', this.cameraController.touchSprint);
         };
@@ -255,6 +258,7 @@ Object.assign(Game.prototype, {
     touchResetJoystick() {
         const { joystick, knob } = this.touchUi;
         this.cameraController.setMoveInput(0, 0);
+        this.cameraController.setTurnInput(0);
         this.touchSprintPushed = false;
         // Running stops with the player, like on a console.
         this.touchSprintLatched = false;
