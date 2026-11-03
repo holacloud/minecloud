@@ -12,6 +12,11 @@ Each page is a Markdown file named `ID_XX_TITLE.md`:
 
 The server lists the pages at `/guide/index.json` (`pkg/web/guide.go`); the book is `js/game/guide.js`.
 
+The printable guide is `/guide-print.html?lang=ES|EN&paper=A5|A4` (`js/guidePrint.js`): every public page as a
+paper book (cover, intro, contents), paginated in JS into sheets numbered from the cover; never the secret
+ones. Both share the Markdown renderer of `js/guideMarkdown.js`, so a page reads the same in the book and on
+paper.
+
 ## Markdown
 
 Supported:

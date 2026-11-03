@@ -10,17 +10,18 @@
 
 const GUIDE_CONTENTS_PAGE = '0';
 const GUIDE_LANGS = ['ES', 'EN'];
-const GUIDE_LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 const GUIDE_TEXT = {
     ES: {
-        title: 'Guía', contents: 'Índice', goTo: 'Ir a', close: 'Cerrar', page: 'Página',
+        title: 'Guía', contents: 'Índice', goTo: 'Ir a', close: 'Cerrar', page: 'Página', print: 'Imprimir',
+        printTitle: 'Abre la guía para imprimir (sin las páginas secretas) en otra pestaña',
         missing: (page) => `La página ${page} aún no existe.`,
         missingHint: 'Quizá se escriba en una próxima versión. Vuelve al índice para ver las que hay.',
         otherLang: 'Esta página aún no está traducida; se muestra en inglés.',
         loading: 'Cargando…', offline: 'No se pudo cargar la guía.'
     },
     EN: {
-        title: 'Guide', contents: 'Contents', goTo: 'Go to', close: 'Close', page: 'Page',
+        title: 'Guide', contents: 'Contents', goTo: 'Go to', close: 'Close', page: 'Page', print: 'Print',
+        printTitle: 'Opens the printable guide (without the secret pages) in a new tab',
         missing: (page) => `Page ${page} does not exist yet.`,
         missingHint: 'It may be written in a future version. Go back to the contents to see the pages there are.',
         otherLang: 'This page is not translated yet; it is shown in Spanish.',
@@ -84,6 +85,7 @@ const GUIDE_CSS = `
 #guide-book .guide-missing .guide-missing-title { font-family: 'Pixelify Sans', monospace; font-size: 34px; color: #5b3a22; }
 #guide-book .guide-nav { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px 12px;
     border-top: 4px solid #c9b07a; font-family: 'Pixelify Sans', monospace; font-size: 20px; color: #5b3a22; flex-wrap: wrap; }
+#guide-book .guide-nav .guide-print { font-size: 16px; margin-left: 12px; }
 #guide-book .guide-nav input { width: 120px; text-transform: uppercase; font-family: 'VT323', monospace; font-size: 24px; text-align: center;
     background: #fbf3dc; border: 0; box-shadow: inset 0 0 0 2px #a0804f; color: #3a2614; padding: 2px 4px; }
 @media (max-width: 600px) {
@@ -152,6 +154,7 @@ Object.assign(Game.prototype, {
                         <button class="guide-contents" type="button"></button>
                         <label><span class="guide-goto-label"></span> <input class="guide-goto" type="text" maxlength="8" autocomplete="off" spellcheck="false"></label>
                         <button class="guide-next" type="button">▶</button>
+                        <button class="guide-print" type="button"></button>
                     </div>
                 </div>
             </div>`;
@@ -164,6 +167,10 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-prev').addEventListener('click', () => this.guideTurn(-1));
         book.querySelector('.guide-next').addEventListener('click', () => this.guideTurn(1));
         book.querySelector('.guide-contents').addEventListener('click', () => this.guideGo(GUIDE_CONTENTS_PAGE));
+        // The printable guide (guide-print.html, js/guidePrint.js) in a new tab.
+        book.querySelector('.guide-print').addEventListener('click', () => {
+            window.open(`guide-print.html?lang=${encodeURIComponent(this.guideLang)}`, '_blank', 'noopener');
+        });
         book.querySelectorAll('.guide-lang').forEach((button) => {
             button.addEventListener('click', () => this.guideSetLang(button.dataset.lang));
         });
@@ -220,9 +227,7 @@ Object.assign(Game.prototype, {
     // A page id as typed or linked: numbers without leading zeros, codes in capitals; null if
     // it cannot be an id.
     guidePageId(raw) {
-        const id = String(raw ?? '').trim().toUpperCase();
-        if (/^\d{1,8}$/.test(id)) return String(Number(id));
-        return /^[0-9A-Z]{1,8}$/.test(id) ? id : null;
+        return guidePageIdOf(raw);
     },
 
     // Opens the book at page `id`, or where it was left.
@@ -316,6 +321,8 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-number').textContent = `${text.page} ${page}`;
         book.querySelector('.guide-contents').textContent = text.contents;
         book.querySelector('.guide-goto-label').textContent = text.goTo;
+        book.querySelector('.guide-print').textContent = `🖨 ${text.print}`;
+        book.querySelector('.guide-print').title = text.printTitle;
         book.querySelector('.guide-close').title = text.close;
         book.querySelectorAll('.guide-lang').forEach((button) => button.classList.toggle('active', button.dataset.lang === this.guideLang));
 
@@ -358,120 +365,12 @@ Object.assign(Game.prototype, {
     },
 
     // ---------------------------------------------------------------------------------------
-    // Markdown: headings, paragraphs, **bold**, *italic*, `code`, links (page numbers or
-    // URLs), images (centred, with the alt text as caption), lists, tables, quotes and rules.
+    // Markdown: the shared renderer of js/guideMarkdown.js (also used by the printable guide).
     // ---------------------------------------------------------------------------------------
 
     guideMarkdown(source) {
-        const lines = source.replace(/\r\n?/g, '\n').split('\n');
-        const html = [];
-        let i = 0;
-        const isBlockStart = (line) => /^(#{1,6}\s|>|\s*[-*+]\s|\s*\d+[.)]\s|\|)/.test(line) || /^\s*(---|\*\*\*|___)\s*$/.test(line) || /^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(line);
-        while (i < lines.length) {
-            const line = lines[i];
-            if (!line.trim()) {
-                i++;
-                continue;
-            }
-            const heading = line.match(/^(#{1,6})\s+(.*)$/);
-            if (heading) {
-                const level = Math.min(3, heading[1].length);
-                html.push(`<h${level}>${this.guideInline(heading[2])}</h${level}>`);
-                i++;
-                continue;
-            }
-            if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) {
-                html.push('<hr>');
-                i++;
-                continue;
-            }
-            const image = line.match(/^\s*!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)\s*$/);
-            if (image) {
-                const caption = image[3] || image[1];
-                html.push(`<figure><img src="${this.guideEscape(this.guideAssetUrl(image[2]))}" alt="${this.guideEscape(image[1])}">${caption ? `<figcaption>${this.guideInline(caption)}</figcaption>` : ''}</figure>`);
-                i++;
-                continue;
-            }
-            if (line.startsWith('>')) {
-                const quote = [];
-                while (i < lines.length && lines[i].startsWith('>')) quote.push(lines[i++].replace(/^>\s?/, ''));
-                html.push(`<blockquote>${this.guideMarkdown(quote.join('\n'))}</blockquote>`);
-                continue;
-            }
-            if (line.trim().startsWith('|')) {
-                const rows = [];
-                while (i < lines.length && lines[i].trim().startsWith('|')) rows.push(lines[i++].trim());
-                html.push(this.guideTable(rows));
-                continue;
-            }
-            if (GUIDE_LIST_ITEM.test(line)) {
-                const [list, next] = this.guideList(lines, i);
-                html.push(list);
-                i = next;
-                continue;
-            }
-            const paragraph = [];
-            while (i < lines.length && lines[i].trim() && !isBlockStart(lines[i])) paragraph.push(lines[i++].trim());
-            html.push(`<p>${this.guideInline(paragraph.join(' '))}</p>`);
-        }
-        return html.join('\n');
-    },
-
-    // A list starting at lines[start]; deeper-indented items nest inside the previous item and
-    // indented plain lines continue it. Returns [html, index of the first line after it].
-    guideList(lines, start) {
-        const first = lines[start].match(GUIDE_LIST_ITEM);
-        const indent = first[1].length;
-        const items = [];
-        let i = start;
-        while (i < lines.length) {
-            const item = lines[i].match(GUIDE_LIST_ITEM);
-            const depth = lines[i].match(/^\s*/)[0].length;
-            if (item && depth === indent) {
-                items.push({ text: item[3], nested: '' });
-                i++;
-            } else if (items.length && depth > indent && item) {
-                const [nested, next] = this.guideList(lines, i);
-                items[items.length - 1].nested += nested;
-                i = next;
-            } else if (items.length && depth > indent && lines[i].trim()) {
-                items[items.length - 1].text += ' ' + lines[i].trim();
-                i++;
-            } else {
-                break;
-            }
-        }
-        const tag = /\d/.test(first[2]) ? 'ol' : 'ul';
-        return [`<${tag}>${items.map((item) => `<li>${this.guideInline(item.text)}${item.nested}</li>`).join('')}</${tag}>`, i];
-    },
-
-    guideTable(rows) {
-        const cells = (row) => row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
-        const separator = rows.length > 1 && /^\|?\s*:?-{2,}/.test(rows[1]);
-        const head = separator ? `<thead><tr>${cells(rows[0]).map((cell) => `<th>${this.guideInline(cell)}</th>`).join('')}</tr></thead>` : '';
-        const body = (separator ? rows.slice(2) : rows)
-            .map((row) => `<tr>${cells(row).map((cell) => `<td>${this.guideInline(cell)}</td>`).join('')}</tr>`).join('');
-        return `<table>${head}<tbody>${body}</tbody></table>`;
-    },
-
-    guideInline(text) {
-        const codes = [];
-        let out = this.guideEscape(text).replace(/`([^`]+)`/g, (_match, code) => {
-            codes.push(code);
-            return `\u0000${codes.length - 1}\u0000`;
-        });
-        out = out
-            .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_match, alt, src) => `<img src="${this.guideAssetUrl(src)}" alt="${alt}">`)
-            .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => {
-                const page = href.match(/^(?:page:|#)?([0-9A-Za-z]{1,8})$/);
-                if (page) return `<a data-page="${this.guidePageId(page[1])}">${label}</a>`;
-                if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
-                return label;
-            })
-            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
-            .replace(/(^|\W)_([^_]+)_(?=\W|$)/g, '$1<em>$2</em>');
-        return out.replace(/\u0000(\d+)\u0000/g, (_match, n) => `<code>${codes[Number(n)]}</code>`);
+        if (!this.guideRenderer) this.guideRenderer = createGuideMarkdown({ assetUrl: (src) => this.guideAssetUrl(src) });
+        return this.guideRenderer.markdown(source);
     },
 
     // Images live next to the pages (`img/foo.png` is guide/img/foo.png); `mob:sheep` is the
@@ -486,12 +385,11 @@ Object.assign(Game.prototype, {
             if (!this.bestiaryPortraits.has(special[2])) this.bestiaryPortraits.set(special[2], this.bestiaryRenderPortrait(special[2]));
             return this.bestiaryPortraits.get(special[2]) || '';
         }
-        if (/^(https?:)?\/\//.test(src) || src.startsWith('/')) return src;
-        return `guide/${src.replace(/^\.\//, '')}`;
+        return guideAssetPath(src);
     },
 
     guideEscape(text) {
-        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return guideEscapeHtml(text);
     }
 });
 

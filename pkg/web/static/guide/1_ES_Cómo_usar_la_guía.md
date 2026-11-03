@@ -31,6 +31,20 @@ el idioma de tu navegador.
 
 Si una página aún no está traducida, se muestra en el otro idioma con un aviso.
 
+## Imprimir la guía
+
+¿Prefieres leerla en papel? El botón **🖨 Imprimir** de abajo abre en otra pestaña la **guía para imprimir**:
+un libro con portada, índice y los dibujos de mobs y objetos, con todas las páginas numeradas.
+
+- Elige el papel: **A5** (tamaño libro de bolsillo; también en A4 con «2 páginas por hoja») o **A4**.
+- Espera a que termine de maquetar y pulsa **Imprimir** (o guárdalo como PDF), con márgenes «Ninguno».
+- **Ahorrar tinta** imprime sobre fondo blanco; si lo quitas, sale en pergamino.
+- **Fuente clara** es más fácil de leer en papel; **fuente pixel** se parece más a este libro.
+- En papel, los únicos números son los **del pie de cada hoja**: el índice y los enlaces (→ p. 12) apuntan a
+  ellos. Arriba de cada hoja, en pequeño, «Guía nº 34» te dice qué página es aquí: **/guide 34**.
+
+Las páginas secretas no se imprimen: esas hay que encontrarlas jugando.
+
 ## Páginas secretas
 
 Algunas páginas no tienen número, sino un **código de letras y números** (hasta 8). Ningún índice las

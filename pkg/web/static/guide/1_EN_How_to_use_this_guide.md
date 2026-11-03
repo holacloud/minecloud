@@ -31,6 +31,21 @@ time it follows your browser's language.
 
 If a page is not translated yet, it is shown in the other language with a notice.
 
+## Printing the guide
+
+Rather read it on paper? The **🖨 Print** button at the bottom opens the **printable guide** in a new tab: a
+book with a cover, contents and the pictures of mobs and items, with every numbered page.
+
+- Pick the paper: **A5** (pocket-book size; also on A4 with "2 pages per sheet") or **A4**.
+- Wait until it is laid out, then press **Print** (or save it as a PDF), with margins set to "None".
+- **Ink saver** prints on a white background; turn it off for parchment.
+- The **clear font** is easier to read on paper; the **pixel font** looks more like this book.
+- On paper the only numbers are the ones **at the foot of each sheet**: the contents and the links (→ p. 12)
+  point to them. At the top of each sheet, a small "In-game page 34" tells you which page it is here:
+  **/guide 34**.
+
+Secret pages are never printed: those you have to find by playing.
+
 ## Secret pages
 
 Some pages have no number, but a **code of letters and digits** (up to 8). No index lists them and the
