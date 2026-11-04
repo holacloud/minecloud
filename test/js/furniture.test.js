@@ -80,11 +80,11 @@ function loadGame() {
     for (const name of ['furniture', 'seating', 'storage', 'appliances', 'smelters', 'decor', 'mirrors']) assert.ok(scripts.includes(`js/game/${name}.js`), `index.html loads ${name}.js`);
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
-        GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, STORAGE_FREEZERS, ELECTRIC_KINDS, ITEM_TYPES, ANT_FOOD_ITEMS, ANT_FARM_FOODS,
+        GAME_CONTENT_HOOKS, MODAL_PANELS, BLOCK_BREAK_HANDLERS, FURNITURE_COLORS, STORAGE_KINDS, STORAGE_FREEZERS, ELECTRIC_KINDS, ITEM_TYPES, ANT_FOOD_ITEMS, ANT_FARM_FOODS,
         APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_CHILL, APPLIANCE_FREEZE, APPLIANCE_CHILL_SECONDS, APPLIANCE_FREEZE_SECONDS, APPLIANCE_ITEMS,
-        applianceOvenTakes, applianceColdTable, applianceSlotProgress, storageSameStacks, storageOvenStatus, storagePercent, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
+        applianceOvenTakes, applianceColdTable, applianceSlotProgress, storageSameStacks, storageOvenStatus, storagePercent, DECOR_PAINTINGS, DECOR_GLASS, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
-        signBoardLines, signBoardLayoutFor, signBoardText, signReaderText, SIGN_BOARD_WIDTH, SIGN_BOARD_THICKNESS, furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
+        signBoardLines, signBoardLayoutFor, signBoardText, signReaderText, SIGN_BOARD_WIDTH, SIGN_BOARD_THICKNESS, furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, bedHeadCell, bedStandOffsets, shapeLinkedCells, blueprintOtherBedHalf, shapeStateName, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval, mirrorReflectView, mirrorFacingPlane, mirrorFacingMode, mirrorPassOrder, mirrorPassShows, mirrorEchoMatrix,
         MIRROR_BOUNCE_DARKEN, MIRROR_NESTED_MIN_COVER,
@@ -2343,22 +2343,46 @@ const avatarStub = () => {
     };
 };
 
-test('beds: a frame, a mattress and a pillow at the head, in the same name, with the mattress to stand on', () => {
+test('beds: a frame, a mattress and a pillow, two cells long; the names saved worlds have stay single', () => {
     const world = makeWorld();
-    const place = (look) => world.getPlacementBlocks('bed', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look })[0].blockType;
-    assert.equal(place({ x: 0, y: -0.5, z: -1 }), 'bed', 'head away from you: north is the plain name');
-    assert.equal(place({ x: 1, y: -0.5, z: 0 }), 'bed:e');
-    assert.equal(place({ x: 0, y: -0.5, z: 1 }), 'bed:s');
-    assert.equal(place({ x: -1, y: -0.5, z: 0 }), 'bed:w');
+    const place = (look) => JSON.parse(JSON.stringify(world.getPlacementBlocks('bed', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look })));
+    // The foot where it is clicked, the head away from you, for all four ways.
+    assert.deepEqual(place({ x: 0, y: -0.5, z: -1 }), [{ x: 3, y: 1, z: 3, blockType: 'bed:n:foot' }, { x: 3, y: 1, z: 2, blockType: 'bed:n:head' }]);
+    assert.deepEqual(place({ x: 1, y: -0.5, z: 0 }), [{ x: 3, y: 1, z: 3, blockType: 'bed:e:foot' }, { x: 4, y: 1, z: 3, blockType: 'bed:e:head' }]);
+    assert.deepEqual(place({ x: 0, y: -0.5, z: 1 }), [{ x: 3, y: 1, z: 3, blockType: 'bed:s:foot' }, { x: 3, y: 1, z: 4, blockType: 'bed:s:head' }]);
+    assert.deepEqual(place({ x: -1, y: -0.5, z: 0 }), [{ x: 3, y: 1, z: 3, blockType: 'bed:w:foot' }, { x: 2, y: 1, z: 3, blockType: 'bed:w:head' }]);
+    // Not if the far cell is taken; a flower gives way.
+    put(world, 3, 1, 2, 'stone');
+    assert.equal(world.getPlacementBlocks('bed', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look: { x: 0, y: -0.5, z: -1 } }), null);
+    put(world, 3, 1, 2, 'flower_red');
+    assert.ok(world.getPlacementBlocks('bed', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look: { x: 0, y: -0.5, z: -1 } }));
+    // What is saved stays: the plain name north, the facings, no other names for them.
     assert.equal(world.blockTypes.bed.state.facing, 'n', 'a saved bed is one of them');
+    assert.equal(world.blockTypes.bed.state.part, 'single');
+    assert.equal(world.blockTypes['bed:e'].state.part, 'single');
+    assert.equal(world.blockTypes['bed:e'].state.facing, 'e');
     assert.equal(world.blockTypes.bed.name, 'Bed');
-    for (const type of ['bed', 'bed:e', 'bed:s', 'bed:w']) {
+    for (const type of ['bed', 'bed:e', 'bed:s', 'bed:w', 'bed:n:foot', 'bed:n:head', 'bed:e:foot', 'bed:e:head', 'bed:s:foot', 'bed:s:head', 'bed:w:foot', 'bed:w:head']) {
+        assert.ok(world.blockTypes[type], type);
         assert.equal(world.getDropTypeForBlock(type), 'bed');
         const boxes = JSON.parse(JSON.stringify(world.shapes.boxes(world.registry.id(type))));
-        assert.ok(boxes.length >= 4 && boxes.every((box) => box[0] >= 0 && box[3] <= 1 && box[2] >= 0 && box[5] <= 1), type);
+        assert.ok(boxes.length >= 3 && boxes.every((box) => box[0] >= 0 && box[3] <= 1 && box[2] >= 0 && box[5] <= 1), type);
         assert.deepEqual(JSON.parse(JSON.stringify(world.shapes.collision(world.registry.id(type)))), [[0, 0, 0, 1, 9 / 16, 1]]);
         assert.equal(world.registry.solid[world.registry.id(type)], 1);
+        assert.ok(ctx.isBedBlockType(type));
     }
+    // In the hand and in icons, the bed of one cell, with its own picture.
+    const shape = ctx.BLOCK_SHAPES.bed;
+    assert.equal(ctx.shapeStateName('bed', shape, shape.iconState), 'bed');
+    assert.ok(world.createDisplayMesh('bed'));
+    assert.ok(world.getInventoryIconUrl('bed').startsWith('data:'));
+    // The two halves meet: the mattress runs to the border of each, the pillow only in the head.
+    const mattress = (type) => world.shapes.boxes(world.registry.id(type)).filter((box) => near(box[4], 9 / 16))[0];
+    assert.ok(near(mattress('bed:n:foot')[2], 0), 'north end of the foot, against the head');
+    assert.ok(near(mattress('bed:n:head')[5], 1), 'south end of the head, against the foot');
+    assert.ok(!world.shapes.boxes(world.registry.id('bed:n:foot')).some((box) => box[4] > 9 / 16));
+    const head = world.shapes.boxes(world.registry.id('bed:n:head')).reduce((a, b) => (b[4] > a[4] ? b : a));
+    assert.ok(near((head[2] + head[5]) / 2, 0.25), 'the eye rests on the pillow');
     // The pillow, the box above the mattress, is at the head; the top is painted to match.
     const pillow = (type) => world.shapes.boxes(world.registry.id(type)).reduce((a, b) => (b[4] > a[4] ? b : a));
     assert.ok(pillow('bed')[5] < 0.5);
@@ -2378,9 +2402,19 @@ test('beds: a frame, a mattress and a pillow at the head, in the same name, with
     assert.ok(whiteAt('bed_top_w', 0.2, 0.5) && !whiteAt('bed_top_w', 0.8, 0.5));
     assert.equal(world.getFaceTextureSpecs('bed:e').top.pattern, 'bed_top_e');
     assert.equal(world.getFaceTextureSpecs('bed').top.pattern, 'bed_top_n');
+    assert.equal(world.getFaceTextureSpecs('bed:e:head').top.pattern, 'bed_head_top_e');
+    assert.equal(world.getFaceTextureSpecs('bed:s:foot').top.pattern, 'bed_foot_top_s');
+    for (const facing of ['n', 'e', 's', 'w']) {
+        assert.ok(f.patterns()[`bed_head_top_${facing}`] && f.patterns()[`bed_foot_top_${facing}`], facing);
+    }
+    assert.ok(whiteAt('bed_head_top_n', 0.5, 0.2) && !whiteAt('bed_head_top_n', 0.5, 0.9));
+    assert.ok(whiteAt('bed_head_top_e', 0.8, 0.5) && !whiteAt('bed_head_top_e', 0.1, 0.5));
+    assert.ok(!whiteAt('bed_foot_top_n', 0.5, 0.2) && !whiteAt('bed_foot_top_n', 0.5, 0.8), 'all blanket');
     // They turn with a build.
     assert.equal(ctx.constructionTurnType('bed', 1, world.blockTypes), 'bed:e');
     assert.equal(ctx.constructionTurnType('bed:w', 1, world.blockTypes), 'bed');
+    assert.equal(ctx.constructionTurnType('bed:n:foot', 1, world.blockTypes), 'bed:e:foot');
+    assert.equal(ctx.constructionTurnType('bed:w:head', 2, world.blockTypes), 'bed:e:head');
     assert.ok(!ctx.isBedBlockType('bedrock') && ctx.isBedBlockType('bed:e') && ctx.isBedBlockType('bed'));
 });
 
@@ -2546,21 +2580,219 @@ test('beds: others see you flat on it: the head on the pillow, and upright again
 
 test('beds: placing one binds the respawn point in every direction, and breaking that one unbinds it', () => {
     withoutItemHandlers(() => {
-        for (const [look, type] of [[{ x: 0, y: -0.5, z: -1 }, 'bed'], [{ x: 1, y: -0.5, z: 0 }, 'bed:e'], [{ x: 0, y: -0.5, z: 1 }, 'bed:s'], [{ x: -1, y: -0.5, z: 0 }, 'bed:w']]) {
+        for (const [look, type, head] of [[{ x: 0, y: -0.5, z: -1 }, 'bed:n:foot', [3, 2]], [{ x: 1, y: -0.5, z: 0 }, 'bed:e:foot', [4, 3]], [{ x: 0, y: -0.5, z: 1 }, 'bed:s:foot', [3, 4]], [{ x: -1, y: -0.5, z: 0 }, 'bed:w:foot', [2, 3]]]) {
             const world = makeWorld();
             world.rebuildAfterChange = () => {};
-            const { game, sent, messages } = makePlacingGame(world, 'bed', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 }, look);
+            const { game, sent, messages, counts } = makePlacingGame(world, 'bed', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 }, look);
             game.placeBlock();
             assert.equal(world.getBlockTypeAt(3, 1, 3), type);
+            assert.equal(world.getBlockTypeAt(head[0], 1, head[1]), type.replace('foot', 'head'));
+            assert.equal(sent.length, 2, 'both halves reach the server');
+            assert.equal(counts.bed, 2, 'one bed from the stack');
             assert.equal(sent[0].payload.blockType, type);
             assert.ok(messages.includes('Respawn point updated to your bed'), type);
             assert.ok(near(game.respawnPoint.x, 3.5) && near(game.respawnPoint.z, 3.5), type);
             assert.ok(near(game.respawnPoint.y, 1 + 1 + 1.62), 'on top of it, as it was');
             assert.equal(game.isRespawnBoundToBlock({ x: 3, y: 1, z: 3 }), true);
+            // Either half is that bed.
+            assert.equal(game.isRespawnBoundToBed(type, { x: 3, y: 1, z: 3 }), true);
+            assert.equal(game.isRespawnBoundToBed(type.replace('foot', 'head'), { x: head[0], y: 1, z: head[1] }), true);
         }
+        // With no room it says so and takes nothing.
+        const world = makeWorld();
+        world.rebuildAfterChange = () => {};
+        put(world, 3, 1, 2, 'stone');
+        const { game, sent, messages, counts } = makePlacingGame(world, 'bed', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 });
+        game.placeBlock();
+        assert.equal(sent.length, 0);
+        assert.equal(counts.bed, 3);
+        assert.equal(world.getBlockTypeAt(3, 1, 3), null);
+        assert.ok(messages.some((text) => /two blocks/.test(text)));
+        // Standing in the far cell too.
+        const open = makeWorld();
+        open.rebuildAfterChange = () => {};
+        const inTheWay = makePlacingGame(open, 'bed', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 });
+        inTheWay.game.cameraController.intersectsBoxes = (eye, x, y, z) => z === 2;
+        inTheWay.game.placeBlock();
+        assert.equal(inTheWay.sent.length, 0);
+        assert.ok(inTheWay.messages.some((text) => /two blocks/.test(text)));
     });
     const source = fs.readFileSync(path.join(STATIC, 'js', 'game', 'building.js'), 'utf8');
-    assert.match(source, /isBedBlockType\(blockType\) && this\.isRespawnBoundToBlock\(position\)/, 'any state of the bed unbinds');
+    assert.match(source, /isBedBlockType\(blockType\) && this\.isRespawnBoundToBed\(blockType, position\)/, 'any state of the bed unbinds');
+});
+
+test('beds: breaking either half takes both, one bed back, and nobody else\'s bed', () => {
+    const handler = (game, type, position) => ctx.BLOCK_BREAK_HANDLERS.forEach((run) => run.call(game, type, position));
+    for (const [broken, other] of [[{ x: 3, y: 1, z: 3, type: 'bed:n:foot' }, { x: 3, y: 1, z: 2, type: 'bed:n:head' }], [{ x: 3, y: 1, z: 2, type: 'bed:n:head' }, { x: 3, y: 1, z: 3, type: 'bed:n:foot' }]]) {
+        const world = makeWorld();
+        world.rebuildAfterChange = () => {};
+        put(world, broken.x, broken.y, broken.z, broken.type);
+        put(world, other.x, other.y, other.z, other.type);
+        const sent = [];
+        const game = new ctx.Game();
+        Object.assign(game, { world, network: { connected: true, send: (kind, payload) => sent.push({ kind, payload }) } });
+        put(world, broken.x, broken.y, broken.z, 'air');
+        handler(game, broken.type, broken);
+        assert.equal(world.getBlockTypeAt(other.x, other.y, other.z), null, 'the other half goes too');
+        assert.deepEqual(JSON.parse(JSON.stringify(sent.filter(({ kind }) => kind === 'blockBreak').map(({ payload }) => payload))), [{ x: other.x, y: other.y, z: other.z }]);
+    }
+    // A bed of one cell, or another bed that stands where its other half would be, stays.
+    const world = makeWorld();
+    world.rebuildAfterChange = () => {};
+    const typeAt = (x, y, z) => world.getBlockTypeAt(x, y, z);
+    put(world, 3, 1, 3, 'bed:n:foot');
+    put(world, 3, 1, 2, 'bed:e');
+    assert.equal(ctx.shapeLinkedCells('bed:n:foot', { x: 3, y: 1, z: 3 }, typeAt, world.blockTypes).length, 0, 'an old bed is not its head');
+    put(world, 3, 1, 2, 'bed:e:head');
+    assert.equal(ctx.shapeLinkedCells('bed:n:foot', { x: 3, y: 1, z: 3 }, typeAt, world.blockTypes).length, 0, 'nor is another\'s');
+    assert.equal(ctx.shapeLinkedCells('bed', { x: 3, y: 1, z: 3 }, typeAt, world.blockTypes).length, 0, 'an old bed has no other half');
+    put(world, 3, 1, 2, 'bed:n:head');
+    assert.equal(ctx.shapeLinkedCells('bed:n:foot', { x: 3, y: 1, z: 3 }, typeAt, world.blockTypes).length, 1);
+    // A door keeps its way of working.
+    put(world, 8, 1, 3, 'oak_door');
+    put(world, 8, 2, 3, 'oak_door:upper:n:left:closed');
+    assert.equal(ctx.shapeLinkedCells('oak_door', { x: 8, y: 1, z: 3 }, typeAt, world.blockTypes).length, 1);
+});
+
+test('beds: lying from either half, the right way along it, head on the pillow, feet in the foot, all four ways', () => {
+    for (const [facing, [fx, fz]] of Object.entries({ n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] })) {
+        for (const clicked of ['foot', 'head']) {
+            const { world, game, camera } = makeBedGame(false);
+            const foot = { x: 5, y: 1, z: 5 };
+            const head = { x: 5 + fx, y: 1, z: 5 + fz };
+            put(world, foot.x, foot.y, foot.z, `bed:${facing}:foot`);
+            put(world, head.x, head.y, head.z, `bed:${facing}:head`);
+            assert.equal(game.seatTrySit(clicked === 'foot' ? foot : head), true);
+            assert.equal(game.seated.x, head.x, `${facing} from the ${clicked}`);
+            assert.equal(game.seated.z, head.z);
+            const eye = ctx.bedEyePosition(head.x, 1, head.z, 9 / 16, facing);
+            assert.ok(near(camera.position.x, eye.x) && near(camera.position.z, eye.z));
+            // The body: the eye over the pillow in the head, the feet inside the cell of the foot.
+            const feet = ctx.bedAvatarFeet(eye, game.seated.avatarYaw);
+            assert.equal(Math.floor(eye.x), head.x);
+            assert.equal(Math.floor(eye.z), head.z);
+            assert.equal(Math.floor(feet.x), foot.x, `${facing}: feet ${feet.x}`);
+            assert.equal(Math.floor(feet.z), foot.z, `${facing}: feet ${feet.z}`);
+            // Asking again on the other half is the same bed: it does not move you, it asks to sleep.
+            const before = { ...game.seated };
+            assert.equal(game.seatTrySit(clicked === 'foot' ? head : foot), true);
+            assert.equal(game.seated.x, before.x);
+        }
+    }
+    // Someone else in the bed, seen from the other half.
+    const { world, game, messages } = makeBedGame(false);
+    put(world, 5, 1, 5, 'bed:n:foot');
+    put(world, 5, 1, 4, 'bed:n:head');
+    const eye = ctx.bedEyePosition(5, 1, 4, 9 / 16, 'n');
+    game.otherPlayerMeshes = new Map([['p', { userData: { seatEye: eye } }]]);
+    assert.equal(game.seatTrySit({ x: 5, y: 1, z: 5 }), true);
+    assert.equal(game.seated, undefined);
+    assert.ok(messages.includes('Someone is already lying there'));
+    // A roof over the head stops it, from the foot too.
+    const roofed = makeBedGame(false);
+    put(roofed.world, 5, 1, 5, 'bed:n:foot');
+    put(roofed.world, 5, 1, 4, 'bed:n:head');
+    put(roofed.world, 5, 2, 4, 'stone');
+    roofed.game.seatTrySit({ x: 5, y: 1, z: 5 });
+    assert.ok(!roofed.game.seated);
+    // A half on its own: it is all the bed there is.
+    const lone = makeBedGame(false);
+    put(lone.world, 5, 1, 5, 'bed:n:foot');
+    lone.game.seatTrySit({ x: 5, y: 1, z: 5 });
+    assert.equal(lone.game.seated.z, 5);
+    assert.equal(lone.game.seated.foot, null);
+});
+
+test('beds: getting up finds a free cell, beside the bed first, never inside a wall; a half that goes ends it', () => {
+    const offsets = JSON.parse(JSON.stringify(ctx.bedStandOffsets('n')));
+    assert.deepEqual(offsets[0].map(Math.abs), [1, 1], 'beside the foot');
+    assert.deepEqual(offsets.slice(2, 4).map(([x, z]) => [Math.abs(x), z]), [[1, 0], [1, 0]], 'beside the head');
+    assert.ok(offsets.some(([x, z]) => x === 0 && z === 2), 'past the foot, from the head');
+    assert.deepEqual(offsets[offsets.length - 1], [0, 0], 'on it, last');
+    // Walls on three sides of the bed: out by the only free cell.
+    const { world, game, controller, camera } = makeBedGame(false);
+    put(world, 5, 1, 5, 'bed:n:foot');
+    put(world, 5, 1, 4, 'bed:n:head');
+    for (const y of [1, 2, 3]) {
+        for (const [x, z] of [[4, 5], [4, 4], [6, 4], [5, 3], [5, 6], [4, 3], [6, 3], [4, 6], [6, 6]]) put(world, x, y, z, 'stone');
+    }
+    game.seatTrySit({ x: 5, y: 1, z: 5 });
+    assert.ok(game.seated.foot);
+    game.seatStandUp();
+    assert.ok(near(camera.position.x, 6.5) && near(camera.position.z, 5.5), `${camera.position.x},${camera.position.z}`);
+    assert.ok(near(camera.position.y, 1 + controller.eyeHeight));
+    assert.equal(controller.canStandAt(camera.position.x, camera.position.z, camera.position.y - controller.eyeHeight), true);
+    // All closed: on the mattress, the foot first, not in a wall.
+    const closed = makeBedGame(false);
+    put(closed.world, 5, 1, 5, 'bed:n:foot');
+    put(closed.world, 5, 1, 4, 'bed:n:head');
+    for (const y of [1, 2, 3]) {
+        for (const [x, z] of [[4, 5], [4, 4], [6, 4], [6, 5], [5, 3], [5, 6], [4, 3], [6, 3], [4, 6], [6, 6]]) put(closed.world, x, y, z, 'stone');
+    }
+    closed.game.seatTrySit({ x: 5, y: 1, z: 5 });
+    closed.game.seatStandUp();
+    assert.ok(near(closed.camera.position.x, 5.5) && near(closed.camera.position.z, 5.5));
+    assert.ok(near(closed.camera.position.y, 1 + 9 / 16 + closed.controller.eyeHeight));
+    // The foot goes: you get up, whichever half it was.
+    const broken = makeBedGame(false);
+    put(broken.world, 5, 1, 5, 'bed:n:foot');
+    put(broken.world, 5, 1, 4, 'bed:n:head');
+    broken.game.seatTrySit({ x: 5, y: 1, z: 5 });
+    put(broken.world, 5, 1, 5, 'air');
+    broken.game.seatUpdate();
+    assert.equal(broken.game.seated, null);
+});
+
+test('beds: a plan holds them whole, places both for one, and the robot digs both', () => {
+    const shape = ctx.BLOCK_SHAPES.bed;
+    const world = makeWorld();
+    const blockTypes = world.blockTypes;
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.blueprintOtherBedHalf({ type: 'bed:e:foot', wx: 3, wy: 1, wz: 3 }, blockTypes))), { x: 4, y: 1, z: 3, blockType: 'bed:e:head' });
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.blueprintOtherBedHalf({ type: 'bed:e:head', wx: 4, wy: 1, wz: 3 }, blockTypes))), { x: 3, y: 1, z: 3, blockType: 'bed:e:foot' });
+    assert.equal(ctx.blueprintOtherBedHalf({ type: 'bed:e', wx: 4, wy: 1, wz: 3 }, blockTypes), null);
+    assert.equal(ctx.blueprintOtherBedHalf({ type: 'stone', wx: 4, wy: 1, wz: 3 }, blockTypes), null);
+    assert.ok(shape.linked({ facing: 'e', part: 'foot' }).length === 1);
+
+    world.rebuildAfterChange = () => {};
+    put(world, 5, 1, 5, 'bed:e:foot');
+    put(world, 6, 1, 5, 'bed:e:head');
+    put(world, 8, 1, 5, 'bed:s');
+    const game = new ctx.Game();
+    const sent = [];
+    const counts = { bed: 1 };
+    Object.assign(game, {
+        world,
+        network: { connected: true, send: (kind, payload) => sent.push({ kind, payload }) },
+        cameraController: { intersectsBody: () => false },
+        getLocalPlayerPosition: () => new Vector3(20, 3, 20),
+        getInventoryCount: (type) => counts[type] || 0,
+        consumeSelectedBlock() { counts.bed--; },
+        playPlaceSound() {}, showHitIndicator() {}
+    });
+    // A box round the bed holds both halves; one that cuts it, neither.
+    const typesOf = (scan) => Array.from(scan.cells || [], (cell) => cell.type);
+    assert.deepEqual(typesOf(game.blueprintScan({ min: { x: 5, y: 1, z: 5 }, size: [2, 1, 1] })), ['bed:e:foot', 'bed:e:head']);
+    assert.ok(game.blueprintScan({ min: { x: 5, y: 1, z: 5 }, size: [1, 1, 1] }).error, 'half a bed is nothing to draw');
+    assert.deepEqual(typesOf(game.blueprintScan({ min: { x: 6, y: 1, z: 5 }, size: [3, 1, 1] })), ['bed:s'], 'an old one is whole by itself');
+    // Placing the plan's cell puts both, for one bed.
+    const cell = { type: 'bed:e:foot', wx: 10, wy: 1, wz: 9 };
+    assert.equal(game.blueprintPlaceCell(cell, true), true);
+    assert.equal(world.getBlockTypeAt(10, 1, 9), 'bed:e:foot');
+    assert.equal(world.getBlockTypeAt(11, 1, 9), 'bed:e:head');
+    assert.equal(counts.bed, 0);
+    assert.equal(sent.filter(({ kind }) => kind === 'blockPlace').length, 2);
+    // No room for the other half: nothing at all.
+    put(world, 3, 1, 11, 'stone');
+    const before = sent.length;
+    counts.bed = 1;
+    assert.equal(game.blueprintPlaceCell({ type: 'bed:n:foot', wx: 3, wy: 1, wz: 12 }, true), false);
+    assert.equal(world.getBlockTypeAt(3, 1, 12), null);
+    assert.equal(sent.length, before);
+    assert.equal(counts.bed, 1);
+    // The robot takes both, and one bed.
+    const robotSource = fs.readFileSync(path.join(STATIC, 'js', 'game', 'robot.js'), 'utf8');
+    assert.match(robotSource, /shapeLinkedCells\(type, cell, typeAt, this\.world\.blockTypes\)/);
+    assert.ok(!/type === 'bed'/.test(robotSource), 'any state of a bed unbinds');
 });
 
 test('beds: lying goes through the item-use handler, and crouching still builds against it', () => {

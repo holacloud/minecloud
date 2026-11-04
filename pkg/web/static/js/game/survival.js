@@ -188,6 +188,13 @@ Object.assign(Game.prototype, {
             Math.abs(this.respawnPoint.z - (position.z + 0.5)) < 0.001;
     },
 
+    // Whether the bed of this type at `position`, by either of its halves, is the one bound.
+    isRespawnBoundToBed(type, position) {
+        const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        const other = shapeLinkedCells(type, position, typeAt, this.world.blockTypes);
+        return [position, ...other].some((cell) => this.isRespawnBoundToBlock(cell));
+    },
+
     // F: lies down on the bed looked at (js/game/seating.js), which sleeps at night; already in
     // bed, it asks to sleep again.
     trySleepInBed() {

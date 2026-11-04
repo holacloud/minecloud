@@ -83,6 +83,13 @@ class ConstructionBuilder {
         this.set(x, y, z, shapeStateName(base, BLOCK_SHAPES[shape], state));
     }
 
+    // A bed: the foot here, the head one block on the way it faces.
+    bed(x, y, z, facing) {
+        const [dx, dz] = SHAPE_DIRECTIONS[facing];
+        this.shaped(x, y, z, 'bed', 'bed', { facing: this.facing(facing), part: 'foot' });
+        this.shaped(x + dx, y, z + dz, 'bed', 'bed', { facing: this.facing(facing), part: 'head' });
+    }
+
     // Walking in `facing` goes up them (blockShapes.js); half 'top' hangs them upside down.
     stairs(x, y, z, base, facing, half = 'bottom') {
         this.shaped(x, y, z, base, 'stairs', { facing: this.facing(facing), half });
@@ -205,7 +212,7 @@ function constructionHouse(b) {
     b.box(8, 2, 11, 8, 7, 11, 'brick');
 
     // Bed, crates, workplace, table with two seats, light.
-    b.box(2, 1, 10, 2, 1, 11, 'bed');
+    b.bed(2, 1, 10, 's');
     b.set(3, 1, 11, 'white_wool');
     b.set(2, 1, 9, 'dark_oak_wood');
     b.set(2, 2, 9, 'torch');
@@ -833,8 +840,8 @@ function constructionShowroom(b) {
     skylight(4, 37, 8, 37);
     b.box(4, 1, 31, 8, 1, 35, 'purple_carpet');
     // Two beds side by side, the head at the wall.
-    piece(1, 1, 32, 'bed', 'bed', 'w');
-    piece(1, 1, 33, 'bed', 'bed', 'w');
+    b.bed(2, 1, 32, 'w');
+    b.bed(2, 1, 33, 'w');
     for (const z of [31, 34]) {
         piece(1, 1, z, 'bedside_table', 'bedside_table', 'e');
         b.set(1, 2, z, 'table_lamp');
@@ -1168,13 +1175,20 @@ function constructionDiff(layout, read, blockTypes) {
     const key = (x, y, z) => `${x},${y},${z}`;
     layout.cells.forEach((cell) => wanted.set(key(cell.x, cell.y, cell.z), cell));
     const ops = [];
+    const { min, size } = layout;
+    const inBox = (x, z) => x >= min.x && x < min.x + size[0] && z >= min.z && z < min.z + size[2];
     const change = (x, y, z, type, meta, current) => {
         const def = current.type && blockTypes[current.type];
         if (def && def.unbreakable) return;
         if (current.type === type && !meta) return;
         ops.push({ x, y, z, type, meta, prev: current });
+        // A bed the box cuts in two goes whole, and an undo brings it back whole.
+        if (isBedBlockType(current.type)) {
+            for (const other of shapeLinkedCells(current.type, { x, y, z }, (ax, ay, az) => read(ax, ay, az).type, blockTypes)) {
+                if (!inBox(other.x, other.z)) ops.push({ x: other.x, y: other.y, z: other.z, type: null, prev: read(other.x, other.y, other.z) });
+            }
+        }
     };
-    const { min, size } = layout;
     for (let x = min.x; x < min.x + size[0]; x++) {
         for (let z = min.z; z < min.z + size[2]; z++) {
             // The volume: what the plan says, air everywhere else.
@@ -1335,6 +1349,7 @@ Object.assign(Game.prototype, {
             this.receiveSystemMessage({ text: 'Nothing is being built' });
             return;
         }
+        this.constructionFinishBeds(job);
         this.constructionJob = null;
         // An undo stopped half way can still be finished: what it has not put back stays undoable.
         if (job.undoing) {
@@ -1342,6 +1357,27 @@ Object.assign(Game.prototype, {
             this.constructionUndo = left.length ? { label: job.label, applied: left } : null;
         }
         this.receiveSystemMessage({ text: `Stopped after ${job.done} of ${job.ops.length} block changes${job.undoing ? '' : '. /build undo takes them back'}` });
+    },
+
+    // Stopping must not leave half a bed: what is pending of one with a half already done goes too.
+    constructionFinishBeds(job) {
+        const key = (op) => `${op.x},${op.y},${op.z}`;
+        const done = new Set(job.ops.slice(0, job.done).map(key));
+        const finish = [];
+        const rest = [];
+        for (const op of job.ops.slice(job.done)) {
+            const type = op.type || (op.prev && op.prev.type);
+            const def = isBedBlockType(type) ? this.world.blockTypes[type] : null;
+            const partner = def && def.state.part !== 'single' ? BLOCK_SHAPES.bed.linked(def.state)[0] : null;
+            if (partner && done.has(key({ x: op.x + partner[0], y: op.y + partner[1], z: op.z + partner[2] }))) finish.push(op);
+            else rest.push(op);
+        }
+        for (const op of finish) {
+            this.constructionApply(op);
+            if (!job.undoing && this.constructionUndo) this.constructionUndo.applied.push(op);
+        }
+        job.ops = [...job.ops.slice(0, job.done), ...finish, ...rest];
+        job.done += finish.length;
     },
 
     // One block, the way a player places or breaks it.

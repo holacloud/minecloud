@@ -67,9 +67,30 @@ function shapeStateCombinations(states) {
 
 // Block name of `base` in `state`; the default state is the base name itself.
 function shapeStateName(base, shape, state) {
+    if (shape.stateName) return shape.stateName(base, state);
     const states = shape.states || [];
     if (states.every(([key, values]) => state[key] === values[0])) return base;
     return [base, ...states.map(([key]) => state[key])].join(':');
+}
+
+// The other cells of the object a block of `type` at `position` is part of, that really hold it, as
+// [{ x, y, z, type }]: the other half of a door or a bed. typeAt(x, y, z) reads the world, and a
+// shape's `pairs` says what counts as its other half when the same block might just stand there.
+function shapeLinkedCells(blockType, position, typeAt, blockTypes) {
+    const def = blockType && blockTypes[blockType];
+    const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
+    if (!shape || !shape.linked) return [];
+    const base = def.variantOf || blockType;
+    const cells = [];
+    for (const [dx, dy, dz] of shape.linked(def.state)) {
+        const cell = { x: position.x + dx, y: position.y + dy, z: position.z + dz };
+        const type = typeAt(cell.x, cell.y, cell.z);
+        const other = type && blockTypes[type];
+        if (!other || (other.variantOf || type) !== base) continue;
+        if (shape.pairs && !shape.pairs(def.state, other.state)) continue;
+        cells.push({ ...cell, type });
+    }
+    return cells;
 }
 
 // Adds one block type per state combination of every shaped block (see the header). Variants
@@ -531,30 +552,59 @@ registerBlockShape('sign', {
     iconState: { facing: 's', mount: 'post' }
 });
 
-// Beds: legs, a frame, a mattress and a pillow at the head, in one cell, the head away from the
-// player who places it (`facing` is the way the head lies; the plain name `bed`, what saved worlds
-// have, looks north). You stand on the mattress. Lying down is js/game/seating.js (`lieDown`).
+// Beds: two cells long, like a door is two cells high: the foot where it is placed and the head
+// beyond it, away from the player who places it (`facing` is the way the head lies), each half with
+// its legs, one frame and one mattress across both, and a pillow at the head. `bed:e:foot`.
+// Beds saved when they were one cell keep their names, which is what `part: single` is for: the
+// plain `bed`, what older worlds have, looks north, and `bed:e` east. They work and look as they
+// did, with a pillow on one cell, and in a hand or an icon a bed is one of those.
+// You stand on the mattress. Lying down is js/game/seating.js (`lieDown`).
 function isBedBlockType(type) {
     return type === 'bed' || (typeof type === 'string' && type.startsWith('bed:'));
 }
 
+const BED_LEGS_AT = (z) => [[PX, 0, z, 3 * PX, 2 * PX, z + 2 * PX], [13 * PX, 0, z, 15 * PX, 2 * PX, z + 2 * PX]];
+const BED_FRAME = [0, 2 * PX, 0, 1, 4 * PX, 1];
+
 registerBlockShape('bed', {
-    states: [['facing', SHAPE_FACINGS]],
+    states: [['facing', SHAPE_FACINGS], ['part', ['single', 'foot', 'head']]],
+    stateName(base, state) {
+        if (state.part !== 'single') return `${base}:${state.facing}:${state.part}`;
+        return state.facing === 'n' ? base : `${base}:${state.facing}`;
+    },
     boxes(state) {
-        return rotateShapeBoxes([
-            [PX, 0, PX, 3 * PX, 2 * PX, 3 * PX], [13 * PX, 0, PX, 15 * PX, 2 * PX, 3 * PX],
-            [PX, 0, 13 * PX, 3 * PX, 2 * PX, 15 * PX], [13 * PX, 0, 13 * PX, 15 * PX, 2 * PX, 15 * PX],
-            [0, 2 * PX, 0, 1, 4 * PX, 1],
-            [PX, 4 * PX, PX / 2, 15 * PX, 9 * PX, 15.5 * PX],
-            [3 * PX, 9 * PX, PX, 13 * PX, 11 * PX, 5.5 * PX]
-        ], state.facing);
+        let boxes;
+        if (state.part === 'head') {
+            boxes = [...BED_LEGS_AT(PX), BED_FRAME, [PX, 4 * PX, PX / 2, 15 * PX, 9 * PX, 1], [3 * PX, 9 * PX, PX, 13 * PX, 11 * PX, 7 * PX]];
+        } else if (state.part === 'foot') {
+            boxes = [...BED_LEGS_AT(13 * PX), BED_FRAME, [PX, 4 * PX, 0, 15 * PX, 9 * PX, 15.5 * PX]];
+        } else {
+            boxes = [...BED_LEGS_AT(PX), ...BED_LEGS_AT(13 * PX), BED_FRAME, [PX, 4 * PX, PX / 2, 15 * PX, 9 * PX, 15.5 * PX], [3 * PX, 9 * PX, PX, 13 * PX, 11 * PX, 5.5 * PX]];
+        }
+        return rotateShapeBoxes(boxes, state.facing);
     },
     collision: () => [[0, 0, 0, 1, 9 * PX, 1]],
-    // A top does not turn with its box, so each way has its own, with the pillow at the head.
-    variant: (state, def) => ({ faces: { ...def.faces, top: `bed_top_${state.facing}` } }),
-    materialKey: (state) => state.facing,
-    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: shapeFacingFromVector(ctx.look.x, ctx.look.z) } }],
-    iconState: { facing: 'n' }
+    // A top does not turn with its box, so each way and each half has its own.
+    variant: (state, def) => ({ faces: { ...def.faces, top: state.part === 'single' ? `bed_top_${state.facing}` : `bed_${state.part}_top_${state.facing}` } }),
+    materialKey: (state) => `${state.facing}:${state.part}`,
+    place(ctx) {
+        const facing = shapeFacingFromVector(ctx.look.x, ctx.look.z);
+        const [dx, dz] = SHAPE_DIRECTIONS[facing];
+        if (!ctx.isFree(ctx.x + dx, ctx.y, ctx.z + dz)) return null;
+        return [
+            { dx: 0, dy: 0, dz: 0, state: { facing, part: 'foot' } },
+            { dx, dy: 0, dz, state: { facing, part: 'head' } }
+        ];
+    },
+    noRoom: 'A bed takes two blocks: there is no room for it here',
+    linked(state) {
+        if (state.part === 'single') return [];
+        const [dx, dz] = SHAPE_DIRECTIONS[state.facing];
+        return state.part === 'foot' ? [[dx, 0, dz]] : [[-dx, 0, -dz]];
+    },
+    // A bed that happens to stand next to one half is not its other half.
+    pairs: (state, other) => other.facing === state.facing && other.part === (state.part === 'foot' ? 'head' : 'foot'),
+    iconState: { facing: 'n', part: 'single' }
 });
 
 // Panes (glass panes, iron bars): a 2-pixel sheet that joins neighbouring panes and solid

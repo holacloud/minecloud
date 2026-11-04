@@ -2,8 +2,8 @@
 
 ![Bed](item:bed)
 
-A soft red bed, with its frame, mattress and pillow. You can **lie down** on it, and it does two very important things:
-it **chooses where you respawn** and it lets you **skip the night**.
+A soft red bed, **two blocks long**, with its frame, mattress and pillow. You can **lie down** on it, and it does two
+very important things: it **chooses where you respawn** and it lets you **skip the night**.
 
 | In-game name | Id | Break |
 |---|---|---|
@@ -18,19 +18,27 @@ it **chooses where you respawn** and it lets you **skip the night**.
 
 Both give the same bed.
 
+## Placing it
+
+It takes **two free blocks** in a row: the foot where you click, the head on the far side, away from you. If they are
+not free, the chat says so and nothing is used. **Breaking either half** takes the whole bed, and you get one bed back.
+
+A bed placed long ago in an old world stays as it was, in one block, and works the same. Break it and place it again to
+get a long one.
+
 ## Respawn point
 
-- When you **place** a bed, your respawn point moves **on top of it**. The chat confirms it: "Respawn point updated
-  to your bed". The pillow goes on the far side, away from you.
+- When you **place** a bed, your respawn point moves **on top of its foot**. The chat confirms it: "Respawn point
+  updated to your bed".
 - The **last** bed you placed is the one that counts.
-- If you **break** that bed, the point is cleared ("Respawn point reset because your bed was removed"). Without a
+- If you **break** that bed, by either half, the point is cleared ("Respawn point reset because your bed was removed"). Without a
   bed, you respawn at the last safe spot you stood on.
 - The `/spawn` command takes you to your respawn point. See [Chat commands](12).
 
 ## Lying down
 
-**Right click** the bed, or look at it and press **F**: you lie down with your head on the pillow, looking up. You
-cannot walk, but you can look around. **Sneak** gets you up (Shift, or the Sneak button on a touch screen), and you
+**Right click** either half of the bed, or look at it and press **F**: you lie down along it with your head on the
+pillow and your feet at the foot, looking up. You cannot walk, but you can look around. **Sneak** gets you up (Shift, or the Sneak button on a touch screen), and you
 also get up if someone breaks the bed. Other players see you lying flat on it, and one bed holds one person.
 
 To build against a bed instead of lying on it, sneak while you click, as with chairs.

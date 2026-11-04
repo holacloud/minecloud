@@ -136,7 +136,10 @@ function registerBlockBreakHandler(handler) {
 //   variant(state, def)      extra block-type fields for one state (solid, faces...)
 //   materialKey(state)       states that look different (door halves) get their own materials
 //   place(ctx)               [{ dx, dy, dz, state }] to place, or null when it does not fit
+//   stateName(base, state)   its block name, for a shape whose names cannot be the usual ones
+//   noRoom                   what to tell the player when it does not fit
 //   linked(state)            [[dx, dy, dz]] cells that form one object with it (door halves)
+//   pairs(state, other)      whether a block of this shape in such a cell is its other half
 //   toggle(state, ctx)       the state after a right click (doors, gates), or null
 //   iconState, iconMask      state and connections shown in the inventory icon
 //   iconBoxes                boxes to draw in the icon instead (furniture two cells long)

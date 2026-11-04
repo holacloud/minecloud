@@ -158,7 +158,7 @@ test('the designs have the sizes and materials asked for, and differ', () => {
     assert.ok(blocks.hall.has('brick') && !blocks.cathedral.has('brick'));
     assert.ok(blocks.cathedral.has('limestone') && !blocks.hall.has('limestone') && !blocks.house.has('limestone'));
     // The basics of the house, the glass of the cathedral.
-    for (const type of ['bed', 'lab_bench', 'torch', 'glass_pane', 'grass']) assert.ok(blocks.house.has(type), type);
+    for (const type of ['bed:s:foot', 'bed:s:head', 'lab_bench', 'torch', 'glass_pane', 'grass']) assert.ok(blocks.house.has(type), type);
     for (const type of ['cobalt_glass', 'glass', 'gold_block', 'neon_lamp']) assert.ok(blocks.cathedral.has(type), type);
     assert.ok(blocks.house.has('dark_oak_stairs:e:bottom') && blocks.house.has('dark_oak_stairs:w:bottom'), 'a roof of stairs');
 });
@@ -720,6 +720,68 @@ test('the showroom: the workshop has a foundry, and an arc furnace wired to enou
     const workshop = signs.find((text) => text.startsWith('TALLER'));
     for (const word of ['Fundición', 'arco', 'Foundry', 'Arc furnace', 'C menu']) assert.ok(workshop.includes(word), word);
     assert.ok(Buffer.byteLength(workshop.split(' // ')[0]) <= 60, 'another change fits signs to one block: the Spanish stays short');
+});
+
+test('the designs: every half of a bed has its other half, in every turn, the showroom\'s two side by side', () => {
+    for (const name of NAMES) {
+        for (const turns of [0, 1, 2, 3]) {
+            const plan = ctx.constructionPlan(name);
+            const { world } = visit('showroom');
+            const layout = ctx.constructionLayout(plan, turns, { x: 0, z: 0 }, 0, world.blockTypes);
+            const at = new Map(layout.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
+            for (const cell of layout.cells) {
+                if (!/^bed:/.test(cell.type) || !/:(foot|head)$/.test(cell.type)) continue;
+                const def = world.blockTypes[cell.type];
+                const [[dx, dy, dz]] = ctx.BLOCK_SHAPES.bed.linked(def.state);
+                const other = at.get(`${cell.x + dx},${cell.y + dy},${cell.z + dz}`);
+                assert.equal(other, cell.type.endsWith('foot') ? cell.type.replace('foot', 'head') : cell.type.replace('head', 'foot'), `${name}, turned ${turns}`);
+            }
+            assert.ok(!layout.cells.some((cell) => cell.type === 'bed' || /^bed:[nesw]$/.test(cell.type)), `${name}: no bed of one cell`);
+        }
+    }
+    const showroom = ctx.constructionPlan('showroom').cells.filter((cell) => /^bed:/.test(cell.type));
+    assert.equal(showroom.length, 4, 'two beds, two cells each');
+    assert.ok(ctx.constructionPlan('house').cells.filter((cell) => /^bed:/.test(cell.type)).length === 2);
+});
+
+test('/build: a bed the box cuts goes whole and comes back whole; stopping leaves no half', () => {
+    const { world } = visit('showroom');
+    const blockTypes = world.blockTypes;
+    // A bed with its foot in the box and its head out of it, across the east side of a 3 by 3.
+    const cells = new Map([['2,1,1', 'bed:e:foot'], ['3,1,1', 'bed:e:head']]);
+    const read = (x, y, z) => ({ type: cells.get(`${x},${y},${z}`) || (y === 0 ? 'stone' : null), meta: undefined });
+    const layout = { min: { x: 0, y: 0, z: 0 }, size: [3, 4, 3], foundation: 'stone', cells: [] };
+    const ops = ctx.constructionDiff(layout, read, blockTypes);
+    const foot = ops.find((op) => op.x === 2 && op.z === 1 && op.y === 1);
+    const head = ops.find((op) => op.x === 3 && op.z === 1 && op.y === 1);
+    assert.equal(foot.type, null);
+    assert.ok(head, 'the head, outside the box, goes too');
+    assert.equal(head.type, null);
+    assert.equal(head.prev.type, 'bed:e:head', 'and the undo knows what to put back');
+    // A bed of one cell has nothing to take with it.
+    const lone = new Map([['2,1,1', 'bed:e'], ['3,1,1', 'stone']]);
+    const loneOps = ctx.constructionDiff(layout, (x, y, z) => ({ type: lone.get(`${x},${y},${z}`) || (y === 0 ? 'stone' : null), meta: undefined }), blockTypes);
+    assert.ok(!loneOps.some((op) => op.x === 3));
+
+    // Stopping between the halves finishes the bed, so the world and the undo have it whole.
+    const game = new ctx.Game();
+    const applied = [];
+    const messages = [];
+    Object.assign(game, {
+        world,
+        constructionApply: (op) => applied.push(op),
+        receiveSystemMessage: ({ text }) => messages.push(text),
+        constructionUndo: { label: 'x', applied: [] }
+    });
+    const a = { x: 2, y: 1, z: 1, type: 'bed:e:foot', prev: { type: null } };
+    const other = { x: 9, y: 1, z: 1, type: 'stone', prev: { type: null } };
+    const b = { x: 3, y: 1, z: 1, type: 'bed:e:head', prev: { type: null } };
+    game.constructionJob = { label: 'x', verb: 'Building', ops: [a, other, b], done: 1, undoing: false };
+    game.constructionUndo.applied.push(a);
+    game.constructionStop();
+    assert.deepEqual(applied, [b], 'the other half, not the rest');
+    assert.equal(game.constructionUndo.applied.length, 2);
+    assert.equal(game.constructionJob, null);
 });
 
 test('the showroom: the signs reach the server, name their room and fit', () => {

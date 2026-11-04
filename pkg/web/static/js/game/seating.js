@@ -36,7 +36,7 @@ function bedEyePosition(x, y, z, mattress, facing) {
 }
 
 // Where a lying avatar's feet go, from the eye and the body's yaw (SEAT_YAW of the way its head lies).
-// It is one cell of bed for a body nearly two blocks long: the legs reach past the foot of the bed.
+// A bed two cells long holds it all, the feet in its foot; one saved as one cell has them past its end.
 function bedAvatarFeet(eye, yaw) {
     return {
         x: eye.x + Math.sin(yaw) * BED_FEET_FROM_EYE,
@@ -51,13 +51,33 @@ function seatStandOffsets(facing) {
     return [[fx, fz], [fz, -fx], [-fz, fx], [-fx, -fz], [0, 0]];
 }
 
+// The same out of a bed two cells long, from the cell of its head: the sides of its foot and of its
+// head, past the foot, past the head, and on it, the foot first.
+function bedStandOffsets(facing) {
+    const [fx, fz] = SHAPE_DIRECTIONS[facing];
+    return [[fz - fx, -fx - fz], [-fz - fx, fx - fz], [fz, -fx], [-fz, fx], [-2 * fx, -2 * fz], [fx, fz], [-fx, -fz], [0, 0]];
+}
+
+// The cell a body lies in on the bed at `position`: its head's, from either half. A half with no
+// other half is all the bed there is.
+function bedHeadCell(type, position, typeAt, blockTypes) {
+    if (blockTypes[type].state.part !== 'foot') return position;
+    const [head] = shapeLinkedCells(type, position, typeAt, blockTypes);
+    return head ? { x: head.x, y: head.y, z: head.z } : position;
+}
+
 Object.assign(Game.prototype, {
     // Returns whether the click was on a seat or a bed (even if there was no room to sit).
-    seatTrySit(position) {
-        const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
-        const def = type && this.world.blockTypes[type];
-        if (!def || !(def.seat || def.lieDown)) return false;
+    seatTrySit(clicked) {
+        const clickedType = this.world.getBlockTypeAt(clicked.x, clicked.y, clicked.z);
+        const clickedDef = clickedType && this.world.blockTypes[clickedType];
+        if (!clickedDef || !(clickedDef.seat || clickedDef.lieDown)) return false;
         if (this.ridingMob) return true;
+        // From either half of a bed, the same place in it.
+        const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        const position = clickedDef.lieDown ? bedHeadCell(clickedType, clicked, typeAt, this.world.blockTypes) : clicked;
+        const type = typeAt(position.x, position.y, position.z);
+        const def = this.world.blockTypes[type];
         const seated = this.seated;
         if (seated && seated.x === position.x && seated.y === position.y && seated.z === position.z) {
             if (seated.lying) this.bedTrySleep();
@@ -83,7 +103,8 @@ Object.assign(Game.prototype, {
             controller.setSeat(bedEyePosition(position.x, position.y, position.z, def.lieDown, facing));
             controller.yaw = SEAT_YAW[SHAPE_OPPOSITE[facing]];
             controller.pitch = BED_LOOK_UP;
-            this.seated = { x: position.x, y: position.y, z: position.z, base: def.variantOf || type, facing, avatarYaw: SEAT_YAW[facing], lying: true };
+            const [foot] = shapeLinkedCells(type, position, typeAt, this.world.blockTypes);
+            this.seated = { x: position.x, y: position.y, z: position.z, base: def.variantOf || type, facing, avatarYaw: SEAT_YAW[facing], lying: true, foot: foot || null };
             this.playPlaceSound(type);
             this.receiveSystemMessage({ text: `Lying on the ${name}: Sneak gets up` });
             this.bedTrySleep();
@@ -107,7 +128,7 @@ Object.assign(Game.prototype, {
         controller.setSeat(null);
         if (seat.lying) controller.pitch = 0;
         const position = controller.camera.position;
-        for (const [dx, dz] of seatStandOffsets(seat.facing)) {
+        for (const [dx, dz] of seat.foot ? bedStandOffsets(seat.facing) : seatStandOffsets(seat.facing)) {
             const x = seat.x + 0.5 + dx;
             const z = seat.z + 0.5 + dz;
             const floor = controller.getFloorY(x, z, seat.y + 1.2);
@@ -131,7 +152,8 @@ Object.assign(Game.prototype, {
         }
         const type = this.world.getBlockTypeAt(seat.x, seat.y, seat.z);
         const def = type && this.world.blockTypes[type];
-        if (this.respawnPending || !def || (def.variantOf || type) !== seat.base) this.seatStandUp();
+        const footGone = seat.foot && !isBedBlockType(this.world.getBlockTypeAt(seat.foot.x, seat.foot.y, seat.foot.z));
+        if (this.respawnPending || !def || (def.variantOf || type) !== seat.base || footGone) this.seatStandUp();
     },
 
     // The avatar has no knees, so the legs reach forward and slightly down from the hips, and

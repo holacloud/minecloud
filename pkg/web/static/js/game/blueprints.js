@@ -33,6 +33,17 @@ const BLUEPRINT_LIBRARY_KEY = 'KeyL';
 const BLUEPRINT_LADDER_TURN = { px: 'pz', pz: 'nx', nx: 'nz', nz: 'px' };
 
 // ---------------------------------------------------------------------------------------
+// The block that goes with this half of a bed in a plan: { x, y, z, blockType }, or null for all else.
+function blueprintOtherBedHalf(cell, blockTypes) {
+    if (!isBedBlockType(cell.type)) return null;
+    const { state } = blockTypes[cell.type];
+    if (state.part === 'single') return null;
+    const shape = BLOCK_SHAPES.bed;
+    const [[dx, dy, dz]] = shape.linked(state);
+    const blockType = shapeStateName('bed', shape, { facing: state.facing, part: state.part === 'foot' ? 'head' : 'foot' });
+    return { x: cell.wx + dx, y: cell.wy + dy, z: cell.wz + dz, blockType };
+}
+
 // Plans as data (no Game needed): cells are { x, y, z, type, meta } relative to the box corner.
 
 // Cells -> { size, palette, rle, meta }. The box is walked x fastest, then z, then y; each value is
@@ -373,6 +384,8 @@ Object.assign(Game.prototype, {
                     if (!this.world.getColumnAt(wx, wz)) return { error: 'Part of the box is too far away: come closer' };
                     const type = this.world.getBlockTypeAt(wx, wy, wz);
                     if (!type || !this.blueprintIsPlaceable(type)) continue;
+                    // A plan has a bed whole or not at all, as a box that cuts one has half of it.
+                    if (isBedBlockType(type) && !this.blueprintBedIsWhole(type, { x: wx, y: wy, z: wz }, box)) continue;
                     const cell = { x, y, z, type };
                     if (type === 'ladder') cell.meta = { f: this.world.getLadderFacingAt(wx, wy, wz) };
                     else if (isSignBlockType(type)) cell.meta = { t: this.world.getSignTextAt(wx, wy, wz) };
@@ -389,6 +402,15 @@ Object.assign(Game.prototype, {
         }
         if (!cells.length) return { error: 'The box is empty: there is nothing to draw' };
         return { cells };
+    },
+
+    blueprintBedIsWhole(type, position, box) {
+        const def = this.world.blockTypes[type];
+        if (def.state.part === 'single') return true;
+        const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        const [other] = shapeLinkedCells(type, position, typeAt, this.world.blockTypes);
+        return Boolean(other) && other.x >= box.min.x && other.x < box.min.x + box.size[0] &&
+            other.z >= box.min.z && other.z < box.min.z + box.size[2];
     },
 
     blueprintTapeClick(hit) {
@@ -573,6 +595,12 @@ Object.assign(Game.prototype, {
         const id = this.world.registry.id(cell.type);
         const height = this.world.registry.height[id];
         if (height > 0 && this.cameraController.intersectsBody(this.getLocalPlayerPosition(), cell.wx, cell.wy, cell.wz, height)) return false;
+        // Half a bed brings the other half, for one bed from the stack, or does not go at all.
+        const otherHalf = blueprintOtherBedHalf(cell, this.world.blockTypes);
+        if (otherHalf) {
+            const there = this.world.getBlockTypeAt(otherHalf.x, otherHalf.y, otherHalf.z);
+            if ((there && there !== 'water') || this.cameraController.intersectsBody(this.getLocalPlayerPosition(), otherHalf.x, otherHalf.y, otherHalf.z, height)) return false;
+        }
         const payload = { x: cell.wx, y: cell.wy, z: cell.wz, blockType: cell.type };
         const meta = cell.meta || {};
         if (cell.type === 'ladder') payload.facing = meta.f || 'pz';
@@ -587,6 +615,7 @@ Object.assign(Game.prototype, {
         if (!this.world.addBlock(payload)) return false;
         if (consume) this.consumeSelectedBlock();
         if (this.network.connected) this.network.send('blockPlace', payload);
+        if (otherHalf && this.world.addBlock(otherHalf) && this.network.connected) this.network.send('blockPlace', otherHalf);
         this.playPlaceSound(cell.type);
         if (consume) {
             this.placeActionTimer = 0.35;
@@ -996,8 +1025,15 @@ Object.assign(Game.prototype, {
         const missing = {};
         let done = 0;
         status.cells.forEach((cell) => {
-            if (cell.state === 'done') done++;
-            else missing[cell.type] = (missing[cell.type] || 0) + 1;
+            if (cell.state === 'done') {
+                done++;
+                return;
+            }
+            // Two halves of a bed are one bed, and it is the item that counts.
+            const def = this.world.blockTypes[cell.type];
+            if (isBedBlockType(cell.type) && def.state.part === 'head') return;
+            const item = isBedBlockType(cell.type) ? 'bed' : cell.type;
+            missing[item] = (missing[item] || 0) + 1;
         });
         const head = document.createElement('div');
         head.className = 'bp-hint';

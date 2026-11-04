@@ -300,7 +300,7 @@ Object.assign(Game.prototype, {
         // The block is gone: drop its shaking stand-in right away.
         this.disposeMiningBlockVisual();
 
-        if (isBedBlockType(blockType) && this.isRespawnBoundToBlock(position)) {
+        if (isBedBlockType(blockType) && this.isRespawnBoundToBed(blockType, position)) {
             this.respawnPoint = null;
             window.localStorage.removeItem('minecloud-respawn-point');
             this.receiveSystemMessage({ text: 'Respawn point reset because your bed was removed' });
@@ -537,7 +537,15 @@ Object.assign(Game.prototype, {
             const parts = this.world.getPlacementBlocks(blockType, newPos.x, newPos.y, newPos.z, {
                 normal, hit: hit.point, look: { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z }
             });
-            if (!parts) return;
+            // Told, for a piece that needs more room than the player may expect.
+            const placedShape = BLOCK_SHAPES[(this.world.blockTypes[blockType] || {}).shape];
+            const noRoom = () => {
+                if (placedShape && placedShape.noRoom) this.receiveSystemMessage({ text: placedShape.noRoom });
+            };
+            if (!parts) {
+                noRoom();
+                return;
+            }
             // Solid blocks may not be placed where the player stands (it would trap the camera).
             const eye = this.getLocalPlayerPosition();
             for (const part of parts) {
@@ -546,8 +554,11 @@ Object.assign(Game.prototype, {
                     // Only into air, water or a small plant (clicks on inner faces of a shape
                     // point at cells that may be taken).
                     const taken = this.world.getBlockTypeAt(part.x, part.y, part.z);
-                    if (taken && taken !== 'water' && !(this.world.isCrossGeometry(taken) && taken !== 'torch')) return;
-                    if (this.cameraController.intersectsBoxes(eye, part.x, part.y, part.z, this.world.shapes.collision(partId))) return;
+                    if ((taken && taken !== 'water' && !(this.world.isCrossGeometry(taken) && taken !== 'torch')) ||
+                        this.cameraController.intersectsBoxes(eye, part.x, part.y, part.z, this.world.shapes.collision(partId))) {
+                        noRoom();
+                        return;
+                    }
                     continue;
                 }
                 // A cube never takes the place of a piece it was clicked next to (a chair, a bookshelf).

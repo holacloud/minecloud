@@ -270,19 +270,12 @@ registerItemUseHandler(function (itemType, hit) {
     return Boolean(position) && this.joineryToggle(position);
 });
 
-// Breaking half of a door takes the other half with it (only one door drops).
+// Breaking half of a door or a bed takes the other half with it (only one drops).
 registerBlockBreakHandler(function (blockType, position) {
-    const def = blockType && this.world.blockTypes[blockType];
-    const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
-    if (!shape || !shape.linked) return;
-    const base = def.variantOf || blockType;
-    for (const [dx, dy, dz] of shape.linked(def.state)) {
-        const cell = { x: position.x + dx, y: position.y + dy, z: position.z + dz };
-        const otherType = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
-        const other = otherType && this.world.blockTypes[otherType];
-        if (!other || (other.variantOf || otherType) !== base) continue;
-        if (this.world.removeBlockAt(cell.x, cell.y, cell.z) && this.network.connected) {
-            this.network.send('blockBreak', cell);
+    const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+    for (const { x, y, z } of shapeLinkedCells(blockType, position, typeAt, this.world.blockTypes)) {
+        if (this.world.removeBlockAt(x, y, z) && this.network.connected) {
+            this.network.send('blockBreak', { x, y, z });
         }
     }
 });

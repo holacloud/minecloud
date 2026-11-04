@@ -558,6 +558,15 @@ class BlockTextureFactory {
             bed_top_s(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [1 - u, 1 - v]); },
             bed_top_e(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [v, 1 - u]); },
             bed_top_w(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [1 - v, u]); },
+            // The two halves of a bed two cells long: the pillow and the fold in one, blanket in the other.
+            bed_head_top_n(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [u, v], true); },
+            bed_head_top_s(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [1 - u, 1 - v], true); },
+            bed_head_top_e(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [v, 1 - u], true); },
+            bed_head_top_w(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [1 - v, u], true); },
+            bed_foot_top_n(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [u, v], false); },
+            bed_foot_top_s(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [1 - u, 1 - v], false); },
+            bed_foot_top_e(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [v, 1 - u], false); },
+            bed_foot_top_w(s, tint, seed) { f.paintBedHalf(s, seed, (u, v) => [1 - v, u], false); },
 
             // By height, as the boxes cut it: dark legs, the wooden frame, the blanket down the
             // mattress's side with the sheet showing at the top, the pillow above.
@@ -988,6 +997,26 @@ class BlockTextureFactory {
                 const fold = b < 0.47;
                 this.put(s, x, y, this.tone(s, fold ? sheet : blanket, grain + (fold ? -0.02 : quilt)), fold ? 0.8 : 0.6);
             }
+        });
+    }
+
+    // One half of a bed two cells long, with `across` as above in that cell.
+    paintBedHalf(s, seed, across, head) {
+        const blanket = this.rgb(0xb8423f);
+        const sheet = this.rgb(0xf1ebdc);
+        this.each(s, (x, y, u, v) => {
+            const [a, b] = across(u, v);
+            const grain = (this.hash(x, y, seed) - 0.5) * 0.08;
+            if (head && b < 0.62) {
+                // The pillow's box is 3..13 by 1..7; a shadow lies round it on the sheet.
+                const pillow = a > 3 / 16 && a < 13 / 16 && b > 1 / 16 && b < 7 / 16;
+                const near = a > 2.2 / 16 && a < 13.8 / 16 && b < 7.7 / 16;
+                this.put(s, x, y, this.tone(s, sheet, grain + (pillow ? 0.05 : near ? -0.16 : -0.06)), pillow ? 0.9 : 0.6);
+                return;
+            }
+            const fold = head && b < 0.72;
+            const quilt = ((Math.floor(a * 4) + Math.floor(b * 4)) % 2) * 0.06;
+            this.put(s, x, y, this.tone(s, fold ? sheet : blanket, grain + (fold ? -0.02 : quilt)), fold ? 0.8 : 0.6);
         });
     }
 

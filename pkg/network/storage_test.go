@@ -464,7 +464,8 @@ func TestStorageUpperHalfAloneIsNotStorage(t *testing.T) {
 
 func TestRamsDoNotMoveStorage(t *testing.T) {
 	for _, name := range []string{"chest", "chest:e", "barrel", "wardrobe", "wardrobe:upper:s", "fridge", "fridge:upper:e", "chest_freezer", "chest_freezer:e", "oven", "oven:e:on",
-		"floor_lamp", "floor_lamp:upper", "bathtub", "bathtub:head:e"} {
+		"floor_lamp", "floor_lamp:upper", "bathtub", "bathtub:head:e",
+		"bed", "bed:e", "bed:n:foot", "bed:n:head", "bed:e:foot", "bed:w:head"} {
 		if mechMovable(name) {
 			t.Errorf("%s should not move", name)
 		}

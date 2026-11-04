@@ -931,9 +931,16 @@ Object.assign(Game.prototype, {
         if (!duration && duration !== 0) return { ok: false, error: `I can't dig ${this.robotName(type)}: it is unbreakable` };
         const drop = this.world.getDropTypeForBlock(type);
         if (drop && ROBOT_LOGIC.room(robot.inventory, drop) <= 0) return { ok: false, error: 'My inventory is full! Take my things out first' };
+        // The other half of a door or a bed goes with it, as when a player breaks it (one drops).
+        const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        const otherHalves = shapeLinkedCells(type, cell, typeAt, this.world.blockTypes);
+        const boundBed = isBedBlockType(type) && this.isRespawnBoundToBed(type, cell);
         if (!this.world.removeBlockAt(cell.x, cell.y, cell.z)) return { ok: true, duration: tick };
         if (this.network.connected) this.network.send('blockBreak', { x: cell.x, y: cell.y, z: cell.z });
-        if (type === 'bed' && this.isRespawnBoundToBlock(cell)) {
+        for (const { x, y, z } of otherHalves) {
+            if (this.world.removeBlockAt(x, y, z) && this.network.connected) this.network.send('blockBreak', { x, y, z });
+        }
+        if (boundBed) {
             this.respawnPoint = null;
             window.localStorage.removeItem('minecloud-respawn-point');
             this.receiveSystemMessage({ text: 'Respawn point reset because your bed was removed' });

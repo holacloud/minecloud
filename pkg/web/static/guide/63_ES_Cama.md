@@ -2,8 +2,8 @@
 
 ![Cama](item:bed)
 
-Una cama roja y blandita, con su armazón, colchón y almohada. Puedes **tumbarte** en ella, y sirve para dos cosas muy
-importantes: **elegir dónde reapareces** y **saltarte la noche**.
+Una cama roja y blandita, de **dos bloques de largo**, con su armazón, colchón y almohada. Puedes **tumbarte** en ella,
+y sirve para dos cosas muy importantes: **elegir dónde reapareces** y **saltarte la noche**.
 
 | Nombre en el juego | Id | Rotura |
 |---|---|---|
@@ -18,19 +18,28 @@ importantes: **elegir dónde reapareces** y **saltarte la noche**.
 
 Las dos dan la misma cama.
 
+## Colocarla
+
+Ocupa **dos bloques libres** en fila: los pies donde haces clic, la cabecera al otro lado, lejos de ti. Si no están
+libres, el chat te lo dice y no se gasta nada. **Al romper cualquiera de las dos mitades** se va la cama entera, y te
+devuelve una cama.
+
+Una cama que ya tuvieras en un mundo antiguo sigue como estaba, en un bloque, y funciona igual. Rómpela y vuelve a
+colocarla para tenerla larga.
+
 ## Punto de reaparición
 
-- Al **colocar** una cama, tu punto de reaparición pasa a ser **encima de ella**. El chat lo confirma: «Respawn
-  point updated to your bed». La almohada queda en el lado más lejano, el que no da a ti.
+- Al **colocar** una cama, tu punto de reaparición pasa a ser **encima de sus pies**. El chat lo confirma: «Respawn
+  point updated to your bed».
 - Cuenta la **última** cama que colocaste.
-- Si **rompes** esa cama, el punto se borra («Respawn point reset because your bed was removed»). Sin cama,
+- Si **rompes** esa cama, por cualquiera de sus mitades, el punto se borra («Respawn point reset because your bed was removed»). Sin cama,
   reapareces en el último sitio seguro donde estuviste de pie.
 - El comando `/spawn` te lleva a tu punto de reaparición. Ver [Comandos del chat](12).
 
 ## Tumbarse
 
-**Clic derecho** en la cama, o mírala y pulsa **F**: te tumbas con la cabeza en la almohada, mirando hacia arriba. No
-puedes andar, pero sí mirar alrededor. **Agacharte** te levanta (Mayús, o el botón de agacharse en una pantalla
+**Clic derecho** en cualquier mitad de la cama, o mírala y pulsa **F**: te tumbas a lo largo, con la cabeza en la
+almohada y los pies en los pies de la cama, mirando hacia arriba. No puedes andar, pero sí mirar alrededor. **Agacharte** te levanta (Mayús, o el botón de agacharse en una pantalla
 táctil), y también te levantas si alguien rompe la cama. Los demás te ven tumbado en ella, y en cada cama cabe una
 persona.
 
