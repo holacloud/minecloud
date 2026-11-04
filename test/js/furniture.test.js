@@ -44,6 +44,8 @@ function canvasStub() {
     const ctx = new Proxy({}, {
         get(target, key) {
             if (key in target) return target[key];
+            // About what Arial Bold measures, at the font set.
+            if (key === 'measureText') return (text) => ({ width: text.length * parseFloat(String(target.font).replace('bold ', '')) * 0.56 });
             return (...args) => {
                 if (key === 'drawImage') drawn.push(args);
                 return { data: new Uint8ClampedArray(4 * 4096 * 16), addColorStop() {} };
@@ -82,7 +84,7 @@ function loadGame() {
         APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_CHILL, APPLIANCE_FREEZE, APPLIANCE_CHILL_SECONDS, APPLIANCE_FREEZE_SECONDS, APPLIANCE_ITEMS,
         applianceOvenTakes, applianceColdTable, applianceSlotProgress, storageSameStacks, storageOvenStatus, storagePercent, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
-        furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
+        signBoardLines, signBoardLayoutFor, signBoardText, signReaderText, SIGN_BOARD_WIDTH, SIGN_BOARD_THICKNESS, furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval, mirrorReflectView, mirrorFacingPlane, mirrorFacingMode, mirrorPassOrder, mirrorPassShows, mirrorEchoMatrix,
         MIRROR_BOUNCE_DARKEN, MIRROR_NESTED_MIN_COVER,
@@ -2149,51 +2151,93 @@ test('signs: placing asks for the text in every state and sends it, and cancelli
     });
 });
 
-test('signs: the board grows with the text and shows all of it; 288 bytes still fit', () => {
-    const world = makeWorld();
-    const short = world.signBoardLayout('Mine');
-    const middle = world.signBoardLayout('Sheep farm to the north, past the old bridge and the mill');
-    const long = world.signBoardLayout('Lorem ipsum dolor sit amet '.repeat(11).trim().slice(0, 288));
-    assert.ok(short.width === 1 && short.height <= 0.6, 'a short text fits the post');
-    assert.ok(middle.width > short.width && long.width >= middle.width && long.height > middle.height);
-    assert.equal(short.lines.join(' '), 'Mine');
-    assert.equal(long.truncated, false, '288 bytes are all on the board');
-    // Letters stay readable: how wide one is on the board, in blocks.
-    const letter = (layout) => layout.width / Math.max(...Array.from(layout.lines, (line) => line.length));
-    assert.ok(letter(short) > 0.2);
-    assert.ok(letter(long) > 0.04, `${letter(long)}`);
-    // One long word breaks across lines rather than being lost.
-    const word = world.signBoardLayout('x'.repeat(200));
-    assert.equal(word.truncated, false);
-    assert.equal(word.lines.join('').length, 200);
-    // A translation after " // " is for the reader.
-    assert.equal(world.signBoardLayout('Hola // Hello').lines.join(' '), 'Hola');
-    assert.equal(world.signBoardLayout('see http://example.com/a').lines.join(' '), 'see http://example.com/a');
-    // Something that would not fit ends in an ellipsis instead of being cut silently.
-    const over = world.signBoardLayout('wide '.repeat(200));
-    assert.equal(over.truncated, true);
-    assert.ok(over.lines[over.lines.length - 1].endsWith('…'));
+test('signs: wrapping at real widths, whole words, and three dots for what does not fit', () => {
+    // A font where every character is 10 wide: a line of 100 holds exactly 10.
+    const measure = (text) => Array.from(text).length * 10;
+    const wrap = (text, lines = 3, width = 100) => JSON.parse(JSON.stringify(ctx.signBoardLines(text, measure, width, lines)));
+    assert.deepEqual(wrap('Mina'), { lines: ['Mina'], truncated: false, broken: false });
+    // It fits to the last letter: no dots.
+    assert.deepEqual(wrap('aaaaaaaaaa'), { lines: ['aaaaaaaaaa'], truncated: false, broken: false });
+    assert.deepEqual(wrap('aaaa bbbbb'), { lines: ['aaaa bbbbb'], truncated: false, broken: false });
+    assert.deepEqual(wrap('aaaaaaaaaa bbbbbbbbbb cccccccccc'), { lines: ['aaaaaaaaaa', 'bbbbbbbbbb', 'cccccccccc'], truncated: false, broken: false });
+    // One word more than three lines: the third line gives up a letter for the dots.
+    const over = wrap('aaaaaaaaaa bbbbbbbbbb cccccccccc d');
+    assert.deepEqual(over, { lines: ['aaaaaaaaaa', 'bbbbbbbbbb', 'ccccccccc\u2026'], truncated: true, broken: false });
+    // And the dots need no room if the last line has it, with no space before them.
+    assert.deepEqual(wrap('aaaaaaaaaa bbbbbbbbbb ccc dddddddddd eeeeeeeeee').lines[2], 'ccc\u2026');
+    // A long word breaks across lines rather than being lost.
+    const word = wrap('x'.repeat(25));
+    assert.deepEqual(word, { lines: ['x'.repeat(10), 'x'.repeat(10), 'x'.repeat(5)], truncated: false, broken: true });
+    assert.equal(wrap('x'.repeat(40)).lines[2], `${'x'.repeat(9)}\u2026`);
+    assert.equal(wrap('x'.repeat(40)).truncated, true);
+    // Accents, multibyte letters and emoji are whole, at either kind of cut.
+    const graphemes = (text) => Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), (part) => part.segment);
+    const byLetter = (text) => graphemes(text).length * 10;
+    const accents = ctx.signBoardLines('e\u0301'.repeat(12), byLetter, 100, 1);
+    assert.equal(graphemes(accents.lines[0]).length, 10);
+    assert.ok(accents.lines[0].startsWith('e\u0301') && accents.lines[0].endsWith('\u2026'));
+    assert.ok(!/e\u2026/.test(accents.lines[0]), 'never an accent cut from its letter');
+    const emoji = ctx.signBoardLines('\u{1F600}'.repeat(25), byLetter, 100, 2);
+    assert.ok(emoji.truncated);
+    assert.equal(graphemes(emoji.lines[1]).length, 10);
+    assert.ok(graphemes(emoji.lines[1]).slice(0, -1).every((part) => part === '\u{1F600}'));
+    // Only what comes before " // " goes on a board, and a URL is not a translation.
+    assert.equal(ctx.signBoardText('Hola // Hello'), 'Hola');
+    assert.equal(ctx.signBoardText('see http://example.com/a'), 'see http://example.com/a');
+    assert.equal(ctx.signBoardText('  a \n  b '), 'a b');
+    assert.equal(ctx.signReaderText('Hola // Más // Hello'), 'Hola\n\nMás\n\nHello');
+    assert.equal(ctx.signReaderText('Solo uno'), 'Solo uno');
 });
 
-test('signs: the board reads from both sides, stands on its post, and keeps out of walls', () => {
+test('signs: the same board always, big letters when they fit, 288 bytes end in dots', () => {
+    const world = makeWorld();
+    const widthAt = (font) => (text) => Array.from(text).length * font * 0.56;
+    const layout = (text) => ctx.signBoardLayoutFor(text, widthAt);
+    const short = layout('Mina');
+    const middle = layout('Granja de ovejas al norte, pasado el puente');
+    const long = layout('Lorem ipsum dolor sit amet '.repeat(11).trim().slice(0, 288));
+    assert.ok(short.font > middle.font, 'few words, big letters');
+    assert.ok(short.lines.length === 1 && !short.truncated);
+    assert.ok(!middle.truncated && middle.lines.join(' ') === 'Granja de ovejas al norte, pasado el puente');
+    assert.ok(middle.font >= 40, `readable: ${middle.font}`);
+    assert.ok(long.truncated && long.lines[long.lines.length - 1].endsWith('\u2026'));
+    assert.ok(long.lines.length <= 5 && long.font >= 40, `at most 5 lines, ${long.font}`);
+    // A long word goes to smaller letters before it is cut in two.
+    const whole = layout('Electrodomésticos');
+    assert.equal(whole.lines.length, 1);
+    // The canvas path measures with what it is drawn with.
+    assert.equal(world.signBoardLayout('Mina').lines[0], 'Mina');
+    // The size never changes with the text.
+    for (const text of ['Mina', 'x'.repeat(288), 'a b c d e f g '.repeat(20)]) {
+        const board = world.signBoardPlacement('sign', text);
+        assert.equal(board.width, 1, 'one block wide');
+        assert.equal(board.height, world.signBoardPlacement('sign', 'Mina').height);
+    }
+});
+
+test('signs: the board stays in its cell whatever is around it, on its post or on its wall', () => {
     const world = makeWorld();
     const long = 'Bienvenido. Sigue la línea amarilla: pasa por todo y vuelve a la salida. F ante un cartel.';
-    // A post in the open: centred on it, its foot halfway up the cell.
-    const free = world.signBoardPlacement('sign', 3, 1, 3, long);
-    assert.ok(free.width > 1 && near(free.x, 0) && near(free.z, 0));
-    assert.ok(near(free.y - free.height / 2, 0.5));
-    // The first state is a north-facing post: a wall to its east pushes the board west, and between
-    // two walls it stays one block wide.
-    put(world, 4, 1, 3, 'stone');
-    const pushed = world.signBoardPlacement('sign', 3, 1, 3, long);
-    assert.ok(pushed.x < 0 && near(pushed.x + pushed.width / 2, 0.5), 'its end at the wall');
-    put(world, 2, 1, 3, 'stone');
-    const tight = world.signBoardPlacement('sign', 3, 1, 3, long);
-    assert.ok(near(tight.width, 1) && near(tight.x, 0));
+    const free = world.signBoardPlacement('sign', long);
+    assert.ok(near(free.x, 0) && near(free.z, 0), 'centred on its post');
+    assert.ok(near(free.y + free.height / 2, 1), 'its top at the top of the cell');
+    assert.ok(free.y - free.height / 2 > 0);
+    for (const type of ['sign', 'sign:e:post', 'sign:n:wall', 'sign:s:wall', 'sign:e:wall', 'sign:w:wall']) {
+        const board = world.signBoardPlacement(type, long);
+        const { facing } = world.blockTypes[type].state;
+        const across = facing === 'n' || facing === 's' ? board.x : board.z;
+        assert.ok(near(across, 0) && board.width <= 1, `${type} does not overhang`);
+        const deep = (facing === 'n' || facing === 's' ? Math.abs(board.z) : Math.abs(board.x)) + ctx.SIGN_BOARD_THICKNESS / 2;
+        assert.ok(deep <= 0.5 + 1e-6, `${type} in its cell`);
+        assert.ok(board.y + board.height / 2 <= 1 + 1e-6 && board.y - board.height / 2 >= 0, type);
+    }
     // A wall board lies against its wall: east-facing, on a wall to the west.
-    const onWall = world.signBoardPlacement('sign:e:wall', 8, 1, 3, 'Mine');
+    const onWall = world.signBoardPlacement('sign:e:wall', 'Mine');
     assert.ok(onWall.x < -0.4 && near(onWall.z, 0));
     assert.ok(near(onWall.y, 0.5));
+    // No neighbour moves it, and the old code that did is gone.
+    assert.equal(world.signBoardPlacement.length, 2, 'it does not even get a position');
+    assert.ok(!/SIGN_BOARD_SIZES|wrapSignText/.test(fs.readFileSync(path.join(STATIC, 'js', 'world.js'), 'utf8')));
     // A box with the text on both faces, the same picture, so neither is mirrored; a wall board's
     // back is plain. Aiming anywhere at it is aiming at the sign.
     const made = [];
@@ -2217,6 +2261,34 @@ test('signs: the board reads from both sides, stands on its post, and keeps out 
         delete ctx.THREE.BoxGeometry;
         delete ctx.THREE.MeshBasicMaterial;
     }
+});
+
+test('signs: a right click reads them, or builds if you crouch; no text, spray paint and the new sign go on', () => {
+    const world = makeWorld();
+    put(world, 3, 1, 3, 'sign:e:post');
+    world.addBlock({ x: 3, y: 1, z: 3, blockType: 'sign:e:post', text: 'Hola // Hello' });
+    put(world, 5, 1, 3, 'sign');
+    const opened = [];
+    const hitAt = (position) => ({ object: { userData: { blockPosition: position } }, faceIndex: 0, point: new Vector3(position.x + 0.5, position.y + 0.5, position.z + 0.5), face: { normal: { x: 0, y: 1, z: 0 } } });
+    const handler = ctx.ITEM_USE_HANDLERS.find((fn) => /readSignAt/.test(fn.toString()));
+    assert.ok(handler, 'registered');
+    const game = new ctx.Game();
+    Object.assign(game, { world, cameraController: { isCrouching: false }, openSignReader: (text, position) => opened.push({ text, position }) });
+    assert.equal(handler.call(game, 'stone', hitAt({ x: 3, y: 1, z: 3 })), true);
+    assert.equal(opened[0].text, 'Hola // Hello', 'all of it');
+    assert.equal(handler.call(game, 'sign', hitAt({ x: 3, y: 1, z: 3 })), true, 'with a sign in hand too');
+    // Crouching builds against it, as with chairs and beds.
+    game.cameraController.isCrouching = true;
+    assert.equal(handler.call(game, 'stone', hitAt({ x: 3, y: 1, z: 3 })), false);
+    game.cameraController.isCrouching = false;
+    // Spray paint paints it; no text: a block like any other; other blocks; nothing.
+    assert.equal(handler.call(game, 'spray_paint', hitAt({ x: 3, y: 1, z: 3 })), false);
+    assert.equal(handler.call(game, 'stone', hitAt({ x: 5, y: 1, z: 3 })), false);
+    assert.equal(handler.call(game, 'stone', hitAt({ x: 9, y: 0, z: 9 })), false);
+    assert.equal(handler.call(game, 'stone', null), false);
+    assert.equal(opened.length, 2);
+    // A tap goes the same way as a click: both end in placeBlock, which asks these handlers first.
+    assert.match(fs.readFileSync(path.join(STATIC, 'js', 'game', 'touch.js'), 'utf8'), /touchTapWorld\(\) \{[^}]*\}[^}]*this\.placeBlock\(\);/);
 });
 
 test('signs: nothing in the client or the server compares with the plain name any more', () => {

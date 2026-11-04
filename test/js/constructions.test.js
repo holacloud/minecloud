@@ -48,7 +48,7 @@ function loadGame() {
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS,
         constructionPlan, constructionLayout, constructionTurnType, constructionDiff, constructionFindGround,
         CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS, SHAPE_OPPOSITE, SHAPE_MASK, FURNITURE_COLORS, MIRROR_RANGE, ELECTRIC_KINDS,
-        mirrorFacesOf, mirrorLineClear, seatStandOffsets });`, context);
+        mirrorFacesOf, mirrorLineClear, seatStandOffsets, signBoardLayoutFor });`, context);
     return context;
 }
 
@@ -730,31 +730,24 @@ test('the showroom: the signs reach the server, name their room and fit', () => 
     for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES', 'TALLER']) {
         assert.ok(texts.some((text) => text.startsWith(name)), name);
     }
+    // About what Arial Bold measures, letter by letter, in ems: on the wide side, not to fool anyone.
+    const em = (letter) => (/[A-ZÁÉÍÓÚÑ]/.test(letter) ? 0.74 : /[mw]/.test(letter) ? 0.9 : /[.,:;il' ]/.test(letter) ? 0.3 : 0.6);
+    const measureAt = (font) => (line) => Array.from(line).reduce((width, letter) => width + em(letter) * font, 0);
     for (const cell of signs) {
         const text = cell.meta.t;
-        const [es, en] = text.split(' // ');
-        assert.ok(es && en, text);
+        const parts = text.split(' // ');
+        const [es] = parts;
+        assert.ok(es && parts.length >= 2 && parts[parts.length - 1], text);
         // What the server keeps, what a board shows (the reader shows it all).
         assert.ok(Buffer.byteLength(text) <= 288, `${Buffer.byteLength(text)} bytes: ${text}`);
-        const board = world.signBoardPlacement(cell.type, cell.x, cell.y, cell.z, text);
+        const board = ctx.signBoardLayoutFor(text, measureAt);
         assert.equal(board.truncated, false, text);
         assert.equal(board.lines.join(' '), es, `not what its board shows: ${es}`);
-        // The board rises into the cell above, with nothing in the way.
-        assert.ok(!world.registry.fullCube[world.getBlockId(cell.x, cell.y + 1, cell.z)], text);
+        assert.ok(board.lines.length <= 4 && board.font >= 50, `big enough to read: ${es}`);
         // It looks at open floor.
-        const [dx, dz] = ctx.SHAPE_DIRECTIONS[board.facing];
+        const [dx, dz] = ctx.SHAPE_DIRECTIONS[world.blockTypes[cell.type].state.facing];
         assert.ok(!world.registry.fullCube[world.getBlockId(cell.x + dx, cell.y, cell.z + dz)], `looks at a wall: ${text}`);
         assert.ok(!world.registry.fullCube[world.getBlockId(cell.x + dx, cell.y + 1, cell.z + dz)], `looks at a wall: ${text}`);
-        // Neither end of it is lost in a wall, at either of the heights it spans.
-        for (const side of [-1, 1]) {
-            const end = (-dz * side * board.width) / 2 + board.x;
-            const endZ = (dx * side * board.width) / 2 + board.z;
-            for (const height of [cell.y, cell.y + 1]) {
-                const inset = 0.02 * side;
-                const type = world.getBlockTypeAt(Math.floor(cell.x + 0.5 + end - dz * -inset), height, Math.floor(cell.z + 0.5 + endZ + dx * -inset));
-                assert.ok(!type || !world.registry.fullCube[world.registry.id(type)], `its end is in ${type}: ${text}`);
-            }
-        }
         // Only the post stops a visitor.
         for (const box of world.shapes.collision(world.registry.id(cell.type))) assert.ok(box[3] - box[0] < 0.3 && box[5] - box[2] < 0.3);
     }

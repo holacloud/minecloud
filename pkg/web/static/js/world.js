@@ -1,9 +1,5 @@
-// Boards for sign texts, from short to long: [letters a line, lines, width and height in blocks].
-const SIGN_BOARD_SIZES = [[12, 3, 1, 0.56], [18, 4, 1.25, 0.7], [26, 6, 1.6, 0.95], [38, 9, 1.8, 1.1]];
-const SIGN_BOARD_THICKNESS = 0.135;
-const SIGN_BOARD_PIXELS = 512;
-// How high a post's board starts, in its cell; it may rise into the cell above, like a torch's light.
-const SIGN_BOARD_BOTTOM = 0.5;
+// How high a post's board starts, in its cell, so that its top is the top of the cell.
+const SIGN_BOARD_BOTTOM = 1 - SIGN_BOARD_HEIGHT;
 // A box's +z face turned to look each way.
 const SIGN_BOARD_TURN = { n: Math.PI, e: Math.PI / 2, s: 0, w: -Math.PI / 2 };
 
@@ -598,100 +594,32 @@ class WorldRenderer {
         return icon;
     }
 
-    wrapSignText(text, maxLineLength = 24, maxLines = 6) {
-        const words = text.replace(/\r/g, '').split(/\s+/).filter(Boolean);
-        const lines = [];
-        let current = '';
-
-        for (const word of words) {
-            const candidate = current ? `${current} ${word}` : word;
-            if (candidate.length <= maxLineLength) {
-                current = candidate;
-                continue;
-            }
-
-            if (current) {
-                lines.push(current);
-            }
-
-            if (word.length <= maxLineLength) {
-                current = word;
-            } else {
-                for (let i = 0; i < word.length; i += maxLineLength) {
-                    lines.push(word.slice(i, i + maxLineLength));
-                    if (lines.length >= maxLines) {
-                        return lines.slice(0, maxLines);
-                    }
-                }
-                current = '';
-            }
-
-            if (lines.length >= maxLines) {
-                return lines.slice(0, maxLines);
-            }
-        }
-
-        if (current && lines.length < maxLines) {
-            lines.push(current);
-        }
-
-        return lines.slice(0, maxLines);
-    }
-
-    // What a sign's board shows: what comes before " // ", when a text has it (a language and its
-    // translation, as in the showroom), and the reader (F) shows all of it.
-    signBoardText(text) {
-        return text.split(' // ')[0];
-    }
-
-    // The board that fits a text, the smallest whole one: { lines, width, height, truncated }, in
-    // blocks. Short texts get big letters, and the longest still all fit: 288 bytes in the last size.
+    // The lines of a board at the real size of its letters on a canvas.
     signBoardLayout(text) {
-        const shown = this.signBoardText(text).replace(/\s+/g, ' ').trim();
-        const letters = shown.replace(/ /g, '').length;
-        // With every word whole if it can be, or else broken across lines.
-        for (const whole of [true, false]) {
-            for (const [columns, rows, width, height] of SIGN_BOARD_SIZES) {
-                const lines = this.wrapSignText(shown, columns, rows);
-                const fits = whole ? lines.join(' ') === shown : lines.join('').replace(/ /g, '').length === letters;
-                if (fits) return { lines, width, height, truncated: false };
-            }
-        }
-        const [columns, rows, width, height] = SIGN_BOARD_SIZES[SIGN_BOARD_SIZES.length - 1];
-        const lines = this.wrapSignText(shown, columns, rows);
-        lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, columns - 1)}\u2026`;
-        return { lines, width, height, truncated: true };
+        if (!this.signMeasureContext) this.signMeasureContext = document.createElement('canvas').getContext('2d');
+        const ctx = this.signMeasureContext;
+        return signBoardLayoutFor(text, (font) => {
+            ctx.font = `bold ${font}px Arial`;
+            return (line) => ctx.measureText(line).width;
+        });
     }
 
-    // Where the board of the sign `type` at a cell goes, relative to the cell's middle at the height
-    // of the cell's floor: its middle, and the way it looks. A board wider than its cell leans away
-    // from a wall on one side, and between two walls it stays one block wide.
-    signBoardPlacement(type, x, y, z, text) {
+    // Where the board of the sign `type` goes, relative to the cell's middle at the height of the
+    // cell's floor: its middle, and the way it looks. A wall board lies against its wall. Neighbours
+    // have no say in it.
+    signBoardPlacement(type, text) {
         const state = this.blockTypes[type].state;
         const [dx, dz] = SHAPE_DIRECTIONS[state.facing];
-        const layout = this.signBoardLayout(text);
         const wall = state.mount === 'wall';
-        const blocked = (side) => {
-            const cx = x - dz * side;
-            const cz = z + dx * side;
-            return this.registry.fullCube[this.getBlockId(cx, y, cz)] === 1 || (!wall && this.registry.fullCube[this.getBlockId(cx, y + 1, cz)] === 1);
-        };
-        let width = layout.width;
-        let along = 0;
-        if (width > 1) {
-            const plus = blocked(1);
-            const minus = blocked(-1);
-            if (plus && minus) width = 1;
-            else if (plus) along = -(width - 1) / 2;
-            else if (minus) along = (width - 1) / 2;
-        }
         const back = wall ? 0.5 - SIGN_BOARD_THICKNESS / 2 : 0;
         return {
-            ...layout, width,
+            ...this.signBoardLayout(text),
+            width: SIGN_BOARD_WIDTH,
+            height: SIGN_BOARD_HEIGHT,
             facing: state.facing,
-            x: -dz * along - dx * back,
-            y: wall ? 0.5 : SIGN_BOARD_BOTTOM + layout.height / 2,
-            z: dx * along - dz * back
+            x: -dx * back,
+            y: wall ? 0.5 : SIGN_BOARD_BOTTOM + SIGN_BOARD_HEIGHT / 2,
+            z: -dz * back
         };
     }
 
@@ -699,7 +627,7 @@ class WorldRenderer {
     createSignBoardTexture(layout) {
         const canvas = document.createElement('canvas');
         canvas.width = SIGN_BOARD_PIXELS;
-        canvas.height = Math.round((SIGN_BOARD_PIXELS * layout.height) / layout.width);
+        canvas.height = SIGN_BOARD_PIXEL_HEIGHT;
         const ctx = canvas.getContext('2d');
         const { width, height } = canvas;
         ctx.fillStyle = '#33231a';
@@ -710,21 +638,33 @@ class WorldRenderer {
         ctx.lineWidth = 10;
         ctx.strokeRect(5, 5, width - 10, height - 10);
 
-        const innerWidth = width * 0.9;
-        const row = (height * 0.86) / layout.lines.length;
-        const longest = layout.lines.reduce((a, b) => (b.length > a.length ? b : a), '');
-        let font = Math.min(row * 0.8, innerWidth / (Math.max(longest.length, 1) * 0.55));
+        const { font, row, lines, truncated } = layout;
         ctx.font = `bold ${font}px Arial`;
-        const measured = ctx.measureText(longest).width;
-        if (measured > innerWidth) {
-            font *= innerWidth / measured;
-            ctx.font = `bold ${font}px Arial`;
-        }
-        ctx.fillStyle = '#f6e4bd';
-        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const first = height / 2 - (row * (layout.lines.length - 1)) / 2;
-        layout.lines.forEach((line, index) => ctx.fillText(line, width / 2, first + index * row));
+        ctx.fillStyle = '#f6e4bd';
+        const first = height / 2 - (row * (lines.length - 1)) / 2;
+        lines.forEach((line, index) => {
+            const y = first + index * row;
+            if (!truncated || index < lines.length - 1) {
+                ctx.textAlign = 'center';
+                ctx.fillText(line, width / 2, y);
+                return;
+            }
+            // There is more: three dots in another colour, each a real round dot, for all to see.
+            const text = line.slice(0, -SIGN_ELLIPSIS.length);
+            const room = ctx.measureText(SIGN_ELLIPSIS).width;
+            const left = width / 2 - (ctx.measureText(text).width + room) / 2;
+            ctx.textAlign = 'left';
+            ctx.fillText(text, left, y);
+            ctx.fillStyle = '#ffc94d';
+            const radius = Math.min(font * 0.11, room / 7);
+            for (let dot = 0; dot < 3; dot++) {
+                ctx.beginPath();
+                ctx.arc(left + ctx.measureText(text).width + room * (dot + 0.5) / 3, y + font * 0.24, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = '#f6e4bd';
+        });
 
         const texture = new THREE.CanvasTexture(canvas);
         if (THREE.sRGBEncoding) {
@@ -739,9 +679,9 @@ class WorldRenderer {
     // A sign's board, with no light of its own to depend on: it can be read in the dark. Its faces
     // read the right way round from either side, since each of a box's faces is a picture of its own.
     // The geometry is turned, not the mesh, so a click on it knows which way it looks. It belongs
-    // to the sign's cell for aiming and breaking (`blockPosition`), overhang included.
+    // to the sign's cell for aiming and breaking (`blockPosition`).
     createSignLabel(text, type, x, y, z) {
-        const placement = this.signBoardPlacement(type, x, y, z, text);
+        const placement = this.signBoardPlacement(type, text);
         const material = new THREE.MeshBasicMaterial({ map: this.createSignBoardTexture(placement) });
         if (!this.signEdgeMaterial) this.signEdgeMaterial = new THREE.MeshBasicMaterial({ color: 0x8a6a42 });
         const edge = this.signEdgeMaterial;

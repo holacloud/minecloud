@@ -419,10 +419,93 @@ registerBlockShape('fence_gate', {
 
 // Signs: a post with a small board on it, or against a wall the board alone (clicking a block's
 // side). They look at the player who places them. Only the post stops you. The text goes on a
-// bigger board of its own, drawn when the chunk is (WorldRenderer.createSignLabel). The text is kept
-// by position; its first state is the plain name `sign`, which is what saved worlds have.
+// board of its own, drawn when the chunk is (WorldRenderer.createSignLabel), always one block wide
+// and the same size, inside its cell, whatever its neighbours. What does not fit ends in three dots,
+// and a right click or F opens the reader. The text is kept by position; its first state is the
+// plain name `sign`, which is what saved worlds have.
 function isSignBlockType(type) {
     return type === 'sign' || (typeof type === 'string' && type.startsWith('sign:'));
+}
+
+const SIGN_BOARD_WIDTH = 1;
+const SIGN_BOARD_HEIGHT = 0.65;
+const SIGN_BOARD_THICKNESS = 0.135;
+// The picture on its face, in pixels, and the room there is for text in it.
+const SIGN_BOARD_PIXELS = 512;
+const SIGN_BOARD_PIXEL_HEIGHT = Math.round((SIGN_BOARD_PIXELS * SIGN_BOARD_HEIGHT) / SIGN_BOARD_WIDTH);
+const SIGN_TEXT_WIDTH = SIGN_BOARD_PIXELS * 0.88;
+const SIGN_TEXT_HEIGHT = SIGN_BOARD_PIXEL_HEIGHT * 0.86;
+// How many lines it may have: the fewer, the bigger the letters; five are still read from a few blocks.
+const SIGN_LINE_COUNTS = [3, 4, 5];
+const SIGN_ELLIPSIS = '\u2026';
+
+// What a sign's board shows: what comes before " // ", when a text has it (a language and its
+// translation, as in the showroom).
+function signBoardText(text) {
+    return text.split(' // ')[0].replace(/\s+/g, ' ').trim();
+}
+
+// What the reader shows: all of it, each part after " // " on its own.
+function signReaderText(text) {
+    return text.split(' // ').join('\n\n');
+}
+
+// A text as what it can be cut into: never between a letter and its accent, nor in an emoji.
+function signGraphemes(text) {
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+        return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), (part) => part.segment);
+    }
+    return Array.from(text);
+}
+
+// Wraps a text at the real width of its letters: measure(string) in the same units as maxWidth.
+// { lines, truncated, broken }: at most maxLines lines, and if more were needed, truncated and the
+// last one ending in the ellipsis; broken if a word had to be cut for being wider than a line.
+function signBoardLines(text, measure, maxWidth, maxLines) {
+    const lines = [];
+    let current = '';
+    let broken = false;
+    for (const word of text.split(' ').filter(Boolean)) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (measure(candidate) <= maxWidth) {
+            current = candidate;
+            continue;
+        }
+        if (current) lines.push(current);
+        current = '';
+        if (measure(word) <= maxWidth) {
+            current = word;
+            continue;
+        }
+        broken = true;
+        for (const letter of signGraphemes(word)) {
+            if (current && measure(current + letter) > maxWidth) {
+                lines.push(current);
+                current = '';
+            }
+            current += letter;
+        }
+    }
+    if (current) lines.push(current);
+    if (lines.length <= maxLines) return { lines, truncated: false, broken };
+    const kept = lines.slice(0, maxLines);
+    const letters = signGraphemes(kept[maxLines - 1]);
+    while (letters.length && measure(letters.join('') + SIGN_ELLIPSIS) > maxWidth) letters.pop();
+    kept[maxLines - 1] = letters.join('').trimEnd() + SIGN_ELLIPSIS;
+    return { lines: kept, truncated: true, broken };
+}
+
+// The text of a board: { lines, truncated, font, row }, font and row height in pixels, with the biggest letters at which
+// all of it fits, every word whole if it can be. measureAt(font) gives the measure for a size.
+function signBoardLayoutFor(text, measureAt) {
+    const shown = signBoardText(text);
+    const tries = SIGN_LINE_COUNTS.map((count) => {
+        const row = SIGN_TEXT_HEIGHT / count;
+        const font = row * 0.8;
+        return { ...signBoardLines(shown, measureAt(font), SIGN_TEXT_WIDTH, count), font, row };
+    });
+    const best = tries.find((attempt) => !attempt.truncated && !attempt.broken) || tries.find((attempt) => !attempt.truncated) || tries[tries.length - 1];
+    return { lines: best.lines, truncated: best.truncated, font: best.font, row: best.row };
 }
 
 registerBlockShape('sign', {

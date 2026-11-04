@@ -22,11 +22,13 @@ jugadores pueden leerlo y **reaccionar con emojis**.
    characters)».
 2. Escribe tu mensaje, de hasta **288 caracteres**, y acepta. Si lo dejas vacío o cancelas, el cartel no se
    coloca.
-3. **Para leerlo**, mira el cartel y pulsa **F**: se abre el lector con el texto completo.
+3. **Para leerlo**, haz **clic derecho** en el cartel (tócalo en una pantalla táctil), o míralo y pulsa **F**: se abre
+   el lector con el texto completo y sus votos. Para construir contra un cartel, agáchate al hacer clic.
 
-El tablero **crece con el texto**: unas palabras en letras grandes en un tablero pequeño, un mensaje largo en letras
-más pequeñas en uno mayor. El tablero de un poste se lee bien **por los dos lados**, y también de noche. Se puede
-pasar junto a un poste, y a través de un tablero de pared.
+El tablero mide siempre **un bloque de ancho**, es siempre igual y no sale de su casilla. Los textos cortos van en
+letras grandes. Lo que no cabe termina en **tres puntos**: haz clic en el cartel para leer el resto. El tablero de un
+poste se lee bien **por los dos lados**, y también de noche. Se puede pasar junto a un poste, y a través de un tablero
+de pared.
 
 Si el texto lleva ` // `, el tablero solo muestra lo que va antes, y el lector todo: viene bien para decir lo mismo en
 dos idiomas.

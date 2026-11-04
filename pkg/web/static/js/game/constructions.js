@@ -661,14 +661,14 @@ function constructionBellTower(b) {
 // (test/js/constructions.test.js checks that). In the middle, the light room: no sky within
 // SKY_REACH columns of it, a thick roof, and a long entry lane so that no light from outside gets in.
 // Its chests are empty: what they hold lives on the server, and a build only places blocks.
-// A sign's board shows the text before " // " and its reader (the F key) all of it, up to 288 bytes,
-// so each one has its Spanish first, whole on the board, and its English after it. It looks the way
-// the visitor comes from, and stands on its post out of the way of the route.
+// A sign's board shows the text before " // ", one short line of Spanish that fits it whole, and the
+// reader (a right click, or F) all of it, up to 288 bytes: what to do in Spanish, then in English. It
+// looks the way the visitor comes from, and stands on its post out of the way of the route.
 function constructionShowroom(b) {
     const colors = FURNITURE_COLORS.map(([color]) => color);
     const wall = (x0, z0, x1, z1, type = 'birch_planks') => b.box(x0, 1, z0, x1, 4, z1, type);
     const skylight = (x0, z0, x1, z1) => b.box(x0, 5, z0, x1, 5, z1, 'glass');
-    const sign = (x, z, facing, es, en) => b.set(x, 1, z, shapeStateName('sign', BLOCK_SHAPES.sign, { facing, mount: 'post' }), { t: `${es} // ${en}` });
+    const sign = (x, z, facing, ...parts) => b.set(x, 1, z, shapeStateName('sign', BLOCK_SHAPES.sign, { facing, mount: 'post' }), { t: parts.join(' // ') });
     const piece = (x, y, z, base, shape, facing) => b.shaped(x, y, z, base, shape, { facing });
     const sofa = (x, z, color, facing) => piece(x, 1, z, `${color}_sofa`, 'sofa', facing);
     const chair = (x, z, wood, facing) => piece(x, 1, z, `${wood}_chair`, 'chair', facing);
@@ -751,12 +751,12 @@ function constructionShowroom(b) {
     skylight(29, 8, 32, 8);
     lantern(25, 4, 11);
     lantern(30, 4, 11);
-    sign(24, 5, 'n', 'Bienvenido. Sigue la línea amarilla: pasa por todo y vuelve a la salida. F ante un cartel: lo lees entero.',
-        'Welcome to the showroom. Follow the yellow line: it goes through everything and back to the exit. Press F at a sign to read all of it.');
-    sign(32, 5, 's', 'Salida. /build undo lo quita todo otra vez.', 'Exit. /build undo takes it all away again.');
+    sign(24, 5, 'n', 'Bienvenido. Sigue la línea amarilla.', 'Pasa por todo y vuelve a la salida. Clic derecho en un cartel: lo lees entero.',
+        'Welcome. Follow the yellow line: it goes through everything and back to the exit. Right click a sign to read all of it.');
+    sign(32, 5, 's', 'Salida. /build undo lo quita todo.', 'Exit. /build undo takes it all away again.');
 
     // ---- 1. The living room ----
-    sign(22, 13, 's', 'SALÓN. Clic derecho en un sofá: te sientas; Agacharse: te levantas. Clic derecho en una cortina: se corre.',
+    sign(22, 13, 's', 'SALÓN. Sofás y cortinas.', 'Clic derecho en un sofá: te sientas; Agacharse: te levantas. Clic derecho en una cortina: se corre.',
         'Living room. Right click a sofa to sit, Sneak to stand. Right click a curtain to draw it. The clock tells the game time.');
     skylight(13, 7, 20, 7);
     skylight(13, 12, 20, 12);
@@ -794,7 +794,7 @@ function constructionShowroom(b) {
     b.set(22, 1, 12, 'flower_pot');
 
     // ---- 2. The dining room ----
-    sign(9, 13, 's', 'COMEDOR. Clic derecho en silla, banco o taburete: te sientas. Agacharse: te levantas.',
+    sign(9, 13, 's', 'COMEDOR. Sillas, banco, mesas.', 'Clic derecho en silla, banco o taburete: te sientas. Agacharse: te levantas.',
         'Dining room. Right click a chair, the bench or the stool to sit, Sneak to stand. The tables join, the bench too.');
     skylight(2, 6, 8, 6);
     skylight(2, 13, 8, 13);
@@ -809,7 +809,7 @@ function constructionShowroom(b) {
     b.set(6, 2, 10, 'candle');
 
     // ---- 3. The kitchen ----
-    sign(10, 18, 'e', 'COCINA. Horno: mete comida y carbón, cocina solo. Nevera y congelador van con el generador. Banco: recetas. Barril: guarda.',
+    sign(10, 18, 'e', 'COCINA. Horno, nevera, banco.', 'Horno: mete comida y carbón, cocina solo. Nevera y congelador van con el generador. Banco: recetas.',
         'Kitchen. Give the oven food and coal: it cooks itself. Fridge and freezer run on the generator; without power, just cupboards. Workbench: recipes.');
     skylight(4, 20, 8, 20);
     skylight(4, 25, 8, 25);
@@ -827,8 +827,8 @@ function constructionShowroom(b) {
     lantern(5, 4, 22);
 
     // ---- 4. The bedroom ----
-    sign(10, 28, 'e', 'DORMITORIO. Clic derecho en armario y cofre: guardan cosas. En la cama: te tumbas, y de noche duermes. Mírate en el espejo.',
-        'Bedroom. Right click the wardrobe and the chest to store things, the bed to lie down and, at night, sleep. Sneak gets up. Look in the mirror.');
+    sign(10, 28, 'e', 'DORMITORIO. Camas y armario.', 'Clic derecho en armario y cofre: guardan cosas. En la cama: te tumbas, y de noche duermes.',
+        'Bedroom. Right click the wardrobe and the chest to store things, the bed to lie down and, at night, sleep. Sneak gets up.');
     skylight(4, 30, 8, 30);
     skylight(4, 37, 8, 37);
     b.box(4, 1, 31, 8, 1, 35, 'purple_carpet');
@@ -849,7 +849,7 @@ function constructionShowroom(b) {
     piece(6, 3, 38, 'wall_mirror', 'wall_mirror', 'n');
 
     // ---- 5. The bathroom ----
-    sign(9, 43, 'n', 'BAÑO. Clic derecho en el váter: te sientas. Agacharse: te levantas. La bañera se pisa por dentro. Mírate en el espejo.',
+    sign(9, 43, 'n', 'BAÑO. Mírate en el espejo.', 'Clic derecho en el váter: te sientas. Agacharse: te levantas. La bañera se pisa por dentro.',
         'Bathroom. Right click the toilet to sit, Sneak to stand. You can step into the bathtub. Look in the mirror.');
     skylight(3, 42, 7, 42);
     skylight(3, 46, 7, 46);
@@ -863,7 +863,7 @@ function constructionShowroom(b) {
     lantern(5, 4, 43);
 
     // ---- 6. The study ----
-    sign(20, 43, 'n', 'ESTUDIO. Clic derecho en la silla: te sientas. En el cofre: guarda cosas. Las estanterías son adorno.',
+    sign(20, 43, 'n', 'ESTUDIO. Silla, cofre, libros.', 'Clic derecho en la silla: te sientas. En el cofre: guarda cosas. Las estanterías son adorno.',
         'Study. Right click the chair to sit, the chest to store things. The bookshelves are decoration.');
     skylight(12, 45, 19, 45);
     bookshelves(12, 50, 19, 50, 'n');
@@ -874,7 +874,7 @@ function constructionShowroom(b) {
     piece(11, 1, 47, 'chest', 'chest', 'e');
 
     // ---- 7. The stained glass gallery, with its back to the daylight ----
-    sign(22, 43, 'n', 'VIDRIERAS. Los 16 colores, en bloque y en panel, contra el cielo: filtran lo que hay detrás.',
+    sign(22, 43, 'n', 'VIDRIERAS. Los 16 colores.', 'En bloque y en panel, contra el cielo: filtran lo que hay detrás.',
         'Stained glass. All 16 colours, as blocks and as panes, against the sky: they filter what is behind them.');
     skylight(24, 48, 27, 48);
     skylight(28, 45, 36, 45);
@@ -887,7 +887,7 @@ function constructionShowroom(b) {
     lantern(32, 4, 47);
     // Red behind blue, in front of clear glass: as blocks, and as panes with a gap between them
     // (next to each other they would join front to back).
-    sign(37, 46, 'n', 'Rojo detrás de azul, en bloque y en panel: pasa muy poca luz. Míralo desde aquí, hacia el cielo.',
+    sign(37, 46, 'n', 'Rojo tras azul: pasa muy poca luz.', 'En bloque y en panel. Míralo desde aquí, hacia el cielo.',
         'Red behind blue, as blocks and as panes: very little light gets through. Look at the sky through them from here.');
     b.box(38, 1, 48, 38, 1, 49, 'stone_bricks');
     b.set(38, 2, 48, 'blue_stained_glass');
@@ -901,7 +901,7 @@ function constructionShowroom(b) {
         for (let y = 1; y <= 3; y++) piece(22, y, z, 'wall_mirror', 'wall_mirror', 'e');
         b.set(23, 2, z, 'cyan_stained_glass_pane');
     }
-    sign(23, 46, 'n', 'Panel cian ante un espejo: la vidriera filtra también el reflejo.',
+    sign(23, 46, 'n', 'Panel cian ante un espejo.', 'La vidriera filtra también el reflejo.',
         'A cyan pane in front of a mirror: the stained glass filters the reflection too.');
     // A piece under water, seen through the glass side, or from above off the step.
     b.box(24, 1, 43, 27, 2, 46, 'stone_bricks');
@@ -910,7 +910,7 @@ function constructionShowroom(b) {
     b.box(25, 1, 44, 26, 2, 45, 'water');
     b.set(25, 1, 45, 'magenta_stained_glass');
     b.box(24, 1, 42, 27, 1, 42, 'stone_bricks_slab');
-    sign(28, 43, 'n', 'Bajo el agua: el bloque magenta del estanque se ve mal, es un defecto conocido. Mira por el cristal y desde el escalón.',
+    sign(28, 43, 'n', 'Bajo el agua. Mira por el cristal.', 'El bloque magenta del estanque se ve mal, es un defecto conocido. Míralo también desde el escalón.',
         'Under water: the magenta block in the pool looks wrong, a known flaw. Look through the glass side and from the step.');
 
     // ---- 8. The light room: bays of one light each along a dark aisle, a floor to measure on ----
@@ -936,7 +936,7 @@ function constructionShowroom(b) {
         [35, 34, 30, (x, z) => { b.set(x, 1, z, 'table'); b.set(x, 2, z, 'table_lamp'); }, 'Lámpara de mesa: nivel 12.', 'Table lamp: level 12.'],
         [17, 22, 26, floorLamp, 'Lámpara de pie: nivel 14.', 'Floor lamp: level 14.'],
         [23, 22, 26, (x, z) => b.set(x, 4, z, 'chandelier'), 'Candelabro: nivel 14.', 'Chandelier: level 14.'],
-        [29, 22, 26, (x, z) => oven(x, z, 's', 'off'), 'Horno: nivel 11 mientras arde. Mete comida y carbón.', 'Oven: level 11 while it burns. Put in food and coal.'],
+        [29, 22, 26, (x, z) => oven(x, z, 's', 'off'), 'Horno: nivel 11 si arde.', 'Oven: level 11 while it burns. Put in food and coal.'],
         [35, 22, 26, () => {}, 'Sin ninguna luz: así de oscuro es.', 'No light at all: this is how dark it is.']
     ];
     for (const [x, z, mouth, place, es, en] of bays) {
@@ -946,12 +946,12 @@ function constructionShowroom(b) {
         place(x, z);
         sign(x + 2, mouth - ahead, 'w', es, en);
     }
-    sign(38, 40, 's', 'SALA DE LUZ. Oscura aposta: una luz por sala. Las rayas del suelo miden hasta dónde llega. Entra y vuelve por aquí.',
+    sign(38, 40, 's', 'SALA DE LUZ. Una luz por sala.', 'Oscura aposta. Las rayas del suelo miden hasta dónde llega. Entra y vuelve por aquí.',
         'Light room. Dark on purpose: one light per bay. The stripes on the floor measure its reach. In and back out through here.');
     b.set(39, 1, 38, 'candle');
 
     // ---- 9. Joins: what joins and what does not ----
-    sign(41, 43, 'n', 'UNIONES. Sofás del mismo color se unen; rojo y azul no. Banco igual, si mira igual. Las mesas se unen en fila.',
+    sign(41, 43, 'n', 'UNIONES. Sofás, banco, mesas.', 'Sofás del mismo color se unen; rojo y azul no. Banco igual, si mira igual. Las mesas se unen en fila.',
         'Joins. Sofas of a colour join; red and blue do not. Benches too, if they face the same way. Tables join in a row.');
     skylight(43, 45, 53, 45);
     skylight(47, 42, 53, 42);
@@ -964,7 +964,7 @@ function constructionShowroom(b) {
     lantern(50, 4, 43);
 
     // ---- 10. The hall of mirrors: a long room to step back in, the sofas in all colours to reflect ----
-    sign(54, 18, 'w', 'ESPEJOS. Refleja de verdad hasta 14 bloques: aléjate hasta aquí y es solo textura. Hay cubos y dos paredes.',
+    sign(54, 18, 'w', 'ESPEJOS. Hasta 14 bloques.', 'Refleja de verdad hasta 14 bloques: aléjate hasta aquí y es solo textura. Hay cubos y dos paredes.',
         'Mirrors. A real reflection up to 14 blocks: step back to here and it is only its texture. Cubes, and mirrors on two walls.');
     skylight(47, 19, 53, 19);
     skylight(47, 25, 53, 25);
@@ -984,7 +984,7 @@ function constructionShowroom(b) {
     lantern(50, 4, 35);
 
     // ---- 11. The storage corner, empty: try it with someone else ----
-    sign(46, 16, 'w', 'ALMACÉN, vacío. Cofre, barril y armario: guarda algo y que otro jugador lo vea moverse. Lo de dentro vive en el servidor.',
+    sign(46, 16, 'w', 'ALMACÉN, vacío. Guarda algo.', 'Cofre, barril y armario: guarda algo y que otro jugador lo vea moverse. Lo de dentro vive en el servidor.',
         'Storage, empty. Chest, barrel, wardrobe: store something and have another player watch it move. Contents live on the server.');
     skylight(50, 15, 53, 15);
     piece(47, 1, 16, 'chest', 'chest', 'n');
@@ -993,7 +993,7 @@ function constructionShowroom(b) {
     lantern(47, 4, 14);
 
     // ---- 12. The sample wall: every curtain and every carpet ----
-    sign(34, 4, 's', 'MUESTRAS. Las 16 cortinas (clic derecho: se corren, cada una por su cuenta) y las 16 alfombras, para pisarlas.',
+    sign(34, 4, 's', 'MUESTRAS. Cortinas y alfombras.', 'Las 16 cortinas (clic derecho: se corren, cada una por su cuenta) y las 16 alfombras, para pisarlas.',
         'Samples. The 16 curtains (right click draws each one by itself) and the 16 carpets, to walk on.');
     skylight(36, 9, 53, 9);
     colors.forEach((color, i) => {

@@ -21,11 +21,12 @@ A wooden **post with a board** on which you can **write a message** for passers-
    it hangs against it as a wall board, with no post. A box opens: "Write the sign message (up to 288 characters)".
 2. Write your message, up to **288 characters**, and accept. If you leave it empty or cancel, the sign is not
    placed.
-3. **To read it**, look at the sign and press **F**: the reader opens with the full text.
+3. **To read it**, **right click** the sign (tap it on a touch screen), or look at it and press **F**: the reader
+   opens with the full text and its votes. To build against a sign instead, sneak while you click.
 
-The board **grows with the text**: a few words in big letters on a small board, a long message in smaller letters on
-a bigger one. A post's board reads the right way round **from both sides**, and it can be read at night too. You can
-walk past a post, and through a wall board.
+The board is always **one block wide**, the same size, and stays in its own cell. Short texts get big letters. What
+does not fit ends in **three dots**: click the sign to read the rest. A post's board reads the right way round
+**from both sides**, and it can be read at night too. You can walk past a post, and through a wall board.
 
 If the text has ` // ` in it, the board only shows what comes before it, and the reader all of it: handy for saying
 the same thing in two languages.

@@ -137,7 +137,7 @@ Object.assign(Game.prototype, {
         this.signReaderOpen = true;
         this.activeSignPosition = position;
         this.stopMining();
-        content.textContent = text;
+        content.textContent = signReaderText(text);
         panel.classList.add('visible');
         this.updateSignVoteButtons(this.world.getSignVotesAt(position.x, position.y, position.z));
         document.querySelectorAll('#sign-votes .sign-vote-button').forEach((button) => {
@@ -160,9 +160,11 @@ Object.assign(Game.prototype, {
 
     tryReadSign() {
         const hit = this.raycastBlock(this.breakDistance);
-        if (!hit) return false;
+        return Boolean(hit) && this.readSignAt(this.world.getBlockPositionFromIntersection(hit));
+    },
 
-        const worldPos = this.world.getBlockPositionFromIntersection(hit);
+    // Opens the reader if there is a sign with some text at this cell.
+    readSignAt(worldPos) {
         if (!worldPos) return false;
         if (!isSignBlockType(this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z))) return false;
 
@@ -581,4 +583,11 @@ Object.assign(Game.prototype, {
             this.closeChatInput();
         }
     }
+});
+
+// A right click (a tap, on a touch screen) on a sign reads it, like F. Crouch to build against it, as
+// with chairs and beds; spray paint paints it; a sign with no text is only a block.
+registerItemUseHandler(function (itemType, hit) {
+    if (!hit || this.cameraController.isCrouching || itemType === 'spray_paint') return false;
+    return this.readSignAt(this.world.getBlockPositionFromIntersection(hit));
 });
