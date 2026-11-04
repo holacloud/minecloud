@@ -2,7 +2,7 @@
 
 ![Sticky ram](item:sticky_ram)
 
-Four builds with [motor rams](217) and [lifts](218). Each one needs a power source: a charged [battery](203) is the
+Five builds with [motor rams](217) and [lifts](218). Each one needs a power source: a charged [battery](203) is the
 easiest. Remember that a ram uses **40 W** and a winch **60 W** while they have power.
 
 ## 1. The secret door
@@ -44,6 +44,27 @@ A skylight that covers itself at night.
    block between the ram and the glass, all **one layer above** the glass.
 2. Power the ram through a [daylight sensor](208) in **night** mode (right click the sensor to change the mode).
 3. At dusk the ram pushes the block over the glass; at dawn it pulls it back.
+
+## 5. The lift of a block of flats
+
+The [lift stops](218) make a real lift: this is the one in `/build apartments`, for floors **4 blocks apart** (a floor
+of 1 and 3 of air). You need 1 winch, 1 platform, 1 [RTG](220), 1 stop and 1 iron door per floor, and 2 buttons per
+floor with wire if you want the two inside the lift.
+
+1. Build the shaft through every floor, the **platform** in the floor of the lowest one and the **winch** 3 blocks
+   above the floor of the highest one. Put the RTG touching the winch: it always has power.
+2. On each floor, in the wall between the shaft and the landing: an **iron door**, and right over it a **lift stop**.
+   Done: click the stop over any door and the lift comes, and that door opens when it arrives.
+3. Inside: riding, you only reach your floor's stop and the next one up. So give the rider two buttons, in a niche in
+   the shaft on **each** floor, on two [wires](202) up the wall:
+   - A **green** button on a wire to the **top** face of the **highest** stop: it goes to the top.
+   - A **red** one on a wire to the top of a **second stop** at the height of the lowest stop, hidden in the shaft
+     wall: it goes to the bottom.
+4. To ride to a floor: press green or red, and click the stop of your floor as it comes. If you click late it turns
+   back for it.
+
+Keep the two wires apart: they must not touch each other, the winch or its RTG, or the buttons will not be the only
+thing that switches them on.
 
 ## Tips
 

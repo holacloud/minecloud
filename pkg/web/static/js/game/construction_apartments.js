@@ -7,37 +7,24 @@
 //   of rope and stops 2 under itself (liftMaxRope and liftHeadroom in mechanics.go), so a platform
 //   travels 46 blocks at the most. Floors are 4 apart: 11 steps are 44, 12 would be 48. So the
 //   platform goes from y = 0 to y = 44 and the winch is at y = 47.
-// - How a lift that only knows "up with power, down without" stops at a floor. A winch finds its
-//   platform by looking down through air, and a platform coming down rests on the first thing that
-//   is not air (mechanics.go). So each floor has a motor ram in the shaft wall, one block under the
-//   slab: its arm out, the platform coming down rests on it, level with that floor. An arm above the
-//   platform would cut the rope instead, so no arm is out while the winch runs, and the lift can only
-//   stop on its way DOWN: it always rises to the top first, then comes back to the floor chosen.
-// - The circuit, all of it real blocks on the real rules of logic.go:
-//   Each floor remembers "stop here" in a latch that joins the ram to the ram bus. The latch hangs
-//   between the shaft and the bus, its SET fed by the floor's buttons, its RESET by the clear bus.
-//   The raise bus starts a climb: a latch in the machine room on the roof switches on (through a
-//   1 s delay, so that the arms are in before it pulls) the winch's own rtg, and a NOT gate on the
-//   same latch cuts the ram bus's rtg, which pulls every arm in. The press also goes down a line of
-//   seven 4 s delays (28 s: 44 blocks take 17.6 s at best, 26.4 s on the slowest ticks), which resets
-//   the latch: the arms come out, one second later the winch lets go, and the platform comes down
-//   onto the arm chosen, or to the lobby if there is none.
-// - Buttons: on a landing, in the wall by the door, "call" (clears, climbs, and 4 s later selects
-//   this floor, once the clearing is over: that is what the delay in front of its latch is for).
-//   In the shaft, seen from the platform, above a green block "stop here" (selects, nothing else: click it
-//   as you pass, up or down) and above a red block "down" (clears: the arm goes in and it falls to the next arm or
-//   the lobby). The lobby's door has "call" (clears) and the platform there "up" (climbs).
-//   A second "stop here" is fine, as the highest arm catches the platform and the ram bus has
-//   80 W for two 40 W rams. A third one blacks out the ram bus: every arm goes in and the platform
-//   ends in the lobby, which "down" or the next climb puts right. "Stop here" for a floor already
-//   passed puts an arm over the platform and it hangs between floors: "down" lets it go.
-// - Power: the winch (60 W) has its own rtg behind the 1 s delay; the rams have another behind the NOT
-//   gate. Nothing else in the building is on them, and buttons and gates draw nothing.
+// - The lift is a lift stop (lift_stop, mechanics.go) over each shaft door: the platform holds 3 under
+//   a stop, so the stop at y = F + 3 holds it level with floor F. The winch has its own rtg and always
+//   has power; the stops say where it goes, up or down, the last one called winning. Nothing more.
+// - On a landing, the stop over the door is the button: it faces the corridor and the shaft alike. It
+//   is dark while free, amber while called, green with the lift here. The iron door under it opens by
+//   itself when the lift has arrived and shuts when it leaves, and no hand can open it (logic.js), so
+//   nobody can walk into an empty shaft.
+// - Riding, a hand reaches 4.5 blocks: your floor's stop, and the next one up, but no stop below your
+//   feet. So inside there are also a green button (to the top, on a bus up to the top stop's input)
+//   and a red one (to the lobby, on a bus down to a second stop, hidden, west of the shaft at y = 3,
+//   the lobby's own having a floor over it). To go to a floor, press green or red and click that
+//   floor's stop as it comes; clicked late, the lift turns back for it.
+// - Power: 60 W of the 80 W of one rtg. Stops, doors, buttons and buses draw nothing.
 // - Fridges are not powered, so they are plain cupboards: at 80 W for 30 W each, it would take a
 //   generator for every two kitchens, and they have nothing to chill when a build leaves them empty.
 //   Ovens are unlit and empty, storage is empty: a build sends blocks and nothing else.
-// - The lift moves blocks outside the plan, so "/build undo" leaves a platform or arm that is away
-//   from its plan cell behind: bring the lift down to the lobby first.
+// - The lift moves a block outside the plan, so "/build undo" leaves a platform that is away from its
+//   plan cell behind: bring the lift down to the lobby first.
 // Every bed goes through apartmentsBed, signs through apartmentsSign. Tests: test/js/construction_apartments.test.js,
 // and the lift on the real grid: pkg/network/construction_apartments_test.go.
 
@@ -342,121 +329,58 @@ function apartmentsDrawFlat(b, flat) {
 }
 
 // ---------------------------------------------------------------------------------------
-// The lift: the core of solid concrete, the shaft through it, and the circuit (see the header).
+// The lift: the core of solid concrete, the shaft through it, a stop on every floor (see the header).
 
 function apartmentsDrawLift(b) {
     const { x: sx, z: sz } = APARTMENTS_SHAFT;
     const at = (dx, y, dz, type) => b.set(sx + dx, y, sz + dz, type);
-    const wire = (dx, y, dz) => at(dx, y, dz, 'copper_wire');
-    const gate = (dx, y, dz, base, facing, delay) => {
-        const state = delay ? { facing, delay: String(delay), power: 'off' } : { facing, power: 'off' };
-        b.shaped(sx + dx, y, sz + dz, base, `logic_${base}`, state);
-    };
     const button = (dx, y, dz) => b.shaped(sx + dx, y, sz + dz, 'push_button', 'logic_push_button', { power: 'off' });
+    const top = APARTMENTS_HOME_FLOORS * APARTMENTS_STEP;
 
     b.box(sx - 3, 1, sz - 1, sx + 5, APARTMENTS_WINCH_Y, sz + 5, 'concrete');
     b.box(sx, 1, sz, sx, APARTMENTS_WINCH_Y - 1, sz, null);
     b.set(sx, 0, sz, 'lift_platform');
     at(0, APARTMENTS_WINCH_Y, 0, 'lift_winch');
 
-    // ---- The three buses, up the core: raise, clear, and the rams' power ----
-    b.box(sx + 3, 2, sz, sx + 3, APARTMENTS_ROOF_Y + 1, sz, 'copper_wire');
-    b.box(sx - 2, 2, sz + 1, sx - 2, APARTMENTS_ROOF_Y + 1, sz + 1, 'copper_wire');
-    b.box(sx, APARTMENTS_STEP, sz + 3, sx, APARTMENTS_WINCH_Y - 1, sz + 3, 'copper_wire');
+    // ---- The two buses, up the core: green to the top stop, red to the lobby's hidden stop ----
+    b.box(sx + 2, 2, sz, sx + 2, APARTMENTS_ROOF_Y, sz, 'copper_wire');
+    // Over to the top stop's input, in the roof slab, under a duct in the machine room's floor.
+    for (const [dx, dz] of [[1, 0], [1, -1], [0, -1]]) at(dx, APARTMENTS_ROOF_Y, dz, 'copper_wire');
+    for (const [dx, dz] of [[2, 0], [1, 0], [1, -1], [0, -1]]) at(dx, APARTMENTS_ROOF_Y + 1, dz, 'concrete');
+    b.box(sx - 2, APARTMENTS_STEP, sz, sx - 2, top + 2, sz, 'copper_wire');
+    at(-1, APARTMENTS_STEP, 0, 'copper_wire');
+    at(-1, 3, 0, 'lift_stop');
 
     for (let n = 0; n <= APARTMENTS_HOME_FLOORS; n++) {
         const F = n * APARTMENTS_STEP;
-        // The doors of the shaft are closed until someone opens them: there may be no platform behind.
+        // The door of the shaft and the stop over it, which holds the platform level with this floor.
         at(0, F + 1, -1, null);
         at(0, F + 2, -1, null);
-        b.door(sx, F + 1, sz - 1, 'spruce_door', 's');
-        // The colour of this floor at the back of the shaft; a light in a niche; the buttons' colours.
+        b.door(sx, F + 1, sz - 1, 'iron_door', 's');
+        at(0, F + 3, -1, 'lift_stop');
+        // The colour of this floor at the back of the shaft; a light in a niche (the wires of the roof
+        // are over the east one at the top).
         at(0, F + 1, 1, `${APARTMENTS_FLOOR_COLORS[n][0]}_wool`);
-        at(1, F + 1, 0, 'lime_wool');
-        at(-1, F + 1, 0, 'red_wool');
-        at(-1, F + 3, 0, null);
-        b.shaped(sx - 1, F + 3, sz, 'lantern', 'lantern', { mount: 'hanging' });
-
-        if (n === 0) {
-            // The lobby: "up" on the platform's side, on the raise bus; "call" at the door, on the clear bus.
-            at(1, 2, 0, null);
-            button(1, 2, 0);
-            wire(2, 2, 0);
-            at(-1, 2, -1, null);
-            button(-1, 2, -1);
-            wire(-1, 2, 0);
-            wire(-1, 2, 1);
-            continue;
+        const niche = n === APARTMENTS_HOME_FLOORS ? -1 : 1;
+        at(niche, F + 3, 0, null);
+        b.shaped(sx + niche, F + 3, sz, 'lantern', 'lantern', { mount: 'hanging' });
+        // Green, on its bus, except at the top; red, on its bus, except in the lobby.
+        if (n < APARTMENTS_HOME_FLOORS) {
+            at(1, F + 1, 0, 'lime_wool');
+            at(1, F + 2, 0, null);
+            button(1, F + 2, 0);
         }
-
-        // The ram under the floor, and over it the latch that joins it to the ram bus.
-        b.shaped(sx, F - 1, sz + 1, 'motor_ram', 'mech_ram', { facing: 'n', arm: 'in' });
-        gate(0, F, 1, 'latch', 's');
-        wire(0, F, 2);
-        // SET on its east side, RESET on its west side.
-        wire(1, F, 1);
-        wire(-1, F, 1);
-
-        // "Call" on the landing, on a post down into the slab: there it feeds a 4 s delay to this
-        // floor's SET and a 1 s delay to the raise bus, so a press does not join the floors' lines.
-        at(1, F + 2, -1, null);
-        button(1, F + 2, -1);
-        at(1, F + 1, -1, 'wire_post');
-        wire(1, F, -1);
-        gate(1, F, 0, 'delay_gate', 's', 4);
-        gate(2, F, -1, 'delay_gate', 'e', 1);
-        wire(3, F, -1);
-
-        // "Stop here" to the same SET, "down" to the clear bus.
-        at(1, F + 2, 0, null);
-        button(1, F + 2, 0);
-        wire(1, F + 2, 1);
-        wire(1, F + 1, 1);
-        at(-1, F + 2, 0, null);
-        button(-1, F + 2, 0);
-        wire(-1, F + 2, 1);
+        if (n > 0) {
+            at(-1, F + 1, 0, 'red_wool');
+            at(-1, F + 2, 0, null);
+            button(-1, F + 2, 0);
+        }
     }
-}
 
-// The machine room on the roof, over the core: y is the floor of the room. See the header.
-function apartmentsDrawMachines(b) {
-    const { x: sx, z: sz } = APARTMENTS_SHAFT;
-    const y = APARTMENTS_ROOF_Y + 1;
-    const at = (dx, h, dz, type) => b.set(sx + dx, h, sz + dz, type);
-    const wire = (dx, dz) => at(dx, y, dz, 'copper_wire');
-    const gate = (dx, dz, base, facing, delay) => {
-        const state = delay ? { facing, delay: String(delay), power: 'off' } : { facing, power: 'off' };
-        b.shaped(sx + dx, y, sz + dz, base, `logic_${base}`, state);
-    };
-
-    // The raise bus, to the latch's SET and along to the timer and the clear bus.
-    for (const dx of [3, 2, 1, 0, -1]) wire(dx, -1);
-    gate(-2, -1, 'or_gate', 's');
-    wire(-2, 0);
-
-    // The timer: seven delays of 4 s, along one side, back on the other.
-    for (let dz = 0; dz <= 4; dz++) gate(0, dz, 'delay_gate', 's', 4);
-    for (const dx of [0, 1, 2, 3]) wire(dx, 5);
-    wire(3, 4);
-    gate(3, 3, 'delay_gate', 'n', 4);
-    gate(3, 2, 'delay_gate', 'n', 4);
-
-    // The latch: "the lift is climbing". Behind it the 1 s delay to the winch's rtg, in front of it
-    // the NOT gate to the rams' rtg.
-    gate(3, 1, 'latch', 'e');
-    gate(2, 1, 'delay_gate', 'w', 1);
-    at(2, y + 1, 1, 'rtg');
-    gate(4, 1, 'not_gate', 'e');
-    at(4, y + 1, 1, 'rtg');
-
-    // Down from the delay to the winch, through what is solid in the core.
-    at(2, y - 1, 1, 'copper_wire');
-    for (const [dx, dz] of [[2, 1], [2, 2], [1, 2], [0, 2], [0, 1]]) at(dx, APARTMENTS_WINCH_Y, dz, 'copper_wire');
-
-    // Down from the NOT gate to the top of the ram bus.
-    at(4, y - 1, 1, 'copper_wire');
-    at(4, APARTMENTS_WINCH_Y, 1, 'copper_wire');
-    for (const [dx, dz] of [[4, 1], [4, 2], [4, 3], [3, 3], [2, 3], [1, 3]]) at(dx, APARTMENTS_WINCH_Y - 1, dz, 'copper_wire');
+    // ---- The winch's power: a wire up through the roof to its rtg in the machine room ----
+    at(0, APARTMENTS_WINCH_Y, 1, 'copper_wire');
+    at(0, APARTMENTS_ROOF_Y, 1, 'copper_wire');
+    at(0, APARTMENTS_ROOF_Y + 1, 1, 'rtg');
 }
 
 // ---------------------------------------------------------------------------------------
@@ -520,7 +444,6 @@ function constructionApartments(b) {
     }
 
     apartmentsDrawLift(b);
-    apartmentsDrawMachines(b);
     // A niche in the core lights the stairs (after the core, which is solid).
     for (let n = 0; n <= APARTMENTS_HOME_FLOORS; n++) {
         const F = n * APARTMENTS_STEP;
@@ -548,10 +471,9 @@ function constructionApartments(b) {
         for (let z = 9; z <= 11; z++) piece(1, y, z, 'wall_shelf', 'wall_shelf', 'e');
     }
     apartmentsSign(b, 9, 1, 6, 's', 'Bienvenido a casa.', 'Welcome home. Stairs and lift at the back.');
-    apartmentsSign(b, 15, 1, 12, 'n', 'ASCENSOR', 'Botón junto a la puerta: llamar. Botón en verde, dentro: subir. Sube hasta arriba y vuelve: pulsa verde en tu planta.',
-        'LIFT. Button by the door: call it down. Button inside on green: up. It climbs to the top, then comes back: click green at your floor as you pass.');
-    apartmentsSign(b, 19, 1, 12, 'n', 'Rojo: bajar. Verde: parar.', 'Abre la puerta del hueco solo si el ascensor está ahí.',
-        'In the shaft, on each floor: red goes down, green stops here. Open a shaft door only when the lift is there.');
+    apartmentsSign(b, 15, 1, 12, 'n', 'ASCENSOR', 'Botón sobre la puerta: viene y se abre. Dentro, verde sube, rojo baja; de camino, toca tu planta.',
+        'LIFT. Button over the door: it comes and opens. Inside, green goes up, red down; on the way, click your floor.');
+    apartmentsSign(b, 19, 1, 12, 'n', 'Manda la última llamada', 'The last call wins. The lift goes straight there, up or down. To the roof: the stairs.');
     piece(8, 3, 12, 'wall_clock', 'wall_clock', 'n');
     piece(20, 1, 7, 'desk', 'desk', 's');
     piece(20, 1, 8, 'dark_oak_chair', 'chair', 'n');
@@ -584,7 +506,7 @@ function constructionApartments(b) {
         b.box(1, F, 11, 22, F, 12, 'slate');
         b.box(1, F + 1, 11, 22, F + 1, 11, `${color}_carpet`);
         for (const x of [3, 9, 15, 21]) lantern(x, F + 3, 12);
-        apartmentsSign(b, 15, F + 1, 12, 'n', `Planta ${n}, ${es}`, `Floor ${n}, ${en}. The button by the door calls the lift.`);
+        apartmentsSign(b, 15, F + 1, 12, 'n', `Planta ${n}, ${es}`, `Floor ${n}, ${en}. The button over the door calls the lift.`);
     }
     // What stands between the homes at the front: the wall moves from floor to floor.
     for (const flat of apartmentsFlats()) {
@@ -634,12 +556,12 @@ function constructionApartments(b) {
 
     // ---- The machine room, over the core, with a window to look at it ----
     apartmentsDrawMachineRoom(b);
-    apartmentsSign(b, 12, roof + 1, 11, 'n', 'Terraza', 'Roof terrace. The machine room next door runs the lift.');
+    apartmentsSign(b, 12, roof + 1, 11, 'n', 'Terraza', 'Roof terrace. The rtg in the machine room next door powers the lift.');
 }
 
 function apartmentsDrawMachineRoom(b) {
     const y = APARTMENTS_ROOF_Y + 1;
-    // Walls around what apartmentsDrawMachines placed, leaving it alone.
+    // Walls around what apartmentsDrawLift placed up here (the rtg and the duct), leaving it alone.
     const top = y + 2;
     const place = (x, h, z, type) => {
         if (!b.cells.has((h * b.size[2] + z) * b.size[0] + x)) b.set(x, h, z, type);

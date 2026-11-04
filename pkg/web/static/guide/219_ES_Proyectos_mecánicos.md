@@ -2,7 +2,7 @@
 
 ![Empujador pegajoso](item:sticky_ram)
 
-Cuatro construcciones con [empujadores](217) y [ascensores](218). Todas necesitan una fuente de energía: lo más
+Cinco construcciones con [empujadores](217) y [ascensores](218). Todas necesitan una fuente de energía: lo más
 fácil es una [batería](203) cargada. Recuerda que un empujador gasta **40 W** y un torno **60 W** mientras tienen
 energía.
 
@@ -46,6 +46,27 @@ Un tragaluz que se tapa solo por la noche.
 2. Dale energía a través de un [sensor de luz diurna](208) en modo **noche** (clic derecho en el sensor para
    cambiar el modo).
 3. Al anochecer el empujador pone el bloque sobre el cristal; al amanecer lo retira.
+
+## 5. El ascensor de un bloque de pisos
+
+Las [paradas de ascensor](218) hacen un ascensor de verdad: este es el de `/build apartments`, para pisos a **4 bloques**
+uno de otro (1 de suelo y 3 de aire). Necesitas 1 torno, 1 plataforma, 1 [RTG](220), 1 parada y 1 puerta de hierro por
+piso, y 2 pulsadores por piso con su cable si quieres los dos de dentro del ascensor.
+
+1. Construye el hueco a través de todos los pisos, la **plataforma** en el suelo del más bajo y el **torno** 3 bloques
+   por encima del suelo del más alto. Pon el RTG tocando el torno: siempre tiene energía.
+2. En cada piso, en la pared entre el hueco y el rellano: una **puerta de hierro** y, justo encima, una **parada**. Ya
+   está: haz clic en la parada de cualquier puerta y el ascensor viene, y esa puerta se abre al llegar.
+3. Por dentro: subido en él solo alcanzas la parada de tu piso y la siguiente hacia arriba. Así que dale dos botones al
+   viajero, en un nicho del hueco en **cada** piso, con dos [cables](202) por la pared:
+   - Un pulsador **verde** con un cable hasta la cara de **arriba** de la parada **más alta**: sube hasta arriba.
+   - Uno **rojo** con un cable hasta la cara de arriba de una **segunda parada** a la altura de la más baja, escondida en
+     la pared del hueco: baja hasta abajo.
+4. Para ir a un piso: pulsa verde o rojo, y haz clic en la parada de tu piso cuando llegue. Si haces clic tarde, vuelve
+   a por ella.
+
+Mantén los dos cables separados: no deben tocarse entre ellos, ni el torno ni su RTG, o los botones no serán lo único
+que los encienda.
 
 ## Consejos
 

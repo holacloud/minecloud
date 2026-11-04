@@ -221,7 +221,7 @@ test('it has the homes asked for: every flat has its rooms, and they differ', ()
 
 test('all 4 turns: footprint, doors, stairs, facing, wall items, hanging items, pieces of two cells', () => {
     const wallShapes = new Set(['painting', 'wall_mirror', 'wall_clock', 'wall_shelf', 'curtain']);
-    const lift = { door: 0, gate: 0, stairs: 0 };
+    const lift = { door: 0, stop: 0, stairs: 0 };
     for (const turns of TURNS) {
         const { layout, typeAt } = layoutOf(turns);
         const [w, h, d] = PLAN.size;
@@ -266,7 +266,7 @@ test('all 4 turns: footprint, doors, stairs, facing, wall items, hanging items, 
             }
             if (def.shape === 'door') lift.door++;
             if (def.shape === 'stairs') lift.stairs++;
-            if (def.logicKind && state.facing) lift.gate++;
+            if (baseOf(cell.type) === 'lift_stop') lift.stop++;
         });
         assert.ok(counts.wall > 500 && counts.hanging > 200 && counts.linked > 200, JSON.stringify(counts));
         // The front door: both leaves ahead of the player, looking in, the way the player looks.
@@ -275,7 +275,7 @@ test('all 4 turns: footprint, doors, stairs, facing, wall items, hanging items, 
         assert.equal(near.length, 4);
         for (const cell of near) assert.equal(stateOf(cell.type).facing, look);
     }
-    assert.ok(lift.door && lift.gate && lift.stairs);
+    assert.ok(lift.door && lift.stop && lift.stairs);
 });
 
 test('each flat has its bed with a wall at its head and a free cell at its foot, for a bed of two cells', () => {
@@ -358,12 +358,13 @@ test('the lobby: the platform can be stepped on and the buttons reached from it 
     const [ux, uz] = turned(0, SX + 1, SZ);
     assert.equal(baseOf(world.getBlockTypeAt(ux, 2, uz)), 'push_button');
     assert.ok(dist(eyeOn, ux, 2, uz) < reach);
-    // "Call", by the door, from the lobby's floor.
-    const [cx, cz] = turned(0, SX - 1, SZ - 1);
-    assert.equal(baseOf(world.getBlockTypeAt(cx, 2, cz)), 'push_button');
+    // The stop over the door, from the lobby's floor and from the platform.
+    const [cx, cz] = turned(0, SX, SZ - 1);
+    assert.equal(baseOf(world.getBlockTypeAt(cx, 3, cz)), 'lift_stop');
     const [lx, lz] = turned(0, SX, SZ - 2);
     assert.ok(reached.some(([x, z, feet]) => Math.floor(x) === lx && Math.floor(z) === lz && feet === 1));
-    assert.ok(dist([lx + 0.5, 1 + 1.62, lz + 0.5], cx, 2, cz) < reach);
+    assert.ok(dist([lx + 0.5, 1 + 1.62, lz + 0.5], cx, 3, cz) < reach);
+    assert.ok(dist(eyeOn, cx, 3, cz) < reach);
 });
 
 test('it is lit at night, by the lights it has', () => {
@@ -431,7 +432,7 @@ test('the signs: Spanish first, within what the server keeps, whole on their boa
 // ---------------------------------------------------------------------------------------
 // The lift
 
-test('the lift: platform, only air, the winch, within the rope; an arm under each floor', () => {
+test('the lift: platform, only air, the winch, within the rope; a stop and an iron door on each floor', () => {
     const grid = new Map(PLAN.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
     const typeAt = (x, y, z) => grid.get(`${x},${y},${z}`);
     const winch = ctx.APARTMENTS_WINCH_Y;
@@ -449,24 +450,66 @@ test('the lift: platform, only air, the winch, within the rope; an arm under eac
     for (let n = 0; n <= ctx.APARTMENTS_HOME_FLOORS; n++) {
         const F = n * ctx.APARTMENTS_STEP;
         // A door of the shaft on every floor, shut, and two cells of head room on the platform.
-        assert.equal(baseOf(typeAt(SX, F + 1, SZ - 1)), 'spruce_door');
+        assert.equal(baseOf(typeAt(SX, F + 1, SZ - 1)), 'iron_door');
         assert.equal(stateOf(typeAt(SX, F + 1, SZ - 1)).open, 'closed');
-        assert.equal(baseOf(typeAt(SX, F + 2, SZ - 1)), 'spruce_door');
-        assert.ok(typeAt(SX - 1, F + 3, SZ));
-        if (n === 0) continue;
-        // The ram points into the shaft, one under the slab: the platform rests level with the floor.
-        const ram = typeAt(SX, F - 1, SZ + 1);
-        assert.equal(baseOf(ram), 'motor_ram');
-        assert.equal(stateOf(ram).facing, 'n');
-        assert.equal(baseOf(typeAt(SX, F, SZ + 1)), 'latch');
-        // Stops: green and red in the shaft, a call on the landing.
-        assert.equal(typeAt(SX + 1, F + 1, SZ), 'lime_wool');
-        assert.equal(typeAt(SX - 1, F + 1, SZ), 'red_wool');
-        for (const [dx, dz] of [[1, 0], [-1, 0], [1, -1]]) assert.equal(typeAt(SX + dx, F + 2, SZ + dz), 'push_button');
+        assert.equal(baseOf(typeAt(SX, F + 2, SZ - 1)), 'iron_door');
+        // The stop over it: 3 above the platform that stands level with the floor, as mechanics.go.
+        assert.equal(typeAt(SX, F + 3, SZ - 1), 'lift_stop');
+        // Green on all but the top, red on all but the lobby, each on its wool.
+        const top = n === ctx.APARTMENTS_HOME_FLOORS;
+        assert.equal(typeAt(SX + 1, F + 2, SZ) === 'push_button', !top);
+        assert.equal(typeAt(SX + 1, F + 1, SZ), top ? 'concrete' : 'lime_wool');
+        assert.equal(typeAt(SX - 1, F + 2, SZ) === 'push_button', n > 0);
+        assert.equal(typeAt(SX - 1, F + 1, SZ), n > 0 ? 'red_wool' : 'concrete');
     }
-    // Two generators, nothing else that gives power.
+    // What the old lift was made of is gone: this one is stops, two buses and one rtg.
+    const bases = PLAN.cells.map((cell) => baseOf(cell.type));
+    for (const gone of ['motor_ram', 'sticky_ram', 'latch', 'delay_gate', 'not_gate', 'or_gate', 'ram_arm', 'wire_post']) assert.ok(!bases.includes(gone), gone);
+    assert.equal(bases.filter((base) => base === 'lift_stop').length, ctx.APARTMENTS_HOME_FLOORS + 2);
     const generators = PLAN.cells.filter((cell) => ctx.ELECTRIC_KINDS[baseOf(cell.type)] && ctx.ELECTRIC_KINDS[baseOf(cell.type)].role === 'generator');
-    assert.deepEqual(generators.map((cell) => cell.type), ['rtg', 'rtg']);
+    assert.deepEqual(generators.map((cell) => cell.type), ['rtg']);
+});
+
+test('riding: your floor\'s stop and the next one up are in reach, and green and red', () => {
+    const grid = new Map(PLAN.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
+    const reach = 4.5;
+    for (let n = 0; n <= ctx.APARTMENTS_HOME_FLOORS; n++) {
+        const F = n * ctx.APARTMENTS_STEP;
+        const eye = [SX + 0.5, F + 1 + 1.62, SZ + 0.5];
+        // The nearest point of a stop's face towards the shaft, or of a button's top.
+        const toFace = (y) => Math.hypot(eye[0] - (SX + 0.5), eye[1] - Math.max(y, Math.min(y + 1, eye[1])), eye[2] - SZ);
+        assert.ok(toFace(F + 3) < reach, `own stop, floor ${n}`);
+        if (n < ctx.APARTMENTS_HOME_FLOORS) assert.ok(toFace(F + 3 + ctx.APARTMENTS_STEP) < reach, `the stop above, floor ${n}`);
+        for (const dx of [1, -1]) {
+            if (grid.get(`${SX + dx},${F + 2},${SZ}`) !== 'push_button') continue;
+            assert.ok(Math.hypot(eye[0] - (SX + dx + 0.5), eye[1] - (F + 2 + 3 / 16), eye[2] - (SZ + 0.5)) < reach);
+        }
+    }
+});
+
+test('the stop locks the iron door under it, either half, and no other', () => {
+    const world = makeWorld(1);
+    const messages = [];
+    const game = new ctx.Game();
+    Object.assign(game, { world, receiveSystemMessage: ({ text }) => messages.push(text), getInteractionRay: () => ({ direction: new Vector3(0, 0, 1) }), network: { connected: false }, playNoiseBurst() {}, playTone() {} });
+    const place = (x, type, stop) => {
+        world.setEditedBlock(x, 1, 2, world.getShapeStateType(type, { half: 'lower', facing: 's', hinge: 'left', open: 'closed' }));
+        world.setEditedBlock(x, 2, 2, world.getShapeStateType(type, { half: 'upper', facing: 's', hinge: 'left', open: 'closed' }));
+        if (stop) world.setEditedBlock(x, 3, 2, 'lift_stop');
+    };
+    place(1, 'iron_door', true);
+    place(3, 'iron_door', false);
+    place(5, 'oak_door', true);
+    for (const y of [1, 2]) {
+        const before = world.getBlockTypeAt(1, y, 2);
+        assert.equal(game.joineryToggle({ x: 1, y, z: 2 }), true, 'taken: no block is placed against it');
+        assert.equal(world.getBlockTypeAt(1, y, 2), before);
+    }
+    assert.equal(messages.length, 2);
+    game.joineryToggle({ x: 3, y: 1, z: 2 });
+    assert.equal(stateOf(world.getBlockTypeAt(3, 1, 2)).open, 'open', 'an iron door with no stop opens by hand, as ever');
+    game.joineryToggle({ x: 5, y: 1, z: 2 });
+    assert.equal(stateOf(world.getBlockTypeAt(5, 1, 2)).open, 'open', 'a wooden one too');
 });
 
 // What pkg/network/construction_apartments_test.go places on the real grid, in each turn: every
@@ -476,23 +519,22 @@ function liftData() {
     return TURNS.map((turns) => {
         const { layout } = layoutOf(turns);
         const cells = [];
-        const buttons = { up: null, call: {}, stop: {}, down: {}, lobbyCall: null };
+        const buttons = { green: {}, red: {} };
+        const stops = {};
         layout.cells.forEach((cell, index) => {
             const source = PLAN.cells[index];
-            if (!electric(cell.type) && cell.type !== 'lift_platform') return;
+            if (!electric(cell.type) && cell.type !== 'lift_platform' && baseOf(cell.type) !== 'iron_door') return;
             cells.push([cell.x, cell.y, cell.z, cell.type]);
-            if (baseOf(cell.type) !== 'push_button') return;
             const n = Math.floor(source.y / ctx.APARTMENTS_STEP);
             const at = [cell.x, cell.y, cell.z];
-            if (n === 0) {
-                if (source.x === SX + 1) buttons.up = at;
-                else buttons.lobbyCall = at;
-            } else if (source.z === SZ - 1) buttons.call[n] = at;
-            else if (source.x === SX + 1) buttons.stop[n] = at;
-            else buttons.down[n] = at;
+            if (baseOf(cell.type) === 'push_button') buttons[source.x === SX + 1 ? 'green' : 'red'][n] = at;
+            if (baseOf(cell.type) === 'lift_stop') {
+                if (source.z === SZ - 1) stops[n] = at;
+                else buttons.lobbyStop = at;
+            }
         });
         const [sx, sz] = turned(turns, SX, SZ);
-        return { turns, shaft: [sx, sz], winchY: ctx.APARTMENTS_WINCH_Y, floors: ctx.APARTMENTS_HOME_FLOORS, step: ctx.APARTMENTS_STEP, buttons, cells };
+        return { turns, shaft: [sx, sz], winchY: ctx.APARTMENTS_WINCH_Y, floors: ctx.APARTMENTS_HOME_FLOORS, step: ctx.APARTMENTS_STEP, buttons, stops, cells };
     });
 }
 
@@ -557,7 +599,7 @@ test('/build apartments: it ends as planned, by blockPlace, the signs with their
     }
     // The electric blocks go out as any other: the server tracks them from these messages.
     const placed = new Set(sent.filter(({ type }) => type === 'blockPlace').map(({ payload }) => payload.blockType));
-    for (const type of ['rtg', 'lift_winch', 'lift_platform', 'motor_ram', 'push_button']) assert.ok(placed.has(type), type);
+    for (const type of ['rtg', 'lift_winch', 'lift_platform', 'lift_stop', 'push_button']) assert.ok(placed.has(type), type);
     game.constructionCommand('build', ['undo']);
     run(game);
     assert.deepEqual(snapshot(world), before);
