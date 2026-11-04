@@ -117,6 +117,8 @@ Object.assign(Game.prototype, {
         this.storageNote = '';
         this.storageOpenedAt = performance.now();
         this.stopMining();
+        // Losing the pointer lock would otherwise open the pause menu.
+        this.suppressPointerLockPauseUntil = performance.now() + 1000;
         if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
         this.storagePanel.classList.add('visible');
         this.network.send('storageOpen', { ...this.storageAt });
@@ -130,6 +132,7 @@ Object.assign(Game.prototype, {
         this.storageSlots = null;
         if (this.storagePanel) this.storagePanel.classList.remove('visible');
         if (this.network && this.network.connected) this.network.send('storageClose', {});
+        this.suppressPointerLockPauseUntil = performance.now() + 250;
         this.recapturePointerLock();
     },
 

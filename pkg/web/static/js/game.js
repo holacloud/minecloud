@@ -830,7 +830,7 @@ class Game {
                 if (performance.now() < this.suppressPointerLockPauseUntil) {
                     return;
                 }
-                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
+                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending && !this.getOpenModalPanel()) {
                     this.openPauseMenu();
                 }
             }

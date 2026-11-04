@@ -560,6 +560,9 @@ Object.assign(Game.prototype, {
 
     promptSignText() {
         const requested = window.prompt('Write the sign message (up to 288 characters)', '');
+        // A dialog can take the pointer lock away; the page only hears of it once the dialog is gone.
+        this.suppressPointerLockPauseUntil = performance.now() + 1000;
+        this.recapturePointerLock();
         if (requested === null) return null;
 
         const normalized = requested.replace(/\r/g, '').trim();
