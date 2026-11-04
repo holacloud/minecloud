@@ -34,6 +34,10 @@ class WorldRenderer {
         // Chunks waiting to be (re)meshed, drained a few per frame nearest-first.
         this.rebuildQueue = new Set();
         this.rebuildBudgetMs = 6;
+        // Edits are meshed at once up to this many ms per frame; a burst of them (another
+        // player's /build) goes through the queue instead of freezing the frame.
+        this.immediateRebuildBudgetMs = 4;
+        this.immediateRebuildMs = 0;
         // 0 = torch light invisible (bright day) .. 1 = full strength (night, caves).
         this.blockLightStrength = { value: 0.6 };
         // The torch held by the local player, applied to terrain like placed torches.
@@ -1159,8 +1163,14 @@ class WorldRenderer {
     // changes, the whole 3x3 neighbourhood a torch can reach.
     rebuildAfterChange(x, z, affectsLight) {
         const { chunkX, chunkZ } = this.getChunkCoords(x, z);
-        this.rebuildChunk(chunkX, chunkZ);
-        this.rebuildQueue.delete(this.chunkKey(chunkX, chunkZ));
+        if (this.immediateRebuildMs < this.immediateRebuildBudgetMs) {
+            const start = performance.now();
+            this.rebuildChunk(chunkX, chunkZ);
+            this.rebuildQueue.delete(this.chunkKey(chunkX, chunkZ));
+            this.immediateRebuildMs += performance.now() - start;
+        } else {
+            this.requestRebuild(chunkX, chunkZ);
+        }
 
         const lx = localCoord(x);
         const lz = localCoord(z);
@@ -1321,6 +1331,7 @@ class WorldRenderer {
     }
 
     update(playerX, playerZ) {
+        this.immediateRebuildMs = 0;
         this.processRebuildQueue();
         const { chunkX: playerChunkX, chunkZ: playerChunkZ } = this.getChunkCoords(playerX, playerZ);
         // The server serves pending chunks nearest to this point first and forgets requests

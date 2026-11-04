@@ -239,6 +239,9 @@ Object.assign(Game.prototype, {
             case 'give':
                 this.creativeGive(normalized, args);
                 break;
+            case 'build':
+                this.constructionCommand(normalized, args);
+                break;
             case 'rtx':
                 this.toggleRTXMode();
                 this.receiveSystemMessage({ text: `RTX mode ${this.rtxModeEnabled ? 'enabled' : 'disabled'}` });
