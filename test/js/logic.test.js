@@ -86,7 +86,7 @@ test('every state is a world block with its textures', () => {
     const world = makeWorld();
     const names = ['lever', 'lever:on', 'push_button:on', 'pressure_plate:on', 'daylight_sensor', 'daylight_sensor:night:on',
         'proximity_sensor:on', 'rain_sensor:on', 'and_gate', 'and_gate:e:on', 'or_gate:s:off', 'xor_gate:w:on', 'not_gate:n:on',
-        'delay_gate', 'delay_gate:n:3:off', 'delay_gate:w:4:on', 'latch:e:on'];
+        'delay_gate', 'delay_gate:n:3:off', 'delay_gate:w:4:on', 'latch:e:on', 'lift_stop', 'lift_stop:called:off', 'lift_stop:free:on', 'lift_stop:called:on'];
     for (const name of names) {
         assert.ok(world.registry.id(name) > 0, name);
         const def = world.blockTypes[name];
@@ -122,6 +122,57 @@ test('wires join logic blocks; plates are walked over; levers show their handle'
     const up = world.shapes.boxes(world.registry.id('lever:on'), 0)[1];
     const down = world.shapes.boxes(world.registry.id('lever'), 0)[1];
     assert.ok(up[4] > down[4], 'the handle is up while on');
+});
+
+test('the lift stop: a whole block with its own look in each state, an icon and a recipe', () => {
+    const world = makeWorld();
+    const looks = { lift_stop: 'lift_stop_free', 'lift_stop:called:off': 'lift_stop_called', 'lift_stop:free:on': 'lift_stop_here', 'lift_stop:called:on': 'lift_stop_here' };
+    for (const [name, pattern] of Object.entries(looks)) {
+        assert.equal(world.getFaceTextureSpecs(name).side.pattern, pattern, name);
+        assert.equal(world.getFaceTextureSpecs(name).top.pattern, 'lift_stop_top', name);
+        assert.deepEqual([...world.shapes.boxes(world.registry.id(name), 0)[0]], [0, 0, 0, 1, 1, 1]);
+    }
+    assert.equal(world.registry.solid[world.registry.id('lift_stop')], 1);
+    assert.equal(world.registry.fullCube[world.registry.id('lift_stop')], 1, 'it hides and shades like the wall around it');
+    // Item, not state: in the creative stock and /give. The states are not items.
+    assert.ok(!world.blockTypes.lift_stop.variantOf);
+    assert.equal(world.blockTypes['lift_stop:called:on'].variantOf, 'lift_stop');
+    assert.equal(world.blockTypes.lift_stop.name, 'Lift Stop');
+    // The icon is drawn by its shape, from its idle state (as world.js does for shaped blocks).
+    assert.ok(world.registry.shaped[world.registry.id('lift_stop')]);
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.BLOCK_SHAPES.logic_lift_stop.iconState)), { call: 'free', power: 'off' });
+    // Made of what a player already has when building a winch.
+    const recipes = [];
+    vm.runInContext('GAME_CONTENT_HOOKS', ctx).forEach((hook) => hook.call({}, { addItem() {}, addRecipe: (...args) => recipes.push(args) }));
+    const recipe = recipes.find(([id]) => id === 'lift_stop');
+    assert.equal(recipe[2], 'lift_stop');
+    assert.equal(recipe[3], 2);
+    assert.deepEqual(JSON.parse(JSON.stringify(recipe[4])).map(({ type }) => type).sort(), ['copper_wire', 'glass', 'iron_ore']);
+});
+
+test('the lift stop on the multimeter', () => {
+    const status = vm.runInContext('logicStopStatus', ctx);
+    assert.match(status('lift_stop'), /free/);
+    assert.match(status('lift_stop:called:off'), /coming/);
+    assert.match(status('lift_stop:free:on'), /here/);
+    assert.match(status('lift_stop:called:on'), /here/);
+});
+
+test('a right click on a lift stop calls the lift', () => {
+    const world = makeWorld();
+    world.setEditedBlock(4, 1, 4, 'lift_stop');
+    const sent = [];
+    const game = new ctx.Game();
+    Object.assign(game, {
+        world,
+        cameraController: { isCrouching: false },
+        network: { connected: true, send: (type, payload) => sent.push([type, payload]) },
+        playNoiseBurst() {}, playTone() {}, showHitIndicator() {}
+    });
+    world.getBlockPositionFromIntersection = (hit) => hit.position;
+    const handler = ctx.ITEM_USE_HANDLERS[ctx.ITEM_USE_HANDLERS.length - 1];
+    assert.equal(handler.call(game, null, { position: { x: 4, y: 1, z: 4 } }), true);
+    assert.deepEqual(JSON.parse(JSON.stringify(sent)), [['logicPress', { x: 4, y: 1, z: 4 }]]);
 });
 
 test('a right click on a lever asks the server', () => {

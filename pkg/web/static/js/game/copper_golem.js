@@ -630,6 +630,7 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
         const def = type && this.world.blockTypes[type];
         const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
         if (!shape || !shape.toggle || def.opensByHand === false) return false;
+        if (typeof logicStopLocks === 'function' && logicStopLocks(this.world, cell)) return false;
         const base = def.variantOf || type;
         const next = shape.toggle(def.state, { look });
         const nextType = next && this.world.getShapeStateType(base, next);

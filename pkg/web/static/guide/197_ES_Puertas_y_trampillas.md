@@ -43,7 +43,8 @@ tumbada: tapa un agujero en el suelo o en el techo.
 - **Agachado (Shift)**, el clic derecho no la abre: pone el bloque que llevas contra ella.
 - Al romper cualquiera de sus dos mitades se rompe la puerta entera y sueltas **una** puerta.
 - La de hierro también se abre a mano. Un [motor eléctrico](204) que la toque la abre cuando el motor se enciende y
-  la cierra cuando se apaga (y lo mismo las trampillas de hierro).
+  la cierra cuando se apaga (y lo mismo las trampillas de hierro). Una que toque una [parada de ascensor](218) es la
+  puerta de un rellano: solo la abre el ascensor.
 
 ## Trampillas
 

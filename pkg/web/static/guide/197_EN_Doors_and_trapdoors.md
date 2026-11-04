@@ -43,7 +43,8 @@ hole in the floor or the ceiling.
 - **Crouching (Shift)**, a right click does not open it: it places the block you hold against it.
 - Breaking either half breaks the whole door, and you get **one** door.
 - The iron door opens by hand too. An [electric motor](204) touching it opens it when the motor switches on and
-  closes it when it switches off (iron trapdoors too).
+  closes it when it switches off (iron trapdoors too). One touching a [lift stop](218) is a lift's landing door: only the
+  lift opens it.
 
 ## Trapdoors
 

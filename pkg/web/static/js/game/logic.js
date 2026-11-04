@@ -16,6 +16,12 @@
 //   `logicPress {x, y, z}` and the server toggles the lever, presses the button (1.5 s),
 //   switches the sensor's day/night mode or cycles the delay (1-4 s). Hook for helpers (a
 //   future copper golem): call `game.logicPress(position)`, or send the same message.
+// - The lift stop (`lift_stop`, the lift is in pkg/network/mechanics.go): a full block in the wall
+//   of a lift's shaft, 3 above where the platform should hold. A right click, or a signal coming
+//   on at its TOP face (its one input), calls the lift there. It is dark while free, amber while
+//   called and green once the platform stands at its height; then it conducts on its other faces.
+//   States `call` and `power`: `lift_stop:called:off`. An iron door touching it is that floor's
+//   landing door: the server moves it, and a hand cannot (logicStopLocks).
 // - Pressure plates and proximity sensors notice players only (the server knows where players
 //   are; mobs live on each client).
 // Mixed into Game.prototype; hooked through js/extensions.js. Loaded after electricity.js.
@@ -32,24 +38,26 @@ const LOGIC_KINDS = {
     xor_gate: { op: 'xor', states: 'facing,power' },
     not_gate: { op: 'not', states: 'facing,power' },
     delay_gate: { op: 'delay', states: 'facing,delay,power' },
-    latch: { op: 'latch', states: 'facing,power' }
+    latch: { op: 'latch', states: 'facing,power' },
+    lift_stop: { op: 'stop', states: 'call,power' }
 };
 
 const LOGIC_STATE_VALUES = {
     power: ['off', 'on'],
     mode: ['day', 'night'],
     facing: ['n', 'e', 's', 'w'],
-    delay: ['1', '2', '3', '4']
+    delay: ['1', '2', '3', '4'],
+    call: ['free', 'called']
 };
 
 // Input faces of the gates, relative to their facing (as in logic.go).
 const LOGIC_INPUTS = {
     and: ['left', 'right'], or: ['left', 'right'], xor: ['left', 'right'],
-    not: ['back'], delay: ['back'], latch: ['left', 'right']
+    not: ['back'], delay: ['back'], latch: ['left', 'right'], stop: ['top']
 };
 
 // What a right click does to each (the server does it; this only says which ones take it).
-const LOGIC_PRESSABLE = new Set(['lever', 'button', 'daylight', 'delay']);
+const LOGIC_PRESSABLE = new Set(['lever', 'button', 'daylight', 'delay', 'stop']);
 const LOGIC_GATE_OPS = ['and', 'or', 'xor', 'not', 'delay', 'latch'];
 const LOGIC_SENSOR_OPS = ['daylight', 'proximity', 'rain'];
 const LOGIC_PX = 1 / 16;
@@ -63,6 +71,27 @@ function logicKindOf(type) {
     if (!type) return null;
     const base = String(type).split(':')[0];
     return LOGIC_KINDS[base] ? base : null;
+}
+
+// What a lift stop says on the multimeter, from its block name.
+function logicStopStatus(type) {
+    const [, call = 'free', power = 'off'] = String(type).split(':');
+    if (power === 'on') return call === 'called' ? 'called, and the platform is here' : 'the platform is here';
+    return call === 'called' ? 'called: the lift is coming' : 'free: right click it to call the lift';
+}
+
+// Whether a hand may not move the door at `position`: an iron door or trapdoor (either half) touching
+// a lift stop opens only when the lift is there.
+function logicStopLocks(world, position) {
+    const type = world.getBlockTypeAt(position.x, position.y, position.z);
+    const def = type && world.blockTypes[type];
+    if (!def || !['iron_door', 'iron_trapdoor'].includes(def.variantOf || type)) return false;
+    const shape = BLOCK_SHAPES[def.shape];
+    const cells = [[0, 0, 0], ...(shape && shape.linked ? shape.linked(def.state || {}) : [])];
+    return cells.some(([cx, cy, cz]) => [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].some(([dx, dy, dz]) => {
+        const near = world.getBlockTypeAt(position.x + cx + dx, position.y + cy + dy, position.z + cz + dz);
+        return Boolean(near) && near.split(':')[0] === 'lift_stop';
+    }));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -251,6 +280,37 @@ function logicPaintPlate(f, s, on, seed) {
 registerTexturePattern('logic_plate_off', (f, s, tint, seed) => logicPaintPlate(f, s, false, seed));
 registerTexturePattern('logic_plate_on', (f, s, tint, seed) => logicPaintPlate(f, s, true, seed));
 
+// Lift stop: a steel plate in the wall with a big round button in a ring, and a chevron under it
+// pointing at the floor below. Dark while free, amber while called, green while the lift is here.
+function logicPaintStop(f, s, cap, seed) {
+    const steel = f.rgb(0x5f6870);
+    const ring = f.rgb(0xc8cdd2);
+    const lit = f.rgb(cap);
+    const px = 1 / s.size;
+    f.each(s, (x, y, u, v) => {
+        const d = Math.hypot(u - 0.5, v - 0.42);
+        let color = f.tone(s, steel, (f.hash(x, y, seed) - 0.5) * 0.1);
+        let h = 0.5;
+        if (Math.min(u, 1 - u, v, 1 - v) < 1.5 * px) { color = f.tone(s, steel, -0.25); h = 0.3; }
+        if (v > 0.78 && v < 0.92 && Math.abs(Math.abs(u - 0.5) - (0.92 - v)) < 0.035) { color = ring; h = 0.8; }
+        if (d < 0.32) { color = f.tone(s, ring, -0.1 - d * 0.3); h = 0.8; }
+        if (d < 0.25) { color = f.tone(s, lit, 0.2 - d * 1.1); h = 0.95; }
+        f.put(s, x, y, color, h);
+    });
+}
+registerTexturePattern('lift_stop_free', (f, s, tint, seed) => logicPaintStop(f, s, 0x46525e, seed));
+registerTexturePattern('lift_stop_called', (f, s, tint, seed) => logicPaintStop(f, s, 0xffb030, seed));
+registerTexturePattern('lift_stop_here', (f, s, tint, seed) => logicPaintStop(f, s, 0x58f070, seed));
+// Its top: the steel plate with the copper pad of its one input.
+registerTexturePattern('lift_stop_top', (f, s, tint, seed) => {
+    const steel = f.rgb(0x5f6870);
+    const copper = f.rgb(0xc87533);
+    f.each(s, (x, y, u, v) => {
+        const pad = Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) < 0.22;
+        f.put(s, x, y, pad ? f.tone(s, copper, (f.hash(x, y, seed) - 0.5) * 0.12) : f.tone(s, steel, (f.hash(x, y, seed) - 0.5) * 0.1), pad ? 0.8 : 0.5);
+    });
+});
+
 // ---------------------------------------------------------------------------------------
 // Shapes (one per kind, with the kind's states) and blocks
 
@@ -300,6 +360,15 @@ function logicShape(id) {
         });
         return shape;
     }
+    if (op === 'stop') {
+        shape.boxes = () => [[0, 0, 0, 1, 1, 1]];
+        shape.materialKey = (state) => `${state.call}_${state.power}`;
+        shape.variant = (state) => {
+            const look = on(state) ? 'here' : state.call === 'called' ? 'called' : 'free';
+            return { faces: { top: 'lift_stop_top', side: `lift_stop_${look}`, bottom: 'lift_stop_top' }, ...(look === 'free' ? {} : { glow: 0.5 }) };
+        };
+        return shape;
+    }
     // Gates: a thin board; its arrow faces where the player looked when placing it.
     shape.boxes = () => [[0, 0, 0, 1, LOGIC_GATE_HEIGHT, 1]];
     shape.materialKey = (state) => `${state.facing}_${state.power}_${state.delay || ''}`;
@@ -330,7 +399,8 @@ const LOGIC_BLOCKS = [
     ['xor_gate', 'XOR Gate', 0x323B46, {}],
     ['not_gate', 'NOT Gate', 0x323B46, {}],
     ['delay_gate', 'Delay', 0x323B46, {}],
-    ['latch', 'Latch (Memory)', 0x323B46, {}]
+    ['latch', 'Latch (Memory)', 0x323B46, {}],
+    ['lift_stop', 'Lift Stop', 0x5F6870, { lightPasses: false, wholeCube: true }]
 ];
 
 LOGIC_BLOCKS.forEach(([id, name, color, extra]) => {
@@ -355,6 +425,7 @@ registerGameContent(function ({ addRecipe }) {
         addRecipe(id, `Build ${label}`, id, 2, [{ type: 'element_si', amount: 1 }, { type: 'copper_wire', amount: 2 }, { type: 'cobblestone', amount: 1 }]);
     });
     addRecipe('latch', 'Build Latch (Memory)', 'latch', 1, [{ type: 'element_si', amount: 2 }, { type: 'copper_wire', amount: 2 }, { type: 'cobblestone', amount: 1 }]);
+    addRecipe('lift_stop', 'Build Lift Stops', 'lift_stop', 2, [{ type: 'iron_ore', amount: 1 }, { type: 'glass', amount: 1 }, { type: 'copper_wire', amount: 2 }]);
 });
 
 // ---------------------------------------------------------------------------------------

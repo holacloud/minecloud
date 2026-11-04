@@ -94,6 +94,8 @@ test('every state is a world block with its textures', () => {
     assert.equal(world.blockTypes['ram_arm:e:plain'].dropType, null);
     assert.ok(world.blockTypes['ram_arm:e:plain'].variantOf, 'arms are no items');
     assert.ok(!world.blockTypes.lift_platform.electric, 'the platform is not part of a network');
+    // A stop is a logic block; neither it nor the platform is moved by a ram (mechanics.go).
+    assert.equal(ctx.ELECTRIC_KINDS.lift_stop.role, 'logic');
     // 6 facings x in/out per ram.
     assert.equal(Object.keys(world.blockTypes).filter((name) => name.startsWith('motor_ram')).length, 12);
 });

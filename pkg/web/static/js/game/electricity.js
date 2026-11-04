@@ -660,6 +660,7 @@ Object.assign(Game.prototype, {
         lines.push(['Status', status]);
         // Logic (js/game/logic.js): whether this network switches gate inputs on.
         if (kind.role === 'logic' || r.signal) lines.push(['Signal', r.signal ? 'ON (gate inputs touching it are on)' : 'off']);
+        if (r.kind === 'lift_stop') lines.push(['Lift stop', logicStopStatus(this.world.getBlockTypeAt(r.x, r.y, r.z))]);
         const counts = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1])
             .map(([name, count]) => `${count} ${this.electricKindName(name)}`).join(', ');
         lines.push(['Network', `${r.blocks} blocks: ${counts}`]);

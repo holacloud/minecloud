@@ -25,6 +25,19 @@ import (
 //     hoists the platform one block every liftStepTime until it is two blocks below the winch
 //     (room for a player standing on it); unpowered, the brake lets it down at the same pace
 //     until it rests on something. It never lowers the platform onto a player.
+//   - Lift stop (lift_stop, a logic block of logic.go): a block in the wall of the shaft, on any
+//     of its four sides. Right click it, or give its TOP face a signal, and it is called: it says
+//     so in its name (lift_stop:called:off) and remembers it. The last stop called in a shaft
+//     wins, the others are freed. While its winch has power and the shaft has stops, the stop
+//     decides, not the power: the platform goes up or down to 3 blocks below the called stop (as
+//     it stops 3 below the winch: room for a player, the stop over the door) and holds there. No
+//     stop called: it holds where it is. Without power the stops do not count: it comes down as
+//     ever, and goes back to the called stop when the power returns. A shaft with no stops
+//     works as it always has. A stop is ON (it conducts on every face but the top, and its
+//     network has a signal) once the platform has stood at its height for liftStopSettle, so it
+//     does not flicker as the platform goes by. An iron door or trapdoor touching a stop is its
+//     landing door: open while the stop is on, shut otherwise, with no motor and no power
+//     (js/game/logic.js does not let a hand move it).
 //
 // State lives in the world blocks, as for doors and lamps: motor_ram:e:out, sticky_ram:u,
 // ram_arm:e:plain, and where the platform is. Every change is written to the chunk store
@@ -61,6 +74,9 @@ const (
 	liftHeadroom = 2
 	// One block of lift travel (2.5 blocks a second); js/game/mechanics.js draws the same speed.
 	liftStepTime = 400 * time.Millisecond
+	// How long the platform stands at a stop before the stop is on: longer than a step on the
+	// slowest ticks (3 ticks of 199 ms), so a platform passing by never switches it on.
+	liftStopSettle = 800 * time.Millisecond
 )
 
 func init() {
@@ -377,8 +393,65 @@ func liftPlayerIn(q powerPos, players [][3]float64) bool {
 	return false
 }
 
+// liftStopDrop: how far below a stop the platform holds, the same as below its winch.
+const liftStopDrop = liftHeadroom + 1
+
+// liftStopSides are the four cells around a shaft's column, where its stops are.
+var liftStopSides = [4]powerPos{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}
+
+// liftStops lists the stops of the winch at p, highest first: those around its column from the
+// winch's own height down to the lowest one the rope can serve.
+func (g *powerGrid) liftStops(p powerPos) []powerPos {
+	var stops []powerPos
+	for dy := 0; dy <= liftMaxRope+1-liftStopDrop; dy++ {
+		for _, side := range liftStopSides {
+			q := powerPos{p[0] + side[0], p[1] - dy, p[2] + side[2]}
+			if b := g.blocks[q]; b != nil && b.Kind == "lift_stop" {
+				stops = append(stops, q)
+			}
+		}
+	}
+	return stops
+}
+
+// liftCalled returns the height the called stop asks the platform to hold at. If two are called
+// (in one tick, or while a block cut the shaft in two) the last one stays and the others are freed.
+func (g *powerGrid) liftCalled(stops []powerPos, set func(powerPos, string) bool) (int, bool) {
+	var called *PowerBlock
+	var calledAt time.Time
+	for _, q := range stops {
+		b := g.blocks[q]
+		block, ok := logicParse(b.Name)
+		if !ok || block.get("call") != "called" {
+			continue
+		}
+		var at time.Time
+		if memory := g.logic.stops[q]; memory != nil {
+			at = memory.calledAt
+		}
+		loser := b
+		if called == nil || at.After(calledAt) {
+			loser, called, calledAt = called, b, at
+		}
+		if loser != nil {
+			free, _ := logicParse(loser.Name)
+			name := free.with("call", "free").String()
+			if set(loser.pos(), name) {
+				loser.Name = name
+				g.energyChanged = true
+			}
+		}
+	}
+	if called == nil {
+		return 0, false
+	}
+	return called.Y - liftStopDrop, true
+}
+
 // liftStep moves the platform of the winch at p one block, if it is time and there is room.
 func (g *powerGrid) liftStep(w cropWorld, p powerPos, powered bool, env powerEnvironment, now time.Time, set func(powerPos, string) bool) {
+	stops := g.liftStops(p)
+	target, called := g.liftCalled(stops, set)
 	if next, ok := g.mech.liftNext[p]; ok && now.Before(next) {
 		return
 	}
@@ -386,8 +459,15 @@ func (g *powerGrid) liftStep(w cropWorld, p powerPos, powered bool, env powerEnv
 	if !ok {
 		return
 	}
+	up := powered
+	if powered && len(stops) > 0 {
+		if !called || target == car[1] {
+			return // holding
+		}
+		up = target > car[1]
+	}
 	var to powerPos
-	if powered {
+	if up {
 		to = powerPos{car[0], car[1] + 1, car[2]}
 		if to[1]+liftHeadroom >= p[1] {
 			return // at the top
@@ -409,6 +489,69 @@ func (g *powerGrid) liftStep(w cropWorld, p powerPos, powered bool, env powerEnv
 	g.mech.events = append(g.mech.events, mechMove{
 		Kind: "lift", Dir: [3]int{0, to[1] - car[1], 0}, Moved: [][3]int{car}, Filled: [][3]int{to},
 	})
+}
+
+// liftStopMemory is what a stop remembers besides its name (not saved).
+type liftStopMemory struct {
+	input    bool      // the top face as last seen: a call is the signal coming on
+	calledAt time.Time // when it was last called: the last one called wins
+	here     time.Time // since when the platform is at its height
+}
+
+// liftStopMemoryOf finds or starts the memory of a stop. Seen for the first time (just placed, or
+// after a restart) a signal already there is no new call, and a stop that was on stays on.
+func (g *powerGrid) liftStopMemoryOf(p powerPos, block logicBlock, now time.Time) *liftStopMemory {
+	memory := g.logic.stops[p]
+	if memory == nil {
+		memory = &liftStopMemory{input: g.logicInput(p, logicFace("", "top"))}
+		if block.on() {
+			memory.here = now.Add(-liftStopSettle)
+		}
+		g.logic.stops[p] = memory
+	}
+	return memory
+}
+
+// liftStopHere reports whether a platform has stood at the height a stop at p holds it, in any of
+// the columns around the stop, for liftStopSettle.
+func liftStopHere(w cropWorld, p powerPos, memory *liftStopMemory, now time.Time) bool {
+	for _, side := range liftStopSides {
+		name, err := w.Block(p[0]+side[0], p[1]-liftStopDrop, p[2]+side[2])
+		if err == nil && name == "lift_platform" {
+			if memory.here.IsZero() {
+				memory.here = now
+			}
+			return now.Sub(memory.here) >= liftStopSettle
+		}
+	}
+	memory.here = time.Time{}
+	return false
+}
+
+// liftStopStep is a stop's tick (from logicStep, with this tick's signals): a call, whether the
+// platform is here, and the doors touching it. Returns the blocks to broadcast.
+func (g *powerGrid) liftStopStep(w cropWorld, p powerPos, now time.Time) []Block {
+	b := g.blocks[p]
+	block, ok := logicParse(b.Name)
+	if !ok {
+		return nil
+	}
+	memory := g.liftStopMemoryOf(p, block, now)
+	input := g.logicInput(p, logicFace("", "top"))
+	next := block
+	if input && !memory.input {
+		memory.calledAt = now
+		next = next.with("call", "called")
+	}
+	memory.input = input
+	next = next.with("power", logicPower(liftStopHere(w, p, memory, now)))
+	var updates []Block
+	if name := next.String(); name != b.Name {
+		if update, ok := g.logicRename(w, b, name); ok {
+			updates = append(updates, update)
+		}
+	}
+	return append(updates, powerMoveDoors(w, b, next.on())...)
 }
 
 // mechanicsDrain returns (and forgets) the moves of the last tick.

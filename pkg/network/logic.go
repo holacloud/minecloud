@@ -45,12 +45,15 @@ import (
 // written to the chunk store and broadcast as blockPlace like lit lamps. The memory of a latch
 // is its on/off state, so it survives a restart; signals in flight inside a delay do not.
 //
+// The lift stop (lift_stop, mechanics.go) is a logic block too: a stop calls the lift to its floor
+// and remembers it, on while the platform stands there. Its only input is its top face.
+//
 // Mobs do not press plates: they live on the clients, and letting every client report them
 // would make players disagree. Players' positions are on the server (playerMove).
 //
 // Hook for helpers (a future copper golem): the client message logicPress {x, y, z} does what
 // a player's right click does (toggle a lever, press a button, switch a daylight sensor's
-// mode, change a delay). On the server, logicPressAt is the same thing.
+// mode, change a delay, call the lift to a stop). On the server, logicPressAt is the same thing.
 
 // logicKind describes one logic block. Op is what it does; States names its block-name
 // states in order (values in logicStateValues). js/game/logic.js mirrors this table
@@ -73,6 +76,7 @@ var logicKinds = map[string]logicKind{
 	"not_gate":         {Op: "not", States: "facing,power"},
 	"delay_gate":       {Op: "delay", States: "facing,delay,power"},
 	"latch":            {Op: "latch", States: "facing,power"},
+	"lift_stop":        {Op: "stop", States: "call,power"},
 }
 
 // Values of each state; the first is the default.
@@ -81,6 +85,7 @@ var logicStateValues = map[string][]string{
 	"mode":   {"day", "night"},
 	"facing": {"n", "e", "s", "w"},
 	"delay":  {"1", "2", "3", "4"},
+	"call":   {"free", "called"},
 }
 
 const (
@@ -101,7 +106,7 @@ const (
 // Input faces of each gate, relative to its facing.
 var logicInputs = map[string][]string{
 	"and": {"left", "right"}, "or": {"left", "right"}, "xor": {"left", "right"},
-	"not": {"back"}, "delay": {"back"}, "latch": {"left", "right"},
+	"not": {"back"}, "delay": {"back"}, "latch": {"left", "right"}, "stop": {"top"},
 }
 
 func init() {
@@ -200,10 +205,12 @@ func logicPower(on bool) string {
 var logicFacingSteps = map[string]powerPos{"n": {0, 0, -1}, "e": {1, 0, 0}, "s": {0, 0, 1}, "w": {-1, 0, 0}}
 
 // logicFace is the step from a gate towards one of its faces ("front", "back", "left",
-// "right"; left and right as seen by someone looking towards the facing).
+// "right"; left and right as seen by someone looking towards the facing; "top" needs no facing).
 func logicFace(facing, face string) powerPos {
 	f := logicFacingSteps[facing]
 	switch face {
+	case "top":
+		return powerPos{0, 1, 0}
 	case "back":
 		return powerPos{-f[0], 0, -f[2]}
 	case "right":
@@ -250,6 +257,7 @@ func (g *powerGrid) joins(p, q powerPos) bool {
 type logicState struct {
 	buttons map[powerPos]time.Time // push buttons: on until
 	delays  map[powerPos]*logicDelay
+	stops   map[powerPos]*liftStopMemory // lift stops (mechanics.go)
 }
 
 type logicDelay struct {
@@ -263,7 +271,7 @@ type logicEvent struct {
 }
 
 func newLogicState() *logicState {
-	return &logicState{buttons: make(map[powerPos]time.Time), delays: make(map[powerPos]*logicDelay)}
+	return &logicState{buttons: make(map[powerPos]time.Time), delays: make(map[powerPos]*logicDelay), stops: make(map[powerPos]*liftStopMemory)}
 }
 
 // logicSignals works out, after the energy balance, which networks carry a signal.
@@ -316,10 +324,15 @@ func (g *powerGrid) logicStep(w cropWorld, env powerEnvironment, now time.Time) 
 		name string
 	}
 	var changes []change
+	var stops []powerPos
 	for _, p := range positions {
 		b := g.blocks[p]
 		block, ok := logicParse(b.Name)
 		if !ok {
+			continue
+		}
+		if block.kind.Op == "stop" {
+			stops = append(stops, p)
 			continue
 		}
 		on := g.logicEvaluate(p, block, env, now)
@@ -336,6 +349,9 @@ func (g *powerGrid) logicStep(w cropWorld, env powerEnvironment, now time.Time) 
 		if update, ok := g.logicRename(w, c.b, c.name); ok {
 			updates = append(updates, update)
 		}
+	}
+	for _, p := range stops {
+		updates = append(updates, g.liftStopStep(w, p, now)...)
 	}
 	return updates
 }
@@ -448,6 +464,11 @@ func (g *powerGrid) logicForgetGone() {
 			delete(g.logic.delays, p)
 		}
 	}
+	for p := range g.logic.stops {
+		if gone(p, "stop") {
+			delete(g.logic.stops, p)
+		}
+	}
 }
 
 // logicRename writes a logic block's new name to the world. The networks are rebuilt on the
@@ -504,6 +525,12 @@ func (g *powerGrid) press(w cropWorld, x, y, z int, now time.Time) (Block, bool)
 		values := logicStateValues["delay"]
 		i := strings.Index(strings.Join(values, ""), block.get("delay"))
 		next = block.with("delay", values[(i+1)%len(values)])
+	case "stop":
+		g.liftStopMemoryOf(p, block, now).calledAt = now
+		if block.get("call") == "called" {
+			return Block{}, false
+		}
+		next = block.with("call", "called")
 	default:
 		return Block{}, false
 	}

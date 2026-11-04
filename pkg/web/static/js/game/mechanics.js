@@ -8,7 +8,9 @@
 // - Lift winch (`lift_winch`, 60 W) and lift platform (`lift_platform`): the winch hangs the
 //   platform on ropes straight below it (only air between them, up to 48 blocks). Powered, it
 //   hoists the platform until it is 2 blocks below the winch (room for a player on it);
-//   unpowered, it lowers it until it rests on something. 2.5 blocks a second.
+//   unpowered, it lowers it until it rests on something. 2.5 blocks a second. With lift stops
+//   (`lift_stop`, js/game/logic.js) in the shaft's walls, a powered winch takes it to the stop
+//   called instead, up or down, and holds it 3 below that stop.
 // - The SERVER moves everything (pkg/network/mechanics.go) on the power tick, writes the
 //   blocks to the chunks and broadcasts them with blockPlace. State lives in the block NAME:
 //   `motor_ram:e:out`, `sticky_ram:u:in`, `ram_arm:e:plain` (js/blockShapes.js states).

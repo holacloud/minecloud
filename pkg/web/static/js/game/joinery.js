@@ -3,7 +3,8 @@
 //   declares the blocks, their textures and recipes, and the right click that opens them.
 // - Doors, trapdoors and gates toggle with a right click (crouch to place a block against
 //   them instead). The new state is an ordinary blockPlace, so every player sees it and the
-//   server saves it with the chunk. Iron ones open by hand too, for now.
+//   server saves it with the chunk. Iron ones open by hand too, for now, except one touching a
+//   lift stop (js/game/logic.js): that is a lift's landing door, moved only by the server.
 // - A door is two linked blocks: breaking either half removes the other (one door drops).
 // Mixed into Game.prototype; hooked through js/extensions.js.
 
@@ -230,6 +231,11 @@ Object.assign(Game.prototype, {
         const def = type && this.world.blockTypes[type];
         const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
         if (!shape || !shape.toggle || def.opensByHand === false) return false;
+        if (typeof logicStopLocks === 'function' && logicStopLocks(this.world, position)) {
+            this.receiveSystemMessage({ text: 'This door opens by itself when the lift is here' });
+            this.placeActionTimer = 0.25;
+            return true;
+        }
         const base = def.variantOf || type;
         const ray = this.getInteractionRay();
         const next = shape.toggle(def.state, { look: { x: ray.direction.x, z: ray.direction.z } });
