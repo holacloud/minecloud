@@ -68,6 +68,8 @@ type powerKind struct {
 	Switch bool
 	// Storage whose block name shows the charge in quarters (":1" .. ":4").
 	Levels int
+	// Consumers that ask for their Watts only while they have work (powerGrid.asks).
+	OnDemand bool
 }
 
 // Game time runs fast (a day is 240 s, a night about 120 s), so the numbers are scaled for
@@ -97,6 +99,9 @@ var powerKinds = map[string]powerKind{
 	// A fridge's two cells are one fridge: only the lower one asks for power (powerDemandOf).
 	"fridge":        {Role: powerConsumer, Watts: 30},
 	"chest_freezer": {Role: powerConsumer, Watts: 30},
+	// --- The electric arc furnace (appliances.go) ---
+	// 150 W: one 80 W rtg is not enough, two are. It asks only while it has work to do.
+	"arc_furnace": {Role: powerConsumer, Watts: 150, OnDemand: true},
 }
 
 const (
@@ -217,8 +222,10 @@ type powerGrid struct {
 	crank     map[powerPos]time.Time
 	holds     map[powerPos]powerHold
 	growLamps map[powerPos]bool
-	logic     *logicState
-	mech      *mechState
+	// On-demand consumers that have work right now (appliances.go says which).
+	asks  map[powerPos]bool
+	logic *logicState
+	mech  *mechState
 	// Battery charge (or a logic block's name) changed since the last save.
 	energyChanged bool
 }
@@ -232,6 +239,7 @@ func newPowerGrid() *powerGrid {
 		crank:     make(map[powerPos]time.Time),
 		holds:     make(map[powerPos]powerHold),
 		growLamps: make(map[powerPos]bool),
+		asks:      make(map[powerPos]bool),
 		logic:     newLogicState(),
 		mech:      newMechState(),
 	}
@@ -281,6 +289,7 @@ func (g *powerGrid) forget(p powerPos) {
 	delete(g.env, p)
 	delete(g.crank, p)
 	delete(g.growLamps, p)
+	delete(g.asks, p)
 	g.dirty = true
 }
 
@@ -548,7 +557,7 @@ func (g *powerGrid) simulate(network *powerNetwork, w cropWorld, env powerEnviro
 			network.gen += watts
 			network.sources[kind.Source] += watts
 		case powerConsumer:
-			network.demand += powerDemandOf(b)
+			network.demand += g.demandOf(b)
 		case powerStorage:
 			batteries = append(batteries, b)
 			network.stored += b.Energy
@@ -586,13 +595,14 @@ func (g *powerGrid) simulate(network *powerNetwork, w cropWorld, env powerEnviro
 	network.stored = stored
 }
 
-// powerDemandOf is what a consumer asks for: the upper half of a fridge asks nothing, as its lower
-// half has already asked for both.
-func powerDemandOf(b *PowerBlock) float64 {
-	if storageIsUpper(b.Name) {
+// demandOf is what a consumer asks for: the upper half of a fridge asks nothing, as its lower half
+// has already asked for both, and an idle arc furnace asks nothing either.
+func (g *powerGrid) demandOf(b *PowerBlock) float64 {
+	kind := powerKinds[b.Kind]
+	if storageIsUpper(b.Name) || (kind.OnDemand && !g.asks[b.pos()]) {
 		return 0
 	}
-	return powerKinds[b.Kind].Watts
+	return kind.Watts
 }
 
 // powerBalance decides one step: whether the consumers run, and the energy left in the
@@ -812,7 +822,8 @@ func (g *powerGrid) probe(x, y, z int, w cropWorld, env powerEnvironment, now ti
 			report.Own = g.generation(b, w, env, now)
 		}
 	case powerConsumer:
-		if network.powered {
+		// An idle arc furnace has asked for nothing.
+		if network.powered && (!kind.OnDemand || g.asks[p]) {
 			report.Own = -kind.Watts
 		}
 	case powerStorage:

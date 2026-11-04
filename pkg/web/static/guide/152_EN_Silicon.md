@@ -22,6 +22,14 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize SI
 |---|---|
 | 1 `element_si` | 1 `stone` + 1 `coal_ore` |
 
+Or as it is really done, in the [electric arc furnace](236), which needs 150 W:
+
+| Result | Ingredients |
+|---|---|
+| **3** `element_si` | 1 `sand` + 2 `coal_ore`, in 20 s |
+
+Sand is silicon and oxygen, and at about 2000 °C carbon carries the oxygen off: SiO₂ + 2 C → Si + 2 CO. The C recipe stays, and is instant.
+
 Each block is **one atom** at the [lab bench](117).
 
 ## In the lab

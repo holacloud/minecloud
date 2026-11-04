@@ -22,6 +22,14 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 |---|---|
 | 1 `element_si` | 1 `stone` + 1 `coal_ore` |
 
+O como se hace de verdad, en el [horno de arco eléctrico](236), que pide 150 W:
+
+| Resultado | Ingredientes |
+|---|---|
+| **3** `element_si` | 1 `sand` + 2 `coal_ore`, en 20 s |
+
+La arena es silicio y oxígeno, y a unos 2000 °C el carbono se lleva el oxígeno: SiO₂ + 2 C → Si + 2 CO. La receta del menú C sigue ahí, y es instantánea.
+
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
 ## En el laboratorio

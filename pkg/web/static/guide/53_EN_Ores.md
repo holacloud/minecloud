@@ -37,6 +37,8 @@ The ![Storm golem](mob:storm_golem) [storm golem](43) also drops **1–2 `iron_o
 | 1 element block (`element_*`) | 1 `stone` + **1** `coal_ore` |
 | 1 `cooked_fish` | 1 `raw_fish` + **1** `coal_ore` |
 
+Coal is also the fire of the [foundry](235), and an ingredient in the [electric arc furnace](236). The foundry smelts iron and gold ore into blocks, and the arc furnace turns iron ore and coal into steel.
+
 **Iron** (`iron_ore`):
 
 | Recipe | Ingredients |

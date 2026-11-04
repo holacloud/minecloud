@@ -32,8 +32,8 @@ import (
 //     (drops are client-side pickups: sent to everyone, everyone could collect a copy).
 //
 // A move is applied, saved, and only then answered. The log of answers is saved in the same
-// file as the contents, so after a crash they still agree. Ovens and cold furniture are chests
-// that also change what they hold on their own: appliances.go.
+// file as the contents, so after a crash they still agree. Ovens, foundries, arc furnaces and cold
+// furniture are chests that also change what they hold on their own: appliances.go.
 //
 // What this does NOT protect: the player's inventory lives in the browser and the server has no
 // way to know what it holds. A modified client can put items it never had, and the position the
@@ -44,9 +44,11 @@ import (
 // js/game/storage.js (test/js/furniture.test.js).
 
 var storageKinds = map[string]int{
+	"arc_furnace":   3,
 	"barrel":        18,
 	"chest":         27,
 	"chest_freezer": 36,
+	"foundry":       3,
 	"fridge":        18,
 	"oven":          3,
 	"wardrobe":      45,
@@ -102,7 +104,7 @@ type StorageBlock struct {
 	Kind string `json:"kind,omitempty"`
 	// A fridge's second compartment.
 	Freezer []StorageSlot `json:"freezer,omitempty"`
-	// An oven: seconds of fire left, of the fuel that lit it, and seconds the food has cooked.
+	// A machine: seconds of fire left, of the fuel that lit it, and seconds the batch has cooked.
 	Burn    float64 `json:"burn,omitempty"`
 	BurnMax float64 `json:"burnMax,omitempty"`
 	Cook    float64 `json:"cook,omitempty"`
@@ -138,8 +140,8 @@ type storageSnapshot struct {
 	Capacity int           `json:"capacity"`
 	Slots    []StorageSlot `json:"slots"`
 	Rev      int64         `json:"rev"`
-	// Appliances (appliances.go): the second compartment, whether this runs on electricity and
-	// has it now, and an oven's fire.
+	// Appliances (appliances.go): the second compartment, whether this is cold furniture, whether
+	// its network has power now, and a machine's fire and work.
 	Freezer []StorageSlot `json:"freezer,omitempty"`
 	Cold    bool          `json:"cold,omitempty"`
 	Powered bool          `json:"powered,omitempty"`
@@ -215,16 +217,20 @@ type storageBook struct {
 	viewers map[[3]int]map[*Client]bool
 	viewing map[*Client][3]int
 	// Appliances with work to do (appliances.go), by the key of their entry in blocks; the power
-	// each viewed cold block last showed; and blocks whose names changed, to broadcast.
+	// each viewed cold block last showed; for how many ticks each electric machine has asked the
+	// grid for power (up to 2); and blocks whose names changed, to broadcast.
 	active      map[string]bool
+	asked       map[string]int
 	shownPower  map[[3]int]bool
 	nameChanges []Block
 	// Sends a message to a watcher (replaced by the tests).
 	deliver func(*Client, []byte) bool
 	// Whether the cold block at this base cell has power, and telling the grid of a block it may
-	// not know (appliances.go; replaced by the tests).
-	powered func(cell [3]int) bool
-	adopt   func(x, y, z int, name string)
+	// not know, and an electric machine asking for its watts or no longer (appliances.go; replaced
+	// by the tests).
+	powered   func(cell [3]int) bool
+	adopt     func(x, y, z int, name string)
+	wantPower func(cell [3]int, on bool)
 }
 
 func newStorageBook() *storageBook {
@@ -234,10 +240,12 @@ func newStorageBook() *storageBook {
 		viewers:    make(map[[3]int]map[*Client]bool),
 		viewing:    make(map[*Client][3]int),
 		active:     make(map[string]bool),
+		asked:      make(map[string]int),
 		shownPower: make(map[[3]int]bool),
 		deliver:    storageDeliver,
 		powered:    powerRunsAt,
 		adopt:      powerAdopt,
+		wantPower:  powerAsk,
 	}
 }
 
@@ -308,13 +316,14 @@ func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
 			copy(snapshot.Freezer, block.Freezer)
 		}
 	}
-	if applianceIsCold(place.kind) {
-		snapshot.Cold = true
+	snapshot.Cold = applianceIsCold(place.kind)
+	if applianceUsesPower(place.kind) {
 		snapshot.Powered = b.powered(cell)
 		b.shownPower[cell] = snapshot.Powered
 	}
-	if place.kind == ovenKind {
-		snapshot.Oven = ovenStatusOf(block)
+	if m := machines[place.kind]; m != nil {
+		snapshot.Oven = ovenStatusOf(m, block)
+		snapshot.Oven.Starting = m.electric() && snapshot.Oven.CookMax > 0 && b.asked[storageKeyOf(cell)] < 2
 	}
 	return snapshot
 }
@@ -382,7 +391,7 @@ func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storage
 }
 
 // put adds up to move.Amount items, onto stacks of the same type first and then into empty
-// slots (in an oven, only into the one slot that item belongs in). Returns the answer and whether
+// slots (in a machine, only into the one slot that item belongs in). Returns the answer and whether
 // the contents changed (and must be saved).
 func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (storageOutcome, bool) {
 	b.mu.Lock()
@@ -393,10 +402,10 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 	}
 	capacity, _ := place.slots(move.Compartment)
 	first, last := 0, capacity
-	if place.kind == ovenKind {
-		slot := ovenSlotFor(move.Type)
+	if m := machines[place.kind]; m != nil {
+		slot := m.slotFor(move.Type)
 		if slot < 0 {
-			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "not for the oven"}), false
+			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "not for the " + m.Name}), false
 		}
 		first, last = slot, slot+1
 	}
@@ -468,7 +477,7 @@ func (b *storageBook) take(w cropWorld, eye *[3]float64, move storageMove) (stor
 	}
 	if block.holdsNothing() {
 		delete(b.blocks, key)
-		delete(b.active, key)
+		b.emptiedLocked(w, place)
 	} else {
 		b.wakeLocked(place, block)
 	}
@@ -583,6 +592,7 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 		}
 		delete(b.blocks, key)
 		delete(b.active, key)
+		b.stopAskingLocked(had, key)
 	}
 	b.rev++
 	if watchers := b.viewers[had]; len(watchers) > 0 {
@@ -603,6 +613,7 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 	defer b.mu.Unlock()
 	b.blocks = make(map[string]*StorageBlock, len(saved))
 	b.active = make(map[string]bool)
+	b.asked = make(map[string]int)
 	for _, block := range saved {
 		copied := block
 		copied.Slots = storageCleanSlots(block.Slots)

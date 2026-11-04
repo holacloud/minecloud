@@ -59,6 +59,8 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:wall_mirror) [Espejos](232): wall_mirror, mirror
 - ![](item:oven) [Horno](233): oven, roast_mushroom, recetas, combustibles y descongelar
 - ![](item:fridge) [Nevera y congelador](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
+- ![](item:foundry) [Fundición](235): foundry, qué funde y cuánto da
+- ![](item:arc_furnace) [Horno de arco eléctrico](236): arc_furnace, silicio y acero, la corriente que pide
 
 ## Herramientas
 
@@ -147,7 +149,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:wind_turbine) [Generadores](201): solar_panel, wind_turbine, water_wheel, hand_crank
 - ![](item:copper_wire) [Cables y redes](202): copper_wire, wire_post
 - ![](item:battery_block) [Baterías](203)
-- ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer
+- ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer, arc_furnace
 - ![](item:multimeter) [Multímetro](205)
 - ![](item:electric_motor) [Proyectos eléctricos](206)
 - ![](item:eel_tank) [Tanque de anguila](214): eel_tank, eel_bucket

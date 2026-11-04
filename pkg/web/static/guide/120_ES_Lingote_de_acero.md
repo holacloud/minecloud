@@ -16,6 +16,8 @@ En la [mesa de laboratorio](117), una reacción conocida desde el principio:
 |---|---|---|
 | `Fe + C → acero` | aleación | 2 `steel_ingot` |
 
+O en el [horno de arco eléctrico](236), sin laboratorio: 1 `iron_ore` + 1 `coal_ore` dan **2** `steel_ingot` en 15 s, con 150 W. Hoy se hace así mucho del acero del mundo, con chatarra fundida.
+
 ## Para qué sirve
 
 Con lingotes de acero se forjan las [herramientas de acero](128), las mejores del juego:

@@ -32,4 +32,4 @@ Si prefieres descubrirla tú, no sigas leyendo.
 |---|---|---|
 | `2 Si + B + P → Si : B, P (célula solar)` | dispositivo | 1 `solar_cell` |
 
-Ver también: [Química](115), [Silicio](152), [Batería de litio](189).
+Ver también: [Química](115), [Silicio](152), [Horno de arco eléctrico](236), [Batería de litio](189).

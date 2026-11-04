@@ -25,6 +25,8 @@ Los tres sueltan su propio bloque al romperlos.
 |---|---|
 | 2 `glass` | **3** `sand` |
 
+O en la [fundición](235): **3 `sand` dan 4 `glass`**, el doble, en 12 s y con carbón para el fuego. Valen las dos formas.
+
 La arena es uno de los ingredientes más usados:
 
 | Receta | Ingredientes |

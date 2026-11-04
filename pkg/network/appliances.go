@@ -19,6 +19,12 @@ import (
 //     out. It needs no electricity, and its block name shows the fire (oven:e:on), which only this
 //     file decides: settleOvenName overrides whatever a plan or a client places, so the light always
 //     follows the real fire.
+//   - The foundry and the arc furnace are ovens for hot work: a machine is an entry in `machines`
+//     (its recipes, and what goes in its second slot), and they all run through machine.step. The
+//     foundry burns coal like an oven burns fuel. The arc furnace has no fire: its second slot holds
+//     the coal its recipes use up as an ingredient, and it runs on electricity (power.go, OnDemand:
+//     it asks for its watts only while it has work, by wantPower). Without power it holds still and
+//     keeps what it had done. Its name shows the arc (arc_furnace:e:on) only while it really runs.
 //   - Cold furniture is a consumer on the power grid (power.go, 30 W). While its network runs, every
 //     stack in a compartment with a change in the table counts up, and all of it changes at once
 //     when its time is up. A network in a blackout counts nothing: the block is a plain cupboard
@@ -36,12 +42,16 @@ import (
 // doubled. Oven names live in the chunks, which may be ahead of world.json: the first tick after a
 // restart sets them right.
 //
-// ovenRecipes, ovenFuels, chillChanges and freezeChanges are mirrored by js/game/appliances.js
-// (test/js/furniture.test.js checks them).
+// ovenRecipes, ovenFuels, foundryRecipes, foundryFuels, arcRecipes, chillChanges and freezeChanges
+// are mirrored by js/game/appliances.js (test/js/furniture.test.js checks them).
 
 const (
-	ovenKind = "oven"
-	// Oven slots.
+	ovenKind    = "oven"
+	foundryKind = "foundry"
+	arcKind     = "arc_furnace"
+	// What the arc furnace's recipes use up, and what its second slot takes.
+	arcReducer = "coal_ore"
+	// The slots of every machine: what is worked on, the fuel (or the arc's coal), the result.
 	ovenSlotFood   = 0
 	ovenSlotFuel   = 1
 	ovenSlotResult = 2
@@ -56,8 +66,15 @@ const (
 
 type ovenRecipe struct {
 	Out     string
-	In      int // how many of the food make one result
+	In      int // how many of the food make one batch
 	Seconds float64
+	Yield   int // how many results one batch gives; 0 means 1
+	Coal    int // an arc furnace: how much of its second slot one batch uses up
+}
+
+// yield is how many results one batch gives.
+func (r ovenRecipe) yield() int {
+	return max(1, r.Yield)
 }
 
 // What the oven takes, and what becomes of it. Frozen food and ice thaw here, in a little while.
@@ -95,6 +112,48 @@ var ovenFuels = map[string]float64{
 	"willow_wood":     20,
 }
 
+// What the foundry smelts. Glass and stone beat the C menu's yields for the same material: there, 3
+// sand give 2 glass, and 1 cobblestone and 1 coal give 2 stone.
+var foundryRecipes = map[string]ovenRecipe{
+	"sand":        {Out: "glass", In: 3, Yield: 4, Seconds: 12},
+	"cobblestone": {Out: "stone", In: 1, Yield: 3, Seconds: 10},
+	"limestone":   {Out: "quicklime", In: 1, Yield: 2, Seconds: 15},
+	"iron_ore":    {Out: "iron_block", In: 1, Yield: 1, Seconds: 20},
+	"gold_ore":    {Out: "gold_block", In: 1, Yield: 1, Seconds: 15},
+}
+
+// Only coal burns hot enough to melt sand.
+var foundryFuels = map[string]float64{
+	"coal_ore": 80,
+}
+
+// What the arc furnace makes, with coal as an ingredient. SiO2 + 2 C -> Si + 2 CO at about 2000 C: in
+// the C menu 1 stone and 1 coal give 1 silicon, so the same 2 coal give half as much again here.
+var arcRecipes = map[string]ovenRecipe{
+	"sand":     {Out: "element_si", In: 1, Coal: 2, Yield: 3, Seconds: 20},
+	"iron_ore": {Out: "steel_ingot", In: 1, Coal: 1, Yield: 2, Seconds: 15},
+}
+
+// machine is what makes one block a machine: what it takes and what runs it.
+type machine struct {
+	Name    string // as it is said in a refusal
+	Recipes map[string]ovenRecipe
+	// Fire machines: what burns in the second slot. Without Fuels it runs on electricity.
+	Fuels map[string]float64
+	// Electric machines: the one item their second slot takes.
+	Reducer string
+}
+
+var machines = map[string]*machine{
+	ovenKind:    {Name: "oven", Recipes: ovenRecipes, Fuels: ovenFuels},
+	foundryKind: {Name: "foundry", Recipes: foundryRecipes, Fuels: foundryFuels},
+	arcKind:     {Name: "arc furnace", Recipes: arcRecipes, Reducer: arcReducer},
+}
+
+func (m *machine) electric() bool {
+	return m.Fuels == nil
+}
+
 // What a fridge compartment does in chillSeconds.
 var chillChanges = map[string]string{
 	"water_flask": "cold_water",
@@ -111,12 +170,14 @@ var freezeChanges = map[string]string{
 	"bread":       "frozen_bread",
 }
 
-// ovenStatus is an oven's fire in a storageContents message (seconds).
+// ovenStatus is a machine's fire and work in a storageContents message (seconds).
 type ovenStatus struct {
 	Burn    float64 `json:"burn"`
 	BurnMax float64 `json:"burnMax"`
 	Cook    float64 `json:"cook"`
 	CookMax float64 `json:"cookMax"`
+	// An electric machine with work that has only just asked the grid for power: no answer yet.
+	Starting bool `json:"starting,omitempty"`
 }
 
 func applianceIsCold(kind string) bool {
@@ -124,75 +185,85 @@ func applianceIsCold(kind string) bool {
 }
 
 func applianceIsKind(kind string) bool {
-	return kind == ovenKind || applianceIsCold(kind)
+	return machines[kind] != nil || applianceIsCold(kind)
 }
 
-// ovenSlotFor says which slot takes this item: the food's, the fuel's, or -1.
-func ovenSlotFor(item string) int {
-	if _, ok := ovenRecipes[item]; ok {
+// applianceUsesPower: its panel says whether it has electricity.
+func applianceUsesPower(kind string) bool {
+	m := machines[kind]
+	return applianceIsCold(kind) || (m != nil && m.electric())
+}
+
+// slotFor says which slot takes this item: the food's, the second one, or -1.
+func (m *machine) slotFor(item string) int {
+	if _, ok := m.Recipes[item]; ok {
 		return ovenSlotFood
 	}
-	if _, ok := ovenFuels[item]; ok {
+	if _, ok := m.Fuels[item]; ok || (m.electric() && item == m.Reducer) {
 		return ovenSlotFuel
 	}
 	return -1
 }
 
-// ovenBlockName is an oven's block name with this fire, as js/blockShapes.js writes it: the default
-// state is the bare name.
+// ovenBlockName is a machine's block name with this fire or arc, as js/blockShapes.js writes it: the
+// default state is the bare name.
 func ovenBlockName(name string, lit bool) string {
+	base := storageBase(name)
 	facing := "n"
 	if parts := strings.Split(name, ":"); len(parts) > 1 && len(parts[1]) == 1 && strings.Contains("nesw", parts[1]) {
 		facing = parts[1]
 	}
 	if lit {
-		return ovenKind + ":" + facing + ":on"
+		return base + ":" + facing + ":on"
 	}
 	if facing == "n" {
-		return ovenKind
+		return base
 	}
-	return ovenKind + ":" + facing + ":off"
+	return base + ":" + facing + ":off"
 }
 
-func ovenStatusOf(block *StorageBlock) *ovenStatus {
+func ovenStatusOf(m *machine, block *StorageBlock) *ovenStatus {
 	status := &ovenStatus{}
 	if block == nil {
 		return status
 	}
 	status.Burn, status.BurnMax, status.Cook = block.Burn, block.BurnMax, block.Cook
-	if recipe, ok := ovenCooking(block); ok {
+	if recipe, ok := m.cooking(block); ok {
 		status.CookMax = recipe.Seconds
 	}
 	return status
 }
 
-// ovenCooking returns the recipe of the food in the oven, if it could be cooked right now: enough of
-// it, and room for the result.
-func ovenCooking(block *StorageBlock) (ovenRecipe, bool) {
+// cooking returns the recipe of what is in the machine, if it could be worked right now: enough of
+// it, enough coal if the recipe uses any, and room for the whole result.
+func (m *machine) cooking(block *StorageBlock) (ovenRecipe, bool) {
 	if len(block.Slots) <= ovenSlotResult {
 		return ovenRecipe{}, false
 	}
-	food, result := block.Slots[ovenSlotFood], block.Slots[ovenSlotResult]
-	recipe, ok := ovenRecipes[food.Type]
+	food, second, result := block.Slots[ovenSlotFood], block.Slots[ovenSlotFuel], block.Slots[ovenSlotResult]
+	recipe, ok := m.Recipes[food.Type]
 	if !ok || food.Count < recipe.In {
 		return ovenRecipe{}, false
 	}
-	if result.Count > 0 && (result.Type != recipe.Out || result.Count >= storageMaxStack) {
+	if recipe.Coal > 0 && (second.Type != m.Reducer || second.Count < recipe.Coal) {
+		return ovenRecipe{}, false
+	}
+	if result.Count > 0 && (result.Type != recipe.Out || result.Count+recipe.yield() > storageMaxStack) {
 		return ovenRecipe{}, false
 	}
 	return recipe, true
 }
 
-// ovenStep runs the oven for dt seconds. changed: something a panel shows changed. work: it still has
-// something to do without anyone touching it.
-func ovenStep(block *StorageBlock, dt float64) (changed, work bool) {
+// step runs the machine for dt seconds; powered only matters to an electric one. changed: something a
+// panel shows changed. work: it still has something to do without anyone touching it.
+func (m *machine) step(block *StorageBlock, dt float64, powered bool) (changed, work bool) {
 	for len(block.Slots) <= ovenSlotResult {
 		block.Slots = append(block.Slots, StorageSlot{})
 	}
-	recipe, canCook := ovenCooking(block)
+	recipe, canCook := m.cooking(block)
 	fuel := &block.Slots[ovenSlotFuel]
-	if block.Burn <= 0 && canCook && fuel.Count > 0 && ovenFuels[fuel.Type] > 0 {
-		block.Burn, block.BurnMax = ovenFuels[fuel.Type], ovenFuels[fuel.Type]
+	if !m.electric() && block.Burn <= 0 && canCook && fuel.Count > 0 && m.Fuels[fuel.Type] > 0 {
+		block.Burn, block.BurnMax = m.Fuels[fuel.Type], m.Fuels[fuel.Type]
 		fuel.Count--
 		if fuel.Count == 0 {
 			*fuel = StorageSlot{}
@@ -203,34 +274,46 @@ func ovenStep(block *StorageBlock, dt float64) (changed, work bool) {
 		block.Cook = 0
 		changed = true
 	}
-	if block.Burn > 0 {
+	burning := block.Burn > 0
+	if burning {
 		changed = true
 		block.Burn = math.Max(0, block.Burn-dt)
-		if canCook {
-			block.Cook += dt
-			if block.Cook >= recipe.Seconds {
-				ovenFinish(block, recipe)
-			}
+	}
+	// It works while it burns or has power; without them, what it had done stays.
+	if canCook && (burning || powered) {
+		changed = true
+		block.Cook += dt
+		if block.Cook >= recipe.Seconds {
+			ovenFinish(block, recipe)
 		}
 	}
 	if block.Burn <= 0 {
 		block.BurnMax = 0
 	}
 	// A dish that has just finished may leave room or food for the next one.
-	_, canCook = ovenCooking(block)
+	_, canCook = m.cooking(block)
+	if m.electric() {
+		return changed, canCook
+	}
 	fuel = &block.Slots[ovenSlotFuel]
-	work = block.Burn > 0 || (canCook && fuel.Count > 0 && ovenFuels[fuel.Type] > 0)
+	work = block.Burn > 0 || (canCook && fuel.Count > 0 && m.Fuels[fuel.Type] > 0)
 	return changed, work
 }
 
 func ovenFinish(block *StorageBlock, recipe ovenRecipe) {
-	food, result := &block.Slots[ovenSlotFood], &block.Slots[ovenSlotResult]
+	food, second, result := &block.Slots[ovenSlotFood], &block.Slots[ovenSlotFuel], &block.Slots[ovenSlotResult]
 	food.Count -= recipe.In
 	if food.Count == 0 {
 		*food = StorageSlot{}
 	}
+	if recipe.Coal > 0 {
+		second.Count -= recipe.Coal
+		if second.Count == 0 {
+			*second = StorageSlot{}
+		}
+	}
 	result.Type = recipe.Out
-	result.Count++
+	result.Count += recipe.yield()
 	block.Cook = 0
 }
 
@@ -295,12 +378,21 @@ func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 		if storageBase(name) != block.Kind {
 			// Changed behind the book's back: not an appliance to run any more.
 			delete(b.active, key)
+			b.stopAskingLocked(cell, key)
 			continue
 		}
 		var changed, work bool
-		if block.Kind == ovenKind {
-			changed, work = ovenStep(block, dt)
-			b.showFireLocked(w, cell, name, block.Burn > 0)
+		if m := machines[block.Kind]; m != nil {
+			// The grid has heard an electric machine only if it asked before this tick.
+			changed, work = m.step(block, dt, m.electric() && b.asked[key] > 0 && b.powered(cell))
+			b.showFireLocked(w, cell, name, b.litLocked(m, cell, block))
+			if m.electric() {
+				if work {
+					b.askLocked(cell, key, &changed)
+				} else {
+					b.stopAskingLocked(cell, key)
+				}
+			}
 			if block.holdsNothing() {
 				delete(b.blocks, key)
 				work = false
@@ -322,7 +414,7 @@ func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 			b.notifyLocked(storagePlace{cell: cell, capacity: storageKinds[block.Kind], kind: block.Kind})
 		}
 	}
-	// A panel on a fridge says whether it has power, also with nothing in it to change.
+	// A panel on a fridge or an arc furnace says whether it has power, also with nothing changing.
 	for cell, shown := range b.shownPower {
 		if b.powered(cell) == shown {
 			continue
@@ -335,7 +427,52 @@ func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 	return b.drainNameChangesLocked(), save
 }
 
-// showFireLocked makes an oven's name show its fire.
+// litLocked says whether a machine is alight now: its fire, or an arc the grid is really feeding.
+func (b *storageBook) litLocked(m *machine, cell [3]int, block *StorageBlock) bool {
+	if block == nil {
+		return false
+	}
+	if !m.electric() {
+		return block.Burn > 0
+	}
+	_, canCook := m.cooking(block)
+	return canCook && b.asked[storageKeyOf(cell)] > 0 && b.powered(cell)
+}
+
+// askLocked asks the grid for an electric machine's watts, again every tick, as a grid that was
+// rebuilt or a block placed anew may not know. The grid balances 5 times a second, so one tick after
+// the first asking its answer counts. A panel is told when that moment comes.
+func (b *storageBook) askLocked(cell [3]int, key string, changed *bool) {
+	b.wantPower(cell, true)
+	if b.asked[key] < 2 {
+		b.asked[key]++
+		*changed = true
+	}
+}
+
+// stopAskingLocked ends an electric machine's demand on the grid, once it has no work.
+func (b *storageBook) stopAskingLocked(cell [3]int, key string) {
+	if _, asking := b.asked[key]; asking {
+		delete(b.asked, key)
+		b.wantPower(cell, false)
+	}
+}
+
+// emptiedLocked looks after an appliance whose last item was just taken out: nothing ticks it after
+// this, so an arc that was on goes out here.
+func (b *storageBook) emptiedLocked(w cropWorld, place storagePlace) {
+	key := storageKeyOf(place.cell)
+	delete(b.active, key)
+	b.stopAskingLocked(place.cell, key)
+	if m := machines[place.kind]; m != nil && m.electric() {
+		cell := place.cell
+		if name, err := w.Block(cell[0], cell[1], cell[2]); err == nil {
+			b.showFireLocked(w, cell, name, false)
+		}
+	}
+}
+
+// showFireLocked makes a machine's name show its fire or arc.
 func (b *storageBook) showFireLocked(w cropWorld, cell [3]int, name string, lit bool) {
 	want := ovenBlockName(name, lit)
 	if want == name {
@@ -349,17 +486,15 @@ func (b *storageBook) showFireLocked(w cropWorld, cell [3]int, name string, lit 
 }
 
 // settleOnOpenLocked looks after what a saved world can hold from before these blocks did anything:
-// an oven left lit with no fire goes out, and a fridge the grid never heard of joins it.
+// a machine left lit with no fire goes out, and a fridge the grid never heard of joins it.
 func (b *storageBook) settleOnOpenLocked(w cropWorld, place storagePlace) {
 	cell := place.cell
-	if place.kind == ovenKind {
-		block := b.blocks[storageKeyOf(cell)]
+	if m := machines[place.kind]; m != nil {
 		if name, err := w.Block(cell[0], cell[1], cell[2]); err == nil {
-			b.showFireLocked(w, cell, name, block != nil && block.Burn > 0)
+			b.showFireLocked(w, cell, name, b.litLocked(m, cell, b.blocks[storageKeyOf(cell)]))
 		}
-		return
 	}
-	if !applianceIsCold(place.kind) {
+	if !applianceUsesPower(place.kind) {
 		return
 	}
 	for dy := 0; dy <= 1; dy++ {
@@ -382,16 +517,16 @@ func (b *storageBook) drainNameChanges() []Block {
 	return b.drainNameChangesLocked()
 }
 
-// settleOvenName is the name a placed block gets: an oven shows the fire it really has, none unless
-// the oven standing there is burning. Other blocks keep their name, and pay nothing for this.
+// settleOvenName is the name a placed block gets: a machine shows the fire or arc it really has, none
+// unless the one standing there is alight. Other blocks keep their name, and pay nothing for this.
 func (b *storageBook) settleOvenName(x, y, z int, name string) string {
-	if storageBase(name) != ovenKind {
+	m := machines[storageBase(name)]
+	if m == nil {
 		return name
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	block := b.blocks[blockKey(x, y, z)]
-	return ovenBlockName(name, block != nil && block.Burn > 0)
+	return ovenBlockName(name, b.litLocked(m, [3]int{x, y, z}, b.blocks[blockKey(x, y, z)]))
 }
 
 // applianceCleanLoaded limits what a saved appliance can claim.
@@ -399,12 +534,13 @@ func applianceCleanLoaded(block *StorageBlock) {
 	if !applianceIsKind(block.Kind) {
 		block.Kind = ""
 	}
-	if block.Kind != ovenKind {
+	m := machines[block.Kind]
+	if m == nil {
 		block.Burn, block.BurnMax, block.Cook = 0, 0, 0
 		return
 	}
 	longest := 0.0
-	for _, seconds := range ovenFuels {
+	for _, seconds := range m.Fuels {
 		longest = math.Max(longest, seconds)
 	}
 	block.BurnMax = math.Max(0, math.Min(longest, block.BurnMax))
@@ -430,6 +566,18 @@ func powerAdopt(x, y, z int, name string) {
 	powerMu.Lock()
 	defer powerMu.Unlock()
 	grid.track(x, y, z, name)
+}
+
+// powerAsk sets whether an electric machine asks for its watts (power.go, OnDemand).
+func powerAsk(cell [3]int, on bool) {
+	powerMu.Lock()
+	defer powerMu.Unlock()
+	p := powerPos(cell)
+	if on && grid.blocks[p] != nil {
+		grid.asks[p] = true
+	} else {
+		delete(grid.asks, p)
+	}
 }
 
 func runAppliances() {

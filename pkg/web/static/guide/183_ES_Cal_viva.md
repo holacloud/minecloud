@@ -14,6 +14,8 @@ En la [mesa de laboratorio](117), con una reacción que hay que **descubrir**: e
 
 > *Un calcio con un solo oxígeno: la cal de los albañiles.*
 
+O en la [fundición](235), como en un horno de cal: 1 `limestone` da **2** `quicklime` en 15 s.
+
 ## Para qué sirve
 
 | Receta (tecla C) | Ingredientes |

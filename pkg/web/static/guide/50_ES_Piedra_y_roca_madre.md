@@ -26,6 +26,8 @@ puede romper.
 |---|---|
 | **2** `stone` | 1 `cobblestone` + 1 `coal_ore` |
 
+- O en la [fundición](235): **1 `cobblestone` da 3 `stone`** en 10 s, y un carbón funde 8. La receta del menú C sigue ahí, y es instantánea.
+
 - El **adoquín** suelta adoquín.
 - La **roca madre** no se puede romper: el inspector de bloques dice «Unbreakable».
 - Al empezar llevas **24 adoquines**.

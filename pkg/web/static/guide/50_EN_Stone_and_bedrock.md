@@ -26,6 +26,8 @@ can break.
 |---|---|
 | **2** `stone` | 1 `cobblestone` + 1 `coal_ore` |
 
+- Or in the [foundry](235): **1 `cobblestone` gives 3 `stone`** in 10 s, and one coal smelts 8 of them. The C recipe stays, and is instant.
+
 - **Cobblestone** drops cobblestone.
 - **Bedrock** cannot be broken: the block inspector says "Unbreakable".
 - You start with **24 cobblestone**.

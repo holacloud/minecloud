@@ -53,6 +53,10 @@ Una caja de acero con bobinas de cobre dentro. Con corriente, un ventilador **gi
 
 Muebles que funcionan con electricidad: mira [Nevera y congelador](234). Sin corriente son armarios corrientes, y nada de lo que hay dentro cambia.
 
+## Horno de arco eléctrico
+
+Una máquina que funde arena y carbón en silicio: mira [Horno de arco eléctrico](236). Gasta **150 W**, más que ningún otro consumidor, y solo mientras tiene trabajo: parado, no pide nada. Un [generador de radioisótopos](220) de 80 W no basta, dos sí.
+
 ## Todo o nada
 
 Si la red no puede dar a cada consumidor lo que necesita, **se apagan todos** (ver [Electricidad](200)). A mediodía

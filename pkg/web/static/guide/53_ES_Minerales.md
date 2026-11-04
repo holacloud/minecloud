@@ -37,6 +37,8 @@ El ![Golem de tormenta](mob:storm_golem) [golem de tormenta](43) también suelta
 | 1 bloque de elemento (`element_*`) | 1 `stone` + **1** `coal_ore` |
 | 1 `cooked_fish` | 1 `raw_fish` + **1** `coal_ore` |
 
+El carbón es también el fuego de la [fundición](235), y un ingrediente del [horno de arco eléctrico](236). La fundición funde el hierro y el oro en bloques, y el horno de arco hace acero con hierro y carbón.
+
 **Hierro** (`iron_ore`):
 
 | Receta | Ingredientes |

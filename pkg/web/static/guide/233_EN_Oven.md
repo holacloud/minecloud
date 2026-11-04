@@ -50,6 +50,8 @@ If the result slot holds something else, the oven waits until you empty it. If t
 
 The [C menu](11) still cooks fish and bakes bread too, with no oven and no waiting. The oven makes you wait, and saves coal: one piece of coal cooks four fish, against one each in the menu.
 
+The oven is for food. Sand, stone and other materials go in the [foundry](235) and the [electric arc furnace](236).
+
 ## Why food turns brown
 
 Heat does more than warm food up. When the surface of a piece of food gets hot and dry, above about 140 °C, its proteins and sugars start reacting together. They make hundreds of new substances, brown in colour and full of smell: that is the crust of bread and the golden skin of a roast. It is called the **Maillard reaction**, after the French chemist who described it in 1912.

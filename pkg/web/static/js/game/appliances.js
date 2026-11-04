@@ -1,12 +1,15 @@
-// What the oven and the cold furniture make, and the items only they make. The rules run on the
-// SERVER (pkg/network/appliances.go): this file holds a copy of its tables, for the panel to show
-// what will happen (js/game/storage.js), and the new items' looks and what G does with them.
+// What the oven, the foundry, the arc furnace and the cold furniture make, and the items only they
+// make. The rules run on the SERVER (pkg/network/appliances.go): this file holds a copy of its
+// tables, for the panel to show what will happen (js/game/storage.js), and the new items' looks and
+// what G does with them. The foundry's and the arc furnace's blocks are js/game/smelters.js.
 // - The oven takes food and fuel, cooks while it burns, and is the only thing that thaws.
+// - The foundry smelts with coal; the arc furnace runs on electricity and uses coal as an ingredient.
 // - The fridge chills drinks, the freezer freezes water and food; both need power.
 // - Nothing spoils, and nothing changes in the inventory: what comes out cold stays cold, and what
 //   comes out frozen stays frozen until an oven thaws it. Frozen food cannot be eaten.
-// APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_CHILL and APPLIANCE_FREEZE mirror ovenRecipes,
-// ovenFuels, chillChanges and freezeChanges in appliances.go (test/js/furniture.test.js checks them).
+// APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_FOUNDRY, APPLIANCE_FOUNDRY_FUELS, APPLIANCE_ARC,
+// APPLIANCE_CHILL and APPLIANCE_FREEZE mirror ovenRecipes, ovenFuels, foundryRecipes, foundryFuels,
+// arcRecipes, chillChanges and freezeChanges in appliances.go (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; hooked through js/extensions.js.
 
 const APPLIANCE_RECIPES = {
@@ -27,6 +30,43 @@ const APPLIANCE_FUELS = {
     wood: 20, spruce_wood: 20, birch_wood: 20, jungle_wood: 20, acacia_wood: 20, dark_oak_wood: 20, cherry_wood: 20, maple_wood: 20, willow_wood: 20
 };
 
+// What the foundry smelts, and what burns in it. `yield` is how many results one batch gives (1 if
+// it does not say); `coal` is what one batch of the arc furnace uses up of its second slot.
+const APPLIANCE_FOUNDRY = {
+    sand: { out: 'glass', in: 3, yield: 4, seconds: 12 },
+    cobblestone: { out: 'stone', in: 1, yield: 3, seconds: 10 },
+    limestone: { out: 'quicklime', in: 1, yield: 2, seconds: 15 },
+    iron_ore: { out: 'iron_block', in: 1, yield: 1, seconds: 20 },
+    gold_ore: { out: 'gold_block', in: 1, yield: 1, seconds: 15 }
+};
+const APPLIANCE_FOUNDRY_FUELS = { coal_ore: 80 };
+const APPLIANCE_ARC = {
+    sand: { out: 'element_si', in: 1, coal: 2, yield: 3, seconds: 20 },
+    iron_ore: { out: 'steel_ingot', in: 1, coal: 1, yield: 2, seconds: 15 }
+};
+const APPLIANCE_ARC_REDUCER = 'coal_ore';
+
+// One entry per machine: what the panel shows and what it takes (`machines` in appliances.go).
+const APPLIANCE_MACHINES = {
+    oven: {
+        recipes: APPLIANCE_RECIPES, fuels: APPLIANCE_FUELS, captions: ['Food', 'Fuel', 'Result'], work: 'Cooking',
+        items: 'Your food and fuel: click to put them in', noFire: 'No fire: it lights by itself with food and fuel',
+        working: 'cooking', idle: 'nothing to cook',
+        refused: 'not for the oven', refusal: 'The oven only takes food to cook or thaw, and fuel'
+    },
+    foundry: {
+        recipes: APPLIANCE_FOUNDRY, fuels: APPLIANCE_FOUNDRY_FUELS, captions: ['To smelt', 'Coal', 'Result'], work: 'Smelting',
+        items: 'What you can smelt, and coal: click to put them in', noFire: 'No fire: it lights by itself with something to smelt and coal',
+        working: 'smelting', idle: 'nothing to smelt',
+        refused: 'not for the foundry', refusal: 'The foundry only takes what it can smelt, and coal to burn'
+    },
+    arc_furnace: {
+        recipes: APPLIANCE_ARC, reducer: APPLIANCE_ARC_REDUCER, captions: ['To melt', 'Coal', 'Result'], work: 'Melting',
+        items: 'What it can melt, and coal: click to put them in',
+        refused: 'not for the arc furnace', refusal: 'The arc furnace only takes what it can melt, and coal'
+    }
+};
+
 const APPLIANCE_CHILL = { water_flask: 'cold_water', milk: 'cold_milk', soda_water: 'cold_soda' };
 const APPLIANCE_FREEZE = { water_flask: 'ice', cold_water: 'ice', raw_fish: 'frozen_fish', cooked_fish: 'frozen_cooked_fish', bread: 'frozen_bread' };
 const APPLIANCE_CHILL_SECONDS = 60;
@@ -37,7 +77,28 @@ const APPLIANCE_FREEZE_SECONDS = 120;
 
 // Whether the oven takes this item, in the food's slot or the fuel's.
 function applianceOvenTakes(type) {
-    return Boolean(APPLIANCE_RECIPES[type] || APPLIANCE_FUELS[type]);
+    return applianceMachineTakes('oven', type);
+}
+
+// Whether this machine takes this item, in either slot.
+function applianceMachineTakes(kind, type) {
+    const machine = APPLIANCE_MACHINES[kind];
+    return Boolean(machine && (machine.recipes[type] || (machine.fuels && machine.fuels[type]) || machine.reducer === type));
+}
+
+// What a refusal means, in words, or null if it is not a machine's.
+function applianceRefusalNote(reason) {
+    const machine = Object.values(APPLIANCE_MACHINES).find((entry) => entry.refused === reason);
+    return machine ? machine.refusal : null;
+}
+
+// What a machine will do with this item, as a sentence, for a panel: names is (type) => its name.
+function applianceRecipeLine(kind, type, names) {
+    const machine = APPLIANCE_MACHINES[kind];
+    const recipe = machine && machine.recipes[type];
+    if (!recipe) return '';
+    const coal = recipe.coal ? ` and ${recipe.coal} ${names(machine.reducer)}` : '';
+    return `${recipe.in} ${names(type)}${coal} make ${recipe.yield || 1} ${names(recipe.out)} in ${recipe.seconds} s`;
 }
 
 // What a compartment does: a fridge's main one chills, any other cold one freezes.

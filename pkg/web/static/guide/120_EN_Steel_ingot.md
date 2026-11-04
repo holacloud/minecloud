@@ -16,6 +16,8 @@ At the [lab bench](117), a reaction known from the start:
 |---|---|---|
 | `Fe + C → steel` | alloy | 2 `steel_ingot` |
 
+Or in the [electric arc furnace](236), with no lab: 1 `iron_ore` + 1 `coal_ore` give **2** `steel_ingot` in 15 s, with 150 W. Much of the world's steel is made in such furnaces today, from melted scrap.
+
 ## What it is for
 
 Steel ingots forge the [steel tools](128), the best in the game:

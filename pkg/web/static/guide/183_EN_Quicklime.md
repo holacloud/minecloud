@@ -14,6 +14,8 @@ At the [lab bench](117), with a reaction you have to **discover**: it shows as "
 
 > *One calcium with a single oxygen: the builders' lime.*
 
+Or in the [foundry](235), as a lime kiln does: 1 `limestone` gives **2** `quicklime` in 15 s.
+
 ## What it is for
 
 | Recipe (C key) | Ingredients |

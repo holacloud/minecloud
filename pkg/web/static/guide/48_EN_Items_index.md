@@ -59,6 +59,8 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:wall_mirror) [Mirrors](232): wall_mirror, mirror
 - ![](item:oven) [Oven](233): oven, roast_mushroom, recipes, fuels and thawing
 - ![](item:fridge) [Fridge and freezer](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
+- ![](item:foundry) [Foundry](235): foundry, what it smelts and its yields
+- ![](item:arc_furnace) [Electric arc furnace](236): arc_furnace, silicon and steel, the power it needs
 
 ## Tools
 
@@ -147,7 +149,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:wind_turbine) [Generators](201): solar_panel, wind_turbine, water_wheel, hand_crank
 - ![](item:copper_wire) [Wires and networks](202): copper_wire, wire_post
 - ![](item:battery_block) [Batteries](203)
-- ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer
+- ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer, arc_furnace
 - ![](item:multimeter) [Multimeter](205)
 - ![](item:electric_motor) [Electric projects](206)
 - ![](item:eel_tank) [Eel tank](214): eel_tank, eel_bucket

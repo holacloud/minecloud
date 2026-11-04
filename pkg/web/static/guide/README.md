@@ -298,6 +298,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 232 | Espejos | Mirrors | wall_mirror, mirror: real reflection up close (js/game/mirrors.js); how a mirror works, links to 181 |
 | 233 | Horno | Oven | oven, roast_mushroom: cooks and thaws on the server with fuel (pkg/network/appliances.go, js/game/appliances.js), recipes and fuels; the Maillard reaction, how an oven heats |
 | 234 | Nevera y congelador | Fridge and freezer | fridge (two compartments), chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread; food does not spoil in the game; bacteria and cold, water expanding as it freezes, how a fridge moves heat |
+| 235 | Fundición | Foundry | foundry: smelts with coal on the server (pkg/network/appliances.go, js/game/smelters.js), recipes and yields against the C menu; why sand melts into glass, why coal burns hotter than wood |
+| 236 | Horno de arco eléctrico | Electric arc furnace | arc_furnace: 150 W only while it has work, coal as an ingredient, silicon and steel, what can power it; how carbon pulls oxygen off silica, how an arc makes 2000 °C, from silicon to chips and solar cells |
 
 ### Secret pages
 

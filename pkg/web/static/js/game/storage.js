@@ -1,5 +1,5 @@
-// The panel of chests, barrels, wardrobes, ovens, fridges and chest freezers (`storageSlots` in
-// js/game/furniture.js). What they hold lives on the server (pkg/network/storage.go): this file
+// The panel of chests, barrels, wardrobes, ovens, foundries, arc furnaces, fridges and chest freezers
+// (`storageSlots` in js/game/furniture.js). What they hold lives on the server (pkg/network/storage.go): this file
 // only asks and shows.
 // - A right click opens the panel (crouch to build against the chest). It shows the chest's slots
 //   and the player's items; a click or tap moves the amount picked in the row above them. Other
@@ -11,15 +11,16 @@
 //   reconnection or a reload: the server answers from its log, or kills a move that never
 //   arrived so that it can no longer apply.
 // - When a chest is broken the server sends its contents to whoever broke it, as pickups.
-// - An oven shows food, fuel and result with its fire and cooking as bars; a fridge has two tabs, a
-//   compartment each. Cold furniture says whether it has power. Both change on their own, on the
+// - A machine (APPLIANCE_MACHINES) shows what it works on, its fuel or coal and the result, with
+//   its fire and work as bars, and lists only what fits it; a fridge has two tabs, a compartment
+//   each. Cold furniture and the arc furnace say whether they have power. All change on their own, on the
 //   server (js/game/appliances.js): while the slots stay the same only the bars and the line of
 //   status are redrawn, so that a click on a cell is not lost when an update lands on it.
 // STORAGE_KINDS and STORAGE_FREEZERS mirror storageKinds and storageFreezers in storage.go
 // (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; the panel is a modal panel (see registerModalPanel).
 
-const STORAGE_KINDS = { barrel: 18, chest: 27, chest_freezer: 36, fridge: 18, oven: 3, wardrobe: 45 };
+const STORAGE_KINDS = { arc_furnace: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, oven: 3, wardrobe: 45 };
 // Kinds with a second compartment, and how many slots it has.
 const STORAGE_FREEZERS = { fridge: 9 };
 const STORAGE_FREEZER_TAB = 'freezer';
@@ -95,11 +96,20 @@ function storageSameStacks(a, b) {
     return a.every((slot, i) => (slot.type || '') === (b[i].type || '') && (slot.count || 0) === (b[i].count || 0));
 }
 
-// The line of status of an oven, from what the server says of its fire.
-function storageOvenStatus(oven) {
-    if (!oven || !(oven.burn > 0)) return 'No fire: it lights by itself with food and fuel';
+// The line of status of a machine that burns, from what the server says of its fire.
+function storageOvenStatus(oven, machine = APPLIANCE_MACHINES.oven) {
+    if (!oven || !(oven.burn > 0)) return machine.noFire;
     const left = `Burning, ${Math.ceil(oven.burn)} s of fire left`;
-    return oven.cookMax > 0 ? `${left}: cooking` : `${left}: nothing to cook`;
+    return oven.cookMax > 0 ? `${left}: ${machine.working}` : `${left}: ${machine.idle}`;
+}
+
+// The line of status of an electric machine: `off` when what it says is that it lacks power.
+function storageArcStatus(kind, contents) {
+    const watts = ELECTRIC_KINDS[kind].watts;
+    if (!contents.oven || !(contents.oven.cookMax > 0)) return { text: `Waiting for work: it draws no power until it has what it needs (then ${watts} W)`, off: false };
+    if (contents.oven.starting) return { text: `Asking the network for ${watts} W...`, off: false };
+    if (contents.powered) return { text: `Arc on, drawing ${watts} W`, off: false };
+    return { text: `No power: needs ${watts} W. It waits, and keeps what it has done`, off: true };
 }
 
 // A bar's width from a value and its maximum.
@@ -240,7 +250,7 @@ Object.assign(Game.prototype, {
         this.storageSavePending();
         const { give } = storageApplyOutcome(pending, outcome.amount);
         if (pending.op === 'put' && outcome.reason === 'full') this.storageNote = 'It is full';
-        if (outcome.reason === 'not for the oven') this.storageNote = 'The oven only takes food to cook or thaw, and fuel';
+        if (applianceRefusalNote(outcome.reason)) this.storageNote = applianceRefusalNote(outcome.reason);
         if (give > 0 && this.world.blockTypes[pending.type]) this.addInventory(pending.type, give);
         this.storageRender();
         if (outcome.amount > 0) this.playPickupSound();
@@ -398,28 +408,28 @@ Object.assign(Game.prototype, {
         panel.querySelector('#storage-title').textContent = this.storageTitle;
         panel.querySelectorAll('.storage-amount').forEach((button) => button.classList.toggle('active', Number(button.dataset.amount) === mode));
         panel.querySelector('#storage-note').textContent = this.storageNote || '';
-        const isOven = this.storageKind === 'oven';
+        const machine = APPLIANCE_MACHINES[this.storageKind];
         panel.querySelector('#storage-tabs').style.display = STORAGE_FREEZERS[this.storageKind] ? '' : 'none';
         panel.querySelectorAll('.storage-tab').forEach((button) => button.classList.toggle('active', button.dataset.tab === this.storageTab));
 
         const slots = panel.querySelector('#storage-slots');
         slots.innerHTML = '';
-        slots.className = isOven ? 'storage-oven' : 'storage-grid';
+        slots.className = machine ? 'storage-oven' : 'storage-grid';
         const shown = this.storageShownSlots();
         if (!shown) {
             slots.textContent = 'Opening...';
-        } else if (isOven) {
-            this.storageRenderOven(slots, shown);
+        } else if (machine) {
+            this.storageRenderOven(slots, shown, machine);
         } else {
             shown.forEach((slot, index) => slots.appendChild(this.storageSlotCell(slot, index)));
         }
 
         const items = panel.querySelector('#storage-items');
         items.innerHTML = '';
-        panel.querySelector('#storage-items-title').textContent = isOven ? 'Your food and fuel: click to put them in' : 'Your items: click to put them in';
+        panel.querySelector('#storage-items-title').textContent = machine ? machine.items : 'Your items: click to put them in';
         const query = (this.storageSearch || '').trim().toLowerCase();
         const matches = this.inventory.filter((type) => this.getInventoryCount(type) > 0 && this.world.blockTypes[type] &&
-            (!isOven || applianceOvenTakes(type)) && (!query || `${type} ${this.getBlockDisplayName(type)}`.toLowerCase().includes(query)));
+            (!machine || applianceMachineTakes(this.storageKind, type)) && (!query || `${type} ${this.getBlockDisplayName(type)}`.toLowerCase().includes(query)));
         matches.slice(0, STORAGE_LIST_MAX).forEach((type) => {
             items.appendChild(this.storageCell(type, this.getInventoryCount(type), this.getBlockDisplayName(type), () => this.storagePut(type)));
         });
@@ -444,7 +454,7 @@ Object.assign(Game.prototype, {
         return cell;
     },
 
-    storageRenderOven(slots, shown) {
+    storageRenderOven(slots, shown, machine) {
         const piece = (index, caption) => {
             const box = document.createElement('div');
             box.className = 'storage-oven-slot';
@@ -454,8 +464,9 @@ Object.assign(Game.prototype, {
         };
         const bars = document.createElement('div');
         bars.className = 'storage-oven-bars';
-        bars.innerHTML = '<div>Fire<div class="storage-bar" id="storage-fire"><i></i></div></div><div>Cooking<div class="storage-bar" id="storage-cook"><i></i></div></div>';
-        slots.append(piece(0, 'Food'), piece(1, 'Fuel'), bars, piece(2, 'Result'));
+        const fire = machine.fuels ? '<div>Fire<div class="storage-bar" id="storage-fire"><i></i></div></div>' : '';
+        bars.innerHTML = `${fire}<div>${machine.work}<div class="storage-bar" id="storage-cook"><i></i></div></div>`;
+        slots.append(piece(0, machine.captions[0]), piece(1, machine.captions[1]), bars, piece(2, machine.captions[2]));
     },
 
     // What changes on its own: the bars and the line of status.
@@ -469,11 +480,23 @@ Object.assign(Game.prototype, {
         if (!contents) return;
         if (contents.oven) {
             const { burn, burnMax, cook, cookMax } = contents.oven;
-            status.textContent = storageOvenStatus(contents.oven);
+            const machine = APPLIANCE_MACHINES[this.storageKind];
             const fire = panel.querySelector('#storage-fire i');
             const food = panel.querySelector('#storage-cook i');
             if (fire) fire.style.width = `${storagePercent(burn, burnMax)}%`;
             if (food) food.style.width = `${storagePercent(cook, cookMax)}%`;
+            if (machine && machine.fuels) {
+                status.textContent = storageOvenStatus(contents.oven, machine);
+            } else if (machine) {
+                const line = storageArcStatus(this.storageKind, contents);
+                status.textContent = line.text;
+                status.classList.toggle('off', line.off);
+                if (food) food.parentNode.classList.toggle('paused', line.off);
+            }
+            // The foundry and the arc furnace say what they will make of what is in them.
+            const held = this.storageKind !== 'oven' && contents.slots[0] && contents.slots[0].type;
+            const recipe = held ? applianceRecipeLine(this.storageKind, held, (type) => this.getBlockDisplayName(type)) : '';
+            if (recipe) status.textContent += `. ${recipe}`;
         }
         if (!contents.cold) return;
         const table = applianceColdTable(this.storageKind, this.storageTab);

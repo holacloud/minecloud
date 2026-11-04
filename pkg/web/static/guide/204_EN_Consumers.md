@@ -50,6 +50,10 @@ A steel box with copper coils inside. With power, a fan **spins** on top and its
 
 Furniture that works on electricity: see [Fridge and freezer](234). Without power they are plain cupboards, and nothing in them changes.
 
+## Electric arc furnace
+
+A machine that melts sand and coal into silicon: see [Electric arc furnace](236). It draws **150 W**, the most of any consumer, and only while it has work: idle, it asks for nothing. One 80 W [radioisotope generator](220) is not enough, two are.
+
 ## All or nothing
 
 If the network cannot give every consumer what it needs, **they all switch off** (see [Electricity](200)). At noon a

@@ -75,7 +75,7 @@ function loadGame() {
     const html = fs.readFileSync(path.join(STATIC, 'index.html'), 'utf8');
     const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1])
         .filter((src) => !/^(https?:)?\/\//.test(src) && !print.SKIP_SCRIPTS.test(src));
-    for (const name of ['furniture', 'seating', 'storage', 'decor', 'mirrors']) assert.ok(scripts.includes(`js/game/${name}.js`), `index.html loads ${name}.js`);
+    for (const name of ['furniture', 'seating', 'storage', 'appliances', 'smelters', 'decor', 'mirrors']) assert.ok(scripts.includes(`js/game/${name}.js`), `index.html loads ${name}.js`);
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
         GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, STORAGE_FREEZERS, ELECTRIC_KINDS, ITEM_TYPES, ANT_FOOD_ITEMS, ANT_FARM_FOODS,
@@ -85,7 +85,8 @@ function loadGame() {
         furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval,
-        MIRROR_RANGE, MIRROR_TARGET_MAX });`, context);
+        MIRROR_RANGE, MIRROR_TARGET_MAX, APPLIANCE_FOUNDRY, APPLIANCE_FOUNDRY_FUELS, APPLIANCE_ARC, APPLIANCE_ARC_REDUCER, APPLIANCE_MACHINES,
+        applianceMachineTakes, applianceRefusalNote, applianceRecipeLine, storageArcStatus, shapeStateName });`, context);
     return context;
 }
 
@@ -93,7 +94,7 @@ const ctx = loadGame();
 
 const COLORS = ['white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black'];
 const PIECES = ['oak_chair', 'birch_chair', 'dark_oak_chair', 'stool', 'bench', 'table', 'bedside_table', 'desk', 'chest', 'barrel', 'wardrobe', 'bookshelf',
-    'wall_shelf', 'workbench', 'oven', 'sink', 'fridge', 'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'wall_clock', 'flower_pot', 'vase',
+    'wall_shelf', 'workbench', 'oven', 'foundry', 'arc_furnace', 'sink', 'fridge', 'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'wall_clock', 'flower_pot', 'vase',
     'painting_sunset', 'painting_peaks', 'painting_meadow', 'painting_night', 'painting_shapes', 'painting_fish', 'wall_mirror'];
 const ITEMS = [...PIECES, ...COLORS.flatMap((c) => [`${c}_sofa`, `${c}_stained_glass`, `${c}_stained_glass_pane`, `${c}_carpet`, `${c}_curtain`])];
 
@@ -464,7 +465,7 @@ test('every item has a survival recipe from materials that exist', () => {
     for (const hook of ctx.GAME_CONTENT_HOOKS) {
         // Only this feature's recipes matter here; other hooks may need a full game.
         const source = hook.toString();
-        if (!/furnit|FURNITURE|DECOR_GLASS|Build Chest|Stain|Wall Mirrors/.test(source)) continue;
+        if (!/furnit|FURNITURE|DECOR_GLASS|Build Chest|Build Foundry|Stain|Wall Mirrors/.test(source)) continue;
         hook.call(game, { addItem() {}, addRecipe: (id, name, output, amount, inputs) => recipes.push({ id, name, output, amount, inputs }) });
     }
     const outputs = new Set(recipes.map((recipe) => recipe.output));
@@ -917,6 +918,201 @@ test('appliances: the blocks: storage, electricity, recipes, and the oven no lon
     assert.ok(recipes.has('cook_fish'), 'the old recipe stays, as another way to cook');
 });
 
+test('smelters: the tables match the server', () => {
+    const go = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'appliances.go'), 'utf8');
+    const table = (name) => {
+        const start = go.indexOf(`var ${name} =`);
+        assert.ok(start >= 0, name);
+        return go.slice(start, go.indexOf('\n}\n', start));
+    };
+    const recipes = (name) => {
+        const found = {};
+        for (const [, food, fields] of table(name).matchAll(/"(\w+)":\s*\{([^}]*)\}/g)) {
+            const recipe = { out: fields.match(/Out: "(\w+)"/)[1], in: Number(fields.match(/In: (\d+)/)[1]), seconds: Number(fields.match(/Seconds: (\d+)/)[1]) };
+            const coal = fields.match(/Coal: (\d+)/);
+            if (coal) recipe.coal = Number(coal[1]);
+            recipe.yield = Number(fields.match(/Yield: (\d+)/)[1]);
+            found[food] = recipe;
+        }
+        return found;
+    };
+    const sorted = (object) => Object.fromEntries(Object.entries(object).map(([key, entry]) => [key, { ...entry }]));
+    assert.deepEqual(recipes('foundryRecipes'), sorted(JSON.parse(JSON.stringify(ctx.APPLIANCE_FOUNDRY))));
+    assert.deepEqual(recipes('arcRecipes'), sorted(JSON.parse(JSON.stringify(ctx.APPLIANCE_ARC))));
+    const fuels = {};
+    for (const [, fuel, seconds] of table('foundryFuels').matchAll(/"(\w+)":\s*(\d+)/g)) fuels[fuel] = Number(seconds);
+    assert.deepEqual(fuels, JSON.parse(JSON.stringify(ctx.APPLIANCE_FOUNDRY_FUELS)));
+    assert.equal(go.match(/arcReducer = "(\w+)"/)[1], ctx.APPLIANCE_ARC_REDUCER);
+    // The refusals the panel explains are those the server sends.
+    const entries = [...table('machines').matchAll(/(\w+Kind):\s*\{Name: "([\w ]+)"/g)];
+    assert.equal(entries.length, Object.keys(ctx.APPLIANCE_MACHINES).length);
+    for (const [, constant, name] of entries) {
+        const kind = go.match(new RegExp(`${constant}\\s*= "(\\w+)"`))[1];
+        assert.equal(ctx.APPLIANCE_MACHINES[kind].refused, `not for the ${name}`);
+        assert.ok(ctx.applianceRefusalNote(`not for the ${name}`));
+    }
+    assert.equal(ctx.applianceRefusalNote('full'), null);
+    const mech = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'mechanics.go'), 'utf8');
+    for (const kind of ['foundry', 'arc_furnace']) assert.ok(mech.includes(`"${kind}": true`), kind);
+});
+
+test('smelters: every item in the tables exists, the machines beat the C menu, and each panel lists only what fits', () => {
+    const world = makeWorld();
+    for (const table of [ctx.APPLIANCE_FOUNDRY, ctx.APPLIANCE_ARC]) {
+        for (const [item, recipe] of Object.entries(table)) {
+            assert.ok(world.blockTypes[item], item);
+            assert.ok(world.blockTypes[recipe.out], recipe.out);
+            assert.ok(world.blockTypes[recipe.out].drawIcon || world.blockTypes[recipe.out].color !== undefined, recipe.out);
+        }
+    }
+    assert.ok(world.blockTypes[ctx.APPLIANCE_ARC_REDUCER]);
+    // What the C menu gives for the same materials.
+    const recipes = new Map();
+    const game = new ctx.Game();
+    for (const hook of ctx.GAME_CONTENT_HOOKS) {
+        try { hook.call(game, { addItem() {}, addRecipe: (id, _name, output, amount, inputs) => recipes.set(id, { output, amount, inputs }) }); } catch (_error) { /* hooks that need a whole game */ }
+    }
+    const smeltStone = recipes.get('stone');
+    assert.deepEqual([smeltStone.amount, smeltStone.inputs.find((input) => input.type === 'cobblestone').amount], [2, 1], 'the C recipe for stone is still there');
+    const { sand, cobblestone } = ctx.APPLIANCE_FOUNDRY;
+    assert.ok(cobblestone.yield / cobblestone.in > smeltStone.amount);
+    assert.ok(sand.yield / sand.in > 2 / 3, '3 sand give 2 glass in the menu');
+    const si = ctx.APPLIANCE_ARC.sand;
+    assert.ok(si.yield / si.coal > 1, '1 coal gives 1 silicon in the menu');
+    assert.deepEqual([si.in, si.coal], [1, 2], 'SiO2 + 2 C');
+    // What goes where.
+    assert.ok(ctx.applianceMachineTakes('foundry', 'sand') && ctx.applianceMachineTakes('foundry', 'coal_ore'));
+    assert.ok(!ctx.applianceMachineTakes('foundry', 'planks') && !ctx.applianceMachineTakes('foundry', 'raw_fish'));
+    assert.ok(ctx.applianceMachineTakes('arc_furnace', 'sand') && ctx.applianceMachineTakes('arc_furnace', 'coal_ore'));
+    assert.ok(!ctx.applianceMachineTakes('arc_furnace', 'cobblestone') && !ctx.applianceMachineTakes('arc_furnace', 'planks'));
+    assert.ok(ctx.applianceMachineTakes('oven', 'raw_fish') && !ctx.applianceMachineTakes('oven', 'sand'));
+    assert.ok(!ctx.applianceMachineTakes('chest', 'sand'));
+    const name = (type) => type;
+    assert.equal(ctx.applianceRecipeLine('arc_furnace', 'sand', name), '1 sand and 2 coal_ore make 3 element_si in 20 s');
+    assert.equal(ctx.applianceRecipeLine('foundry', 'sand', name), '3 sand make 4 glass in 12 s');
+    assert.equal(ctx.applianceRecipeLine('foundry', 'dirt', name), '');
+});
+
+test('smelters: the blocks: storage, electricity, light, collision, icons and recipes', () => {
+    const world = makeWorld();
+    for (const name of ['foundry', 'foundry:e:off', 'foundry:e:on', 'arc_furnace', 'arc_furnace:e:off', 'arc_furnace:e:on']) {
+        assert.equal(world.blockTypes[name].storageSlots, 3, name);
+        assert.ok(world.registry.id(name) > 0, name);
+    }
+    assert.equal(world.blockTypes['foundry:e:on'].dropType, 'foundry');
+    assert.equal(world.blockTypes['arc_furnace:e:on'].dropType, 'arc_furnace');
+    assert.equal(ctx.STORAGE_KINDS.foundry, 3);
+    assert.equal(ctx.STORAGE_KINDS.arc_furnace, 3);
+    // The light is real block light, only while it runs.
+    assert.equal(world.registry.lightLevel[world.registry.id('foundry:e:on')], 13);
+    assert.equal(world.registry.lightLevel[world.registry.id('arc_furnace:e:on')], 14);
+    for (const name of ['foundry', 'foundry:e:off', 'arc_furnace', 'arc_furnace:e:off']) assert.equal(world.registry.lightEmitter[world.registry.id(name)], 0, name);
+    assert.ok(!world.blockTypes.foundry.electric, 'the foundry burns coal');
+    assert.ok(world.blockTypes.arc_furnace.electric);
+    assert.deepEqual({ ...ctx.ELECTRIC_KINDS.arc_furnace }, { role: 'consumer', watts: 150, onDemand: true });
+    assert.ok(ctx.ELECTRIC_KINDS.arc_furnace.watts > ctx.ELECTRIC_KINDS.rtg.watts);
+    assert.ok(ctx.ELECTRIC_KINDS.arc_furnace.watts <= 2 * ctx.ELECTRIC_KINDS.rtg.watts);
+    // The foundry is a whole cube; the furnace stops you at its vessel, electrodes included, facing any way.
+    assert.deepEqual([...world.shapes.collision(world.registry.id('foundry:e:off'))].map((box) => [...box]), [[0, 0, 0, 1, 1, 1]]);
+    for (const facing of ['n', 'e', 's', 'w']) {
+        const collision = world.shapes.collision(world.registry.id(ctx.shapeStateName('arc_furnace', ctx.BLOCK_SHAPES.arc_furnace, { facing, fire: 'off' })));
+        assert.equal(collision.length, 1);
+        assert.equal(collision[0][4], 1);
+        const boxes = ctx.BLOCK_SHAPES.arc_furnace.boxes({ facing, fire: 'off' }, 0);
+        assert.equal(boxes.filter((box) => box[1] >= 12 / 16).length, 3, 'three electrodes');
+        for (const box of boxes) assert.ok(box[0] >= 0 && box[2] >= 0 && box[3] <= 1 && box[5] <= 1 && box[4] <= 1, 'inside its cell');
+    }
+    assert.deepEqual({ ...ctx.BLOCK_SHAPES.arc_furnace.iconState }, { facing: 's', fire: 'off' });
+    for (const pattern of ['foundry_front_off', 'foundry_front_on', 'foundry_side', 'foundry_top_off', 'foundry_top_on', 'arc_furnace_side', 'arc_furnace_front_off', 'arc_furnace_front_on', 'arc_furnace_top_off', 'arc_furnace_top_on']) {
+        assert.ok(ctx.TEXTURE_PATTERNS[pattern], pattern);
+    }
+    for (const item of ['foundry', 'arc_furnace']) assert.ok(world.getInventoryIconUrl(item), item);
+    const recipes = new Map();
+    const stock = [];
+    const game = new ctx.Game();
+    for (const hook of ctx.GAME_CONTENT_HOOKS) {
+        try { hook.call(game, { addItem: (item) => stock.push(item), addRecipe: (id, _name, output, amount, inputs) => recipes.set(id, { output, amount, inputs }) }); } catch (_error) { /* hooks that need a whole game */ }
+    }
+    assert.ok(stock.includes('foundry') && stock.includes('arc_furnace'), 'in the creative stock and /give');
+    for (const item of ['foundry', 'arc_furnace']) {
+        const { output, amount, inputs } = recipes.get(item);
+        assert.deepEqual([output, amount], [item, 1]);
+        for (const { type } of inputs) assert.ok(world.blockTypes[type], type);
+    }
+    const needs = (item) => recipes.get(item).inputs.map((input) => input.type);
+    for (const later of ['electric_motor', 'copper_wire', 'iron_block']) {
+        assert.ok(needs('arc_furnace').includes(later), later);
+        assert.ok(!needs('foundry').includes(later), `the foundry comes first: ${later}`);
+    }
+});
+
+test('smelters: what the panel says and shows', () => {
+    const foundry = ctx.APPLIANCE_MACHINES.foundry;
+    assert.match(ctx.storageOvenStatus({ burn: 0 }, foundry), /No fire.*coal/);
+    assert.match(ctx.storageOvenStatus({ burn: 9.5, burnMax: 80, cook: 2, cookMax: 12 }, foundry), /10 s.*smelting/);
+    assert.match(ctx.storageOvenStatus({ burn: 9, burnMax: 80, cook: 0, cookMax: 0 }, foundry), /nothing to smelt/);
+    const line = (contents) => ctx.storageArcStatus('arc_furnace', contents);
+    assert.deepEqual({ ...line({ oven: { cookMax: 0 }, powered: false }) }.off, false, 'an idle furnace does not complain');
+    assert.match(line({ oven: { cookMax: 0 } }).text, /no power until/);
+    assert.match(line({ oven: { cookMax: 20, starting: true } }).text, /Asking.*150 W/);
+    assert.equal(line({ oven: { cookMax: 20 }, powered: true }).off, false);
+    assert.match(line({ oven: { cookMax: 20 }, powered: true }).text, /150 W/);
+    assert.equal(line({ oven: { cookMax: 20 } }).off, true);
+    assert.match(line({ oven: { cookMax: 20 } }).text, /^No power: needs 150 W/);
+});
+
+test('smelters: the panel draws each machine, with only what fits it on the player\'s side', () => {
+    const fakeElement = () => {
+        const classes = new Set();
+        const classList = { add: (name) => classes.add(name), remove: (name) => classes.delete(name), toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)), has: (name) => classes.has(name) };
+        const element = { textContent: '', innerHTML: '', className: '', style: {}, classList, children: [] };
+        element.append = (...children) => element.children.push(...children);
+        element.appendChild = (child) => element.children.push(child);
+        element.parentNode = element;
+        return element;
+    };
+    const show = (kind, contents) => {
+        const elements = new Map();
+        const game = new ctx.Game();
+        game.world = makeWorld();
+        game.storagePanel = {
+            querySelector(selector) {
+                if (!elements.has(selector)) elements.set(selector, fakeElement());
+                return elements.get(selector);
+            },
+            querySelectorAll: () => []
+        };
+        Object.assign(game, { storageAt: { x: 0, y: 0, z: 0 }, storageKind: kind, storageTab: '', storageTitle: kind, storageSlots: contents.slots, storageContents: contents,
+            inventory: ['sand', 'coal_ore', 'planks', 'raw_fish', 'cobblestone', 'glass'], getInventoryCount: () => 5, getBlockDisplayName: (type) => type });
+        game.storageRender();
+        return (selector) => elements.get(selector);
+    };
+    const slots = [{ type: 'sand', count: 3 }, { type: 'coal_ore', count: 1 }, {}];
+    const titles = (at) => at('#storage-items').children.length;
+
+    let at = show('foundry', { slots, capacity: 3, oven: { burn: 40, burnMax: 80, cook: 6, cookMax: 12 } });
+    assert.match(at('#storage-status').textContent, /40 s.*smelting.*3 sand make 4 glass in 12 s/);
+    assert.equal(at('#storage-fire i').style.width, '50%');
+    assert.equal(at('#storage-cook i').style.width, '50%');
+    assert.equal(titles(at), 3, 'sand, coal, cobblestone: no planks, no fish, no glass');
+    assert.match(at('#storage-items-title').textContent, /smelt/);
+
+    at = show('arc_furnace', { slots, capacity: 3, oven: { burn: 0, burnMax: 0, cook: 5, cookMax: 20 } });
+    assert.match(at('#storage-status').textContent, /^No power: needs 150 W.*1 sand and 2 coal_ore make 3 element_si in 20 s/);
+    assert.ok(at('#storage-status').classList.has('off'));
+    assert.equal(at('#storage-cook i').style.width, '25%');
+    assert.ok(at('#storage-cook i').classList.has('paused'), 'the bar shows that it is held');
+    assert.equal(titles(at), 2, 'sand and coal');
+
+    at = show('arc_furnace', { slots, capacity: 3, powered: true, oven: { burn: 0, burnMax: 0, cook: 5, cookMax: 20 } });
+    assert.match(at('#storage-status').textContent, /^Arc on, drawing 150 W/);
+    assert.ok(!at('#storage-status').classList.has('off'));
+
+    at = show('oven', { slots: [{ type: 'raw_fish', count: 1 }, {}, {}], capacity: 3, oven: { burn: 0, burnMax: 0, cook: 0, cookMax: 0 } });
+    assert.equal(at('#storage-status').textContent, 'No fire: it lights by itself with food and fuel', 'the oven says what it said');
+    assert.equal(titles(at), 3, 'coal, planks and fish');
+});
+
 test('appliances: what the panel works out', () => {
     assert.ok(ctx.storageSameStacks([{ type: 'stone', count: 1, chill: 3 }, {}], [{ type: 'stone', count: 1, chill: 30 }, {}]), 'progress is not a new stack');
     assert.ok(!ctx.storageSameStacks([{ type: 'stone', count: 1 }], [{ type: 'stone', count: 2 }]));
@@ -1019,6 +1215,45 @@ test('the guide covers the furniture, in both languages, from the indexes and th
     }
     const readme = read('README.md');
     for (const page of pages) assert.match(readme, new RegExp(`^\\| ${page} \\|`, 'm'));
+});
+
+test('the guide covers the foundry and the arc furnace, in both languages, and the old pages point to them', () => {
+    const GUIDE = path.join(STATIC, 'guide');
+    const names = fs.readdirSync(GUIDE);
+    const read = (name) => fs.readFileSync(path.join(GUIDE, name), 'utf8');
+    const page = (id, lang) => read(names.find((name) => name.startsWith(`${id}_${lang}_`)));
+    for (const lang of ['EN', 'ES']) {
+        for (const id of [235, 236]) {
+            assert.ok(print.SECTIONS.some(([from, to]) => id >= from && id <= to), `section for ${id}`);
+            const text = page(id, lang);
+            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) {
+                assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), `${id} ${lang} links to ${target}`);
+            }
+            assert.match(page(0, lang), new RegExp(`\\(${id}\\)`));
+            assert.match(page(48, lang), new RegExp(`\\(${id}\\)`));
+        }
+        assert.match(page(235, lang), /item:foundry/);
+        assert.match(page(236, lang), /item:arc_furnace/);
+        assert.match(page(236, lang), /150 W/);
+        assert.match(page(236, lang), /SiO₂ \+ 2 C → Si \+ 2 CO/);
+        // The yields in the text are those of the tables.
+        for (const [id, table] of [[235, ctx.APPLIANCE_FOUNDRY], [236, ctx.APPLIANCE_ARC]]) {
+            for (const [item, recipe] of Object.entries(table)) {
+                const made = recipe.yield > 1 ? `\\*\\*${recipe.yield}\\*\\*` : `${recipe.yield}`;
+                assert.match(page(id, lang), new RegExp(`${recipe.in} \`${item}\`.*${made} \`${recipe.out}\`.*\\b${recipe.seconds} s`), `${id} ${item}`);
+            }
+        }
+        // The pages on what they make say so, and that the C recipes stay.
+        assert.match(page(51, lang), /\(235\)/);
+        assert.match(page(50, lang), /\(235\)/);
+        assert.match(page(152, lang), /\(236\)/);
+        assert.match(page(204, lang), /\(236\)/);
+        assert.match(page(200, lang), /\(236\)/);
+        assert.match(page(233, lang), /\(235\)/);
+        for (const id of [235, 236]) assert.match(page(id, lang), lang === 'EN' ? /C menu/ : /menú C/);
+    }
+    const readme = read('README.md');
+    for (const id of [235, 236]) assert.match(readme, new RegExp(`^\\| ${id} \\|`, 'm'));
 });
 
 // ---------------------------------------------------------------------------------------

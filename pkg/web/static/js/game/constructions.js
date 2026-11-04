@@ -1001,6 +1001,15 @@ function constructionShowroom(b) {
         b.box(36 + i, 1, 6, 36 + i, 1, 7, `${color}_carpet`);
     });
 
+    // ---- 13. The workshop: a foundry, and an arc furnace on two generators of its own (160 W of
+    // the 150 W it asks for while it works), touching nothing of the kitchen's network ----
+    sign(54, 12, 'w', 'TALLER. Fundición con carbón. Horno de arco: 150 W.',
+        'Workshop. Foundry: sand or cobblestone, and coal. Arc furnace: sand and coal, on its two generators. Both yield more than the C menu.');
+    b.shaped(54, 1, 10, 'foundry', 'oven', { facing: 'w', fire: 'off' });
+    b.set(51, 1, 16, 'rtg');
+    b.shaped(52, 1, 16, 'arc_furnace', 'arc_furnace', { facing: 'n', fire: 'off' });
+    b.set(53, 1, 16, 'rtg');
+
     // ---- Night: lanterns from the ceiling, outside the light room. A hanging one lights the floor
     // well within 4 steps, and this lattice packs such diamonds with no gaps. ----
     const [w, , d] = b.size;

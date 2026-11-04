@@ -38,7 +38,7 @@ function loadGame() {
     }
     // The furniture modules, as in index.html; what they add is what the showroom has to hold.
     context.FURNITURE_ITEMS = [];
-    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js']) {
+    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js']) {
         const before = new Set(vm.runInContext('Object.keys(BLOCK_TYPES)', context));
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
         for (const type of vm.runInContext('Object.keys(BLOCK_TYPES)', context)) {
@@ -407,7 +407,7 @@ test('the showroom holds every item of the furniture modules, and all 16 colours
     const items = ctx.FURNITURE_ITEMS;
     // The list really is read from the modules: if this fails, the loader above is broken.
     assert.ok(items.length > 100, `${items.length} items`);
-    for (const known of ['oak_chair', 'wall_mirror', 'chandelier', 'painting_fish', 'black_sofa', 'pink_stained_glass_pane', 'cyan_carpet', 'lime_curtain']) {
+    for (const known of ['foundry', 'arc_furnace', 'oak_chair', 'wall_mirror', 'chandelier', 'painting_fish', 'black_sofa', 'pink_stained_glass_pane', 'cyan_carpet', 'lime_curtain']) {
         assert.ok(items.includes(known), known);
     }
     const plan = ctx.constructionPlan('showroom');
@@ -688,12 +688,46 @@ test('the showroom: the kitchen has an oven, and a fridge and a chest freezer on
     for (const word of ['Horno', 'Nevera', 'oven', 'Fridge', 'generator']) assert.ok(kitchen.includes(word), word);
 });
 
+test('the showroom: the workshop has a foundry, and an arc furnace wired to enough generators and to nothing else', () => {
+    const { world } = visit('showroom');
+    const plan = ctx.constructionPlan('showroom');
+    const cells = new Map(plan.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell]));
+    const baseAt = (x, y, z) => { const cell = cells.get(`${x},${y},${z}`); return cell ? baseOf(cell.type) : null; };
+    const [foundry] = plan.cells.filter((cell) => baseOf(cell.type) === 'foundry');
+    assert.ok(foundry);
+    assert.equal(stateOf(world.getBlockTypeAt(foundry.x, foundry.y, foundry.z)).fire, 'off');
+    const [arc, ...others] = plan.cells.filter((cell) => baseOf(cell.type) === 'arc_furnace');
+    assert.ok(arc);
+    assert.deepEqual(others, []);
+    // The network it touches: by faces, through everything electric.
+    const seen = new Set([`${arc.x},${arc.y},${arc.z}`]);
+    const queue = [[arc.x, arc.y, arc.z]];
+    const members = [];
+    while (queue.length) {
+        const [x, y, z] = queue.pop();
+        members.push(baseAt(x, y, z));
+        for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+            const key = `${x + dx},${y + dy},${z + dz}`;
+            if (seen.has(key) || !ctx.ELECTRIC_KINDS[baseAt(x + dx, y + dy, z + dz)]) continue;
+            seen.add(key);
+            queue.push([x + dx, y + dy, z + dz]);
+        }
+    }
+    assert.deepEqual(members.sort(), ['arc_furnace', 'rtg', 'rtg']);
+    assert.ok(2 * ctx.ELECTRIC_KINDS.rtg.watts >= ctx.ELECTRIC_KINDS.arc_furnace.watts);
+    assert.ok(ctx.ELECTRIC_KINDS.rtg.watts < ctx.ELECTRIC_KINDS.arc_furnace.watts, 'one alone is not enough');
+    const signs = plan.cells.filter((cell) => baseOf(cell.type) === 'sign').map((cell) => cell.meta.t);
+    const workshop = signs.find((text) => text.startsWith('TALLER'));
+    for (const word of ['Fundición', 'arco', 'Foundry', 'Arc furnace', 'C menu']) assert.ok(workshop.includes(word), word);
+    assert.ok(Buffer.byteLength(workshop.split(' // ')[0]) <= 60, 'another change fits signs to one block: the Spanish stays short');
+});
+
 test('the showroom: the signs reach the server, name their room and fit', () => {
     const plan = ctx.constructionPlan('showroom');
     const { world } = visit('showroom');
     const signs = plan.cells.filter((cell) => baseOf(cell.type) === 'sign');
     const texts = signs.map((cell) => cell.meta.t);
-    for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES']) {
+    for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES', 'TALLER']) {
         assert.ok(texts.some((text) => text.startsWith(name)), name);
     }
     for (const cell of signs) {
@@ -743,7 +777,7 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
         }
         const isSign = (type) => type === 'sign' || String(type).startsWith('sign:');
         const signs = sent.filter(({ payload }) => isSign(payload.blockType));
-        assert.equal(signs.length, 25);
+        assert.equal(signs.length, 26);
         assert.equal(signs.length, layout.cells.filter((cell) => isSign(cell.type)).length);
         for (const { payload } of signs) {
             assert.ok(payload.text);

@@ -25,6 +25,8 @@ All three drop themselves when broken.
 |---|---|
 | 2 `glass` | **3** `sand` |
 
+Or in the [foundry](235): **3 `sand` give 4 `glass`**, twice as much, in 12 s and with coal for its fire. Both ways work.
+
 Sand is one of the most used ingredients:
 
 | Recipe | Ingredients |

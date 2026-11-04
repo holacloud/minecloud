@@ -13,6 +13,8 @@ They are all "synthesized" with the same recipe (C key); you pick the element in
 |---|---|
 | 1 element block | 1 `stone` + 1 `coal_ore` |
 
+Silicon also comes from the [electric arc furnace](236), and smooth stone from the [foundry](235), in larger amounts.
+
 In the recipe list they show up as *Synthesize H Block*, *Synthesize HE Block*… (with the symbol in capitals).
 
 They need **smooth stone** (`stone`). Mining stone gives cobblestone, so smelt it first: 1 `cobblestone` +

@@ -20,6 +20,7 @@ func newTestBook() (*storageBook, fakeCropWorld) {
 	book.deliver = func(*Client, []byte) bool { return true }
 	book.powered = func([3]int) bool { return false }
 	book.adopt = func(int, int, int, string) {}
+	book.wantPower = func([3]int, bool) {}
 	return book, fakeCropWorld{{0, 0, 0}: "chest"}
 }
 

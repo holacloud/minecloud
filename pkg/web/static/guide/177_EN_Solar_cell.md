@@ -32,4 +32,4 @@ If you would rather discover it yourself, stop reading here.
 |---|---|---|
 | `2 Si + B + P → Si : B, P (solar cell)` | device | 1 `solar_cell` |
 
-See also: [Chemistry](115), [Silicon](152), [Lithium battery](189).
+See also: [Chemistry](115), [Silicon](152), [Electric arc furnace](236), [Lithium battery](189).

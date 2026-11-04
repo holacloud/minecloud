@@ -2,7 +2,7 @@
 // - The simulation runs on the SERVER (pkg/network/power.go), 5 times a second, for everyone:
 //   generation (W) from solar panels, wind turbines, water wheels, hand cranks and
 //   radioisotope generators (`rtg`: a steady 80 W, day and night, guide 220); demand (W)
-//   of lamps, grow lamps, motors, fridges and chest freezers (js/game/appliances.js); batteries (J) take the surplus or cover the deficit. A
+//   of lamps, grow lamps, motors, fridges, chest freezers and, while it has work, arc furnaces (js/game/appliances.js); batteries (J) take the surplus or cover the deficit. A
 //   network is all or nothing: when it cannot feed every consumer, all of them go off.
 // - Electric blocks that touch on a face form one network (every electric block conducts;
 //   copper wire and wire posts only carry it further). At most 512 blocks per network.
@@ -44,7 +44,10 @@ const ELECTRIC_KINDS = {
     // --- Cold furniture (js/game/appliances.js) ---
     // A fridge's two cells are one fridge: only the lower one asks for power.
     fridge: { role: 'consumer', watts: 30 },
-    chest_freezer: { role: 'consumer', watts: 30 }
+    chest_freezer: { role: 'consumer', watts: 30 },
+    // --- The electric arc furnace (js/game/smelters.js) ---
+    // 150 W: one 80 W rtg is not enough, two are. It asks only while it has work to do.
+    arc_furnace: { role: 'consumer', watts: 150, onDemand: true }
 };
 
 const ELECTRIC_PX = 1 / 16;

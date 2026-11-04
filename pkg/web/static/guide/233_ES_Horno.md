@@ -50,6 +50,8 @@ Si el hueco de resultado tiene otra cosa, el horno espera a que lo vacíes. Si e
 
 El [menú C](11) sigue cocinando pescado y horneando pan, sin horno y sin esperar. El horno te hace esperar, y ahorra carbón: un trozo de carbón cocina cuatro pescados, frente a uno por pescado en el menú.
 
+El horno es para la comida. La arena, la piedra y otros materiales van en la [fundición](235) y el [horno de arco eléctrico](236).
+
 ## Por qué se dora la comida
 
 El calor hace algo más que calentar. Cuando la superficie de un alimento se pone caliente y seca, por encima de unos 140 °C, sus proteínas y sus azúcares empiezan a reaccionar entre sí. Forman cientos de sustancias nuevas, de color marrón y llenas de olor: eso es la corteza del pan y la piel dorada de un asado. Se llama **reacción de Maillard**, por el químico francés que la describió en 1912.
