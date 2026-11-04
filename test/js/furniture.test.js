@@ -531,6 +531,8 @@ function makeSittingGame() {
     const world = makeWorld();
     const camera = { position: new Vector3(3.5, 1 + 1.62, 7), rotation: {} };
     const controller = new ctx.CameraController(camera, {});
+    // In the world: the movement keys are the player's only with the pointer locked.
+    controller.isLocked = true;
     controller.setCollisionBoxGetter((x, y, z) => world.getCollisionBoxes(x, y, z));
     controller.setBlockTypeGetter((x, y, z) => world.getBlockTypeAt(x, y, z));
     controller.spawnSettling = false;

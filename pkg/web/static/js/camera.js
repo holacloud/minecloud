@@ -1,3 +1,12 @@
+// Whether a key event goes to a field the player is typing in: not sliders, colours or checkboxes,
+// which keep nothing typed, and may stay focused while the pointer is locked.
+const NOT_TEXT_INPUTS = ['range', 'color', 'checkbox', 'radio', 'button', 'submit', 'reset', 'file'];
+function isTextEntryTarget(target) {
+    if (!target) return false;
+    if (target.tagName === 'TEXTAREA' || target.isContentEditable) return true;
+    return target.tagName === 'INPUT' && !NOT_TEXT_INPUTS.includes(String(target.type || 'text').toLowerCase());
+}
+
 class CameraController {
     constructor(camera, domElement) {
         this.camera = camera;
@@ -87,6 +96,18 @@ class CameraController {
     setTouchSprint(active) { this.touchSprint = active; }
     setLookSpeed(speed) { this.lookSpeed = speed; }
     canInteract() { return this.isLocked || this.touchControlsEnabled; }
+    // fn() says whether the player is in the world with no menu open (Game.isGameplayActive).
+    setGameplayCheck(fn) { this.gameplayCheck = fn; }
+    keysReachPlayer() { return this.canInteract() && (!this.gameplayCheck || this.gameplayCheck()); }
+
+    // Lets go of every movement key, so nobody keeps walking behind a panel.
+    releaseKeys() {
+        const keys = this.keys;
+        keys.forward = keys.backward = keys.left = keys.right = keys.jump = false;
+        // The touch Sneak button latches, and stays latched across a panel.
+        if (!this.touchControlsEnabled) keys.crouch = false;
+        this.sprintLatch = false;
+    }
 
     // A new press of the jump control (Space or the touch Jump button): buffers the jump, and
     // a double tap toggles free flight where it is allowed.
@@ -110,7 +131,10 @@ class CameraController {
         }, true);
 
         document.addEventListener('keydown', e => {
-            if (this.canInteract() && (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight')) {
+            // The keys are the player's only in the world: not in a text field of any panel, present
+            // or to come, nor behind a menu. Their releases below always count.
+            if (!this.keysReachPlayer() || isTextEntryTarget(e.target)) return;
+            if (e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
                 e.preventDefault();
             }
             if (e.code === 'KeyW' && !this.keys.forward) {
@@ -133,7 +157,7 @@ class CameraController {
         
         document.addEventListener('keyup', e => {
             // Space released on a focused button would "click" it instead of jumping.
-            if (e.code === 'Space' && this.canInteract()) e.preventDefault();
+            if (e.code === 'Space' && this.canInteract() && !isTextEntryTarget(e.target)) e.preventDefault();
             if (e.code === 'KeyW') this.keys.forward = false;
             if (e.code === 'KeyS') this.keys.backward = false;
             if (e.code === 'KeyA') this.keys.left = false;
@@ -151,7 +175,11 @@ class CameraController {
         });
         
         // Pointer lock is requested by the game (one request at a time); this only tracks it.
-        document.addEventListener('pointerlockchange', () => this.isLocked = document.pointerLockElement === this.domElement);
+        document.addEventListener('pointerlockchange', () => {
+            this.isLocked = document.pointerLockElement === this.domElement;
+            // A key held when a panel takes the pointer has its release heard by nobody who cares.
+            if (!this.keysReachPlayer()) this.releaseKeys();
+        });
     }
     
     hasBlock(x, y, z) {
@@ -359,6 +387,7 @@ class CameraController {
     // Runs the physics on the real eye position, then lowers the view by what is left of the
     // last step-up's smoothing.
     update(delta) {
+        if (!this.keysReachPlayer()) this.releaseKeys();
         this.camera.position.y -= this.stepSmoothing;
         this.updatePhysics(delta);
         this.stepSmoothing *= Math.exp(-delta * 16);

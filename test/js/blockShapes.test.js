@@ -71,6 +71,8 @@ function setBlock(world, x, y, z, type) {
 function makeCamera(world, x, feetY, z, yaw = 0) {
     const camera = { position: new Vector3(x, feetY + 1.62, z), rotation: {} };
     const controller = new ctx.CameraController(camera, {});
+    // In the world: the movement keys are the player's only with the pointer locked.
+    controller.isLocked = true;
     controller.setBlockChecker((bx, by, bz) => world.hasSolidBlock(bx, by, bz));
     controller.setBlockTypeGetter((bx, by, bz) => world.getBlockTypeAt(bx, by, bz));
     controller.setBlockHeightGetter((bx, by, bz) => world.getCollisionHeight(bx, by, bz));

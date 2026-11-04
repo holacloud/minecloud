@@ -722,6 +722,7 @@ class Game {
 
     initCamera() {
         this.cameraController = new CameraController(this.camera, this.renderer.domElement);
+        this.cameraController.setGameplayCheck(() => this.isGameplayActive());
         this.cameraController.setBlockChecker((x, y, z) => this.world.hasSolidBlock(x, y, z));
         this.cameraController.setBlockTypeGetter((x, y, z) => this.world.getBlockTypeAt(x, y, z));
         this.cameraController.setBlockHeightGetter((x, y, z) => this.world.getCollisionHeight(x, y, z));
@@ -929,6 +930,9 @@ class Game {
             return;
         }
 
+        // Typing in a field of any panel, the letters and digits are not shortcuts.
+        if (isTextEntryTarget(event.target)) return;
+
         if (this.chatOpen) {
             if (event.code === 'Enter') {
                 event.preventDefault();
@@ -954,7 +958,8 @@ class Game {
             return;
         }
 
-        if (this.pauseOpen) {
+        // The title screen, the pause menu, the sign reader, the appearance editor, death.
+        if (!this.isGameplayActive()) {
             return;
         }
 

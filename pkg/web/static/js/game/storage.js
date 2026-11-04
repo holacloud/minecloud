@@ -376,7 +376,8 @@ Object.assign(Game.prototype, {
             if (this.touchControlsEnabled && this.touchIsEmulatedMouse(event)) return;
             this.storageClose();
         });
-        // E or Escape close it; nothing else reaches the game while typing or looking at it.
+        // E or Escape close it; nothing else reaches the game while looking at it. What is typed in the
+        // search goes on, for the field: the camera and the shortcuts leave text fields alone.
         document.addEventListener('keydown', (event) => {
             if (!this.storageAt) return;
             if (event.code === 'Escape' || (event.code === 'KeyE' && event.target !== search)) {
