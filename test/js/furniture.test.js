@@ -84,7 +84,8 @@ function loadGame() {
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
         furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
-        mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval,
+        mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval, mirrorReflectView, mirrorFacingPlane, mirrorFacingMode, mirrorPassOrder, mirrorPassShows, mirrorEchoMatrix,
+        MIRROR_BOUNCE_DARKEN, MIRROR_NESTED_MIN_COVER,
         MIRROR_RANGE, MIRROR_TARGET_MAX, APPLIANCE_FOUNDRY, APPLIANCE_FOUNDRY_FUELS, APPLIANCE_ARC, APPLIANCE_ARC_REDUCER, APPLIANCE_MACHINES,
         applianceMachineTakes, applianceRefusalNote, applianceRecipeLine, storageArcStatus, shapeStateName });`, context);
     return context;
@@ -1699,7 +1700,8 @@ function mirrorGame(world, eye = [0.5, 1.5, 5]) {
     const hand = { visible: true };
     const tag = { visible: true };
     const avatar = { visible: false, userData: { nameSprite: tag } };
-    const stubMesh = () => ({ visible: false, geometry: { setAttribute() {}, computeBoundingSphere() {}, dispose() {} }, material: { uniforms: { reflection: {} } } });
+    const stubMesh = () => ({ visible: false, geometry: { setAttribute() {}, computeBoundingSphere() {}, dispose() {} }, material: { uniforms: { reflection: {}, bounce: { value: 1 } } } });
+    let drawingTo = null;
     Object.assign(game, {
         world,
         scene: { add() {} },
@@ -1711,15 +1713,21 @@ function mirrorGame(world, eye = [0.5, 1.5, 5]) {
         },
         renderer: {
             autoClear: true, outputEncoding: 'srgb', shadowMap: { autoUpdate: true }, state: { buffers: { depth: { setMask() {} } } },
-            getDrawingBufferSize: (v) => v.set(1000, 500), getRenderTarget: () => null, setRenderTarget() {},
+            getDrawingBufferSize: (v) => v.set(1000, 500), getRenderTarget: () => null, setRenderTarget: (target) => { drawingTo = target; },
             render: () => renders.push({
+                target: drawingTo,
+                read: [...game.mirrorSlots.map((slot) => slot.quads), game.mirrorEcho && game.mirrorEcho.quads].filter((mesh) => mesh && mesh.visible).map((mesh) => mesh.material.uniforms.reflection.value),
+                bounce: [...game.mirrorSlots.map((slot) => slot.quads), game.mirrorEcho && game.mirrorEcho.quads].filter((mesh) => mesh && mesh.visible).map((mesh) => mesh.material.uniforms.bounce.value),
                 hand: hand.visible, avatar: avatar.visible, tag: tag.visible, shadows: game.renderer.shadowMap.autoUpdate,
                 quads: game.mirrorSlots.some((slot) => slot.quads && slot.quads.visible), sheen: Boolean(game.mirrorSheen && game.mirrorSheen.visible)
             })
         },
         cameraViewMode: 'first', localPlayerAvatar: avatar, firstPersonHand: hand,
         updateLocalPlayerAvatar() {},
-        mirrorsAimCamera() {},
+        aims: [],
+        mirrorsAimCamera(face, matrix, source) { game.aims.push({ key: ctx.mirrorPlaneKey(face), fromPlayer: source === game.camera }); },
+        mirrorsAimEcho(echo, slot) { echo.quads.material.uniforms.reflection.value = slot.target.texture; },
+        mirrorsNewTarget: (width, height) => ({ width, height, texture: {}, disposed: false, setSize(w, h) { this.width = w; this.height = h; }, dispose() { this.disposed = true; } }),
         mirrorsBuildQuads(slot) {
             slot.textureMatrix = {};
             slot.quads = stubMesh();
@@ -1816,7 +1824,8 @@ test('mirrors: a cube seen from its corner reflects on both sides, and the other
     assert.equal(mirrorsShown(game), 2);
     // The top is seen too: it does not reflect, it shines.
     assert.equal(game.mirrorSheen.visible, true);
-    assert.ok(renders.every((pass) => !pass.quads && !pass.sheen), 'neither is in a reflection');
+    assert.ok(renders.every((pass) => !pass.sheen), 'no sheen in a reflection');
+    assert.ok(renders[0].read.length === 0, 'the first frame has no image to show in one');
     // Standing still, it costs less; the second plane less than the first.
     for (let i = 0; i < 12; i++) game.mirrorsRender(1 / 60);
     assert.ok(renders.length <= 2 + 12 * (1 / 3 + 1 / 6) + 1, `${renders.length} passes`);
@@ -1843,6 +1852,146 @@ test('mirrors: a plane that moves to another slot redraws, and ranks that swap d
     const second = mirrorGame(world, [0.5, 1.5, 22]);
     second.game.mirrorsRender(0.016);
     assert.equal(second.renders.length, 0, 'too far to reflect');
+});
+
+// Two wall mirrors that look at each other, along z: the near one faces south, 10 blocks from the far.
+function facingMirrors() {
+    const world = makeWorld();
+    for (const y of [1, 2]) {
+        for (const x of [0, 1]) {
+            put(world, x, y, 0, 'wall_mirror:s');
+            put(world, x, y, 10, 'wall_mirror');
+        }
+    }
+    return world;
+}
+
+test('mirrors: the view inside a mirror, and the mirror it shows between two facing ones', () => {
+    const world = facingMirrors();
+    const { game } = mirrorGame(world, [1, 2, 5]);
+    const eye = [1, 2, 5];
+    const faces = game.mirrorsGather(eye);
+    const view = { eye, right: [1, 0, 0], up: [0, 1, 0], forward: [0, 0, -1], tanX: 1.2, tanY: 0.7 };
+    const near = faces.find((face) => face.sign > 0);
+    const inside = ctx.mirrorReflectView(view, near);
+    assert.ok(Math.abs(inside.eye[2] - (2 * near.at - 5)) < 1e-9, 'the eye behind the mirror');
+    assert.deepEqual(JSON.parse(JSON.stringify(inside.forward)).map(Math.abs), [0, 0, 1]);
+    assert.ok(inside.forward[2] > 0, 'looking back through it');
+    const none = () => false;
+    const facing = ctx.mirrorFacingPlane(faces, near, view, none);
+    assert.ok(facing, 'found');
+    assert.equal(facing.face.sign, -1);
+    assert.ok(facing.cover > ctx.MIRROR_NESTED_MIN_COVER, `${facing.cover}`);
+    assert.equal(ctx.mirrorFacingPlane(faces, near, view, none, [facing.key]), null, 'taken: not twice');
+    // A wall between them, or a mirror that does not look back: none.
+    assert.equal(ctx.mirrorFacingPlane(faces, near, view, (x, y, z) => z === 5), null);
+    assert.equal(ctx.mirrorFacingPlane(faces.filter((face) => face.sign > 0), near, view, none), null);
+    // How it is shown.
+    assert.equal(ctx.mirrorFacingMode(facing, 2, 1), 'nested');
+    assert.equal(ctx.mirrorFacingMode(facing, 1, 1), 'echo', 'one plane: no extra pass');
+    assert.equal(ctx.mirrorFacingMode(facing, 2, 2), 'echo', 'two on screen already');
+    assert.equal(ctx.mirrorFacingMode({ cover: ctx.MIRROR_NESTED_MIN_COVER * 0.7 }, 2, 1), 'echo', 'too small for a pass');
+    assert.equal(ctx.mirrorFacingMode({ cover: ctx.MIRROR_NESTED_MIN_COVER * 0.7 }, 2, 1, true), 'nested', 'a pass in use stays');
+    assert.equal(ctx.mirrorFacingMode(null, 2, 1), null);
+});
+
+test('mirrors: the order of the passes and what each one may read, never its own target', () => {
+    const first = { key: 'a' };
+    const second = { key: 'b', nested: true };
+    assert.deepEqual(Array.from(ctx.mirrorPassOrder([first, second]), (plane) => plane.key), ['b', 'a'], 'the nested image first');
+    const targetA = {};
+    const targetB = {};
+    const slotA = { plane: first, target: targetA, drawnKey: 'a' };
+    const slotB = { plane: second, target: targetB, drawnKey: 'b' };
+    const slotC = { plane: null, target: null, drawnKey: null };
+    assert.deepEqual(Array.from(ctx.mirrorPassShows([slotA, slotB, slotC], slotA)), [slotB]);
+    assert.deepEqual(Array.from(ctx.mirrorPassShows([slotA, slotB, slotC], slotB)), [slotA]);
+    // No image yet: its silver texture, not a black or stale square.
+    assert.deepEqual(Array.from(ctx.mirrorPassShows([{ ...slotA, drawnKey: 'other' }, slotB], slotB)), []);
+    // Moved across a plane, x and y stay, and the rest of the point is the same.
+    const m = ctx.mirrorEchoMatrix({ axis: 2, at: 0.25 });
+    const apply = ([x, y, z]) => [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]];
+    assert.deepEqual(apply([3, 4, 9]), [3, 4, 0.25]);
+    const mx = ctx.mirrorEchoMatrix({ axis: 0, at: 7 });
+    assert.equal(mx[0], 0);
+    assert.equal(mx[12], 7);
+    assert.equal(mx[5], 1);
+});
+
+test('mirrors: between two facing mirrors, two passes at most: the one behind you first, seen only in the other', () => {
+    const { game, renders } = mirrorGame(facingMirrors(), [1, 2, 5]);
+    game.mirrorBudget = { planes: 2, wait: 0 };
+    game.mirrorFrameTime = 1 / 60;
+    game.mirrorsRender(1 / 60);
+    assert.equal(game.mirrorPlanes.length, 2);
+    const [front, behind] = game.mirrorPlanes;
+    assert.ok(behind.nested && !front.nested);
+    assert.equal(renders.length, 2, 'two passes');
+    assert.equal(renders[0].read.length, 0, 'the first frame has no image to show in it');
+    assert.equal(renders[1].read.length, 1, 'the mirror behind in the pass of the one in front');
+    assert.deepEqual(renders[1].bounce, [ctx.MIRROR_BOUNCE_DARKEN], 'a bounce darker');
+    assert.deepEqual(game.aims.map((aim) => aim.fromPlayer), [true, false, true], 'the nested camera comes from the first mirror\'s');
+    const slotOf = (plane) => game.mirrorSlots.find((slot) => slot.plane === plane);
+    assert.equal(slotOf(behind).quads.visible, false, 'not on the screen');
+    assert.equal(slotOf(front).quads.visible, true);
+    assert.equal(slotOf(behind).quads.material.uniforms.bounce.value, 1, 'put back after');
+
+    // From then on each one shows the other, reads what it is not drawing to, and it stays at two.
+    game.mirrorPickWait = 1;
+    for (let frame = 0; frame < 6; frame++) {
+        game.camera.matrixWorld.elements = mirrorCameraElements([1, 2, 5 + frame * 0.01], [0, 0, -1]);
+        const before = renders.length;
+        game.mirrorSlots.forEach((slot) => { slot.framesWaited = 6; });
+        game.mirrorsRender(1 / 60);
+        assert.ok(renders.length - before <= 2, 'the hard cap');
+    }
+    assert.ok(renders.slice(2).some((pass) => pass.read.length === 1), 'feedback from the second frame on');
+    for (const pass of renders) for (const read of pass.read) assert.notEqual(read, pass.target.texture, 'never its own target');
+    assert.equal(game.mirrorSlots.filter((slot) => slot.backTarget).length, 0, 'no second target when both have a plane');
+});
+
+test('mirrors: with one plane the facing mirror echoes the near one, with no more passes, and two targets swapped', () => {
+    const { game, renders } = mirrorGame(facingMirrors(), [1, 2, 5]);
+    game.touchControlsEnabled = true;
+    game.mirrorsRender(1 / 60);
+    assert.equal(game.mirrorPlanes.length, 1, 'touch: one plane');
+    assert.ok(game.mirrorEchoPlane, 'the other is an echo');
+    const slot = game.mirrorSlots.find((candidate) => candidate.plane);
+    assert.equal(renders.length, 1);
+    assert.equal(renders[0].read.length, 0, 'no image to echo yet');
+    const first = slot.target;
+    game.mirrorPickWait = 1;
+    for (let frame = 1; frame <= 5; frame++) {
+        game.camera.matrixWorld.elements = mirrorCameraElements([1, 2, 5 + frame * 0.01], [0, 0, -1]);
+        const before = renders.length;
+        slot.framesWaited = 3;
+        game.mirrorsRender(1 / 60);
+        assert.equal(renders.length - before, 1, 'one pass a frame');
+        const pass = renders[renders.length - 1];
+        assert.equal(pass.read.length, 1, 'the echo is drawn inside');
+        assert.deepEqual(pass.bounce, [ctx.MIRROR_BOUNCE_DARKEN]);
+        assert.notEqual(pass.read[0], pass.target.texture, 'it reads the other target');
+        assert.equal(pass.target, slot.target, 'what was drawn is what the quads now show');
+        assert.equal(slot.quads.material.uniforms.reflection.value, slot.target.texture);
+    }
+    assert.ok(slot.backTarget && slot.backTarget !== slot.target);
+    assert.ok(first === slot.target || first === slot.backTarget);
+    assert.equal(game.mirrorEcho.quads.visible, false, 'never on the screen');
+
+    // A mirror alone costs no second target, and walking away frees them both.
+    const alone = makeWorld();
+    put(alone, 0, 1, 0, 'wall_mirror:s');
+    const single = mirrorGame(alone);
+    single.game.touchControlsEnabled = true;
+    for (let frame = 0; frame < 3; frame++) single.game.mirrorsRender(1 / 60);
+    assert.equal(single.game.mirrorEchoPlane, null);
+    assert.equal(single.game.mirrorSlots.filter((candidate) => candidate.backTarget).length, 0);
+    game.camera.matrixWorld.elements = mirrorCameraElements([1, 2, 5], [0, 0, 1]);
+    game.look([1, 0, 0]);
+    game.mirrorPickWait = 0;
+    for (let i = 0; i < 40; i++) game.mirrorsRender(0.2);
+    assert.equal(slot.target, null);
+    assert.equal(slot.backTarget, null);
 });
 
 test('mirrors: sheen quads carry the normal of their faces and show what does not reflect', () => {
