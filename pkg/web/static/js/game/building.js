@@ -501,7 +501,12 @@ Object.assign(Game.prototype, {
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos || !hit.face) return;
 
-        const normal = hit.face.normal;
+        // A face inside a hollow block looks at a neighbour that may be taken.
+        const clickedDef = this.world.blockTypes[this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z)];
+        const clickedShape = clickedDef && clickedDef.shape ? BLOCK_SHAPES[clickedDef.shape] : null;
+        const normal = clickedShape && clickedShape.clickFace
+            ? clickedShape.clickFace(clickedDef.state, { x: hit.point.x - worldPos.x, y: hit.point.y - worldPos.y, z: hit.point.z - worldPos.z }, hit.face.normal)
+            : hit.face.normal;
         const newPos = {
             x: Math.round(worldPos.x + normal.x),
             y: Math.round(worldPos.y + normal.y),
@@ -545,6 +550,9 @@ Object.assign(Game.prototype, {
                     if (this.cameraController.intersectsBoxes(eye, part.x, part.y, part.z, this.world.shapes.collision(partId))) return;
                     continue;
                 }
+                // A cube never takes the place of a piece it was clicked next to (a chair, a bookshelf).
+                const occupied = this.world.getBlockTypeAt(part.x, part.y, part.z);
+                if (occupied && occupied !== 'water' && !this.world.isCrossGeometry(occupied)) return;
                 const collisionHeight = this.world.registry.height[partId];
                 if (collisionHeight > 0 && this.cameraController.intersectsBody(eye, part.x, part.y, part.z, collisionHeight)) return;
             }

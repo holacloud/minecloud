@@ -27,4 +27,4 @@ El **clic derecho** abre el panel, con lo de dentro arriba y tus objetos debajo.
 | ![](item:bookshelf) | Bookshelf | `bookshelf` | 4 tablas de roble, 2 de lana blanca |
 | ![](item:wall_shelf) | Wall Shelf | `wall_shelf` | 2 tablas de roble, 1 de lana blanca (salen 2) |
 
-La estantería es un bloque entero con los libros en el lado que te mira al colocarla, y madera lisa en los demás; la balda se cuelga de la pared en la que haces clic. Las dos son adorno: no guardan nada.
+La estantería es un bloque entero con los libros en el lado que te mira al colocarla, y madera lisa en los demás. Los libros sobresalen de verdad de un fondo hundido, y dos vecinas nunca tienen los mismos. Una estantería antigua no tiene ese lado, así que enseña los libros en los lados que tenga libres, hasta que la rompas y la vuelvas a colocar; la balda se cuelga de la pared en la que haces clic. Las dos son adorno: no guardan nada.

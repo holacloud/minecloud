@@ -117,7 +117,7 @@ class BlockShapeSet {
             const def = blockTypes[registry.names[id]];
             this.defs[id] = def;
             this.shapes[id] = def && def.shape ? BLOCK_SHAPES[def.shape] || null : null;
-            this.cube[id] = !this.shapes[id] && registry.solid[id] && registry.height[id] === 1 ? 1 : 0;
+            this.cube[id] = (!this.shapes[id] || (def && def.wholeCube)) && registry.solid[id] && registry.height[id] === 1 ? 1 : 0;
         }
         this.boxCache = new Map();
         this.collisionCache = new Map();
@@ -148,13 +148,14 @@ class BlockShapeSet {
         return mask;
     }
 
-    boxes(id, mask = 0) {
+    // `variant`: the look of a cell (shape.variantAt), or null for icons and things in the hand.
+    boxes(id, mask = 0, variant = null) {
         const shape = this.shapes[id];
         if (!shape) return this.registry.solid[id] ? this.fullBoxes[id] : [[0, 0, 0, 1, 1, 1]];
-        const key = id * 16 + mask;
+        const key = id * 16 + mask + (variant === null ? 0 : (variant + 1) * 1048576);
         let boxes = this.boxCache.get(key);
         if (!boxes) {
-            boxes = shape.boxes(this.defs[id].state || {}, mask, this.defs[id]);
+            boxes = shape.boxes(this.defs[id].state || {}, mask, this.defs[id], variant);
             this.boxCache.set(key, boxes);
         }
         return boxes;

@@ -27,4 +27,4 @@ Each slot holds up to 999 of one item. The wardrobe stands two blocks tall and n
 | ![](item:bookshelf) | Bookshelf | `bookshelf` | 4 oak planks, 2 white wool |
 | ![](item:wall_shelf) | Wall Shelf | `wall_shelf` | 2 oak planks, 1 white wool (makes 2) |
 
-The bookshelf is a full block with its books on the side that looks at you when you place it, and plain wood on the others; the wall shelf hangs on the wall you click. Both are decoration: they hold nothing.
+The bookshelf is a full block with its books on the side that looks at you when you place it, and plain wood on the others. The books really stand out of a sunken back, and no two neighbours hold the same ones. An old bookshelf has no such side, so it shows its books on the sides it has free, until you break and place it again; the wall shelf hangs on the wall you click. Both are decoration: they hold nothing.

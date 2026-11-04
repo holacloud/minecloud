@@ -204,15 +204,221 @@ furnShape('wall_shelf', {
     place: furnPlaceOnWall
 });
 
-// A whole block with its books on the side that looks at the player who placed it, plain wood on
-// the others. Bookshelves saved when it had no facing are the first state, `bookshelf`, with books
-// on all four sides, as they were; breaking and placing one again gives it a front.
+// A bookshelf is a whole block with a hollow front, where the books are real boxes that stand out of
+// a sunken back. Written facing north, in sixteenths: a frame round a cavity FURN_SHELF_DEEP deep, a
+// board across it, a row of books on the board and another under it. Each row comes from a fixed list,
+// flipped or not, by the cell's position alone (bookshelfArrangement): nothing is stored, every
+// player and rebuild sees the same books, and neighbours in any direction never share a row. All
+// the rows cut one atlas (`bookshelf_atlas`). It counts as a whole cube for light and faces
+// (`wholeCube`), and a front against a cube is not built at all. In the hand and in icons it is a
+// plain block with the books painted on (`bookshelf` pattern), and so while it shakes being mined.
+// Bookshelves saved when it had no facing are the first state, `bookshelf`: see bookshelfFronts.
+const FURN_SHELF_RAIL = 1.5;
+const FURN_SHELF_DEEP = 5;
+const FURN_SHELF_BOARD = [7.25, 8.75];
+const FURN_SHELF_MAX_BOXES = 6;
+// How many rows each height has: two numbers with no common factor, so that a long wall takes
+// their product to repeat, and more with the flips.
+const FURN_SHELF_UPPER_ROWS = 11;
+const FURN_SHELF_LOWER_ROWS = 13;
+const FURN_SHELF_VARIANTS = FURN_SHELF_UPPER_ROWS * 2 * FURN_SHELF_LOWER_ROWS * 2;
+const FURN_SHELF_WIDTHS = [1.25, 1.5, 1.5, 1.75, 1.75, 2, 2, 2.5, 3];
+// The atlas: a cell for each colour of book (columns) and spine (rows), then a plain row for the
+// covers, a column of pages and one of the dark back of the shelf.
+const FURN_ATLAS_COLOURS = 12;
+const FURN_ATLAS_PAGES = 12;
+const FURN_ATLAS_BACK = 13;
+const FURN_ATLAS_COLUMNS = 14;
+const FURN_ATLAS_SPINES = 5;
+const FURN_ATLAS_ROWS = FURN_ATLAS_SPINES + 1;
+
+function furnShelfRandom(a, b) {
+    let h = Math.imul(a + 1, 73856093) ^ Math.imul(b + 1, 19349663);
+    h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+    return (((h ^ (h >>> 15)) >>> 0) % 10007) / 10007;
+}
+
+// The books of row `index` of the list, left to right: { x0, x1, y0, y1, front, color, spine, flat },
+// in sixteenths, y from the board, `front` how far behind the face of the frame its spine is. Some
+// rows are tight, some have gaps, some have books lying flat. Never more than FURN_SHELF_MAX_BOXES.
+function furnShelfRowBooks(index) {
+    const room = FURN_SHELF_BOARD[0] - FURN_SHELF_RAIL;
+    const end = 16 - FURN_SHELF_RAIL;
+    const gapChance = [0, 0.14, 0.3][index % 3];
+    const books = [];
+    let x = FURN_SHELF_RAIL + furnShelfRandom(index, 900) * 0.8;
+    for (let i = 0; books.length < FURN_SHELF_MAX_BOXES && x < end - 1; i++) {
+        const pick = (salt) => furnShelfRandom(index, i * 16 + salt);
+        const book = () => ({
+            color: Math.floor(pick(1) * FURN_ATLAS_COLOURS),
+            spine: Math.floor(pick(2) * FURN_ATLAS_SPINES),
+            front: 0.75 + pick(3) * 1.75
+        });
+        if (i > 0 && pick(4) < gapChance) {
+            x += 1 + pick(5) * 2.5;
+            continue;
+        }
+        const width = 3.5 + pick(6) * 1.5;
+        if (books.length > 0 && books.length <= FURN_SHELF_MAX_BOXES - 2 && pick(7) < 0.1 && x + width <= end) {
+            const shared = book();
+            books.push({ ...shared, x0: x, x1: x + width, y0: 0, y1: 1, flat: true });
+            books.push({ ...shared, color: Math.floor(pick(8) * FURN_ATLAS_COLOURS), x0: x, x1: x + width, y0: 1, y1: 2, flat: true });
+            x += width + 0.25;
+            continue;
+        }
+        const wide = Math.min(FURN_SHELF_WIDTHS[Math.floor(pick(9) * FURN_SHELF_WIDTHS.length)], end - x);
+        if (wide < 1) break;
+        books.push({ ...book(), x0: x, x1: x + wide, y0: 0, y1: room * (0.62 + pick(10) * 0.34) });
+        x += wide;
+    }
+    return books;
+}
+
+const FURN_SHELF_ROW_LIST = [];
+function furnShelfRow(index) {
+    if (!FURN_SHELF_ROW_LIST[index]) FURN_SHELF_ROW_LIST[index] = furnShelfRowBooks(index);
+    return FURN_SHELF_ROW_LIST[index];
+}
+
+// Which look the shelf at a cell has: a number under FURN_SHELF_VARIANTS. A step of one cell in x,
+// y or z never lands on the same row of either height.
+function bookshelfArrangement(x, y, z) {
+    const wrap = (value, size) => ((value % size) + size) % size;
+    const flips = Math.floor(furnShelfRandom(x * 7 + z * 13, y * 3 + 5) * 4);
+    const upper = wrap(x + 4 * y + 3 * z, FURN_SHELF_UPPER_ROWS) * 2 + (flips & 1);
+    const lower = wrap(5 * x + 3 * y + 2 * z, FURN_SHELF_LOWER_ROWS) * 2 + (flips >> 1);
+    return upper * FURN_SHELF_LOWER_ROWS * 2 + lower;
+}
+
+// A look as its two rows, each a row of the list and whether it is flipped.
+function furnShelfLookRows(variant) {
+    const lower = variant % (FURN_SHELF_LOWER_ROWS * 2);
+    const upper = Math.floor(variant / (FURN_SHELF_LOWER_ROWS * 2));
+    return {
+        upper: Math.floor(upper / 2), upperFlip: upper % 2 === 1,
+        // The two lists do not overlap: a row of the upper shelf is never one of the lower.
+        lower: FURN_SHELF_UPPER_ROWS + Math.floor(lower / 2), lowerFlip: lower % 2 === 1
+    };
+}
+
+// A rectangle of the atlas, [u0, v0, u1, v1], a hair inside its cell so that no filter reads the next.
+function furnAtlasCell(column, row) {
+    const margin = 1 / 512;
+    return [column / FURN_ATLAS_COLUMNS + margin, 1 - (row + 1) / FURN_ATLAS_ROWS + margin, (column + 1) / FURN_ATLAS_COLUMNS - margin, 1 - row / FURN_ATLAS_ROWS - margin];
+}
+
+const FURN_FACE_BIT = { px: 1, nx: 2, py: 4, ny: 8, pz: 16, nz: 32 };
+
+// A row's boxes, facing north, on a board at `floor`, each with what the mesher needs (`relief`).
+// A book's underside and back are never seen; nor is its side against a neighbour that hides it.
+function furnShelfRowBoxes(index, flip, floor) {
+    const books = furnShelfRow(index)
+        .map((book) => (flip ? { ...book, x0: 16 - book.x1, x1: 16 - book.x0 } : book))
+        .sort((a, b) => a.x0 - b.x0 || a.y0 - b.y0);
+    const pages = furnAtlasCell(FURN_ATLAS_PAGES, 0);
+    return books.map((book) => {
+        const hides = (other) => other !== book && other.y0 <= book.y0 && other.y1 >= book.y1 && other.front <= book.front;
+        let skip = FURN_FACE_BIT.ny | FURN_FACE_BIT.pz;
+        if (books.some((other) => Math.abs(other.x1 - book.x0) < 1e-6 && hides(other))) skip |= FURN_FACE_BIT.nx;
+        if (books.some((other) => Math.abs(other.x0 - book.x1) < 1e-6 && hides(other))) skip |= FURN_FACE_BIT.px;
+        const cover = furnAtlasCell(book.color, FURN_ATLAS_SPINES);
+        const box = furnBox(book.x0, floor + book.y0, book.front, book.x1, floor + book.y1, FURN_SHELF_DEEP);
+        box.relief = {
+            from: 'n', skip,
+            // +x, -x, +y, -y, +z, -z: a book standing shows its pages above, one lying flat at its ends.
+            uv: [book.flat ? pages : cover, book.flat ? pages : cover, book.flat ? cover : pages, null, null, furnAtlasCell(book.color, book.spine)]
+        };
+        return box;
+    });
+}
+
+// A front facing north with these rows: the frame, the board, the books.
+function furnShelfFrontBoxes(rows) {
+    const rail = FURN_SHELF_RAIL;
+    const deep = FURN_SHELF_DEEP;
+    const frame = [
+        [0, 16 - rail, 0, 16, 16, deep], [0, 0, 0, 16, rail, deep],
+        [0, rail, 0, rail, 16 - rail, deep], [16 - rail, rail, 0, 16, 16 - rail, deep],
+        [rail, FURN_SHELF_BOARD[0], 0.5, 16 - rail, FURN_SHELF_BOARD[1], deep]
+    ].map((list) => {
+        const box = furnBox(...list);
+        box.relief = { from: 'n', skip: 0, planks: true };
+        return box;
+    });
+    return [
+        ...frame,
+        ...furnShelfRowBoxes(rows.upper, rows.upperFlip, FURN_SHELF_BOARD[1]),
+        ...furnShelfRowBoxes(rows.lower, rows.lowerFlip, rail)
+    ];
+}
+
+// A box turned to `facing`, its faces and what is painted on them with it (rotateShapeBox).
+const FURN_FACE_TURN = { n: [0, 1, 2, 3, 4, 5], e: [4, 5, 2, 3, 1, 0], s: [1, 0, 2, 3, 5, 4], w: [5, 4, 2, 3, 0, 1] };
+function furnTurnRelief(box, facing) {
+    const turned = rotateShapeBox(box, facing);
+    const { relief } = box;
+    const uv = relief.uv ? [] : null;
+    let skip = 0;
+    FURN_FACE_TURN[facing].forEach((to, from) => {
+        if (uv) uv[to] = relief.uv[from];
+        if (relief.skip & (1 << from)) skip |= 1 << to;
+    });
+    turned.relief = { ...relief, from: facing, skip, uv };
+    return turned;
+}
+
+// The fronts of a shelf saved with no facing, from the sides that are not against a cube (mask): it
+// has no way to know its front. A wall gets books on the sides it shows along its length, one side
+// of a corner, a block alone two opposite sides: two sides that meet have no room for two cavities.
+function bookshelfFronts(mask) {
+    const open = (dir) => !(mask & SHAPE_MASK[dir]);
+    const northSouth = ['n', 's'].filter(open);
+    const eastWest = ['e', 'w'].filter(open);
+    return eastWest.length > northSouth.length ? eastWest : northSouth;
+}
+
+// The back of the cavities and the wood behind them, for a front facing `facing`, and its opposite too.
+function furnShelfBack(facing, double) {
+    const back = furnAtlasCell(FURN_ATLAS_BACK, 0);
+    const box = furnBox(0, 0, FURN_SHELF_DEEP, 16, 16, double ? 16 - FURN_SHELF_DEEP : 16);
+    box.relief = { from: 'n', skip: 0, planks: true, uv: [null, null, null, null, double ? back : null, back] };
+    return furnTurnRelief(box, facing);
+}
+
 registerBlockShape('bookshelf', {
     states: [['facing', ['all', ...SHAPE_FACINGS]]],
-    boxes: () => [[0, 0, 0, 1, 1, 1]],
+    boxes(state, mask, def, variant) {
+        if (variant === null || variant === undefined) return [[0, 0, 0, 1, 1, 1]];
+        const fronts = state.facing === 'all' ? bookshelfFronts(mask) : mask & SHAPE_MASK[state.facing] ? [] : [state.facing];
+        if (fronts.length === 0) {
+            const plain = [0, 0, 0, 1, 1, 1];
+            plain.relief = { from: 'n', skip: 0, planks: true };
+            return [plain];
+        }
+        const boxes = [furnShelfBack(fronts[0], fronts.length > 1)];
+        const rows = furnShelfLookRows(variant);
+        fronts.forEach((facing, i) => {
+            // The far side of a shelf with two fronts shows the same rows, the other way round.
+            const look = i === 0 ? rows : { ...rows, upperFlip: !rows.upperFlip, lowerFlip: !rows.lowerFlip };
+            boxes.push(...furnShelfFrontBoxes(look).map((box) => furnTurnRelief(box, facing)));
+        });
+        return boxes;
+    },
+    collision: () => [[0, 0, 0, 1, 1, 1]],
+    // Against a cube there is no front to see, as with any other face.
+    connects: (def, other) => Boolean(other.cube),
+    variantAt: bookshelfArrangement,
     variant: (state, def) => (state.facing === 'all' ? def.allSides : {}),
     materialKey: (state) => state.facing,
-    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx) } }]
+    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx) } }],
+    // A click on a book counts as a click on the front it is in.
+    clickFace(state, local, normal) {
+        const axis = normal.x !== 0 ? 'x' : normal.y !== 0 ? 'y' : 'z';
+        if (Math.abs(local[axis] - (normal[axis] > 0 ? 1 : 0)) < 1e-3) return normal;
+        const nearest = [['n', local.z], ['s', 1 - local.z], ['e', 1 - local.x], ['w', local.x]].sort((a, b) => a[1] - b[1])[0][0];
+        const [dx, dz] = SHAPE_DIRECTIONS[state.facing === 'all' ? nearest : state.facing];
+        return { x: dx, y: 0, z: dz };
+    }
 });
 
 furnShape('workbench', {
@@ -411,9 +617,9 @@ function furnPaintWardrobe(f, s, tint, seed, upper) {
 registerTexturePattern('wardrobe_lower', (f, s, tint, seed) => furnPaintWardrobe(f, s, tint, seed, false));
 registerTexturePattern('wardrobe_upper', (f, s, tint, seed) => furnPaintWardrobe(f, s, tint, seed, true));
 
-// The front of a bookshelf, on a grid of 32 cells by 32 whatever the resolution: a frame, two
-// shelves in shadow, books of many sizes with detail on their spines, gaps, and a book leaning
-// across each gap. It is painted once per pattern (seedFor), so every bookshelf shows the same books.
+// The front of a bookshelf in the hand, in an icon or on the ground, on a grid of 32 cells by 32
+// whatever the resolution: a frame, two shelves in shadow, books of many sizes with detail on their
+// spines, gaps, and a book leaning across each gap. In the world the books are boxes (see the shape).
 const FURN_BOOKS = [0xa8342c, 0x2f5fa8, 0x3a8a4c, 0xd8b84a, 0x7e4cc2, 0xc97a2c, 0x30343c, 0xd8d0c0, 0x7a2a3a, 0x1f6a70, 0x8a5a34, 0x4a5a2c];
 const FURN_SHELF_GRID = 32;
 const FURN_SHELF_FRAME = 2;
@@ -502,6 +708,33 @@ registerTexturePattern('bookshelf', (f, s, tint, seed) => {
         f.put(s, x, y, f.tone(s, wood, -0.7 - shadow * 0.15 + (f.hash(x, y, seed) - 0.5) * 0.04), 0.04);
     });
 }, { rtx: { roughness: 0.68, metalness: 0, normalScale: 1.3 } });
+
+// What the books of a bookshelf cut, one texture for them all: see FURN_ATLAS_COLUMNS. A spine is
+// rounded, in colour and in the height map, which RTX and Ultra turn into normals.
+registerTexturePattern('bookshelf_atlas', (f, s, tint, seed) => {
+    const wood = f.rgb(0x9a7148);
+    const gold = f.rgb(0xdcc068);
+    const label = f.rgb(0xe8dfc8);
+    const paper = f.rgb(0xe9e0c6);
+    f.each(s, (x, y, u, v) => {
+        const column = Math.min(FURN_ATLAS_COLUMNS - 1, Math.floor(u * FURN_ATLAS_COLUMNS));
+        const row = Math.min(FURN_ATLAS_ROWS - 1, Math.floor(v * FURN_ATLAS_ROWS));
+        const tx = u * FURN_ATLAS_COLUMNS - column;
+        const ty = 1 - (v * FURN_ATLAS_ROWS - row);
+        const grain = (f.hash(x, y, seed) - 0.5) * 0.06;
+        if (column === FURN_ATLAS_BACK) {
+            f.put(s, x, y, f.tone(s, wood, -0.55 + grain), 0.1);
+        } else if (column === FURN_ATLAS_PAGES) {
+            f.put(s, x, y, f.tone(s, paper, Math.floor(tx * 8) % 2 ? -0.05 : 0.04), 0.5);
+        } else if (row === FURN_ATLAS_SPINES) {
+            f.put(s, x, y, f.tone(s, f.rgb(FURN_BOOKS[column]), -0.12 + grain), 0.5);
+        } else {
+            const { k, detail } = furnShelfSpine({ width: 2, spine: row }, tx, ty, 16);
+            const color = detail === 1 ? gold : detail === 2 ? label : f.rgb(FURN_BOOKS[column]);
+            f.put(s, x, y, f.tone(s, color, k + grain), 0.35 + Math.sin(tx * Math.PI) * 0.55 + (detail ? 0.08 : 0));
+        }
+    });
+}, { atlas: true, rtx: { roughness: 0.68, metalness: 0, normalScale: 1.3 } });
 
 // One row of books above a board, for the wall shelf.
 registerTexturePattern('wall_shelf_side', (f, s, tint, seed) => {
@@ -798,9 +1031,11 @@ furnBlock('wardrobe', {
     halves: { lower: { faces: FURN_WARDROBE_FACES('wardrobe_lower') }, upper: { faces: FURN_WARDROBE_FACES('wardrobe_upper') } }
 });
 const FURN_BOOKSHELF_FRONT = { pattern: 'bookshelf', minSize: FURN_SHELF_GRID };
+const FURN_BOOKSHELF_ATLAS = { pattern: 'bookshelf_atlas', minSize: 256 };
 const FURN_PLAIN_PLANKS = { pattern: 'planks', tintOf: 'planks' };
 furnBlock('bookshelf', {
     color: 0xB48A56, name: 'Bookshelf', shape: 'bookshelf', breakDuration: 0.6, category: 'wood',
+    lightPasses: false, wholeCube: true, atlasFace: FURN_BOOKSHELF_ATLAS,
     faces: { top: FURN_PLAIN_PLANKS, side: FURN_PLAIN_PLANKS, bottom: FURN_PLAIN_PLANKS, front: FURN_BOOKSHELF_FRONT },
     allSides: { faces: { top: FURN_PLAIN_PLANKS, side: FURN_BOOKSHELF_FRONT, bottom: FURN_PLAIN_PLANKS } }
 });

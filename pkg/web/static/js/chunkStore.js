@@ -58,7 +58,8 @@ class BlockRegistry {
             this.transparent[id] = def.transparent || def.lightPasses ? 1 : 0;
             this.shaped[id] = def.shape ? 1 : 0;
             this.height[id] = this.solid[id] ? (def.collisionHeight ?? def.height ?? 1) : 0;
-            this.fullCube[id] = this.solid[id] && !this.transparent[id] && !this.shaped[id] && this.height[id] === 1 ? 1 : 0;
+            // `wholeCube`: a shaped block with no hole through it (a bookshelf) hides, shades and stops light.
+            this.fullCube[id] = this.solid[id] && !this.transparent[id] && (!this.shaped[id] || def.wholeCube) && this.height[id] === 1 ? 1 : 0;
             this.lightEmitter[id] = this.names[id] === 'torch' || def.lightEmission ? 1 : 0;
             this.lightLevel[id] = this.lightEmitter[id] ? (typeof def.lightEmission === 'number' ? def.lightEmission : 14) : 0;
             this.filterGlass[id] = def.filterGlass ? 1 : 0;

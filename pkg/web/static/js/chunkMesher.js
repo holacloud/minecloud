@@ -15,6 +15,9 @@ const MESH_FACES = [
 ];
 const MESH_FACE_UVS = [[0, 0], [1, 0], [1, 1], [0, 1]];
 const AO_LEVELS = [0.42, 0.62, 0.82, 1];
+// The inside of a hollow front (a bookshelf): the shade at this depth in blocks, and deeper.
+const RELIEF_DEPTH = 5 / 16;
+const RELIEF_DARKEST = 0.36;
 const WATER_SURFACE_HEIGHT = 0.875;
 const MAX_BLOCK_LIGHT = 14;
 // How far (in blocks) open sky still lights cells sideways, e.g. into a cave mouth.
@@ -506,18 +509,27 @@ class ChunkMesher {
     // neighbour it connects to (fence rails, panes meeting), or when it is buried in another
     // box of the same block. Faces on the border get the usual corner AO and light; inner faces
     // take the light of their own cell.
+    // A box with `relief` { from, skip, uv, planks } (a bookshelf's frame and books) belongs to a
+    // block with a hollow front: its inner faces are lit by the cell in front (`from`), which is what
+    // they look at, as its own cell has no light in it, and they darken with their depth. `skip` is a
+    // bit per face never seen, `uv[f]` a rectangle of the block's `atlasFace` for that face, and
+    // `planks` paints the rest with the block's top, not its front.
     addShapedBlock(bucketFor, id, type, px, y, pz, lx, lz, worldX, worldZ, cellLight, cellSky) {
         const world = this.world;
         const registry = world.registry;
         const shapes = world.shapes;
-        const mask = shapes.mask(id,
-            this.connectionIdAt(px, y, pz - 1), this.connectionIdAt(px + 1, y, pz), this.connectionIdAt(px, y, pz + 1), this.connectionIdAt(px - 1, y, pz));
-        const boxes = shapes.boxes(id, mask);
+        // A whole cube hides its faces against what is really there, the hole of a mined block too.
+        const neighbourAt = registry.fullCube[id] ? (ax, ay, az) => this.idAt(ax, ay, az) : (ax, ay, az) => this.connectionIdAt(ax, ay, az);
+        const mask = shapes.mask(id, neighbourAt(px, y, pz - 1), neighbourAt(px + 1, y, pz), neighbourAt(px, y, pz + 1), neighbourAt(px - 1, y, pz));
+        const shape = shapes.shapes[id];
+        const boxes = shapes.boxes(id, mask, shape.variantAt ? shape.variantAt(worldX, y, worldZ) : null);
         const material = world.getChunkMaterial(type);
         const ownLight = cellLight(worldX, y, worldZ);
         const ownSky = cellSky(lx, y, lz);
         for (const box of boxes) {
+            const relief = box.relief || null;
             for (let f = 0; f < 6; f++) {
+                if (relief && relief.skip & (1 << f)) continue;
                 const face = MESH_FACES[f];
                 const [nx, ny, nz] = face.normal;
                 const axis = nx !== 0 ? 0 : ny !== 0 ? 1 : 2;
@@ -532,7 +544,25 @@ class ChunkMesher {
                     continue;
                 }
 
-                const bucket = bucketFor(Array.isArray(material) ? material[f] : material);
+                const rect = relief && relief.uv ? relief.uv[f] : null;
+                const bucket = bucketFor(rect ? world.getChunkAtlasMaterial(type) : relief && relief.planks ? material[2] : Array.isArray(material) ? material[f] : material);
+                if (relief && !onBorder) {
+                    const [fromX, fromZ] = SHAPE_DIRECTIONS[relief.from];
+                    const light = cellLight(worldX + fromX, y, worldZ + fromZ);
+                    const sky = cellSky(lx + fromX, y, lz + fromZ);
+                    const v = face.corners.map((corner, i) => {
+                        const x = corner[0] ? box[3] : box[0];
+                        const yy = corner[1] ? box[4] : box[1];
+                        const z = corner[2] ? box[5] : box[2];
+                        const [u, uvV] = rect
+                            ? [rect[0] + (rect[2] - rect[0]) * MESH_FACE_UVS[i][0], rect[1] + (rect[3] - rect[1]) * MESH_FACE_UVS[i][1]]
+                            : ChunkMesher.boxFaceUV(f, x, yy, z);
+                        return bucket.addVertex(lx + x, y + yy, lz + z, nx, ny, nz, u, uvV, ChunkMesher.reliefShade(relief.from, x, z), light, sky);
+                    });
+                    bucket.addTriangle(v[0], v[1], v[2], worldX, y, worldZ);
+                    bucket.addTriangle(v[0], v[2], v[3], worldX, y, worldZ);
+                    continue;
+                }
                 // Inner tops (the tread of a stair) sample their own layer, like slab tops.
                 const flatTop = f === 2 && !onBorder;
                 const v = face.corners.map((corner) => {
@@ -554,6 +584,12 @@ class ChunkMesher {
                 bucket.addTriangle(v[0], v[2], v[3], worldX, y, worldZ);
             }
         }
+    }
+
+    // How much light a point of a hollow front keeps, by how deep it lies behind the face `from`.
+    static reliefShade(from, x, z) {
+        const depth = from === 'n' ? z : from === 's' ? 1 - z : from === 'e' ? 1 - x : x;
+        return Math.max(RELIEF_DARKEST, 1 - (1 - RELIEF_DARKEST) * depth / RELIEF_DEPTH);
     }
 
     // Neighbour id for connections: the block being mined (cut out of the mesh) still counts.

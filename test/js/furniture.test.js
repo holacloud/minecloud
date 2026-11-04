@@ -82,7 +82,7 @@ function loadGame() {
         APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_CHILL, APPLIANCE_FREEZE, APPLIANCE_CHILL_SECONDS, APPLIANCE_FREEZE_SECONDS, APPLIANCE_ITEMS,
         applianceOvenTakes, applianceColdTable, applianceSlotProgress, storageSameStacks, storageOvenStatus, storagePercent, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
-        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
+        furnShelfBooks, FURN_SHELF_ROWS, furnShelfRowBooks, bookshelfArrangement, bookshelfFronts, FURN_SHELF_VARIANTS, FURN_SHELF_UPPER_ROWS, FURN_SHELF_LOWER_ROWS, FURN_SHELF_MAX_BOXES, furnShelfLookRows, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval,
         MIRROR_RANGE, MIRROR_TARGET_MAX, APPLIANCE_FOUNDRY, APPLIANCE_FOUNDRY_FUELS, APPLIANCE_ARC, APPLIANCE_ARC_REDUCER, APPLIANCE_MACHINES,
@@ -304,9 +304,9 @@ test('collisions: seats hold you at seat height, small things let you through, n
     assert.ok(collision('red_carpet')[0][4] < controller.stepHeight);
     // Tables and storage are solid, so you can stand on them and not inside them.
     for (const type of ['table', 'chest', 'wardrobe', 'bedside_table', 'oven', 'workbench']) assert.ok(collision(type).length > 0, type);
-    // No piece turns its cell into a full cube for light or faces.
-    for (const item of ITEMS) assert.equal(world.registry.fullCube[world.registry.id(item)], 0, item);
-    // The bookshelf is a whole block to walk into and stand on, all the same.
+    // No piece but the bookshelf, which has no hole through it, is a full cube for light or faces.
+    for (const item of ITEMS) assert.equal(world.registry.fullCube[world.registry.id(item)], item === 'bookshelf' ? 1 : 0, item);
+    // The bookshelf is a whole block to walk into and stand on, whatever its front does.
     assert.deepEqual(JSON.parse(JSON.stringify(collision('bookshelf:e'))), [[0, 0, 0, 1, 1, 1]]);
 });
 
@@ -383,6 +383,227 @@ test('the bookshelf: books on the side that looks at you, plain wood on the rest
     assert.equal(world.getFaceTextureSpecs('bookshelf').top.pattern, 'planks');
     assert.equal(ctx.constructionTurnType('bookshelf', 1, world.blockTypes), 'bookshelf');
     assert.equal(ctx.constructionTurnType('bookshelf:e', 1, world.blockTypes), 'bookshelf:s');
+});
+
+// The triangles and the faces the mesher makes of the cell (x, y, z).
+function meshedCell(world, x, y, z) {
+    const result = world.mesher.build(0, 0);
+    const faces = [];
+    for (const bucket of result.buckets) {
+        for (let t = 0; t < bucket.indices.length / 3; t++) {
+            if (bucket.blocks[t * 3] === x && bucket.blocks[t * 3 + 1] === y && bucket.blocks[t * 3 + 2] === z) {
+                const a = bucket.indices[t * 3];
+                faces.push({
+                    bucket, a,
+                    position: bucket.positions.slice(a * 3, a * 3 + 3),
+                    normal: bucket.normals.slice(a * 3, a * 3 + 3),
+                    shade: bucket.colors[a * 3],
+                    light: bucket.light[a],
+                    sky: bucket.sky[a]
+                });
+            }
+        }
+    }
+    return faces;
+}
+
+test('the bookshelf: a stable look by position, never the same as a neighbour, no pattern along a wall', () => {
+    const look = ctx.bookshelfArrangement;
+    assert.ok(ctx.FURN_SHELF_VARIANTS >= 8);
+    for (const [x, y, z] of [[0, 0, 0], [-7, 3, 12], [1000, 40, -2048], [-1, -1, -1]]) {
+        const value = look(x, y, z);
+        assert.equal(value, look(x, y, z), 'the same each time');
+        assert.ok(Number.isInteger(value) && value >= 0 && value < ctx.FURN_SHELF_VARIANTS, `${x},${y},${z}: ${value}`);
+    }
+    // No two neighbours share a row of the same height: that is what the eye would catch.
+    const rows = ctx.furnShelfLookRows;
+    for (let x = -40; x < 40; x++) {
+        for (let y = -3; y < 12; y++) {
+            for (let z = -40; z < 40; z += 3) {
+                const here = rows(look(x, y, z));
+                for (const [dx, dy, dz] of [[1, 0, 0], [0, 1, 0], [0, 0, 1]]) {
+                    const next = rows(look(x + dx, y + dy, z + dz));
+                    assert.notEqual(here.upper, next.upper, `${x},${y},${z} + ${dx},${dy},${dz}`);
+                    assert.notEqual(here.lower, next.lower, `${x},${y},${z} + ${dx},${dy},${dz}`);
+                }
+            }
+        }
+    }
+    // A wall 60 long and 6 high shows many looks, and the same look seldom comes back in a row.
+    const wall = new Set();
+    for (let x = 0; x < 60; x++) for (let y = 1; y <= 6; y++) wall.add(look(x, y, 9));
+    assert.ok(wall.size > 180, `${wall.size} different looks on 360 shelves`);
+    for (const axis of [0, 2]) {
+        const line = [];
+        for (let i = 0; i < 143; i++) line.push(look(axis === 0 ? i : 5, 2, axis === 2 ? i : 5));
+        assert.ok(new Set(line).size > 100, `a row of 143 along axis ${axis}: ${new Set(line).size}`);
+    }
+});
+
+test('the bookshelf: every row stays in the cavity, varied, with books standing out of the back', () => {
+    const count = ctx.FURN_SHELF_UPPER_ROWS + ctx.FURN_SHELF_LOWER_ROWS;
+    const seen = new Set();
+    for (let index = 0; index < count; index++) {
+        const books = ctx.furnShelfRowBooks(index);
+        assert.ok(books.length >= 2 && books.length <= ctx.FURN_SHELF_MAX_BOXES, `row ${index}: ${books.length}`);
+        seen.add(JSON.stringify(books));
+        for (const book of books) {
+            assert.ok(book.x0 >= 1.5 - 1e-6 && book.x1 <= 14.5 + 1e-6, `row ${index} across`);
+            assert.ok(book.y1 <= 5.75 + 1e-6, `row ${index} up`);
+            assert.ok(book.front > 0.5 && book.front <= 2.5, `row ${index}: behind the board's lip, well out of the back`);
+        }
+    }
+    assert.equal(seen.size, count, 'no row twice');
+});
+
+test('the bookshelf: real boxes in the mesh, with the triangles counted; hidden fronts are not built', () => {
+    const world = makeWorld();
+    // A row with a free front, against a wall behind: x 2..12 along z = 5, front to the north.
+    for (let x = 1; x <= 13; x++) for (let y = 1; y <= 3; y++) put(world, x, y, 6, 'stone');
+    for (let x = 2; x <= 12; x++) for (let y = 1; y <= 3; y++) put(world, x, y, 5, 'bookshelf:n');
+    for (const y of [1, 2, 3]) { put(world, 1, y, 5, 'stone'); put(world, 13, y, 5, 'stone'); }
+    for (let x = 2; x <= 12; x++) put(world, x, 4, 5, 'stone');
+    let worst = 0;
+    let total = 0;
+    const counts = new Set();
+    const result = world.mesher.build(0, 0);
+    for (let x = 2; x <= 12; x++) {
+        for (let y = 1; y <= 3; y++) {
+            let triangles = 0;
+            for (const bucket of result.buckets) {
+                for (let t = 0; t < bucket.indices.length / 3; t++) {
+                    if (bucket.blocks[t * 3] === x && bucket.blocks[t * 3 + 1] === y && bucket.blocks[t * 3 + 2] === 5) triangles++;
+                }
+            }
+            worst = Math.max(worst, triangles);
+            total += triangles;
+            counts.add(triangles);
+        }
+    }
+    const average = total / 33;
+    assert.ok(worst <= 120, `a shelf in a wall: at most ${worst} triangles`);
+    assert.ok(average >= 60 && average <= 110, `a shelf in a wall: ${average} triangles on average`);
+    assert.ok(counts.size > 2, 'not all the same');
+
+    // The front lies at z = 5; the books are behind it, the back deeper still, and darker.
+    const faces = meshedCell(world, 6, 2, 5);
+    const facingNorth = faces.filter((face) => face.normal[2] === -1).map((face) => face.position[2] - 5);
+    assert.ok(Math.min(...facingNorth) < 1e-6, 'the frame is at the face of the block');
+    assert.ok(Math.max(...facingNorth) > 4.9 / 16 && Math.max(...facingNorth) < 5.1 / 16, 'the back is sunken');
+    assert.ok(facingNorth.some((z) => z > 0.03 && z < 3 / 16), 'the spines stand out of it');
+    const shadeAt = (depth) => faces.filter((face) => face.normal[2] === -1 && near(face.position[2] - 5, depth)).map((face) => face.shade);
+    assert.ok(Math.max(...shadeAt(5 / 16)) < 0.5, 'the back is in shadow, in every mode');
+    const atlas = world.getChunkAtlasMaterial('bookshelf:n');
+    assert.ok(faces.some((face) => face.bucket.material === atlas), 'the books cut the atlas');
+    assert.equal(atlas, world.getChunkAtlasMaterial('bookshelf:e'), 'one material for all the states');
+    assert.equal(atlas, world.getChunkAtlasMaterial('bookshelf'));
+    assert.ok(result.buckets.filter((bucket) => bucket.material === atlas).length === 1, 'one more draw group in a chunk, however many shelves');
+
+    // Neighbouring shelves really differ in the mesh.
+    const shape = (x) => JSON.stringify(meshedCell(world, x, 2, 5).map((face) => face.position.map((value, i) => (i === 0 ? value - x : value))));
+    assert.notEqual(shape(6), shape(7));
+
+    // A front against a cube: nothing inside is built, just what shows of a cube (here, nothing).
+    const closed = makeWorld();
+    for (const [x, y, z] of [[5, 2, 4], [5, 2, 6], [4, 2, 5], [6, 2, 5], [5, 3, 5], [5, 1, 5]]) put(closed, x, y, z, 'stone');
+    put(closed, 5, 2, 5, 'bookshelf:n');
+    assert.equal(meshedCell(closed, 5, 2, 5).length, 0, 'walled in, no triangles at all');
+    // Standing alone, every side of the block counts too: the most one can cost.
+    let most = 0;
+    for (let x = 0; x < 16; x++) {
+        const free = makeWorld();
+        put(free, x, 2, 5, 'bookshelf:s');
+        most = Math.max(most, meshedCell(free, x, 2, 5).length);
+    }
+    assert.ok(most <= 140, `alone in the open: ${most} triangles`);
+});
+
+test('the bookshelf: faces, light and sky behave as a cube, inside lit from the front', () => {
+    // A wall of shelves stops a torch's light and the sky; it did not when it let light through.
+    const world = makeWorld();
+    const id = world.registry.id('bookshelf:n');
+    assert.equal(world.registry.fullCube[id], 1);
+    assert.equal(world.registry.transparent[id], 0);
+    assert.equal(world.registry.shaped[id], 1, 'meshed as boxes');
+    for (let x = 0; x < 12; x++) for (let y = 1; y <= 8; y++) put(world, x, y, 5, 'bookshelf:n');
+    put(world, 5, 2, 3, 'torch');
+    const field = new ctx.LightField(world, 0, 0);
+    assert.ok(field.get(5, 2, 4) > 10, 'lit on this side');
+    assert.ok(field.get(5, 2, 6) < field.get(5, 2, 4) - 3, 'a long way round to the other');
+    assert.equal(field.get(5, 2, 5), 0, 'none in the block itself');
+    // A neighbouring cube hides the face against it, and darkens the corner.
+    const cubes = makeWorld();
+    put(cubes, 5, 2, 5, 'bookshelf:n');
+    put(cubes, 6, 2, 5, 'stone');
+    const stone = meshedCell(cubes, 6, 2, 5);
+    assert.ok(!stone.some((face) => face.normal[0] === -1), 'no stone face against it');
+    // Inside it takes the light of the cell it looks at, not the dark of its own.
+    const lit = makeWorld();
+    put(lit, 5, 2, 5, 'bookshelf:n');
+    put(lit, 5, 2, 3, 'torch');
+    const inner = meshedCell(lit, 5, 2, 5).filter((face) => face.position[2] > 5.01 && face.position[2] < 5.32);
+    assert.ok(inner.length > 0 && inner.every((face) => face.light > 0.3), 'lit from the front');
+    // Fences join it, as they join any cube.
+    assert.equal(world.shapes.cube[id], 1);
+});
+
+test('the bookshelf: icons, the hand and the ground see a plain block; collision is whole; saved ones work', () => {
+    const world = makeWorld();
+    const id = world.registry.id('bookshelf:n');
+    assert.deepEqual(JSON.parse(JSON.stringify(world.shapes.boxes(id, 0))), [[0, 0, 0, 1, 1, 1]], 'no look: a plain box');
+    for (const mask of [0, 1, 15]) assert.deepEqual(JSON.parse(JSON.stringify(world.shapes.collision(id, mask))), [[0, 0, 0, 1, 1, 1]]);
+    assert.equal(world.getMaterial('bookshelf:n')[5].map !== undefined, true, 'its painted front');
+    assert.ok(world.createDisplayMesh('bookshelf'), 'held and dropped');
+    assert.ok(world.getInventoryIconUrl('bookshelf').startsWith('data:'), 'its icon');
+    assert.equal(ctx.TEXTURE_PATTERNS.bookshelf_atlas.atlas, true);
+
+    // A saved shelf has no front: books along the free sides of its axis, never two that meet.
+    const N = 1; const E = 2; const S = 4; const W = 8;
+    const fronts = (mask) => JSON.parse(JSON.stringify(ctx.bookshelfFronts(mask)));
+    assert.deepEqual(fronts(0), ['n', 's'], 'alone: two opposite sides');
+    assert.deepEqual(fronts(E | W), ['n', 's'], 'in a wall along x');
+    assert.deepEqual(fronts(N | S), ['e', 'w'], 'in a wall along z');
+    assert.deepEqual(fronts(E | W | S), ['n'], 'in a wall along x, against another');
+    assert.deepEqual(fronts(N | E | S), ['w']);
+    assert.deepEqual(fronts(N | E), ['s'], 'a corner: one side');
+    assert.deepEqual(fronts(N | E | S | W), [], 'walled in');
+    assert.deepEqual(fronts(N), ['e', 'w'], 'the end of a wall along z');
+    const saved = makeWorld();
+    put(saved, 5, 2, 5, 'bookshelf');
+    const faces = meshedCell(saved, 5, 2, 5);
+    assert.ok(faces.some((face) => near(face.position[2] - 5, 5 / 16) && face.normal[2] === -1), 'a sunken back to the north');
+    assert.ok(faces.some((face) => near(face.position[2] - 5, 11 / 16) && face.normal[2] === 1), 'and to the south');
+});
+
+test('the bookshelf: a click on a book builds in front of the shelf, and nothing replaces a neighbour', () => {
+    const shape = ctx.BLOCK_SHAPES.bookshelf;
+    const up = { x: 0, y: 1, z: 0 };
+    const east = { x: 1, y: 0, z: 0 };
+    // The top of a book inside, the side of a book inside: the front, never the shelf above or beside it.
+    assert.deepEqual(JSON.parse(JSON.stringify(shape.clickFace({ facing: 'e' }, { x: 0.9, y: 0.4, z: 0.5 }, up))), { x: 1, y: 0, z: 0 });
+    assert.deepEqual(JSON.parse(JSON.stringify(shape.clickFace({ facing: 'n' }, { x: 0.5, y: 0.4, z: 0.2 }, east))), { x: 0, y: 0, z: -1 });
+    // Its real outside faces stay as they are.
+    assert.equal(shape.clickFace({ facing: 'n' }, { x: 0.5, y: 1, z: 0.5 }, up), up);
+    assert.equal(shape.clickFace({ facing: 'n' }, { x: 1, y: 0.5, z: 0.5 }, east), east);
+    assert.deepEqual(JSON.parse(JSON.stringify(shape.clickFace({ facing: 'all' }, { x: 0.5, y: 0.4, z: 0.9 }, up))), { x: 0, y: 0, z: 1 });
+
+    withoutItemHandlers(() => {
+        const world = makeWorld();
+        put(world, 3, 1, 3, 'bookshelf:n');
+        put(world, 3, 2, 3, 'bookshelf:n');
+        const { game, sent } = makePlacingGame(world, 'stone', { x: 3, y: 1, z: 3 }, up);
+        game.raycastBlock = () => ({ object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0, point: new Vector3(3.5, 1.4, 3.2), face: { normal: up } });
+        game.placeBlock();
+        assert.equal(world.getBlockTypeAt(3, 2, 3), 'bookshelf:n', 'the shelf above stays');
+        assert.equal(world.getBlockTypeAt(3, 1, 2), 'stone', 'it goes in front');
+        assert.equal(sent.length, 1);
+        // A cube next to a piece does not take its place either.
+        put(world, 8, 1, 3, 'oak_chair');
+        const next = makePlacingGame(world, 'stone', { x: 7, y: 0, z: 3 }, { x: 1, y: 0, z: 0 });
+        next.game.raycastBlock = () => ({ object: { userData: { blockPosition: { x: 7, y: 1, z: 3 } } }, faceIndex: 0, point: new Vector3(8, 1.5, 3.5), face: { normal: { x: 1, y: 0, z: 0 } } });
+        next.game.placeBlock();
+        assert.equal(world.getBlockTypeAt(8, 1, 3), 'oak_chair');
+    });
 });
 
 test('lights use the block-light system, each at its level, with no power', () => {

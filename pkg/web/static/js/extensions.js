@@ -100,6 +100,8 @@ function registerFrameUpdate(updater) {
 //   shape                         a non-cube shape from registerBlockShape ('stairs', 'door',
 //                                 'trapdoor', 'fence', 'fence_gate', 'pane'; see js/blockShapes.js)
 //   lightPasses                   lets sky and torch light through without a see-through material
+//   wholeCube                     a shaped block that counts as an opaque cube for light and faces
+//   atlasFace                     { pattern, minSize }: the texture a shape's `relief` boxes cut from
 //   cutout                        alpha-cutout material (holes in the texture, like iron bars)
 //   drawBlockIcon(ctx, size, world)  draws its inventory icon instead of the cube/shape view
 const BLOCK_TYPES = {};
@@ -139,6 +141,8 @@ function registerBlockBreakHandler(handler) {
 //   iconState, iconMask      state and connections shown in the inventory icon
 //   iconBoxes                boxes to draw in the icon instead (furniture two cells long)
 //   iconFit                  small things: the icon fills the slot instead of matching a cube's scale
+//   variantAt(x, y, z)       which look a cell has, by position (boxes get it; null: icons, held items)
+//   clickFace(state, local, normal)  the face a click on an inner face counts as, for building
 const BLOCK_SHAPES = {};
 function registerBlockShape(name, shape) {
     BLOCK_SHAPES[name] = shape;

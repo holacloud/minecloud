@@ -858,13 +858,15 @@ class WorldRenderer {
         const generated = this.generateFaceTextures(faceSpec);
         texture = new THREE.CanvasTexture(generated[kind] || generated.albedo);
         // Sprites must not wrap, or filtering bleeds the bottom row into the top edge.
+        const atlas = Boolean(TEXTURE_PATTERNS[faceSpec.pattern] && TEXTURE_PATTERNS[faceSpec.pattern].atlas);
         const sprite = ['tall_grass', 'flower', 'mushroom', 'torch', 'ladder', 'spray_paint'].includes(faceSpec.pattern) ||
             Boolean(TEXTURE_PATTERNS[faceSpec.pattern] && TEXTURE_PATTERNS[faceSpec.pattern].sprite);
         texture.wrapS = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
         texture.wrapT = sprite ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
         texture.magFilter = this.rtxModeEnabled ? THREE.LinearFilter : THREE.NearestFilter;
-        texture.minFilter = this.rtxModeEnabled ? THREE.LinearMipmapLinearFilter : THREE.NearestFilter;
-        texture.generateMipmaps = this.rtxModeEnabled;
+        // An atlas has more pixels than a block drawn at distance: it would shimmer without mipmaps.
+        texture.minFilter = this.rtxModeEnabled || atlas ? THREE.LinearMipmapLinearFilter : THREE.NearestFilter;
+        texture.generateMipmaps = this.rtxModeEnabled || atlas;
         texture.anisotropy = this.rtxModeEnabled ? 8 : 1;
         if (kind === 'albedo' && THREE.sRGBEncoding) {
             texture.encoding = THREE.sRGBEncoding;
@@ -1150,6 +1152,19 @@ class WorldRenderer {
             material = withVertexColors(base);
         }
 
+        this.chunkMaterials.set(cacheKey, material);
+        return material;
+    }
+
+    // The one material of the atlas a shape's `relief` boxes cut from (`atlasFace`), for all its states.
+    getChunkAtlasMaterial(type) {
+        const face = this.blockTypes[type].atlasFace;
+        const cacheKey = `atlas:${face.pattern}`;
+        let material = this.chunkMaterials.get(cacheKey);
+        if (material) return material;
+        material = this.createFaceMaterial(type, { pattern: face.pattern, tint: null, label: null, minSize: face.minSize });
+        material.vertexColors = true;
+        this.addBlockLight(material, null);
         this.chunkMaterials.set(cacheKey, material);
         return material;
     }
