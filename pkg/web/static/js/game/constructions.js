@@ -1010,7 +1010,7 @@ function constructionShowroom(b) {
 
     // ---- 13. The workshop: a foundry, and an arc furnace on two generators of its own (160 W of
     // the 150 W it asks for while it works), touching nothing of the kitchen's network ----
-    sign(54, 12, 'w', 'TALLER. Fundición con carbón. Horno de arco: 150 W.',
+    sign(54, 12, 'w', 'TALLER. Fundición y horno de arco.', 'Fundición: arena o adoquín, y carbón. Horno de arco: arena y carbón, con sus 2 generadores (150 W).',
         'Workshop. Foundry: sand or cobblestone, and coal. Arc furnace: sand and coal, on its two generators. Both yield more than the C menu.');
     b.shaped(54, 1, 10, 'foundry', 'oven', { facing: 'w', fire: 'off' });
     b.set(51, 1, 16, 'rtg');
