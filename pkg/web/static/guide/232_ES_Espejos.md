@@ -13,8 +13,8 @@ Dos espejos, y los dos son [plata sobre vidrio](181):
 
 - El **espejo de pared** se engancha a la **pared que pulsas**, con la plata mirando hacia fuera. No va en suelos ni techos, y se queda donde está si rompes la pared, como una [antorcha](62) o un [cartel](64).
 - El **cubo de espejo** es un bloque entero con plata en sus seis caras.
-- Acércate y **mírate**: el espejo más cercano que veas, y todos los que están en línea con él, muestran el mundo y a ti. A más de unos 14 bloques, o en otra pared, un espejo se ve solo como plata brillante.
-- Mirar en un espejo obliga a tu ordenador a dibujar el mundo dos veces, por eso solo refleja una pared de espejos a la vez.
+- Acércate y **mírate**: el espejo que más ocupa en tu pantalla, y todos los que están en línea con él, muestran el mundo y a ti. A más de unos 14 bloques, un espejo se ve solo como plata brillante.
+- Cada pared de espejos obliga a tu ordenador a dibujar el mundo una vez más, por eso reflejan **dos como mucho** a la vez: una esquina, o dos caras de un cubo, si el juego va fluido, y solo una si se ralentiza o en un móvil. Las demás brillan, con un destello que se mueve contigo.
 
 ## ¿Cómo funciona un espejo?
 

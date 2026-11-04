@@ -13,8 +13,8 @@ Two mirrors, and both are made of [silver on glass](181):
 
 - A **wall mirror** attaches to the **wall you click**, its silver looking out. It does not go on floors or ceilings, and it stays where it is if you break the wall, like a [torch](62) or a [sign](64).
 - A **mirror cube** is a whole block with silver on all six sides.
-- Stand close and **look at yourself**: the nearest mirror you can see, and all the mirrors in line with it, show the world and you. Farther than about 14 blocks, or on another wall, a mirror just looks like shiny silver.
-- Looking around in a mirror asks your computer to draw the world twice, so only one wall of mirrors at a time reflects.
+- Stand close and **look at yourself**: the mirror that fills most of your screen, and all the mirrors in line with it, show the world and you. Farther than about 14 blocks a mirror just looks like shiny silver.
+- Each wall of mirrors asks your computer to draw the world once more, so **two at most** reflect at a time: a corner, or two sides of a cube, when the game runs smoothly, and only one if it slows down or on a phone. The others shine, with a gleam that moves as you do.
 
 ## How does a mirror work?
 

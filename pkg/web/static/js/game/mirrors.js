@@ -1,28 +1,37 @@
 // Mirrors: the wall mirror (`wall_mirror`) and the mirror cube (`mirror`, 'Silver Mirror', made
 // in js/game/chemistry.js too). Both show a shiny silver texture from afar, and metal in RTX and
 // Ultra, which reflects the sky through the environment map.
-// Near one, real reflection: one planar pass for one plane, as THREE.Reflector does.
+// Near one, real reflection: planar passes, as THREE.Reflector does, for one plane or two.
 // - Ten times a second (mirrorsPick) the mirror faces within reach are listed from the columns'
-//   cached block lists (ChunkColumn.findBlocks: nothing to do where there are no mirrors). The
-//   nearest face that looks at the camera, in view and not behind an opaque block, picks the plane.
-//   Every face on that plane shares its reflection; mirrors on other planes keep their texture.
+//   cached block lists (ChunkColumn.findBlocks: nothing to do where there are no mirrors). Each
+//   plane scores the part of the screen its faces cover, with what opaque blocks hide taken off
+//   (mirrorRankPlanes), and the plane that covers most is reflected, wherever its nearest cell is.
+//   Every face on that plane shares its reflection.
+// - A second plane is reflected too when the game has the frame time to spare and it is worth it
+//   (mirrorPlaneBudget, MIRROR_SECOND_MIN_COVER): a corner, or two sides of a cube. Two is the hard
+//   cap. It refreshes half as often as the first, it drops back to one under load and it stays
+//   there for a while. Touch screens only ever reflect one.
+// - Mirrors on other planes get a sheen (mirrorsSetSheen): quads that multiply what is under them
+//   by a brightness that moves with the view, so they read as polished metal and not as a mirror
+//   that broke. One draw call and no pass; it keeps the lighting of the block below it.
 // - mirrorsRender, before the frame is drawn: the world seen from the camera reflected in that
 //   plane, clipped at the plane (oblique near plane), goes to a small target (MIRROR_TARGET_MAX
 //   on its long side, at most half the screen). The local player's avatar is shown for this pass
 //   and the first-person hands are hidden. The sun's shadows are not rendered again. A still
 //   camera refreshes one frame in three; a slow game (under 25 fps) renders half as often.
+//   A mirror seen inside a mirror is its silver texture: no reflections of reflections.
 // - Quads a hair in front of those faces (mirrorsSetQuads) project the target onto themselves.
 //   Being opaque and in the normal queue, stained glass in front of them still filters them.
 // - The target has the encoding of the frame it is drawn in (sRGB in normal and RTX, linear
 //   half-float in Ultra, where the frame is HDR), with the same tone mapping as the main pass, so
 //   the quads copy its values as they are and no material has to change program between passes.
-// - With no mirror in reach the pass, the quads and the target (freed after a few seconds) do not
-//   exist. Past MIRROR_RANGE, a mirror is its texture.
+// - With no mirror in reach the passes, the quads and the targets (freed after a few seconds) do
+//   not exist. Past MIRROR_RANGE, a mirror is its texture and its plane's others its sheen.
 // Wall mirrors attach to the wall clicked and stay when it is broken, like the other wall items.
 // Mixed into Game.prototype; hooked through js/extensions.js. Loaded after decor.js.
 
 // Blocks from the camera at which a mirror face starts reflecting, and at which its plane's other
-// faces still do.
+// faces still do (and a face still has its sheen).
 const MIRROR_RANGE = 14;
 const MIRROR_PLANE_RANGE = 20;
 // Long side of the reflection in pixels: the hard cap of what a mirror can cost.
@@ -30,14 +39,24 @@ const MIRROR_TARGET_MAX = 512;
 const MIRROR_TARGET_MAX_TOUCH = 256;
 const MIRROR_PICK_EVERY = 0.1;
 const MIRROR_MAX_FACES = 256;
-// Candidates walked for a clear line of sight each pick, nearest first.
-const MIRROR_SIGHT_CHECKS = 8;
-// In view: a face closer than this always counts; further away it must be within this cosine of
-// the way the camera looks (wider than the screen: a face's centre may be off it, the face not).
-const MIRROR_ALWAYS_NEAR = 2.5;
-const MIRROR_VIEW_COS = 0.3;
-// The current plane is kept unless another one is this much closer (it would flicker otherwise).
-const MIRROR_KEEP_BONUS = 1.5;
+// The most planes reflected in a frame, and what a second one must cover of the screen to be worth
+// a pass (the first one only has to be seen at all).
+const MIRROR_MAX_PLANES = 2;
+const MIRROR_MIN_COVER = 0.0002;
+const MIRROR_SECOND_MIN_COVER = 0.004;
+// Average seconds per frame under which a second plane starts, over which it stops, and how long
+// after stopping it may try again (a pass costs frames, so it would come and go otherwise).
+const MIRROR_SECOND_START = 1 / 50;
+const MIRROR_SECOND_STOP = 1 / 35;
+const MIRROR_SECOND_RETRY = 10;
+// Faces walked for a clear line of sight each pick, largest on screen first: in all, and per plane
+// (a wall of mirrors next door must not use them up).
+const MIRROR_SIGHT_CHECKS = 32;
+const MIRROR_PLANE_SIGHT_CHECKS = 8;
+// The planes in use count this much more (they would flicker otherwise).
+const MIRROR_KEEP_FACTOR = 1.4;
+// Nothing nearer the eye than this is on screen, for the coverage.
+const MIRROR_VIEW_NEAR = 0.05;
 // The silver surface of a wall mirror lies this far from its wall; the frames are painted.
 const MIRROR_WALL_DEPTH = 1 / 16;
 const MIRROR_WALL_FRAME = 1 / 16;
@@ -52,6 +71,8 @@ const MIRROR_TINT = [0.92, 0.94, 0.96];
 // The axes of a plane's rectangle, chosen so that (first, second, normal axis) is right-handed.
 const MIRROR_PLANE_AXES = [[1, 2], [2, 0], [0, 1]];
 const MIRROR_FACINGS = { n: [2, -1], s: [2, 1], e: [0, 1], w: [0, -1] };
+// Where a face's line of sight is tested, across its rectangle: its middle and four inner points.
+const MIRROR_SIGHT_POINTS = [[0.5, 0.5], [0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8]];
 
 // ---------------------------------------------------------------------------------------
 // Pure helpers (also used by test/js/furniture.test.js)
@@ -95,14 +116,84 @@ function mirrorFaceDistance(face, eye) {
     return Math.hypot(eye[0] - face.center[0], eye[1] - face.center[1], eye[2] - face.center[2]);
 }
 
-// Whether a camera at `eye` looking along `forward` can see this face's silver side.
-function mirrorFaceInView(face, eye, forward) {
-    if ((eye[face.axis] - face.at) * face.sign <= 0.02) return false;
-    const distance = mirrorFaceDistance(face, eye);
-    if (distance > MIRROR_RANGE) return false;
-    if (distance < MIRROR_ALWAYS_NEAR) return true;
-    const along = (face.center[0] - eye[0]) * forward[0] + (face.center[1] - eye[1]) * forward[1] + (face.center[2] - eye[2]) * forward[2];
-    return along >= MIRROR_VIEW_COS * distance;
+// From the eye to the nearest point of the rectangle: what a large face is near by.
+function mirrorFaceNearest(face, eye) {
+    const [firstAxis, secondAxis] = MIRROR_PLANE_AXES[face.axis];
+    const clamp = (value, [low, high]) => Math.max(low, Math.min(high, value));
+    return Math.hypot(
+        eye[face.axis] - face.at,
+        eye[firstAxis] - clamp(eye[firstAxis], face.first),
+        eye[secondAxis] - clamp(eye[secondAxis], face.second)
+    );
+}
+
+// Whether the eye is on a face's silver side.
+function mirrorFaceLooksAt(face, eye) {
+    return (eye[face.axis] - face.at) * face.sign > 0.02;
+}
+
+// What the coverage needs of a camera: eye, unit vectors, and the half-size of the screen at
+// distance 1 (the tangents of half the field of view).
+function mirrorViewOf(camera) {
+    const e = camera.matrixWorld.elements;
+    const tanY = Math.tan((camera.fov * Math.PI) / 360);
+    return {
+        eye: [e[12], e[13], e[14]],
+        right: [e[0], e[1], e[2]],
+        up: [e[4], e[5], e[6]],
+        forward: [-e[8], -e[9], -e[10]],
+        tanX: tanY * camera.aspect,
+        tanY
+    };
+}
+
+// Keeps the part of a polygon where inside(point) >= 0 (Sutherland-Hodgman, one edge).
+function mirrorClipPolygon(points, inside) {
+    const out = [];
+    for (let i = 0; i < points.length; i++) {
+        const a = points[i];
+        const b = points[(i + 1) % points.length];
+        const da = inside(a);
+        const db = inside(b);
+        if (da >= 0) out.push(a);
+        if ((da >= 0) !== (db >= 0)) {
+            const t = da / (da - db);
+            out.push(a.map((value, k) => value + (b[k] - value) * t));
+        }
+    }
+    return out;
+}
+
+// How much of the screen a face covers, from 0 to 1: its rectangle in front of the near plane,
+// projected, cut by the edges of the screen. Nothing hides it here, that is mirrorFaceSight's part.
+function mirrorFaceCover(face, view) {
+    if (!mirrorFaceLooksAt(face, view.eye)) return 0;
+    const [firstAxis, secondAxis] = MIRROR_PLANE_AXES[face.axis];
+    const [a0, a1] = face.first;
+    const [b0, b1] = face.second;
+    let polygon = [[a0, b0], [a1, b0], [a1, b1], [a0, b1]].map(([a, b]) => {
+        const d = [0, 0, 0];
+        d[face.axis] = face.at - view.eye[face.axis];
+        d[firstAxis] = a - view.eye[firstAxis];
+        d[secondAxis] = b - view.eye[secondAxis];
+        const dot = (v) => d[0] * v[0] + d[1] * v[1] + d[2] * v[2];
+        return [dot(view.right), dot(view.up), dot(view.forward)];
+    });
+    polygon = mirrorClipPolygon(polygon, ([, , z]) => z - MIRROR_VIEW_NEAR);
+    if (polygon.length < 3) return 0;
+    let screen = polygon.map(([x, y, z]) => [x / (z * view.tanX), y / (z * view.tanY)]);
+    for (const inside of [([x]) => 1 - x, ([x]) => 1 + x, ([, y]) => 1 - y, ([, y]) => 1 + y]) {
+        screen = mirrorClipPolygon(screen, inside);
+        if (screen.length < 3) return 0;
+    }
+    let twice = 0;
+    for (let i = 0; i < screen.length; i++) {
+        const [x0, y0] = screen[i];
+        const [x1, y1] = screen[(i + 1) % screen.length];
+        twice += x0 * y1 - x1 * y0;
+    }
+    // The screen is 2 by 2 here.
+    return Math.abs(twice) / 8;
 }
 
 // Whether the straight line between two points misses every block `opaque(x, y, z)` says is solid.
@@ -119,22 +210,92 @@ function mirrorLineClear(opaque, from, to) {
     return true;
 }
 
-// The face that picks the reflected plane, or null: the nearest one in view with a clear line of
-// sight. `currentKey` is the plane reflected until now.
-function mirrorPickFace(faces, eye, forward, currentKey, opaque) {
-    const ranked = [];
+// How much of a face the eye has a clear line to, from 0 to 1: a block in front of its middle
+// leaves the rest of it to be seen.
+function mirrorFaceSight(face, eye, opaque) {
+    const [firstAxis, secondAxis] = MIRROR_PLANE_AXES[face.axis];
+    let clear = 0;
+    for (const [a, b] of MIRROR_SIGHT_POINTS) {
+        const target = [0, 0, 0];
+        target[face.axis] = face.at + face.sign * 0.05;
+        target[firstAxis] = face.first[0] + (face.first[1] - face.first[0]) * a;
+        target[secondAxis] = face.second[0] + (face.second[1] - face.second[0]) * b;
+        if (mirrorLineClear(opaque, eye, target)) clear++;
+    }
+    return clear / MIRROR_SIGHT_POINTS.length;
+}
+
+// The planes worth reflecting, most of the screen first: [{ key, cover, face }], `face` being its
+// largest on screen. Only faces in range count. `currentKeys` are the planes in use.
+function mirrorRankPlanes(faces, view, currentKeys, opaque) {
+    const seen = [];
     for (const face of faces) {
-        if (!mirrorFaceInView(face, eye, forward)) continue;
-        const bonus = mirrorPlaneKey(face) === currentKey ? MIRROR_KEEP_BONUS : 0;
-        ranked.push({ face, score: mirrorFaceDistance(face, eye) - bonus });
+        if (mirrorFaceNearest(face, view.eye) > MIRROR_RANGE) continue;
+        const cover = mirrorFaceCover(face, view);
+        if (cover > 0) seen.push({ face, cover });
     }
-    ranked.sort((a, b) => a.score - b.score);
-    for (const { face } of ranked.slice(0, MIRROR_SIGHT_CHECKS)) {
-        const target = face.center.slice();
-        target[face.axis] += face.sign * 0.05;
-        if (mirrorLineClear(opaque, eye, target)) return face;
+    seen.sort((a, b) => b.cover - a.cover);
+    const planes = new Map();
+    let checks = 0;
+    for (const { face, cover } of seen) {
+        const key = mirrorPlaneKey(face);
+        let plane = planes.get(key);
+        if (!plane) {
+            plane = { key, cover: 0, face: null, checks: 0, sight: 0 };
+            planes.set(key, plane);
+        }
+        let sight;
+        if (checks < MIRROR_SIGHT_CHECKS && plane.checks < MIRROR_PLANE_SIGHT_CHECKS) {
+            sight = mirrorFaceSight(face, view.eye, opaque);
+            checks++;
+            plane.checks++;
+            plane.sight += sight;
+        } else {
+            // Out of checks: as much of it is taken to be seen as of the plane's larger faces.
+            sight = plane.checks ? plane.sight / plane.checks : 0;
+        }
+        plane.cover += cover * sight;
+        if (!plane.face && sight > 0) plane.face = face;
     }
-    return null;
+    const score = (plane) => plane.cover * (currentKeys.includes(plane.key) ? MIRROR_KEEP_FACTOR : 1);
+    return [...planes.values()]
+        .filter((plane) => plane.face && plane.cover >= MIRROR_MIN_COVER)
+        .sort((a, b) => score(b) - score(a))
+        .map(({ key, cover, face }) => ({ key, cover, face }));
+}
+
+// How many planes are reflected this frame ({ planes, wait } goes in and comes back): one until
+// frames are short, and back to one for a while as soon as they are not.
+function mirrorPlaneBudget(budget, frameTime, delta, touch) {
+    if (touch) return { planes: 1, wait: 0 };
+    const wait = Math.max(0, budget.wait - delta);
+    if (budget.planes > 1) {
+        return frameTime > MIRROR_SECOND_STOP ? { planes: 1, wait: MIRROR_SECOND_RETRY } : { planes: budget.planes, wait };
+    }
+    return wait === 0 && frameTime < MIRROR_SECOND_START ? { planes: MIRROR_MAX_PLANES, wait: 0 } : { planes: 1, wait };
+}
+
+// Which of the ranked planes are drawn with `budget` planes.
+function mirrorPlanesToDraw(ranked, budget) {
+    return ranked.filter((plane, index) => index === 0 || (index < budget && plane.cover >= MIRROR_SECOND_MIN_COVER));
+}
+
+// One corner per call, in the order the triangles of the quads use.
+function mirrorQuadCorners(face) {
+    const [firstAxis, secondAxis] = MIRROR_PLANE_AXES[face.axis];
+    const corner = (a, b) => {
+        const point = [0, 0, 0];
+        point[face.axis] = face.at + face.sign * MIRROR_QUAD_LIFT;
+        point[firstAxis] = a;
+        point[secondAxis] = b;
+        return point;
+    };
+    const [a0, a1] = face.first;
+    const [b0, b1] = face.second;
+    const quad = face.sign > 0
+        ? [corner(a0, b0), corner(a1, b0), corner(a1, b1), corner(a0, b1)]
+        : [corner(a0, b0), corner(a0, b1), corner(a1, b1), corner(a1, b0)];
+    return [0, 1, 2, 0, 2, 3].map((index) => quad[index]);
 }
 
 // Triangles of the quads, counter-clockwise from the side the faces look at.
@@ -142,26 +303,22 @@ function mirrorQuadPositions(faces) {
     const positions = new Float32Array(faces.length * 18);
     let write = 0;
     for (const face of faces) {
-        const [firstAxis, secondAxis] = MIRROR_PLANE_AXES[face.axis];
-        const corner = (a, b) => {
-            const point = [0, 0, 0];
-            point[face.axis] = face.at + face.sign * MIRROR_QUAD_LIFT;
-            point[firstAxis] = a;
-            point[secondAxis] = b;
-            return point;
-        };
-        const [a0, a1] = face.first;
-        const [b0, b1] = face.second;
-        const quad = face.sign > 0
-            ? [corner(a0, b0), corner(a1, b0), corner(a1, b1), corner(a0, b1)]
-            : [corner(a0, b0), corner(a0, b1), corner(a1, b1), corner(a1, b0)];
-        for (const index of [0, 1, 2, 0, 2, 3]) {
-            positions[write++] = quad[index][0];
-            positions[write++] = quad[index][1];
-            positions[write++] = quad[index][2];
+        for (const point of mirrorQuadCorners(face)) {
+            positions[write++] = point[0];
+            positions[write++] = point[1];
+            positions[write++] = point[2];
         }
     }
     return positions;
+}
+
+// The normal of each of those vertices.
+function mirrorQuadNormals(faces) {
+    const normals = new Float32Array(faces.length * 18);
+    faces.forEach((face, index) => {
+        for (let vertex = 0; vertex < 6; vertex++) normals[index * 18 + vertex * 3 + face.axis] = face.sign;
+    });
+    return normals;
 }
 
 // Size of the target for a screen: at most half of it, and at most `limit` on its long side.
@@ -170,10 +327,15 @@ function mirrorTargetSize(width, height, limit) {
     return { width: Math.max(64, Math.floor(width * scale)), height: Math.max(64, Math.floor(height * scale)) };
 }
 
-// Frames between two refreshes of the reflection.
-function mirrorRefreshInterval(cameraMoved, slowGame) {
+// Frames between two refreshes of the reflection. The second plane takes half of them.
+function mirrorRefreshInterval(cameraMoved, slowGame, second = false) {
     const interval = cameraMoved ? 1 : 3;
-    return slowGame ? interval * 2 : interval;
+    return (slowGame ? interval * 2 : interval) * (second ? 2 : 1);
+}
+
+// The sum of the geometry of a list of faces, to tell when it changed.
+function mirrorFacesSignature(faces) {
+    return faces.map((face) => `${mirrorPlaneKey(face)},${face.first[0]},${face.second[0]}`).sort().join(';');
 }
 
 // ---------------------------------------------------------------------------------------
@@ -231,6 +393,29 @@ const MIRROR_FRAGMENT_SHADER = `
     }
 `;
 
+const MIRROR_SHEEN_VERTEX_SHADER = `
+    varying vec3 vPosition;
+    varying vec3 vFaceNormal;
+    void main() {
+        vPosition = position;
+        vFaceNormal = normal;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+// The output multiplies what is there, times two (see the blending), so 0.5 changes nothing: light
+// from above where the view bounces upwards, dark below, and a soft streak that slides as you move.
+const MIRROR_SHEEN_FRAGMENT_SHADER = `
+    varying vec3 vPosition;
+    varying vec3 vFaceNormal;
+    void main() {
+        vec3 bounce = reflect(normalize(vPosition - cameraPosition), normalize(vFaceNormal));
+        float sky = smoothstep(-0.35, 0.65, bounce.y);
+        float streak = smoothstep(0.82, 1.0, sin((bounce.x + bounce.z) * 7.0 + bounce.y * 3.0));
+        gl_FragColor = vec4(vec3(0.38 + 0.2 * sky + 0.12 * streak), 1.0);
+    }
+`;
+
 Object.assign(Game.prototype, {
     // A flag per block id, for ChunkColumn.findBlocks.
     mirrorsFlags() {
@@ -279,44 +464,67 @@ Object.assign(Game.prototype, {
         return faces;
     },
 
-    // Chooses the plane to reflect (see the top) and keeps the quads in step with it.
+    // Chooses the planes to reflect (see the top) and keeps the quads in step with them.
     mirrorsPick() {
         const camera = this.camera;
-        const eye = [camera.position.x, camera.position.y, camera.position.z];
+        camera.updateMatrixWorld();
+        const view = mirrorViewOf(camera);
+        const eye = view.eye;
         const faces = this.mirrorsGather(eye);
         if (faces.length === 0) {
-            this.mirrorFace = null;
+            this.mirrorPlanes = [];
+            if (this.mirrorSheen) this.mirrorsSetSheen([]);
             return;
         }
-        const look = camera.getWorldDirection(new THREE.Vector3());
         const registry = this.world.registry;
         const opaque = (x, y, z) => registry.fullCube[this.world.getBlockId(x, y, z)] === 1;
-        const previousKey = this.mirrorFace ? mirrorPlaneKey(this.mirrorFace) : null;
-        const face = mirrorPickFace(faces, eye, [look.x, look.y, look.z], previousKey, opaque);
-        this.mirrorFace = face;
-        if (!face) return;
-        const key = mirrorPlaneKey(face);
-        const onPlane = faces.filter((other) => mirrorPlaneKey(other) === key);
-        onPlane.sort((a, b) => mirrorFaceDistance(a, eye) - mirrorFaceDistance(b, eye));
-        this.mirrorsSetQuads(onPlane.slice(0, MIRROR_MAX_FACES));
+        const previous = (this.mirrorPlanes || []).map((plane) => plane.key);
+        const budget = this.mirrorBudget ? this.mirrorBudget.planes : 1;
+        const chosen = mirrorPlanesToDraw(mirrorRankPlanes(faces, view, previous, opaque), budget);
+        const nearest = (a, b) => mirrorFaceDistance(a, eye) - mirrorFaceDistance(b, eye);
+        this.mirrorPlanes = chosen.map(({ key, face }) => ({
+            key, face,
+            faces: faces.filter((other) => mirrorPlaneKey(other) === key).sort(nearest).slice(0, MIRROR_MAX_FACES)
+        }));
+        this.mirrorsAssignSlots();
+        // What does not reflect shines, if it looks this way.
+        const keys = chosen.map((plane) => plane.key);
+        this.mirrorsSetSheen(faces.filter((face) => mirrorFaceLooksAt(face, eye) && !keys.includes(mirrorPlaneKey(face))).sort(nearest).slice(0, MIRROR_MAX_FACES));
     },
 
-    mirrorsSetQuads(faces) {
-        const signature = faces.map((face) => `${mirrorPlaneKey(face)},${face.first[0]},${face.second[0]}`).sort().join(';');
-        if (signature === this.mirrorQuadsSignature) return;
-        this.mirrorQuadsSignature = signature;
-        if (!this.mirrorQuads) this.mirrorsBuildQuads();
-        const geometry = this.mirrorQuads.geometry;
+    // Every plane keeps the slot (quads, target) it already has, so swapping ranks draws nothing new.
+    mirrorsAssignSlots() {
+        if (!this.mirrorSlots) this.mirrorSlots = Array.from({ length: MIRROR_MAX_PLANES }, () => ({ plane: null, drawnKey: null }));
+        const slots = this.mirrorSlots;
+        const planes = this.mirrorPlanes;
+        for (const slot of slots) slot.plane = planes.find((plane) => plane.key === slot.drawnKey) || null;
+        for (const plane of planes) {
+            if (slots.some((slot) => slot.plane === plane)) continue;
+            slots.find((slot) => !slot.plane).plane = plane;
+        }
+        for (const slot of slots) {
+            if (slot.plane) this.mirrorsSetQuads(slot, slot.plane.faces);
+        }
+    },
+
+    mirrorsSetQuads(slot, faces) {
+        const signature = mirrorFacesSignature(faces);
+        if (signature === slot.signature) return;
+        slot.signature = signature;
+        if (!slot.quads) this.mirrorsBuildQuads(slot);
+        const geometry = slot.quads.geometry;
+        // Frees the old buffers: setAttribute alone leaves them on the GPU.
+        geometry.dispose();
         geometry.setAttribute('position', new THREE.BufferAttribute(mirrorQuadPositions(faces), 3));
         geometry.computeBoundingSphere();
     },
 
-    mirrorsBuildQuads() {
-        this.mirrorTextureMatrix = new THREE.Matrix4();
+    mirrorsBuildQuads(slot) {
+        slot.textureMatrix = new THREE.Matrix4();
         const material = new THREE.ShaderMaterial({
             uniforms: {
                 reflection: { value: null },
-                textureMatrix: { value: this.mirrorTextureMatrix },
+                textureMatrix: { value: slot.textureMatrix },
                 tint: { value: new THREE.Vector3(...MIRROR_TINT) }
             },
             vertexShader: MIRROR_VERTEX_SHADER,
@@ -326,48 +534,85 @@ Object.assign(Game.prototype, {
             polygonOffsetUnits: -1,
             toneMapped: false
         });
-        this.mirrorQuads = new THREE.Mesh(new THREE.BufferGeometry(), material);
-        this.mirrorQuads.visible = false;
+        slot.quads = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        slot.quads.visible = false;
         // It lives at the origin: its vertices are world positions, which the texture matrix needs.
-        this.mirrorQuads.matrixAutoUpdate = false;
-        this.scene.add(this.mirrorQuads);
+        slot.quads.matrixAutoUpdate = false;
+        this.scene.add(slot.quads);
     },
 
-    // The target for the current graphics mode and screen size.
-    mirrorsTarget() {
+    mirrorsBuildSheen() {
+        const material = new THREE.ShaderMaterial({
+            vertexShader: MIRROR_SHEEN_VERTEX_SHADER,
+            fragmentShader: MIRROR_SHEEN_FRAGMENT_SHADER,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.CustomBlending,
+            blendEquation: THREE.AddEquation,
+            blendSrc: THREE.DstColorFactor,
+            blendDst: THREE.SrcColorFactor,
+            blendSrcAlpha: THREE.ZeroFactor,
+            blendDstAlpha: THREE.OneFactor,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+            toneMapped: false
+        });
+        this.mirrorSheen = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        this.mirrorSheen.matrixAutoUpdate = false;
+        this.scene.add(this.mirrorSheen);
+    },
+
+    // The shine of the faces that do not reflect: multiplies what is under it by twice its output.
+    mirrorsSetSheen(faces) {
+        if (faces.length === 0 && !this.mirrorSheen) return;
+        if (!this.mirrorSheen) this.mirrorsBuildSheen();
+        this.mirrorSheen.visible = faces.length > 0;
+        const signature = mirrorFacesSignature(faces);
+        if (signature === this.mirrorSheenSignature) return;
+        this.mirrorSheenSignature = signature;
+        const geometry = this.mirrorSheen.geometry;
+        geometry.dispose();
+        geometry.setAttribute('position', new THREE.BufferAttribute(mirrorQuadPositions(faces), 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(mirrorQuadNormals(faces), 3));
+        geometry.computeBoundingSphere();
+    },
+
+    // A slot's target for the current graphics mode and screen size.
+    mirrorsTarget(slot) {
         const renderer = this.renderer;
         const ultra = Boolean(this.ultraModeEnabled && this.ultraTarget);
         const screen = renderer.getDrawingBufferSize(new THREE.Vector2());
         const limit = this.touchControlsEnabled ? MIRROR_TARGET_MAX_TOUCH : MIRROR_TARGET_MAX;
         const { width, height } = mirrorTargetSize(screen.x, screen.y, limit);
-        if (this.mirrorTarget && this.mirrorTargetUltra !== ultra) this.mirrorsFreeTarget();
-        if (!this.mirrorTarget) {
-            this.mirrorTarget = new THREE.WebGLRenderTarget(width, height, {
+        if (slot.target && slot.targetUltra !== ultra) this.mirrorsFreeTarget(slot);
+        if (!slot.target) {
+            slot.target = new THREE.WebGLRenderTarget(width, height, {
                 minFilter: THREE.LinearFilter,
                 magFilter: THREE.LinearFilter,
                 format: THREE.RGBAFormat,
                 type: ultra ? THREE.HalfFloatType : THREE.UnsignedByteType,
                 depthBuffer: true
             });
-            this.mirrorTarget.texture.generateMipmaps = false;
-            this.mirrorTargetUltra = ultra;
-            this.mirrorQuads.material.uniforms.reflection.value = this.mirrorTarget.texture;
-        } else if (this.mirrorTarget.width !== width || this.mirrorTarget.height !== height) {
-            this.mirrorTarget.setSize(width, height);
+            slot.target.texture.generateMipmaps = false;
+            slot.targetUltra = ultra;
+            slot.quads.material.uniforms.reflection.value = slot.target.texture;
+        } else if (slot.target.width !== width || slot.target.height !== height) {
+            slot.target.setSize(width, height);
         }
-        this.mirrorTarget.texture.encoding = ultra ? THREE.LinearEncoding : renderer.outputEncoding;
-        return this.mirrorTarget;
+        slot.target.texture.encoding = ultra ? THREE.LinearEncoding : renderer.outputEncoding;
+        return slot.target;
     },
 
-    mirrorsFreeTarget() {
-        if (!this.mirrorTarget) return;
-        this.mirrorTarget.dispose();
-        this.mirrorTarget = null;
+    mirrorsFreeTarget(slot) {
+        if (!slot.target) return;
+        slot.target.dispose();
+        slot.target = null;
     },
 
     // The camera on the other side of the plane, and the matrix from world positions to where
     // each one lies in its image. THREE.Reflector's method, with the plane in world coordinates.
-    mirrorsAimCamera(face) {
+    mirrorsAimCamera(face, textureMatrix) {
         if (!this.mirrorCamera) this.mirrorCamera = new THREE.PerspectiveCamera();
         const camera = this.camera;
         const virtual = this.mirrorCamera;
@@ -386,8 +631,8 @@ Object.assign(Game.prototype, {
         virtual.updateMatrixWorld();
         virtual.projectionMatrix.copy(camera.projectionMatrix);
 
-        this.mirrorTextureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
-        this.mirrorTextureMatrix.multiply(virtual.projectionMatrix).multiply(virtual.matrixWorldInverse);
+        textureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+        textureMatrix.multiply(virtual.projectionMatrix).multiply(virtual.matrixWorldInverse);
 
         // The near plane becomes the mirror's own (terathon.com/lengyel/Lengyel-Oblique.pdf): what
         // is behind the mirror must not appear in it.
@@ -408,24 +653,26 @@ Object.assign(Game.prototype, {
         matrix[14] = clip.w;
     },
 
-    // Draws the reflection with the local player in it and no first-person hands.
-    mirrorsDrawReflection(delta, target) {
+    // Draws a reflection with the local player in it, no first-person hands and no mirrors shining.
+    mirrorsDrawReflection(delta, target, updateAvatar) {
         const renderer = this.renderer;
         const avatar = this.localPlayerAvatar;
         const hands = [this.firstPersonHand, this.firstPersonLeftHand].filter(Boolean);
         const handsVisible = hands.map((hand) => hand.visible);
         const firstPerson = this.cameraViewMode === 'first' && !this.followTargetPlayerId && !this.cinematic;
-        if (avatar && firstPerson && !this.pauseOpen) this.updateLocalPlayerAvatar(this.camera.position, delta);
+        if (updateAvatar && avatar && firstPerson && !this.pauseOpen) this.updateLocalPlayerAvatar(this.camera.position, delta);
         const avatarVisible = avatar ? avatar.visible : false;
         const tag = avatar ? avatar.userData.nameSprite : null;
         const tagVisible = tag ? tag.visible : false;
         const shadowUpdate = renderer.shadowMap.autoUpdate;
         const previousTarget = renderer.getRenderTarget();
+        const meshes = [...this.mirrorSlots.map((slot) => slot.quads), this.mirrorSheen].filter(Boolean);
+        const meshesVisible = meshes.map((mesh) => mesh.visible);
 
         hands.forEach((hand) => { hand.visible = false; });
         if (avatar && firstPerson) avatar.visible = true;
         if (tag) tag.visible = false;
-        this.mirrorQuads.visible = false;
+        meshes.forEach((mesh) => { mesh.visible = false; });
         renderer.shadowMap.autoUpdate = false;
         renderer.setRenderTarget(target);
         // The depth buffer must be writable to be cleared (as in THREE.Reflector).
@@ -437,44 +684,57 @@ Object.assign(Game.prototype, {
         if (tag) tag.visible = tagVisible;
         if (avatar) avatar.visible = avatarVisible;
         hands.forEach((hand, i) => { hand.visible = handsVisible[i]; });
-        this.mirrorQuads.visible = true;
+        meshes.forEach((mesh, i) => { mesh.visible = meshesVisible[i]; });
     },
 
     // Before each frame is drawn (renderFrame in js/game/ultra.js).
     mirrorsRender(delta) {
+        // A running average of the frame time, while there is something to spend it on.
+        const active = this.mirrorPlanes && this.mirrorPlanes.length > 0;
+        this.mirrorFrameTime = active ? (this.mirrorFrameTime ?? delta) * 0.95 + delta * 0.05 : undefined;
+        if (active) this.mirrorBudget = mirrorPlaneBudget(this.mirrorBudget || { planes: 1, wait: 1 }, this.mirrorFrameTime, delta, this.touchControlsEnabled);
         this.mirrorPickWait = (this.mirrorPickWait || 0) - delta;
         if (this.mirrorPickWait <= 0) {
             this.mirrorPickWait = MIRROR_PICK_EVERY;
             this.mirrorsPick();
         }
-        const face = this.mirrorFace;
-        if (!face) {
-            if (this.mirrorQuads) this.mirrorQuads.visible = false;
-            this.mirrorDrawnKey = null;
-            // The target outlives a glance away from the mirror, not a walk away from it.
-            if (this.mirrorTarget) {
-                this.mirrorIdleTime = (this.mirrorIdleTime || 0) + delta;
-                if (this.mirrorIdleTime >= MIRROR_TARGET_IDLE_SECONDS) this.mirrorsFreeTarget();
-            }
-            return;
-        }
-        this.mirrorIdleTime = 0;
+        if (!this.mirrorSlots) return;
 
-        const target = this.mirrorsTarget();
-        this.camera.updateMatrixWorld();
-        if (!this.mirrorLastCamera) this.mirrorLastCamera = new THREE.Matrix4();
-        const moved = !this.mirrorLastCamera.equals(this.camera.matrixWorld);
-        this.mirrorLastCamera.copy(this.camera.matrixWorld);
-        // A running average of the frame time, for mirrorRefreshInterval.
-        this.mirrorFrameTime = (this.mirrorFrameTime ?? delta) * 0.95 + delta * 0.05;
-        const key = mirrorPlaneKey(face);
-        this.mirrorFramesWaited = (this.mirrorFramesWaited || 0) + 1;
-        const interval = mirrorRefreshInterval(moved, this.mirrorFrameTime > 1 / 25);
-        if (key === this.mirrorDrawnKey && target === this.mirrorDrawnTarget && this.mirrorFramesWaited < interval) return;
-        this.mirrorFramesWaited = 0;
-        this.mirrorDrawnKey = key;
-        this.mirrorDrawnTarget = target;
-        this.mirrorsAimCamera(face);
-        this.mirrorsDrawReflection(delta, target);
+        const planes = this.mirrorPlanes;
+        let moved = false;
+        if (planes.length > 0) {
+            this.camera.updateMatrixWorld();
+            if (!this.mirrorLastCamera) this.mirrorLastCamera = new THREE.Matrix4();
+            moved = !this.mirrorLastCamera.equals(this.camera.matrixWorld);
+            this.mirrorLastCamera.copy(this.camera.matrixWorld);
+        }
+        const slow = this.mirrorFrameTime > 1 / 25;
+        let updateAvatar = true;
+        for (const slot of this.mirrorSlots) {
+            const plane = slot.plane && planes.includes(slot.plane) ? slot.plane : null;
+            if (!plane) {
+                if (slot.quads) slot.quads.visible = false;
+                slot.plane = null;
+                slot.drawnKey = null;
+                // The target outlives a glance away from the mirror, not a walk away from it.
+                if (slot.target) {
+                    slot.idle = (slot.idle || 0) + delta;
+                    if (slot.idle >= MIRROR_TARGET_IDLE_SECONDS) this.mirrorsFreeTarget(slot);
+                }
+                continue;
+            }
+            slot.idle = 0;
+            const target = this.mirrorsTarget(slot);
+            slot.framesWaited = (slot.framesWaited || 0) + 1;
+            const interval = mirrorRefreshInterval(moved, slow, plane !== planes[0]);
+            if (plane.key === slot.drawnKey && target === slot.drawnTarget && slot.framesWaited < interval) continue;
+            slot.framesWaited = 0;
+            slot.drawnKey = plane.key;
+            slot.drawnTarget = target;
+            this.mirrorsAimCamera(plane.face, slot.textureMatrix);
+            this.mirrorsDrawReflection(delta, target, updateAvatar);
+            updateAvatar = false;
+            slot.quads.visible = true;
+        }
     }
 });
