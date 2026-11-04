@@ -47,3 +47,5 @@ At full health you do not eat it.
 - Roasting fish over embers is one of the oldest ways of cooking known.
 
 See also: [Raw fish](80), [Health, food and dangers](9).
+
+An [oven](233) cooks one from a `raw_fish` too, with fuel, and a [freezer](234) can freeze it.

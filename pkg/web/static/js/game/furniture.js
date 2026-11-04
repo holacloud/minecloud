@@ -10,7 +10,8 @@
 // - A piece that joins its neighbour (table, bench, sofa) works it out when meshed, as fences do.
 // - Lights use the block-light system (`lightEmission`: a level up to 14) and need no power.
 // - Sitting is js/game/seating.js (`seat` is the height of the seat), chests js/game/storage.js
-//   (`storageSlots`), and the oven toggles through shape.toggle, like a door (js/game/joinery.js).
+//   (`storageSlots`). The oven, the fridge and the chest freezer are chests that also do things,
+//   on the server (js/game/appliances.js); the oven's fire is set by the server alone.
 // - Nothing falls when its support goes: the game has no such rule for torches, signs or ladders
 //   and floating blocks are part of it. A hanging piece only needs a block above when placed.
 // Mixed into Game.prototype; hooked through js/extensions.js.
@@ -220,14 +221,14 @@ furnShape('workbench', {
     collision: [[0, 0, 0, 16, 16, 16]]
 });
 
-// An oven: right click lights it, and it gives light while it burns.
+// An oven: a right click opens it, like a chest. It lights by itself when it has food and fuel,
+// and gives light while it burns (pkg/network/appliances.go sets `fire` through the block name).
 registerBlockShape('oven', {
     states: [['facing', SHAPE_FACINGS], ['fire', ['off', 'on']]],
     boxes: () => [[0, 0, 0, 1, 1, 1]],
     variant: (state, def) => (state.fire === 'on' ? def.lit : {}),
     materialKey: (state) => `${state.facing}:${state.fire}`,
     place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx), fire: 'off' } }],
-    toggle: (state) => ({ ...state, fire: state.fire === 'on' ? 'off' : 'on' }),
     iconState: { facing: 's', fire: 'off' }
 });
 
@@ -242,6 +243,12 @@ furnTallShape('fridge', {
         : [[1, 0, 1, 15, 16, 15], [12, 0, 0, 13, 4, 1], [12, 8, 0, 13, 13, 1]]),
     collision: () => [[1, 0, 1, 15, 16, 15]],
     iconBoxes: [[1, 0, 1, 15, 32, 15]]
+});
+
+// A long low box with a lid, wider than a chest: it fills the cell, the seal shows as a groove.
+furnShape('chest_freezer', {
+    boxes: [[0, 0, 0, 16, 12, 16], [0, 13, 0, 16, 16, 16], [1, 12, 1, 15, 13, 15], [6, 10, 0, 10, 12, 1]],
+    collision: [[0, 0, 0, 16, 16, 16]]
 });
 
 furnShape('toilet', {
@@ -642,6 +649,30 @@ function furnPaintFridge(f, s, tint, seed, upper) {
 registerTexturePattern('fridge_lower', (f, s, tint, seed) => furnPaintFridge(f, s, tint, seed, false), FURN_GLOSSY);
 registerTexturePattern('fridge_upper', (f, s, tint, seed) => furnPaintFridge(f, s, tint, seed, true), FURN_GLOSSY);
 
+// A chest freezer: white enamel with a blue band under the lid, frost on the lid's window.
+function furnPaintChestFreezer(f, s, tint, seed, front) {
+    const base = f.rgb(0xe6edf2);
+    const band = f.rgb(0x4d88b8);
+    f.each(s, (x, y, u, v) => {
+        let c = furnEnamel(f, s, base, u, v, seed);
+        let h = 0.6;
+        if (v > 0.2 && v < 0.27) { c = f.tone(s, band, 0); h = 0.3; }
+        if (v > 0.88) c = f.tone(s, base, -0.3);
+        if (front && v > 0.4 && v < 0.62 && Math.abs(u - 0.5) < 0.2) { c = f.tone(s, f.rgb(0xb8d8ec), (f.hash(x, y, seed) - 0.5) * 0.12); h = 0.9; }
+        f.put(s, x, y, c, h);
+    });
+}
+registerTexturePattern('chest_freezer_front', (f, s, tint, seed) => furnPaintChestFreezer(f, s, tint, seed, true), FURN_GLOSSY);
+registerTexturePattern('chest_freezer_side', (f, s, tint, seed) => furnPaintChestFreezer(f, s, tint, seed, false), FURN_GLOSSY);
+registerTexturePattern('chest_freezer_top', (f, s, tint, seed) => {
+    const base = f.rgb(0xe6edf2);
+    const frost = f.rgb(0xc8e4f4);
+    f.each(s, (x, y, u, v) => {
+        const glass = Math.abs(u - 0.5) < 0.34 && Math.abs(v - 0.5) < 0.3;
+        f.put(s, x, y, glass ? f.tone(s, frost, (f.hash(x, y, seed) - 0.5) * 0.14) : furnEnamel(f, s, base, u, v, seed), glass ? 0.9 : 0.6);
+    });
+}, FURN_GLOSSY);
+
 // Fabric, a stitched seam, dark wood at the very bottom (the sofa's feet).
 registerTexturePattern('upholstery', (f, s, tint, seed) => {
     const cloth = f.rgb(tint ?? 0xb93a32);
@@ -783,7 +814,7 @@ furnBlock('workbench', {
     faces: { top: 'workbench_top', side: { pattern: 'planks', tintOf: 'planks' }, bottom: { pattern: 'planks', tintOf: 'planks' } }
 });
 furnBlock('oven', {
-    color: 0x3A3D42, name: 'Oven', shape: 'oven', breakDuration: 0.9, category: 'stone',
+    color: 0x3A3D42, name: 'Oven', shape: 'oven', breakDuration: 0.9, category: 'stone', storageSlots: 3,
     faces: { top: 'oven_top', side: 'oven_side', bottom: 'oven_side', front: 'oven_front_off' },
     lit: { lightEmission: 11, faces: { top: 'oven_top', side: 'oven_side', bottom: 'oven_side', front: { pattern: 'oven_front_on', glow: 1 } } }
 });
@@ -793,9 +824,13 @@ furnBlock('sink', {
 });
 const FURN_FRIDGE_FACES = (front) => ({ top: 'fridge_lower', side: 'fridge_lower', bottom: 'fridge_lower', front });
 furnBlock('fridge', {
-    color: 0xDFE3E6, name: 'Fridge', shape: 'fridge', breakDuration: 0.9, category: 'stone',
+    color: 0xDFE3E6, name: 'Fridge', shape: 'fridge', breakDuration: 0.9, category: 'stone', storageSlots: 18, electric: true,
     faces: FURN_FRIDGE_FACES('fridge_lower'),
     halves: { lower: { faces: FURN_FRIDGE_FACES('fridge_lower') }, upper: { faces: FURN_FRIDGE_FACES('fridge_upper') } }
+});
+furnBlock('chest_freezer', {
+    color: 0xE6EDF2, name: 'Chest Freezer', shape: 'chest_freezer', breakDuration: 0.9, category: 'stone', storageSlots: 36, electric: true,
+    faces: { top: 'chest_freezer_top', side: 'chest_freezer_side', bottom: 'chest_freezer_side', front: 'chest_freezer_front' }
 });
 furnBlock('toilet', {
     color: FURN_CHINA, name: 'Toilet', shape: 'toilet', breakDuration: 0.6, category: 'stone', seat: 0.5625,
@@ -858,6 +893,7 @@ registerGameContent(function ({ addRecipe }) {
     addRecipe('oven', 'Build Oven', 'oven', 1, [{ type: 'cobblestone', amount: 6 }, { type: 'iron_ore', amount: 2 }, { type: 'coal_ore', amount: 1 }]);
     addRecipe('sink', 'Build Sink', 'sink', 1, [{ type: 'marble', amount: 2 }, { type: 'planks', amount: 2 }, { type: 'iron_ore', amount: 1 }]);
     addRecipe('fridge', 'Build Fridge', 'fridge', 1, [{ type: 'iron_ore', amount: 6 }, { type: 'marble', amount: 1 }]);
+    addRecipe('chest_freezer', 'Build Chest Freezer', 'chest_freezer', 1, [{ type: 'iron_ore', amount: 8 }, { type: 'marble', amount: 2 }, { type: 'copper_wire', amount: 2 }]);
     addRecipe('toilet', 'Build Toilet', 'toilet', 1, [{ type: 'marble', amount: 3 }]);
     addRecipe('bathtub', 'Build Bathtub', 'bathtub', 1, [{ type: 'marble', amount: 5 }, { type: 'iron_ore', amount: 1 }]);
     addRecipe('candle', 'Dip Candles', 'candle', 4, [{ type: 'honeycomb', amount: 1 }, { type: 'white_wool', amount: 1 }]);

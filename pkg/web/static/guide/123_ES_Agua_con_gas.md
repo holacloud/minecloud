@@ -37,3 +37,5 @@ Si prefieres descubrirla tú, no sigas leyendo.
 | `C + 2 O → CO₂ (agua con gas)` | compuesto | 1 `soda_water` (gasta 1 `water_flask`) |
 
 Ver también: [Química](115), [Frasco de agua](118).
+
+Una [nevera](234) la enfría en `cold_soda`.

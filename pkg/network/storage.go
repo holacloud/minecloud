@@ -19,10 +19,11 @@ import (
 //
 //   - storageOpen   {x, y, z}: start watching a chest; answers storageContents.
 //   - storageClose  {}: stop watching.
-//   - storagePut    {x, y, z, type, amount, reqId}: the client has already taken the items out
-//     of its inventory; storageResult says how many landed and it gives the rest back.
-//   - storageTake   {x, y, z, slot, type, amount, reqId}: storageResult says how many left the
-//     chest and the client adds them. `type` must match the slot (someone may have emptied it).
+//   - storagePut    {x, y, z, type, amount, reqId, compartment}: the client has already taken the
+//     items out of its inventory; storageResult says how many landed and it gives the rest back.
+//   - storageTake   {x, y, z, slot, type, amount, reqId, compartment}: storageResult says how many
+//     left the chest and the client adds them. `type` must match the slot (someone may have
+//     emptied it). `compartment` is "" for the main slots or "freezer" (a fridge's second tab).
 //   - storageSync   {reqIds}: "I never heard back about these". Each is answered from the log,
 //     or marked dead if it never arrived (it can then never apply), so a lost message, a
 //     reconnection or a page reload neither loses nor duplicates what was on its way.
@@ -31,20 +32,33 @@ import (
 //     (drops are client-side pickups: sent to everyone, everyone could collect a copy).
 //
 // A move is applied, saved, and only then answered. The log of answers is saved in the same
-// file as the contents, so after a crash they still agree.
+// file as the contents, so after a crash they still agree. Ovens and cold furniture are chests
+// that also change what they hold on their own: appliances.go.
 //
 // What this does NOT protect: the player's inventory lives in the browser and the server has no
 // way to know what it holds. A modified client can put items it never had, and the position the
 // reach check reads is reported by the client too. The server only guarantees that what is in a
 // chest stays consistent: an item is either in the chest or handed to one client, never both.
 //
-// storageKinds is mirrored by STORAGE_KINDS in js/game/storage.js (test/js/furniture.test.js).
+// storageKinds and storageFreezers are mirrored by STORAGE_KINDS and STORAGE_FREEZERS in
+// js/game/storage.js (test/js/furniture.test.js).
 
 var storageKinds = map[string]int{
-	"barrel":   18,
-	"chest":    27,
-	"wardrobe": 45,
+	"barrel":        18,
+	"chest":         27,
+	"chest_freezer": 36,
+	"fridge":        18,
+	"oven":          3,
+	"wardrobe":      45,
 }
+
+// storageFreezers: kinds with a second compartment, "freezer", and how many slots it has.
+var storageFreezers = map[string]int{
+	"fridge": 9,
+}
+
+// storageTall: kinds of two cells, which keep their contents in the lower one.
+var storageTall = map[string]bool{"fridge": true, "wardrobe": true}
 
 const (
 	// The most one slot holds, and the most one message moves.
@@ -59,6 +73,8 @@ const (
 	storageSyncMax = 64
 	// The longest message: 64 ids of 64 characters, and room to spare. The websocket has no limit.
 	storageMaxPayload = 8192
+	// The name of a fridge's second compartment.
+	storageFreezerTab = "freezer"
 )
 
 var (
@@ -70,6 +86,8 @@ var (
 type StorageSlot struct {
 	Type  string `json:"type,omitempty"`
 	Count int    `json:"count,omitempty"`
+	// Seconds this stack has spent turning cold (appliances.go); 0 anywhere else.
+	Chill float64 `json:"chill,omitempty"`
 }
 
 // StorageBlock is the contents of one chest, by the position of its base cell. Only blocks that
@@ -79,6 +97,15 @@ type StorageBlock struct {
 	Y     int           `json:"y"`
 	Z     int           `json:"z"`
 	Slots []StorageSlot `json:"slots"`
+	// Appliances only (appliances.go): what it is, so that the server knows after a restart which
+	// ones have work to do without reading every chest's chunk.
+	Kind string `json:"kind,omitempty"`
+	// A fridge's second compartment.
+	Freezer []StorageSlot `json:"freezer,omitempty"`
+	// An oven: seconds of fire left, of the fuel that lit it, and seconds the food has cooked.
+	Burn    float64 `json:"burn,omitempty"`
+	BurnMax float64 `json:"burnMax,omitempty"`
+	Cook    float64 `json:"cook,omitempty"`
 }
 
 // storageOutcome answers one request: how many items moved (0 when refused).
@@ -98,6 +125,8 @@ type storageMove struct {
 	Type   string `json:"type"`
 	Amount int    `json:"amount"`
 	ReqID  string `json:"reqId"`
+	// "" (the main slots) or "freezer".
+	Compartment string `json:"compartment"`
 }
 
 // storageSnapshot is what a storageContents message carries; Rev grows with every change, so a
@@ -109,6 +138,12 @@ type storageSnapshot struct {
 	Capacity int           `json:"capacity"`
 	Slots    []StorageSlot `json:"slots"`
 	Rev      int64         `json:"rev"`
+	// Appliances (appliances.go): the second compartment, whether this runs on electricity and
+	// has it now, and an oven's fire.
+	Freezer []StorageSlot `json:"freezer,omitempty"`
+	Cold    bool          `json:"cold,omitempty"`
+	Powered bool          `json:"powered,omitempty"`
+	Oven    *ovenStatus   `json:"oven,omitempty"`
 }
 
 // storageBase is a block name without its states.
@@ -117,17 +152,55 @@ func storageBase(name string) string {
 	return base
 }
 
+// storageIsUpper: the upper half of a piece of two cells (js/game/furniture.js: half, facing).
+func storageIsUpper(name string) bool {
+	base := storageBase(name)
+	return storageTall[base] && strings.HasPrefix(name, base+":upper")
+}
+
 // storageCell finds the base cell and size of the storage block `name` at (x, y, z). A wardrobe
-// is two cells (js/game/furniture.js: half, facing) and keeps its contents in the lower one.
+// or a fridge is two cells and keeps its contents in the lower one.
 func storageCell(x, y, z int, name string) (cell [3]int, capacity int, ok bool) {
 	capacity, ok = storageKinds[storageBase(name)]
 	if !ok {
 		return cell, 0, false
 	}
-	if strings.HasPrefix(name, "wardrobe:upper") {
+	if storageIsUpper(name) {
 		y--
 	}
 	return [3]int{x, y, z}, capacity, true
+}
+
+// storagePlace is a storage block found in the world: its base cell, size and kind.
+type storagePlace struct {
+	cell     [3]int
+	capacity int
+	kind     string
+}
+
+// slots says how many slots a compartment of this block has; ok is false if it has no such one.
+func (p storagePlace) slots(compartment string) (int, bool) {
+	switch compartment {
+	case "":
+		return p.capacity, true
+	case storageFreezerTab:
+		n := storageFreezers[p.kind]
+		return n, n > 0
+	}
+	return 0, false
+}
+
+// compartment is the list of slots of one compartment.
+func (s *StorageBlock) compartment(name string) *[]StorageSlot {
+	if name == storageFreezerTab {
+		return &s.Freezer
+	}
+	return &s.Slots
+}
+
+// holdsNothing: no item in it, and no fire that must burn out.
+func (s *StorageBlock) holdsNothing() bool {
+	return storageIsEmpty(s.Slots) && storageIsEmpty(s.Freezer) && s.Burn <= 0
 }
 
 // storageBook holds every chest's contents and who is watching them. Lock order: mu, then
@@ -141,17 +214,30 @@ type storageBook struct {
 	rev     int64
 	viewers map[[3]int]map[*Client]bool
 	viewing map[*Client][3]int
+	// Appliances with work to do (appliances.go), by the key of their entry in blocks; the power
+	// each viewed cold block last showed; and blocks whose names changed, to broadcast.
+	active      map[string]bool
+	shownPower  map[[3]int]bool
+	nameChanges []Block
 	// Sends a message to a watcher (replaced by the tests).
 	deliver func(*Client, []byte) bool
+	// Whether the cold block at this base cell has power, and telling the grid of a block it may
+	// not know (appliances.go; replaced by the tests).
+	powered func(cell [3]int) bool
+	adopt   func(x, y, z int, name string)
 }
 
 func newStorageBook() *storageBook {
 	return &storageBook{
-		blocks:  make(map[string]*StorageBlock),
-		log:     make(map[string]storageOutcome),
-		viewers: make(map[[3]int]map[*Client]bool),
-		viewing: make(map[*Client][3]int),
-		deliver: storageDeliver,
+		blocks:     make(map[string]*StorageBlock),
+		log:        make(map[string]storageOutcome),
+		viewers:    make(map[[3]int]map[*Client]bool),
+		viewing:    make(map[*Client][3]int),
+		active:     make(map[string]bool),
+		shownPower: make(map[[3]int]bool),
+		deliver:    storageDeliver,
+		powered:    powerRunsAt,
+		adopt:      powerAdopt,
 	}
 }
 
@@ -176,27 +262,28 @@ func storageKeyOf(cell [3]int) string {
 	return blockKey(cell[0], cell[1], cell[2])
 }
 
-// locate proves the block at (x, y, z) is storage. The upper half of a wardrobe only counts over
-// its lower half: while the two halves of a broken wardrobe are removed one message after the
-// other, nothing can land in a cell that is already gone. Caller holds mu.
-func (b *storageBook) locate(w cropWorld, x, y, z int) (cell [3]int, capacity int, ok bool) {
+// locate proves the block at (x, y, z) is storage. The upper half of a wardrobe or a fridge only
+// counts over its lower half: while the two halves of a broken one are removed one message after
+// the other, nothing can land in a cell that is already gone. Caller holds mu.
+func (b *storageBook) locate(w cropWorld, x, y, z int) (place storagePlace, ok bool) {
 	name, err := w.Block(x, y, z)
 	if err != nil {
 		log.Printf("storage: %v", err)
-		return cell, 0, false
+		return place, false
 	}
-	cell, capacity, ok = storageCell(x, y, z, name)
-	if ok && cell[1] != y {
+	place.cell, place.capacity, ok = storageCell(x, y, z, name)
+	place.kind = storageBase(name)
+	if ok && place.cell[1] != y {
 		below, err := w.Block(x, y-1, z)
 		if err != nil {
 			log.Printf("storage: %v", err)
-			return cell, 0, false
+			return place, false
 		}
-		if !strings.HasPrefix(below, "wardrobe") || strings.HasPrefix(below, "wardrobe:upper") {
-			return cell, 0, false
+		if storageBase(below) != place.kind || storageIsUpper(below) {
+			return place, false
 		}
 	}
-	return cell, capacity, ok
+	return place, ok
 }
 
 func storageInReach(eye [3]float64, x, y, z int) bool {
@@ -207,21 +294,38 @@ func storageInReach(eye [3]float64, x, y, z int) bool {
 }
 
 // snapshotLocked copies the contents of a cell, padded to its capacity.
-func (b *storageBook) snapshotLocked(cell [3]int, capacity int) storageSnapshot {
-	slots := make([]StorageSlot, capacity)
-	if block := b.blocks[storageKeyOf(cell)]; block != nil {
+func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
+	cell := place.cell
+	block := b.blocks[storageKeyOf(cell)]
+	slots := make([]StorageSlot, place.capacity)
+	if block != nil {
 		copy(slots, block.Slots)
 	}
-	return storageSnapshot{X: cell[0], Y: cell[1], Z: cell[2], Capacity: capacity, Slots: slots, Rev: b.rev}
+	snapshot := storageSnapshot{X: cell[0], Y: cell[1], Z: cell[2], Capacity: place.capacity, Slots: slots, Rev: b.rev}
+	if n := storageFreezers[place.kind]; n > 0 {
+		snapshot.Freezer = make([]StorageSlot, n)
+		if block != nil {
+			copy(snapshot.Freezer, block.Freezer)
+		}
+	}
+	if applianceIsCold(place.kind) {
+		snapshot.Cold = true
+		snapshot.Powered = b.powered(cell)
+		b.shownPower[cell] = snapshot.Powered
+	}
+	if place.kind == ovenKind {
+		snapshot.Oven = ovenStatusOf(block)
+	}
+	return snapshot
 }
 
 // notifyLocked tells everyone watching a cell what it holds now.
-func (b *storageBook) notifyLocked(cell [3]int, capacity int) {
-	if len(b.viewers[cell]) == 0 {
+func (b *storageBook) notifyLocked(place storagePlace) {
+	if len(b.viewers[place.cell]) == 0 {
 		return
 	}
-	data := createMessage("storageContents", b.snapshotLocked(cell, capacity))
-	for client := range b.viewers[cell] {
+	data := createMessage("storageContents", b.snapshotLocked(place))
+	for client := range b.viewers[place.cell] {
 		b.deliver(client, data)
 	}
 }
@@ -251,12 +355,12 @@ func storageCheckMove(move storageMove) string {
 
 // beginMoveLocked runs the checks a put and a take share. It returns the chest, or the answer to
 // send instead (already in the log if it needs to be).
-func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storageMove) (cell [3]int, capacity int, done *storageOutcome) {
+func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storageMove) (place storagePlace, done *storageOutcome) {
 	if !storageRequest.MatchString(move.ReqID) {
-		return cell, 0, &storageOutcome{Reason: "bad request"}
+		return place, &storageOutcome{Reason: "bad request"}
 	}
 	if known, ok := b.log[move.ReqID]; ok {
-		return cell, 0, &known
+		return place, &known
 	}
 	reason := storageCheckMove(move)
 	if reason == "" && (eye == nil || !storageInReach(*eye, move.X, move.Y, move.Z)) {
@@ -264,44 +368,58 @@ func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storage
 	}
 	if reason == "" {
 		var ok bool
-		if cell, capacity, ok = b.locate(w, move.X, move.Y, move.Z); !ok {
+		if place, ok = b.locate(w, move.X, move.Y, move.Z); !ok {
 			reason = "not a storage block"
+		} else if _, ok := place.slots(move.Compartment); !ok {
+			reason = "bad compartment"
 		}
 	}
 	if reason != "" {
 		outcome := b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: reason})
-		return cell, 0, &outcome
+		return place, &outcome
 	}
-	return cell, capacity, nil
+	return place, nil
 }
 
 // put adds up to move.Amount items, onto stacks of the same type first and then into empty
-// slots. Returns the answer and whether the contents changed (and must be saved).
+// slots (in an oven, only into the one slot that item belongs in). Returns the answer and whether
+// the contents changed (and must be saved).
 func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (storageOutcome, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	cell, capacity, done := b.beginMoveLocked(w, eye, move)
+	place, done := b.beginMoveLocked(w, eye, move)
 	if done != nil {
 		return *done, false
 	}
-	key := storageKeyOf(cell)
+	capacity, _ := place.slots(move.Compartment)
+	first, last := 0, capacity
+	if place.kind == ovenKind {
+		slot := ovenSlotFor(move.Type)
+		if slot < 0 {
+			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "not for the oven"}), false
+		}
+		first, last = slot, slot+1
+	}
+	key := storageKeyOf(place.cell)
 	block := b.blocks[key]
 	if block == nil {
-		block = &StorageBlock{X: cell[0], Y: cell[1], Z: cell[2]}
+		block = &StorageBlock{X: place.cell[0], Y: place.cell[1], Z: place.cell[2]}
 	}
-	for len(block.Slots) < capacity {
-		block.Slots = append(block.Slots, StorageSlot{})
+	list := block.compartment(move.Compartment)
+	for len(*list) < capacity {
+		*list = append(*list, StorageSlot{})
 	}
+	slots := (*list)[first:last]
 	left := move.Amount
-	for i := range block.Slots {
-		if slot := &block.Slots[i]; left > 0 && slot.Type == move.Type && slot.Count < storageMaxStack {
+	for i := range slots {
+		if slot := &slots[i]; left > 0 && slot.Type == move.Type && slot.Count < storageMaxStack {
 			n := min(left, storageMaxStack-slot.Count)
 			slot.Count += n
 			left -= n
 		}
 	}
-	for i := range block.Slots {
-		if slot := &block.Slots[i]; left > 0 && slot.Count == 0 {
+	for i := range slots {
+		if slot := &slots[i]; left > 0 && slot.Count == 0 {
 			n := min(left, storageMaxStack)
 			*slot = StorageSlot{Type: move.Type, Count: n}
 			left -= n
@@ -312,8 +430,9 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 		return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "full"}), false
 	}
 	b.blocks[key] = block
+	b.wakeLocked(place, block)
 	b.rev++
-	b.notifyLocked(cell, capacity)
+	b.notifyLocked(place)
 	return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
 }
 
@@ -321,32 +440,40 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 func (b *storageBook) take(w cropWorld, eye *[3]float64, move storageMove) (storageOutcome, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	cell, capacity, done := b.beginMoveLocked(w, eye, move)
+	place, done := b.beginMoveLocked(w, eye, move)
 	if done != nil {
 		return *done, false
 	}
 	refuse := func(reason string) (storageOutcome, bool) {
 		return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: reason}), false
 	}
+	capacity, _ := place.slots(move.Compartment)
 	if move.Slot < 0 || move.Slot >= capacity {
 		return refuse("bad slot")
 	}
-	key := storageKeyOf(cell)
+	key := storageKeyOf(place.cell)
 	block := b.blocks[key]
-	if block == nil || move.Slot >= len(block.Slots) || block.Slots[move.Slot].Type != move.Type || block.Slots[move.Slot].Count <= 0 {
+	if block == nil {
 		return refuse("gone")
 	}
-	slot := &block.Slots[move.Slot]
+	list := *block.compartment(move.Compartment)
+	if move.Slot >= len(list) || list[move.Slot].Type != move.Type || list[move.Slot].Count <= 0 {
+		return refuse("gone")
+	}
+	slot := &list[move.Slot]
 	moved := min(move.Amount, slot.Count)
 	slot.Count -= moved
 	if slot.Count == 0 {
 		*slot = StorageSlot{}
 	}
-	if storageIsEmpty(block.Slots) {
+	if block.holdsNothing() {
 		delete(b.blocks, key)
+		delete(b.active, key)
+	} else {
+		b.wakeLocked(place, block)
 	}
 	b.rev++
-	b.notifyLocked(cell, capacity)
+	b.notifyLocked(place)
 	return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
 }
 
@@ -384,17 +511,19 @@ func (b *storageBook) open(w cropWorld, eye *[3]float64, client *Client, x, y, z
 	if eye == nil || !storageInReach(*eye, x, y, z) {
 		return storageSnapshot{}, false
 	}
-	cell, capacity, ok := b.locate(w, x, y, z)
+	place, ok := b.locate(w, x, y, z)
 	if !ok {
 		return storageSnapshot{}, false
 	}
 	b.closeLocked(client)
+	cell := place.cell
 	if b.viewers[cell] == nil {
 		b.viewers[cell] = make(map[*Client]bool)
 	}
 	b.viewers[cell][client] = true
 	b.viewing[client] = cell
-	return b.snapshotLocked(cell, capacity), true
+	b.settleOnOpenLocked(w, place)
+	return b.snapshotLocked(place), true
 }
 
 func (b *storageBook) closeLocked(client *Client) {
@@ -406,6 +535,7 @@ func (b *storageBook) closeLocked(client *Client) {
 	delete(b.viewers[cell], client)
 	if len(b.viewers[cell]) == 0 {
 		delete(b.viewers, cell)
+		delete(b.shownPower, cell)
 	}
 }
 
@@ -427,28 +557,32 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 	// thousands).
 	_, here := b.blocks[blockKey(x, y, z)]
 	_, below := b.blocks[blockKey(x, y-1, z)]
-	var had [3]int
+	var place storagePlace
 	stored := false
 	if here || below || len(b.viewers) > 0 {
-		had, _, stored = b.locate(w, x, y, z)
+		place, stored = b.locate(w, x, y, z)
 	}
 	changed, err := set()
 	if err != nil || !stored {
 		return nil, changed, err
 	}
-	if now, _, ok := storageCell(x, y, z, name); ok && now == had {
+	had := place.cell
+	if now, _, ok := storageCell(x, y, z, name); ok && now == had && storageBase(name) == place.kind {
 		return nil, changed, nil
 	}
 
 	key := storageKeyOf(had)
 	var spill []StorageSlot
 	if block := b.blocks[key]; block != nil {
-		for _, slot := range block.Slots {
-			if slot.Count > 0 {
-				spill = append(spill, slot)
+		for _, list := range [][]StorageSlot{block.Slots, block.Freezer} {
+			for _, slot := range list {
+				if slot.Count > 0 {
+					spill = append(spill, StorageSlot{Type: slot.Type, Count: slot.Count})
+				}
 			}
 		}
 		delete(b.blocks, key)
+		delete(b.active, key)
 	}
 	b.rev++
 	if watchers := b.viewers[had]; len(watchers) > 0 {
@@ -458,6 +592,7 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 			delete(b.viewing, client)
 		}
 		delete(b.viewers, had)
+		delete(b.shownPower, had)
 	}
 	return spill, changed, nil
 }
@@ -467,19 +602,20 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.blocks = make(map[string]*StorageBlock, len(saved))
+	b.active = make(map[string]bool)
 	for _, block := range saved {
-		slots := make([]StorageSlot, len(block.Slots))
-		for i, slot := range block.Slots {
-			if slot.Count > 0 && slot.Count <= storageMaxStack && storageItemName.MatchString(slot.Type) {
-				slots[i] = slot
-			}
-		}
-		if storageIsEmpty(slots) {
+		copied := block
+		copied.Slots = storageCleanSlots(block.Slots)
+		copied.Freezer = storageCleanSlots(block.Freezer)
+		applianceCleanLoaded(&copied)
+		if copied.holdsNothing() {
 			continue
 		}
-		copied := block
-		copied.Slots = slots
-		b.blocks[blockKey(block.X, block.Y, block.Z)] = &copied
+		key := blockKey(block.X, block.Y, block.Z)
+		b.blocks[key] = &copied
+		if copied.Kind != "" {
+			b.active[key] = true
+		}
 	}
 	b.log = make(map[string]storageOutcome, len(savedLog))
 	b.logFIFO = nil
@@ -490,6 +626,21 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 	}
 }
 
+// storageCleanSlots drops what no valid request could have made. No slots stay no slots.
+func storageCleanSlots(saved []StorageSlot) []StorageSlot {
+	if len(saved) == 0 {
+		return nil
+	}
+	slots := make([]StorageSlot, len(saved))
+	for i, slot := range saved {
+		if slot.Count > 0 && slot.Count <= storageMaxStack && storageItemName.MatchString(slot.Type) {
+			slot.Chill = math.Max(0, slot.Chill)
+			slots[i] = slot
+		}
+	}
+	return slots
+}
+
 // snapshot copies everything for world.json.
 func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 	b.mu.Lock()
@@ -498,6 +649,7 @@ func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 	for key, block := range b.blocks {
 		copied := *block
 		copied.Slots = append([]StorageSlot(nil), block.Slots...)
+		copied.Freezer = append([]StorageSlot(nil), block.Freezer...)
 		blocks[key] = copied
 	}
 	outcomes := make([]storageOutcome, 0, len(b.logFIFO))
@@ -560,6 +712,10 @@ func handleStorageMessage(client *Client, msg Message) {
 			storageDeliver(client, createMessage("storageContents", snapshot))
 		} else {
 			storageDeliver(client, createMessage("storageClosed", at))
+		}
+		// An oven that opens with a stale name (a saved world's) goes out for everyone.
+		for _, block := range storage.drainNameChanges() {
+			broadcastToAll(createMessage("blockPlace", block))
 		}
 
 	case "storageClose":

@@ -9,6 +9,8 @@ Consumers are the blocks that **use** electricity to do something. Each one need
 | ![](item:electric_lamp) | Electric Lamp | `electric_lamp` | **10 W** | lights up like a torch |
 | ![](item:grow_lamp) | Grow Lamp | `grow_lamp` | **30 W** | makes wheat grow twice as fast |
 | ![](item:electric_motor) | Electric Motor | `electric_motor` | **50 W** | spins, opens iron doors |
+| ![](item:fridge) | Fridge | `fridge` | **30 W** | [chills and freezes](234) (its two cells are one fridge) |
+| ![](item:chest_freezer) | Chest Freezer | `chest_freezer` | **30 W** | [freezes](234) |
 
 ## How to get them
 
@@ -43,6 +45,10 @@ A steel box with copper coils inside. With power, a fan **spins** on top and its
 - When the motor **switches on**, it **opens** the [iron doors and iron trapdoors](197) touching it (both halves of a
   door). When it **switches off**, it closes them.
 - In between you can still open and close them by hand.
+
+## Fridge and chest freezer
+
+Furniture that works on electricity: see [Fridge and freezer](234). Without power they are plain cupboards, and nothing in them changes.
 
 ## All or nothing
 

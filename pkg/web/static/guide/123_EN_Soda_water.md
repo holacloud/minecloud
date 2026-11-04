@@ -37,3 +37,5 @@ If you would rather discover it yourself, stop reading here.
 | `C + 2 O → CO₂ (soda water)` | compound | 1 `soda_water` (uses 1 `water_flask`) |
 
 See also: [Chemistry](115), [Water flask](118).
+
+A [fridge](234) chills it to `cold_soda`.

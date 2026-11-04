@@ -143,7 +143,7 @@
         [213, 214, 'La anguila eléctrica', 'The electric eel'],
         [215, 216, 'El golem de cobre', 'The copper golem'],
         [217, 220, 'Máquinas y energía', 'Machines and power'],
-        [223, 232, 'Muebles', 'Furniture']
+        [223, 234, 'Muebles', 'Furniture']
     ];
 
     // ---------------------------------------------------------------- pure helpers (tested)

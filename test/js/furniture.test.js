@@ -78,7 +78,9 @@ function loadGame() {
     for (const name of ['furniture', 'seating', 'storage', 'decor', 'mirrors']) assert.ok(scripts.includes(`js/game/${name}.js`), `index.html loads ${name}.js`);
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
-        GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
+        GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, STORAGE_FREEZERS, ELECTRIC_KINDS, ITEM_TYPES, ANT_FOOD_ITEMS, ANT_FARM_FOODS,
+        APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_CHILL, APPLIANCE_FREEZE, APPLIANCE_CHILL_SECONDS, APPLIANCE_FREEZE_SECONDS, APPLIANCE_ITEMS,
+        applianceOvenTakes, applianceColdTable, applianceSlotProgress, storageSameStacks, storageOvenStatus, storagePercent, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
         furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
@@ -91,7 +93,7 @@ const ctx = loadGame();
 
 const COLORS = ['white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black'];
 const PIECES = ['oak_chair', 'birch_chair', 'dark_oak_chair', 'stool', 'bench', 'table', 'bedside_table', 'desk', 'chest', 'barrel', 'wardrobe', 'bookshelf',
-    'wall_shelf', 'workbench', 'oven', 'sink', 'fridge', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'wall_clock', 'flower_pot', 'vase',
+    'wall_shelf', 'workbench', 'oven', 'sink', 'fridge', 'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'wall_clock', 'flower_pot', 'vase',
     'painting_sunset', 'painting_peaks', 'painting_meadow', 'painting_night', 'painting_shapes', 'painting_fish', 'wall_mirror'];
 const ITEMS = [...PIECES, ...COLORS.flatMap((c) => [`${c}_sofa`, `${c}_stained_glass`, `${c}_stained_glass_pane`, `${c}_carpet`, `${c}_curtain`])];
 
@@ -780,6 +782,189 @@ test('storage sizes match the server, and everything of two cells stays out of t
     for (const name of [...twoCells, ...Object.keys(kinds)]) assert.ok(fixed.includes(`"${name}": true`), name);
 });
 
+test('appliances: the tables match the server', () => {
+    const go = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'appliances.go'), 'utf8');
+    const table = (name) => {
+        const start = go.indexOf(`var ${name} =`);
+        assert.ok(start >= 0, name);
+        return go.slice(start, go.indexOf('\n}\n', start));
+    };
+    const recipes = {};
+    for (const [, food, out, amount, seconds] of table('ovenRecipes').matchAll(/"(\w+)":\s*\{Out: "(\w+)", In: (\d+), Seconds: (\d+)\}/g)) {
+        recipes[food] = { out, in: Number(amount), seconds: Number(seconds) };
+    }
+    assert.deepEqual(recipes, JSON.parse(JSON.stringify(ctx.APPLIANCE_RECIPES)));
+    const fuels = {};
+    for (const [, fuel, seconds] of table('ovenFuels').matchAll(/"(\w+)":\s*(\d+)/g)) fuels[fuel] = Number(seconds);
+    assert.deepEqual(fuels, JSON.parse(JSON.stringify(ctx.APPLIANCE_FUELS)));
+    const changes = (name) => Object.fromEntries([...table(name).matchAll(/"(\w+)":\s*"(\w+)"/g)].map(([, from, to]) => [from, to]));
+    assert.deepEqual(changes('chillChanges'), JSON.parse(JSON.stringify(ctx.APPLIANCE_CHILL)));
+    assert.deepEqual(changes('freezeChanges'), JSON.parse(JSON.stringify(ctx.APPLIANCE_FREEZE)));
+    assert.equal(Number(go.match(/chillSeconds\s*=\s*(\d+)/)[1]), ctx.APPLIANCE_CHILL_SECONDS);
+    assert.equal(Number(go.match(/freezeSeconds\s*=\s*(\d+)/)[1]), ctx.APPLIANCE_FREEZE_SECONDS);
+
+    const storage = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'storage.go'), 'utf8');
+    const start = storage.indexOf('var storageFreezers');
+    const freezers = {};
+    for (const [, id, slots] of storage.slice(start, storage.indexOf('\n}\n', start)).matchAll(/"(\w+)":\s*(\d+)/g)) freezers[id] = Number(slots);
+    assert.deepEqual(freezers, JSON.parse(JSON.stringify(ctx.STORAGE_FREEZERS)));
+});
+
+test('appliances: every item in the tables exists; fuels burn in the right order; nothing stays frozen for ever', () => {
+    const world = makeWorld();
+    for (const [food, recipe] of Object.entries(ctx.APPLIANCE_RECIPES)) {
+        assert.ok(world.blockTypes[food], food);
+        assert.ok(world.blockTypes[recipe.out], recipe.out);
+        assert.ok(!ctx.APPLIANCE_FUELS[food], `${food} is food and fuel`);
+    }
+    for (const fuel of Object.keys(ctx.APPLIANCE_FUELS)) assert.ok(world.blockTypes[fuel], fuel);
+    assert.ok(ctx.APPLIANCE_FUELS.coal_ore > ctx.APPLIANCE_FUELS.planks && ctx.APPLIANCE_FUELS.planks > ctx.APPLIANCE_FUELS.wood);
+    for (const [from, to] of [...Object.entries(ctx.APPLIANCE_CHILL), ...Object.entries(ctx.APPLIANCE_FREEZE)]) {
+        assert.ok(world.blockTypes[from], from);
+        assert.ok(world.blockTypes[to], to);
+    }
+    for (const frozen of Object.values(ctx.APPLIANCE_FREEZE)) assert.ok(ctx.APPLIANCE_RECIPES[frozen], `no oven thaws ${frozen}`);
+    assert.ok(ctx.applianceOvenTakes('raw_fish') && ctx.applianceOvenTakes('birch_planks') && ctx.applianceOvenTakes('ice'));
+    assert.ok(!ctx.applianceOvenTakes('stone') && !ctx.applianceOvenTakes('cold_water'));
+});
+
+test('appliances: new items are ordinary items, with icons, food and a stock', () => {
+    const world = makeWorld();
+    const added = [];
+    const game = new ctx.Game();
+    for (const hook of ctx.GAME_CONTENT_HOOKS) {
+        try { hook.call(game, { addItem: (item) => added.push(item), addRecipe() {} }); } catch (_error) { /* hooks that need a whole game */ }
+    }
+    for (const [id, item] of Object.entries(ctx.APPLIANCE_ITEMS)) {
+        const def = world.blockTypes[id];
+        assert.ok(def && def.itemOnly, `${id} is an item`);
+        assert.ok(def.name && typeof def.drawIcon === 'function' && typeof def.consume === 'function', id);
+        assert.ok(added.includes(id), `${id} joins the inventory (and so the creative stock)`);
+        assert.ok(item.frozen ? !item.food : item.food > 0, id);
+    }
+    // A cold drink heals somewhat more than the normal one.
+    for (const [from, to] of Object.entries(ctx.APPLIANCE_CHILL)) {
+        assert.ok(ctx.APPLIANCE_ITEMS[to].food > { water_flask: 2, milk: 2, soda_water: 3 }[from], to);
+        assert.equal(ctx.APPLIANCE_ITEMS[to].bottle, true, to);
+    }
+    assert.ok(ctx.APPLIANCE_ITEMS.cold_milk.cures, 'cold milk still cures');
+    assert.ok(ctx.ANT_FOOD_ITEMS.includes('roast_mushroom') && ctx.ANT_FARM_FOODS.roast_mushroom > 0);
+    for (const id of Object.keys(ctx.APPLIANCE_ITEMS).filter((item) => ctx.APPLIANCE_ITEMS[item].frozen)) {
+        assert.ok(!ctx.ANT_FOOD_ITEMS.includes(id), `${id} is frozen: no one eats it`);
+    }
+});
+
+test('appliances: frozen food says it needs thawing and is not used up; a cold drink heals and gives the glass back', () => {
+    const game = new ctx.Game();
+    const messages = [];
+    let eaten = 0;
+    const gained = [];
+    Object.assign(game, {
+        health: 10, maxHealth: 20, poison: { tick: 1 },
+        receiveSystemMessage: ({ text }) => messages.push(text),
+        consumeSelectedBlock: () => { eaten++; return true; },
+        updateHealthUI() {}, playNoiseBurst() {}, playTone() {},
+        addInventory: (type, amount) => gained.push([type, amount])
+    });
+    for (const id of ['ice', 'frozen_fish', 'frozen_cooked_fish', 'frozen_bread']) {
+        assert.equal(game.applianceConsume(id), true);
+        assert.match(messages.at(-1), /thaw/);
+    }
+    assert.equal(eaten, 0);
+    assert.equal(game.health, 10);
+    game.applianceConsume('cold_water');
+    assert.equal(game.health, 13);
+    assert.deepEqual(gained, [['glass', 1]]);
+    assert.ok(game.poison, 'water does not cure');
+    game.applianceConsume('cold_milk');
+    assert.equal(game.health, 16);
+    assert.equal(game.poison, null);
+    game.applianceConsume('roast_mushroom');
+    assert.equal(game.health, 20);
+    assert.equal(gained.length, 2, 'food has no glass');
+    assert.equal(eaten, 3);
+    // Full: nothing used.
+    game.applianceConsume('cold_soda');
+    assert.equal(eaten, 3);
+    assert.match(messages.at(-1), /full health/);
+});
+
+test('appliances: the blocks: storage, electricity, recipes, and the oven no longer toggles', () => {
+    const world = makeWorld();
+    assert.equal(ctx.BLOCK_SHAPES.oven.toggle, undefined, 'a right click opens it, nothing lights it by hand');
+    assert.equal(world.blockTypes['oven:e:on'].storageSlots, 3);
+    assert.equal(world.blockTypes['oven:e:off'].storageSlots, 3);
+    assert.equal(world.blockTypes['oven:e:on'].dropType ?? 'oven', 'oven');
+    assert.equal(world.blockTypes['fridge:upper:e'].storageSlots, 18);
+    assert.equal(ctx.STORAGE_KINDS.chest_freezer, 36);
+    for (const kind of ['fridge', 'chest_freezer']) {
+        assert.ok(world.blockTypes[kind].electric, kind);
+        assert.equal(ctx.ELECTRIC_KINDS[kind].role, 'consumer');
+        assert.equal(ctx.ELECTRIC_KINDS[kind].watts, 30);
+        assert.ok(!ctx.ELECTRIC_KINDS[kind].switch, 'no :on in a name that holds half and facing');
+    }
+    assert.ok(!world.blockTypes.oven.electric, 'the oven burns fuel');
+    assert.ok(world.registry.lightEmitter[world.registry.id('oven:e:on')] > 0);
+    assert.equal(world.registry.lightEmitter[world.registry.id('oven:e:off')], 0);
+    assert.equal(world.registry.lightEmitter[world.registry.id('oven')], 0);
+    const recipes = new Map();
+    const game = new ctx.Game();
+    for (const hook of ctx.GAME_CONTENT_HOOKS) {
+        try { hook.call(game, { addItem() {}, addRecipe: (id, _name, output, amount, inputs) => recipes.set(id, { output, amount, inputs }) }); } catch (_error) { /* hooks that need a whole game */ }
+    }
+    assert.equal(recipes.get('chest_freezer').output, 'chest_freezer');
+    for (const { type } of recipes.get('chest_freezer').inputs) assert.ok(world.blockTypes[type], type);
+    assert.ok(recipes.has('cook_fish'), 'the old recipe stays, as another way to cook');
+});
+
+test('appliances: what the panel works out', () => {
+    assert.ok(ctx.storageSameStacks([{ type: 'stone', count: 1, chill: 3 }, {}], [{ type: 'stone', count: 1, chill: 30 }, {}]), 'progress is not a new stack');
+    assert.ok(!ctx.storageSameStacks([{ type: 'stone', count: 1 }], [{ type: 'stone', count: 2 }]));
+    assert.ok(!ctx.storageSameStacks([{ type: 'water_flask', count: 1 }], [{ type: 'ice', count: 1 }]));
+    assert.ok(ctx.storageSameStacks(undefined, undefined));
+    assert.ok(!ctx.storageSameStacks([{}], undefined));
+    assert.match(ctx.storageOvenStatus({ burn: 0 }), /No fire/);
+    assert.match(ctx.storageOvenStatus({ burn: 9.5, burnMax: 80, cook: 2, cookMax: 20 }), /10 s.*cooking/);
+    assert.match(ctx.storageOvenStatus({ burn: 9, burnMax: 80, cook: 0, cookMax: 0 }), /nothing to cook/);
+    assert.equal(ctx.storagePercent(5, 20), 25);
+    assert.equal(ctx.storagePercent(5, 0), 0);
+    assert.equal(ctx.storagePercent(50, 20), 100);
+    assert.equal(ctx.applianceColdTable('fridge', '').seconds, 60);
+    assert.equal(ctx.applianceColdTable('fridge', 'freezer').seconds, 120);
+    assert.equal(ctx.applianceColdTable('chest_freezer', '').seconds, 120);
+    assert.equal(ctx.applianceSlotProgress('fridge', '', { type: 'milk', count: 2, chill: 30 }), 0.5);
+    assert.equal(ctx.applianceSlotProgress('fridge', '', { type: 'raw_fish', count: 2 }), null);
+    assert.equal(ctx.applianceSlotProgress('fridge', 'freezer', { type: 'raw_fish', count: 2, chill: 60 }), 0.5);
+    assert.equal(ctx.applianceSlotProgress('fridge', 'freezer', null), null);
+});
+
+test('storage: a fridge sends the compartment on show, and takes from it', () => {
+    const { game, sent } = makeStorageGame();
+    game.storageMode = 1;
+    game.storageKind = 'fridge';
+    game.storageTab = 'freezer';
+    game.storageSlots = [{ type: 'stone', count: 3 }];
+    game.storageContents = { freezer: [{ type: 'iron_ore', count: 2 }] };
+    game.storageTake(0);
+    assert.equal(sent.at(-1).payload.compartment, 'freezer');
+    assert.equal(sent.at(-1).payload.type, 'iron_ore');
+    game.storagePut('stone');
+    assert.equal(sent.at(-1).payload.compartment, 'freezer');
+    game.storageTab = '';
+    game.storageTake(0);
+    assert.equal(sent.at(-1).payload.compartment, undefined);
+    assert.equal(sent.at(-1).payload.type, 'stone');
+    // A snapshot brings both compartments.
+    game.storageRev = -1;
+    game.storageOnContents({ x: 0, y: 1, z: 0, rev: 1, slots: [{ type: 'dirt', count: 1 }], freezer: [{ type: 'ice', count: 4 }], cold: true, powered: true });
+    assert.equal(game.storageSlots[0].type, 'dirt');
+    game.storageTab = 'freezer';
+    assert.equal(game.storageShownSlots()[0].type, 'ice');
+    // A note for what an oven refuses, and the items come back.
+    game.storageOnResult({ reqId: sent.at(-1).payload.reqId, amount: 0, reason: 'not for the oven' });
+    assert.match(game.storageNote, /oven/);
+});
+
 test('the clock tells the game time', () => {
     const angles = (t) => JSON.parse(JSON.stringify(ctx.decorClockAngles(t)));
     // timeOfDay 0 is 06:00: the hour hand at 6 (half a turn), the minute hand at 12.
@@ -802,7 +987,7 @@ test('the clock tells the game time', () => {
 test('the guide covers the furniture, in both languages, from the indexes and the printed book', () => {
     const GUIDE = path.join(STATIC, 'guide');
     const names = fs.readdirSync(GUIDE);
-    const pages = [223, 224, 225, 226, 227, 228, 229, 230, 231, 232];
+    const pages = [223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234];
     const read = (name) => fs.readFileSync(path.join(GUIDE, name), 'utf8');
     for (const page of pages) {
         for (const lang of ['EN', 'ES']) assert.ok(names.some((name) => name.startsWith(`${page}_${lang}_`)), `${page} ${lang}`);

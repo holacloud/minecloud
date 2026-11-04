@@ -47,3 +47,5 @@ o para **hacer amigos** de cuatro patas.
 - En Japón el pescado crudo es un manjar (sashimi), pero en el juego vale 6 veces menos que el cocinado.
 
 Ver también: [Pescar](6), [Recursos de los mobs](2).
+
+Un [horno](233) lo cocina, y un [congelador](234) lo congela.

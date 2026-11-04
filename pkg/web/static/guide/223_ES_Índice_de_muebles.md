@@ -9,7 +9,7 @@ Una casa no está terminada hasta que puedes sentarte en ella. Todo esto se fabr
 - ![](item:oak_chair) [Sillas y sofás](224): sillas, taburete, banco largo y sofás. Te puedes **sentar** en ellos.
 - ![](item:table) [Mesas](225): mesa, mesilla y escritorio.
 - ![](item:chest) [Cofres y armarios](226): el cofre, el barril y el armario **guardan objetos de verdad**; estantería y balda de pared.
-- ![](item:oven) [Cocina y baño](227): banco de trabajo, horno, fregadero, nevera, váter y bañera.
+- ![](item:oven) [Cocina y baño](227): banco de trabajo, fregadero, váter y bañera, un [horno que cocina](233), y una [nevera y un arcón congelador](234) que van con electricidad.
 - ![](item:lantern) [Luces sin electricidad](228): vela, farol, lámpara de mesa, lámpara de pie y candelabro.
 - ![](item:blue_stained_glass) [Vidrieras](229): 16 colores, en bloque y en panel.
 - ![](item:red_carpet) [Alfombras y cortinas](230): 16 colores cada una.

@@ -47,3 +47,5 @@ A silvery fish fresh out of the water. You can eat it raw in a pinch, but it is 
 - In Japan raw fish is a delicacy (sashimi), but in the game it is worth 6 times less than cooked.
 
 See also: [Fishing](6), [Mob resources](2).
+
+An [oven](233) cooks it, and a [freezer](234) freezes it.

@@ -35,7 +35,7 @@ julios, más generación que demanda) son las de verdad; solo los tamaños está
 | **Generadores** | convierten sol, viento, agua o tu brazo en electricidad | ![](item:solar_panel) ![](item:wind_turbine) ![](item:water_wheel) ![](item:hand_crank) ![](item:rtg) [Generadores](201), [Generador de radioisótopos](220) |
 | **Conductores** | la llevan de bloque en bloque | ![](item:copper_wire) ![](item:wire_post) [Cables y redes](202) |
 | **Almacenes** | guardan la energía para después | ![](item:battery_block) [Baterías](203) |
-| **Consumidores** | la usan: luz, plantas, movimiento | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) [Consumidores](204) |
+| **Consumidores** | la usan: luz, plantas, movimiento, frío | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) ![](item:fridge) [Consumidores](204) |
 | **Lógica** | encienden y apagan redes: a mano, solos o pensando | ![](item:lever) ![](item:daylight_sensor) ![](item:and_gate) [Interruptores](207), [Sensores](208), [Puertas lógicas](209) |
 
 Y una herramienta para ver qué pasa: el ![](item:multimeter) [multímetro](205).
@@ -71,7 +71,7 @@ los jugadores ven lo mismo y se guarda con el mundo. Jugando sin conexión a un 
 1. [Generadores](201): solar, eólico, hidráulico, la manivela y el [generador de radioisótopos](220), con sus números.
 2. [Cables y redes](202): cómo unir bloques y el límite de 512 bloques.
 3. [Baterías](203): capacidad, carga y descarga.
-4. [Consumidores](204): lámparas, lámparas de cultivo y motores.
+4. [Consumidores](204): lámparas, lámparas de cultivo y motores, y la [nevera y el arcón congelador](234).
 5. [Multímetro](205): mide tu red.
 6. [Proyectos eléctricos](206): cinco construcciones para probar.
 7. [Interruptores](207), [Sensores](208), [Puertas lógicas](209), [Memoria y retardos](210) y

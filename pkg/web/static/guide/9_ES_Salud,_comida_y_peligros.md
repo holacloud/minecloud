@@ -58,6 +58,12 @@ Selecciona la comida en la barra y pulsa **G**. Con la vida llena no se gasta.
 | ![](item:cheese) `cheese` | +7 |
 | ![](item:milk) `milk` | +2 y quita el veneno (devuelve el `glass`) |
 | ![](item:antivenom) `antivenom` | +1, quita el veneno y da 3 min de inmunidad |
+| ![](item:roast_mushroom) `roast_mushroom` | +6 (se hace en el [horno](233)) |
+| ![](item:cold_water) `cold_water` | +3 (de la [nevera](234); devuelve el `glass`) |
+| ![](item:cold_milk) `cold_milk` | +3 y quita el veneno (de la [nevera](234); devuelve el `glass`) |
+| ![](item:cold_soda) `cold_soda` | +4 (de la [nevera](234); devuelve el `glass`) |
+
+La comida congelada y el `ice` no se comen hasta que un [horno](233) los descongela. La comida nunca se estropea en este juego.
 
 La flor roja no se come. Las setas crecen sobre todo en los bosques; las flores, en los prados. El `wheat` crudo
 no se come: hornéalo en pan (ver [Cultivar trigo](107)).

@@ -38,3 +38,5 @@ Si tienes la vida llena, no te lo bebes. También sirve para hacer [agua con gas
 - Al quemar hidrógeno solo sale agua: es uno de los combustibles más limpios que existen.
 
 Ver también: [Química](115), [Cubo](111), [Agua](52).
+
+Una [nevera](234) la enfría en `cold_water`, y un congelador la vuelve `ice`.

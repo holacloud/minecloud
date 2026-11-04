@@ -33,7 +33,7 @@ function loadGame() {
     const files = ['extensions.js', 'chunkStore.js', 'blockShapes.js', 'chunkMesher.js', 'camera.js', 'mobSpecies.js', 'blockTextures.js', 'world.js'];
     for (const file of files) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
-    for (const file of ['joinery.js', 'chemistry.js', 'blueprints.js', 'constructions.js']) {
+    for (const file of ['joinery.js', 'chemistry.js', 'electricity.js', 'blueprints.js', 'constructions.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     // The furniture modules, as in index.html; what they add is what the showroom has to hold.
@@ -47,7 +47,7 @@ function loadGame() {
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS,
         constructionPlan, constructionLayout, constructionTurnType, constructionDiff, constructionFindGround,
-        CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS, SHAPE_OPPOSITE, SHAPE_MASK, FURNITURE_COLORS, MIRROR_RANGE,
+        CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS, SHAPE_OPPOSITE, SHAPE_MASK, FURNITURE_COLORS, MIRROR_RANGE, ELECTRIC_KINDS,
         mirrorFacesOf, mirrorLineClear, seatStandOffsets });`, context);
     return context;
 }
@@ -590,7 +590,7 @@ test('the showroom: the light room gets no sky and no light from outside, and ea
     // Everything: each light as strong as it says where it stands, and weak at the next one's.
     fields.clear();
     const lights = plan.cells.filter((cell) => inRoom(cell.x, cell.z) && world.registry.lightEmitter[world.registry.id(cell.type)]);
-    assert.deepEqual(lights.map((cell) => baseOf(cell.type)).sort(), ['candle', 'chandelier', 'floor_lamp', 'lantern', 'lantern', 'oven', 'table_lamp']);
+    assert.deepEqual(lights.map((cell) => baseOf(cell.type)).sort(), ['candle', 'chandelier', 'floor_lamp', 'lantern', 'lantern', 'table_lamp']);
     for (const light of lights) {
         const level = world.registry.lightLevel[world.registry.id(light.type)];
         assert.ok(level >= 9, light.type);
@@ -601,7 +601,10 @@ test('the showroom: the light room gets no sky and no light from outside, and ea
             assert.ok(rival - Math.abs(other.x - light.x) - Math.abs(other.z - light.z) < level, `${other.type} drowns ${light.type}`);
         }
     }
-    assert.ok(stateOf(lights.find((cell) => baseOf(cell.type) === 'oven').type).fire === 'on', 'the oven burns');
+    // An oven only burns when the server says it has food and fuel: /build cannot light one.
+    const ovens = plan.cells.filter((cell) => baseOf(cell.type) === 'oven');
+    assert.ok(ovens.length >= 2);
+    for (const oven of ovens) assert.equal(stateOf(oven.type).fire, 'off');
     const chandelier = lights.find((cell) => baseOf(cell.type) === 'chandelier');
     assert.equal(chandelier.y, 4);
     // The bay with no light is lit only faintly, through its mouth.
@@ -666,6 +669,23 @@ test('the showroom: the stained glass, the mirrors and the storage are set up fo
     assert.equal(baseOf(typeAt(47, 1, 16)), 'chest');
     assert.equal(baseOf(typeAt(48, 1, 16)), 'barrel');
     assert.equal(baseOf(typeAt(49, 1, 16)), 'wardrobe');
+});
+
+test('the showroom: the kitchen has an oven, and a fridge and a chest freezer on one network with their generator', () => {
+    const { world } = visit('showroom');
+    const typeAt = (x, y, z) => world.getBlockTypeAt(x, y, z);
+    assert.equal(baseOf(typeAt(1, 1, 18)), 'chest_freezer');
+    assert.equal(baseOf(typeAt(1, 1, 19)), 'fridge');
+    assert.equal(stateOf(typeAt(1, 1, 19)).half, 'lower');
+    assert.equal(stateOf(typeAt(1, 2, 19)).half, 'upper');
+    assert.equal(typeAt(1, 1, 20), 'rtg');
+    assert.equal(baseOf(typeAt(1, 1, 21)), 'oven');
+    for (const block of ['chest_freezer', 'fridge', 'rtg']) assert.ok(world.blockTypes[block].electric, block);
+    // What they ask for fits in what it gives, with nothing else on the network.
+    assert.ok(ctx.ELECTRIC_KINDS.fridge.watts + ctx.ELECTRIC_KINDS.chest_freezer.watts <= ctx.ELECTRIC_KINDS.rtg.watts);
+    const signs = ctx.constructionPlan('showroom').cells.filter((cell) => baseOf(cell.type) === 'sign').map((cell) => cell.meta.t);
+    const kitchen = signs.find((text) => text.startsWith('COCINA'));
+    for (const word of ['Horno', 'Nevera', 'oven', 'Fridge', 'generator']) assert.ok(kitchen.includes(word), word);
 });
 
 test('the showroom: the signs reach the server, name their room and fit', () => {

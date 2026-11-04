@@ -46,3 +46,5 @@ At full health you do not eat it.
 - The crust is brown because of the *Maillard reaction*, the same that browns toast and roasted meat.
 
 See also: [Wheat](109), [Health, food and dangers](9), [Crafting](11).
+
+An [oven](233) bakes it too, from the same 3 `wheat`, with fuel, and a [freezer](234) can freeze it.

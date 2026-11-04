@@ -28,7 +28,7 @@ const TAMING_DIET = {
     pig: { foods: ['mushroom_brown', 'mushroom_red', 'wheat', 'honeycomb'], chance: 1 / 3 },
     giraffe: { foods: ['acacia_leaves', 'leaves', 'jungle_leaves', 'birch_leaves'], chance: 1 / 4 },
     dog: { foods: ['raw_fish', 'mushroom_brown'], chance: 1 / 2 },
-    cat: { foods: ['raw_fish', 'milk', 'mushroom_brown'], chance: 1 / 2 },
+    cat: { foods: ['raw_fish', 'milk', 'cold_milk', 'mushroom_brown'], chance: 1 / 2 },
     spider: null,
     cave_monster: null,
     macaw: { foods: ['flower_red', 'flower_yellow', 'cherry_leaves'], chance: 1 / 3 },

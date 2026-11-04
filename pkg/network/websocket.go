@@ -160,6 +160,7 @@ func Initialize() error {
 
 	go runWorldClock()
 	go runCropGrowth()
+	go runAppliances()
 	go runPowerGrid()
 	go runVoiceMesh()
 	return nil
@@ -635,6 +636,8 @@ func handleMessage(client *Client, msg Message) {
 		if payload.BlockType == "" {
 			return
 		}
+		// An oven burns when the server says so, whatever a plan or a client asks for.
+		payload.BlockType = storage.settleOvenName(payload.X, payload.Y, payload.Z, payload.BlockType)
 		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
 			return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
 		})

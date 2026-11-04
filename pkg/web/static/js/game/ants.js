@@ -57,7 +57,7 @@ const ANT_FOOD_BLOCKS = {
     wheat_2: 0xb8b060, wheat_3: 0xe6c65c
 };
 const ANT_FOOD_ITEMS = [
-    'wheat', 'wheat_seeds', 'bread', 'honeycomb', 'honey_bottle', 'cheese', 'raw_fish', 'cooked_fish',
+    'wheat', 'wheat_seeds', 'bread', 'honeycomb', 'honey_bottle', 'cheese', 'raw_fish', 'cooked_fish', 'roast_mushroom',
     'mushroom_red', 'mushroom_brown', 'flower_red', 'flower_yellow',
     'bait_seeds', 'bait_worms', 'bait_meat', 'bait_fish', 'bait_honey'
 ];
@@ -67,7 +67,7 @@ const ANT_BAITS = ['bait_seeds', 'bait_honey', 'bait_meat'];
 
 // Ant farm: what feeding it with each item adds to its food store (0..1).
 const ANT_FARM_FOODS = {
-    wheat_seeds: 0.3, wheat: 0.4, bread: 0.8, honeycomb: 0.8, cheese: 0.6, raw_fish: 0.5, cooked_fish: 0.5,
+    wheat_seeds: 0.3, wheat: 0.4, bread: 0.8, honeycomb: 0.8, cheese: 0.6, raw_fish: 0.5, cooked_fish: 0.5, roast_mushroom: 0.4,
     flower_red: 0.25, flower_yellow: 0.25, mushroom_red: 0.35, mushroom_brown: 0.35,
     bait_seeds: 0.4, bait_worms: 0.4, bait_meat: 0.5, bait_fish: 0.4, bait_honey: 0.6
 };

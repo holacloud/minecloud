@@ -38,3 +38,5 @@ At full health you do not drink it. It is also used to make [soda water](123).
 - Burning hydrogen gives only water: it is one of the cleanest fuels there is.
 
 See also: [Chemistry](115), [Bucket](111), [Water](52).
+
+A [fridge](234) chills it to `cold_water`, and a freezer makes it `ice`.

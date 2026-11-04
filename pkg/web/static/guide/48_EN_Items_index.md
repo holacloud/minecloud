@@ -51,12 +51,14 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:oak_chair) [Chairs and sofas](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, and 16 colours of sofa (red_sofa...)
 - ![](item:table) [Tables](225): table, bedside_table, desk
 - ![](item:chest) [Chests and wardrobes](226): chest, barrel, wardrobe, bookshelf, wall_shelf
-- ![](item:oven) [Kitchen and bath](227): workbench, oven, sink, fridge, toilet, bathtub
+- ![](item:oven) [Kitchen and bath](227): workbench, oven, sink, fridge, chest_freezer, toilet, bathtub
 - ![](item:lantern) [Lights without electricity](228): candle, lantern, table_lamp, floor_lamp, chandelier
 - ![](item:blue_stained_glass) [Stained glass](229): 16 colours, as blocks and panes (blue_stained_glass, blue_stained_glass_pane...)
 - ![](item:red_carpet) [Carpets and curtains](230): 16 colours (red_carpet, red_curtain...)
 - ![](item:wall_clock) [Paintings, clock and ornaments](231): six paintings (painting_sunset...), wall_clock, flower_pot, vase
 - ![](item:wall_mirror) [Mirrors](232): wall_mirror, mirror
+- ![](item:oven) [Oven](233): oven, roast_mushroom, recipes, fuels and thawing
+- ![](item:fridge) [Fridge and freezer](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
 
 ## Tools
 
@@ -145,7 +147,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:wind_turbine) [Generators](201): solar_panel, wind_turbine, water_wheel, hand_crank
 - ![](item:copper_wire) [Wires and networks](202): copper_wire, wire_post
 - ![](item:battery_block) [Batteries](203)
-- ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor
+- ![](item:electric_lamp) [Consumers](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer
 - ![](item:multimeter) [Multimeter](205)
 - ![](item:electric_motor) [Electric projects](206)
 - ![](item:eel_tank) [Eel tank](214): eel_tank, eel_bucket

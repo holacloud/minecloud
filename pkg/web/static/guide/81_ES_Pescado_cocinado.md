@@ -47,3 +47,5 @@ Si tienes la vida llena, no te lo comes.
 - Asar el pescado sobre brasas es una de las formas de cocinar más antiguas que se conocen.
 
 Ver también: [Pescado crudo](80), [Salud, comida y peligros](9).
+
+Un [horno](233) también lo cocina a partir de un `raw_fish`, con combustible, y un [congelador](234) puede congelarlo.

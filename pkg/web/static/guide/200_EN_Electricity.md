@@ -35,7 +35,7 @@ real ones; only the sizes are made to fit the game.
 | **Generators** | turn sun, wind, water or your arm into electricity | ![](item:solar_panel) ![](item:wind_turbine) ![](item:water_wheel) ![](item:hand_crank) ![](item:rtg) [Generators](201), [Radioisotope generator](220) |
 | **Conductors** | carry it from block to block | ![](item:copper_wire) ![](item:wire_post) [Wires and networks](202) |
 | **Storage** | keeps the energy for later | ![](item:battery_block) [Batteries](203) |
-| **Consumers** | use it: light, plants, motion | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) [Consumers](204) |
+| **Consumers** | use it: light, plants, motion, cold | ![](item:electric_lamp) ![](item:grow_lamp) ![](item:electric_motor) ![](item:fridge) [Consumers](204) |
 | **Logic** | switch networks on and off: by hand, by themselves or by thinking | ![](item:lever) ![](item:daylight_sensor) ![](item:and_gate) [Switches](207), [Sensors](208), [Logic gates](209) |
 
 And one tool to see what is going on: the ![](item:multimeter) [multimeter](205).
@@ -71,7 +71,7 @@ electricity.
 1. [Generators](201): solar, wind, water, the hand crank and the [radioisotope generator](220), with their numbers.
 2. [Wires and networks](202): how to join blocks, and the 512-block limit.
 3. [Batteries](203): capacity, charge and discharge.
-4. [Consumers](204): lamps, grow lamps and motors.
+4. [Consumers](204): lamps, grow lamps, motors, and the [fridge and chest freezer](234).
 5. [Multimeter](205): measure your network.
 6. [Electric projects](206): five builds to try.
 7. [Switches](207), [Sensors](208), [Logic gates](209), [Memory and delays](210) and [Example circuits](211):

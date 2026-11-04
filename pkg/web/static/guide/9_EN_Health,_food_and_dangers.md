@@ -58,6 +58,12 @@ Select the food in the hotbar and press **G**. At full health it is not used up.
 | ![](item:cheese) `cheese` | +7 |
 | ![](item:milk) `milk` | +2 and cures poison (gives the `glass` back) |
 | ![](item:antivenom) `antivenom` | +1, cures poison and gives 3 min of immunity |
+| ![](item:roast_mushroom) `roast_mushroom` | +6 (made in the [oven](233)) |
+| ![](item:cold_water) `cold_water` | +3 (from the [fridge](234); gives the `glass` back) |
+| ![](item:cold_milk) `cold_milk` | +3 and cures poison (from the [fridge](234); gives the `glass` back) |
+| ![](item:cold_soda) `cold_soda` | +4 (from the [fridge](234); gives the `glass` back) |
+
+Frozen food and `ice` cannot be eaten until an [oven](233) thaws them. Food never goes off in this game.
 
 The red flower cannot be eaten. Mushrooms grow mostly in forests; flowers, in meadows. Raw `wheat` is not food:
 bake it into bread (see [Growing wheat](107)).

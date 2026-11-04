@@ -93,6 +93,10 @@ var powerKinds = map[string]powerKind{
 	// nothing to do. 80 W runs a 60 W winch or a 50 W motor on its own, without batteries, but
 	// it is twice what a solar panel gives at noon, so its recipe is dear.
 	"rtg": {Role: powerGenerator, Source: "radioisotope", Watts: 80},
+	// --- Cold furniture (appliances.go, js/game/appliances.js) ---
+	// A fridge's two cells are one fridge: only the lower one asks for power (powerDemandOf).
+	"fridge":        {Role: powerConsumer, Watts: 30},
+	"chest_freezer": {Role: powerConsumer, Watts: 30},
 }
 
 const (
@@ -544,7 +548,7 @@ func (g *powerGrid) simulate(network *powerNetwork, w cropWorld, env powerEnviro
 			network.gen += watts
 			network.sources[kind.Source] += watts
 		case powerConsumer:
-			network.demand += kind.Watts
+			network.demand += powerDemandOf(b)
 		case powerStorage:
 			batteries = append(batteries, b)
 			network.stored += b.Energy
@@ -580,6 +584,15 @@ func (g *powerGrid) simulate(network *powerNetwork, w cropWorld, env powerEnviro
 		}
 	}
 	network.stored = stored
+}
+
+// powerDemandOf is what a consumer asks for: the upper half of a fridge asks nothing, as its lower
+// half has already asked for both.
+func powerDemandOf(b *PowerBlock) float64 {
+	if storageIsUpper(b.Name) {
+		return 0
+	}
+	return powerKinds[b.Kind].Watts
 }
 
 // powerBalance decides one step: whether the consumers run, and the energy left in the
@@ -788,7 +801,10 @@ func (g *powerGrid) probe(x, y, z int, w cropWorld, env powerEnvironment, now ti
 	report.Sources = network.sources
 	report.Counts = make(map[string]int)
 	for _, member := range network.members {
-		report.Counts[g.blocks[member].Kind]++
+		// A fridge of two cells is one fridge.
+		if !storageIsUpper(g.blocks[member].Name) {
+			report.Counts[g.blocks[member].Kind]++
+		}
 	}
 	switch kind.Role {
 	case powerGenerator:

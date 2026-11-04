@@ -46,3 +46,5 @@ Si tienes la vida llena, no te lo comes.
 - La corteza se dora por la *reacción de Maillard*, la misma que tuesta las tostadas y la carne asada.
 
 Ver también: [Trigo](109), [Salud, comida y peligros](9), [Fabricar](11).
+
+Un [horno](233) también lo hornea, con el mismo `wheat` x3 y combustible, y un [congelador](234) puede congelarlo.

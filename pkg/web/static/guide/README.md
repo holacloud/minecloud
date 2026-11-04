@@ -268,7 +268,7 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 201 | Generadores | Generators | solar_panel, wind_turbine, water_wheel, hand_crank, eel_tank, with their numbers |
 | 202 | Cables y redes | Wires and networks | copper_wire, wire_post; what a network is, the 512-block limit |
 | 203 | Baterías | Batteries | battery_block (and its charge states `battery_block:1` … `:4`) |
-| 204 | Consumidores | Consumers | electric_lamp, grow_lamp, electric_motor (and their `:on` states) |
+| 204 | Consumidores | Consumers | electric_lamp, grow_lamp, electric_motor (and their `:on` states), fridge, chest_freezer |
 | 205 | Multímetro | Multimeter | multimeter: how to read a network |
 | 206 | Proyectos eléctricos | Electric projects | 5 builds: crank lamp, night lights, windmill farm, water mill, night greenhouse |
 | 207 | Interruptores | Switches | lever, push_button, pressure_plate (and their `:on` states); a switch cuts or joins networks (contents 0 and items index 48) |
@@ -290,12 +290,14 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 224 | Sillas y sofás | Chairs and sofas | oak_chair, birch_chair, dark_oak_chair, stool, bench, `<colour>_sofa`: sitting, pieces that join |
 | 225 | Mesas | Tables | table, bedside_table, desk |
 | 226 | Cofres y armarios | Chests and wardrobes | chest, barrel, wardrobe (they really store items, on the server), bookshelf, wall_shelf |
-| 227 | Cocina y baño | Kitchen and bath | workbench, oven, sink, fridge, toilet, bathtub; what china is |
+| 227 | Cocina y baño | Kitchen and bath | workbench, oven, sink, fridge, chest_freezer, toilet, bathtub; what china is |
 | 228 | Luces sin electricidad | Lights without electricity | candle, lantern, table_lamp, floor_lamp, chandelier; how a candle burns |
 | 229 | Vidrieras | Stained glass | `<colour>_stained_glass`, `<colour>_stained_glass_pane`; why metal oxides colour glass (links to the element pages) |
 | 230 | Alfombras y cortinas | Carpets and curtains | `<colour>_carpet`, `<colour>_curtain` |
 | 231 | Cuadros, reloj y adornos | Paintings, clock and ornaments | painting_sunset, painting_peaks, painting_meadow, painting_night, painting_shapes, painting_fish, wall_clock, flower_pot, vase |
 | 232 | Espejos | Mirrors | wall_mirror, mirror: real reflection up close (js/game/mirrors.js); how a mirror works, links to 181 |
+| 233 | Horno | Oven | oven, roast_mushroom: cooks and thaws on the server with fuel (pkg/network/appliances.go, js/game/appliances.js), recipes and fuels; the Maillard reaction, how an oven heats |
+| 234 | Nevera y congelador | Fridge and freezer | fridge (two compartments), chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread; food does not spoil in the game; bacteria and cold, water expanding as it freezes, how a fridge moves heat |
 
 ### Secret pages
 

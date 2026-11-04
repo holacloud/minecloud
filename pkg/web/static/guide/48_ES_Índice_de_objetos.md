@@ -51,12 +51,14 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:oak_chair) [Sillas y sofás](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, y sofás de 16 colores (red_sofa...)
 - ![](item:table) [Mesas](225): table, bedside_table, desk
 - ![](item:chest) [Cofres y armarios](226): chest, barrel, wardrobe, bookshelf, wall_shelf
-- ![](item:oven) [Cocina y baño](227): workbench, oven, sink, fridge, toilet, bathtub
+- ![](item:oven) [Cocina y baño](227): workbench, oven, sink, fridge, chest_freezer, toilet, bathtub
 - ![](item:lantern) [Luces sin electricidad](228): candle, lantern, table_lamp, floor_lamp, chandelier
 - ![](item:blue_stained_glass) [Vidrieras](229): 16 colores, en bloque y en panel (blue_stained_glass, blue_stained_glass_pane...)
 - ![](item:red_carpet) [Alfombras y cortinas](230): 16 colores (red_carpet, red_curtain...)
 - ![](item:wall_clock) [Cuadros, reloj y adornos](231): seis cuadros (painting_sunset...), wall_clock, flower_pot, vase
 - ![](item:wall_mirror) [Espejos](232): wall_mirror, mirror
+- ![](item:oven) [Horno](233): oven, roast_mushroom, recetas, combustibles y descongelar
+- ![](item:fridge) [Nevera y congelador](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
 
 ## Herramientas
 
@@ -145,7 +147,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:wind_turbine) [Generadores](201): solar_panel, wind_turbine, water_wheel, hand_crank
 - ![](item:copper_wire) [Cables y redes](202): copper_wire, wire_post
 - ![](item:battery_block) [Baterías](203)
-- ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor
+- ![](item:electric_lamp) [Consumidores](204): electric_lamp, grow_lamp, electric_motor, fridge, chest_freezer
 - ![](item:multimeter) [Multímetro](205)
 - ![](item:electric_motor) [Proyectos eléctricos](206)
 - ![](item:eel_tank) [Tanque de anguila](214): eel_tank, eel_bucket

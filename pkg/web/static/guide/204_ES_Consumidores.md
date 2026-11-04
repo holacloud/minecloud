@@ -10,6 +10,8 @@ mientras funciona.
 | ![](item:electric_lamp) | Lámpara eléctrica | `electric_lamp` | **10 W** | ilumina como una antorcha |
 | ![](item:grow_lamp) | Lámpara de cultivo | `grow_lamp` | **30 W** | hace que el trigo crezca el doble de rápido |
 | ![](item:electric_motor) | Motor eléctrico | `electric_motor` | **50 W** | gira, abre puertas de hierro |
+| ![](item:fridge) | Nevera | `fridge` | **30 W** | [enfría y congela](234) (sus dos celdas son una nevera) |
+| ![](item:chest_freezer) | Arcón congelador | `chest_freezer` | **30 W** | [congela](234) |
 
 ## Cómo conseguirlos
 
@@ -46,6 +48,10 @@ Una caja de acero con bobinas de cobre dentro. Con corriente, un ventilador **gi
 - Cuando el motor **se enciende**, **abre** las [puertas y trampillas de hierro](197) que toca (las dos mitades de la
   puerta). Cuando **se apaga**, las cierra.
 - Mientras tanto puedes seguir abriéndolas y cerrándolas a mano.
+
+## Nevera y arcón congelador
+
+Muebles que funcionan con electricidad: mira [Nevera y congelador](234). Sin corriente son armarios corrientes, y nada de lo que hay dentro cambia.
 
 ## Todo o nada
 

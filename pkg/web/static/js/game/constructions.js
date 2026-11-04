@@ -809,11 +809,14 @@ function constructionShowroom(b) {
     b.set(6, 2, 10, 'candle');
 
     // ---- 3. The kitchen ----
-    sign(10, 18, 'e', 'COCINA. Clic derecho en el horno: se enciende. En el banco de trabajo: abre las recetas. En el barril: guarda cosas.',
-        'Kitchen. Right click the oven to light it, the workbench for recipes, the barrel to store things. The stools seat you.');
+    sign(10, 18, 'e', 'COCINA. Horno: mete comida y carbón, cocina solo. Nevera y congelador van con el generador. Banco: recetas. Barril: guarda.',
+        'Kitchen. Give the oven food and coal: it cooks itself. Fridge and freezer run on the generator; without power, just cupboards. Workbench: recipes.');
     skylight(4, 20, 8, 20);
     skylight(4, 25, 8, 25);
+    // The freezer, the fridge and the generator touch: one network, 60 W out of 80.
+    piece(1, 1, 18, 'chest_freezer', 'chest_freezer', 'e');
     tall(1, 19, 'fridge', 'e');
+    b.set(1, 1, 20, 'rtg');
     oven(1, 21, 'e', 'off');
     piece(1, 1, 22, 'sink', 'sink', 'e');
     b.set(1, 1, 23, 'workbench');
@@ -933,7 +936,7 @@ function constructionShowroom(b) {
         [35, 34, 30, (x, z) => { b.set(x, 1, z, 'table'); b.set(x, 2, z, 'table_lamp'); }, 'Lámpara de mesa: nivel 12.', 'Table lamp: level 12.'],
         [17, 22, 26, floorLamp, 'Lámpara de pie: nivel 14.', 'Floor lamp: level 14.'],
         [23, 22, 26, (x, z) => b.set(x, 4, z, 'chandelier'), 'Candelabro: nivel 14.', 'Chandelier: level 14.'],
-        [29, 22, 26, (x, z) => oven(x, z, 's', 'on'), 'Horno encendido: nivel 11. Clic derecho: se apaga.', 'Lit oven: level 11. Right click puts it out.'],
+        [29, 22, 26, (x, z) => oven(x, z, 's', 'off'), 'Horno: nivel 11 mientras arde. Mete comida y carbón.', 'Oven: level 11 while it burns. Put in food and coal.'],
         [35, 22, 26, () => {}, 'Sin ninguna luz: así de oscuro es.', 'No light at all: this is how dark it is.']
     ];
     for (const [x, z, mouth, place, es, en] of bays) {

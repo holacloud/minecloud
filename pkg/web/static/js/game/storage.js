@@ -1,5 +1,6 @@
-// The panel of chests, barrels and wardrobes (`storageSlots` in js/game/furniture.js). What they
-// hold lives on the server (pkg/network/storage.go): this file only asks and shows.
+// The panel of chests, barrels, wardrobes, ovens, fridges and chest freezers (`storageSlots` in
+// js/game/furniture.js). What they hold lives on the server (pkg/network/storage.go): this file
+// only asks and shows.
 // - A right click opens the panel (crouch to build against the chest). It shows the chest's slots
 //   and the player's items; a click or tap moves the amount picked in the row above them. Other
 //   players' moves appear live, as the server sends every watcher the new contents.
@@ -10,10 +11,18 @@
 //   reconnection or a reload: the server answers from its log, or kills a move that never
 //   arrived so that it can no longer apply.
 // - When a chest is broken the server sends its contents to whoever broke it, as pickups.
-// STORAGE_KINDS mirrors storageKinds in storage.go (test/js/furniture.test.js checks it).
+// - An oven shows food, fuel and result with its fire and cooking as bars; a fridge has two tabs, a
+//   compartment each. Cold furniture says whether it has power. Both change on their own, on the
+//   server (js/game/appliances.js): while the slots stay the same only the bars and the line of
+//   status are redrawn, so that a click on a cell is not lost when an update lands on it.
+// STORAGE_KINDS and STORAGE_FREEZERS mirror storageKinds and storageFreezers in storage.go
+// (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; the panel is a modal panel (see registerModalPanel).
 
-const STORAGE_KINDS = { barrel: 18, chest: 27, wardrobe: 45 };
+const STORAGE_KINDS = { barrel: 18, chest: 27, chest_freezer: 36, fridge: 18, oven: 3, wardrobe: 45 };
+// Kinds with a second compartment, and how many slots it has.
+const STORAGE_FREEZERS = { fridge: 9 };
+const STORAGE_FREEZER_TAB = 'freezer';
 const STORAGE_MAX_STACK = 999;
 const STORAGE_MAX_AMOUNT = 9999;
 // Blocks away at which an open panel closes (the server allows 9).
@@ -44,6 +53,20 @@ const STORAGE_CSS = `
 .storage-cell span{position:absolute;right:3px;bottom:2px;font-size:11px;text-shadow:0 1px 2px #000}
 #storage-items{max-height:30vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 #storage-note{font-size:12px;opacity:.75;min-height:15px}
+#storage-tabs{display:flex;gap:6px}
+#storage-tabs button{flex:1}
+#storage-status{font-size:12px;line-height:1.35}
+#storage-status.off{color:#ffc27a}
+.storage-bar{position:absolute;left:3px;right:3px;top:3px;height:4px;border-radius:2px;background:rgba(0,0,0,.5);overflow:hidden;pointer-events:none}
+.storage-bar i{display:block;height:100%;width:0;background:#8fd0f5}
+.storage-bar.paused i{background:#8a929a}
+.storage-oven{display:flex;align-items:flex-end;justify-content:center;gap:12px;flex-wrap:wrap}
+.storage-oven-slot{width:72px;font-size:11px;text-align:center}
+.storage-oven-slot .storage-cell{margin-top:3px}
+.storage-oven-bars{display:flex;flex-direction:column;gap:8px;width:96px;font-size:11px;align-self:center}
+.storage-oven-bars .storage-bar{position:relative;left:0;right:0;top:0;height:8px;margin-top:2px}
+#storage-fire i{background:#f08a2e}
+#storage-cook i{background:#ffd16c}
 `;
 
 // ---------------------------------------------------------------------------------------
@@ -64,6 +87,24 @@ function storageApplyOutcome(pending, moved) {
 
 function storageBaseName(type) {
     return String(type).split(':')[0];
+}
+
+// Whether two lists of slots hold the same stacks, whatever their progress.
+function storageSameStacks(a, b) {
+    if (!a || !b || a.length !== b.length) return !a && !b;
+    return a.every((slot, i) => (slot.type || '') === (b[i].type || '') && (slot.count || 0) === (b[i].count || 0));
+}
+
+// The line of status of an oven, from what the server says of its fire.
+function storageOvenStatus(oven) {
+    if (!oven || !(oven.burn > 0)) return 'No fire: it lights by itself with food and fuel';
+    const left = `Burning, ${Math.ceil(oven.burn)} s of fire left`;
+    return oven.cookMax > 0 ? `${left}: cooking` : `${left}: nothing to cook`;
+}
+
+// A bar's width from a value and its maximum.
+function storagePercent(value, max) {
+    return max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
 }
 
 Object.assign(Game.prototype, {
@@ -112,6 +153,9 @@ Object.assign(Game.prototype, {
         this.storageBuildPanel();
         this.storageAt = { x: position.x, y: position.y, z: position.z };
         this.storageTitle = this.getBlockDisplayName(def.variantOf || type);
+        this.storageKind = storageBaseName(type);
+        this.storageTab = '';
+        this.storageContents = null;
         this.storageSlots = null;
         this.storageRev = -1;
         this.storageNote = '';
@@ -130,6 +174,7 @@ Object.assign(Game.prototype, {
         if (!this.storageAt) return;
         this.storageAt = null;
         this.storageSlots = null;
+        this.storageContents = null;
         if (this.storagePanel) this.storagePanel.classList.remove('visible');
         if (this.network && this.network.connected) this.network.send('storageClose', {});
         this.suppressPointerLockPauseUntil = performance.now() + 250;
@@ -142,18 +187,20 @@ Object.assign(Game.prototype, {
         const at = this.storageAt;
         const amount = storageClickAmount(this.storageMode ?? 0, this.getInventoryCount(type));
         if (!at || amount <= 0 || !this.network.connected) return;
+        const tab = this.storageTab ? { compartment: this.storageTab } : {};
         const reqId = this.storageNewRequestId();
         this.storagePending.set(reqId, { op: 'put', type, amount, at: performance.now() });
         this.storageSavePending();
         // Out of the inventory first, so the same items can never go anywhere else meanwhile.
         this.inventoryCounts[type] = this.getInventoryCount(type) - amount;
         this.storageInventoryChanged();
-        this.network.send('storagePut', { ...at, type, amount, reqId });
+        this.network.send('storagePut', { ...at, type, amount, reqId, ...tab });
     },
 
     storageTake(index) {
         const at = this.storageAt;
-        const slot = this.storageSlots && this.storageSlots[index];
+        const list = this.storageShownSlots();
+        const slot = list && list[index];
         if (!at || !slot || !slot.count || !this.network.connected) return;
         if (!this.world.blockTypes[slot.type]) {
             this.storageNote = `This game does not know "${slot.type}"`;
@@ -165,7 +212,14 @@ Object.assign(Game.prototype, {
         const reqId = this.storageNewRequestId();
         this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now() });
         this.storageSavePending();
-        this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId });
+        const tab = this.storageTab ? { compartment: this.storageTab } : {};
+        this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId, ...tab });
+    },
+
+    // The slots of the tab on show.
+    storageShownSlots() {
+        if (this.storageTab !== STORAGE_FREEZER_TAB) return this.storageSlots;
+        return this.storageContents ? this.storageContents.freezer : null;
     },
 
     storageInventoryChanged() {
@@ -186,6 +240,7 @@ Object.assign(Game.prototype, {
         this.storageSavePending();
         const { give } = storageApplyOutcome(pending, outcome.amount);
         if (pending.op === 'put' && outcome.reason === 'full') this.storageNote = 'It is full';
+        if (outcome.reason === 'not for the oven') this.storageNote = 'The oven only takes food to cook or thaw, and fuel';
         if (give > 0 && this.world.blockTypes[pending.type]) this.addInventory(pending.type, give);
         this.storageRender();
         if (outcome.amount > 0) this.playPickupSound();
@@ -198,8 +253,12 @@ Object.assign(Game.prototype, {
         if (contents.x !== at.x || contents.z !== at.z || Math.abs(contents.y - at.y) > 1) return;
         if (contents.rev < this.storageRev) return;
         this.storageRev = contents.rev;
+        const same = this.storageContents && storageSameStacks(this.storageSlots, contents.slots) &&
+            storageSameStacks(this.storageContents.freezer, contents.freezer);
         this.storageSlots = contents.slots;
-        this.storageRender();
+        this.storageContents = contents;
+        if (same) this.storageRenderProgress();
+        else this.storageRender();
     },
 
     storageOnClosed(where) {
@@ -266,15 +325,26 @@ Object.assign(Game.prototype, {
                 <button class="storage-amount" type="button" data-amount="0">All</button>
                 <button class="storage-close" type="button" aria-label="Close">✕</button>
             </div>
+            <div id="storage-tabs">
+                <button class="storage-tab" type="button" data-tab="">Fridge</button>
+                <button class="storage-tab" type="button" data-tab="freezer">Freezer</button>
+            </div>
+            <div id="storage-status"></div>
             <div class="storage-grid" id="storage-slots"></div>
             <div id="storage-note"></div>
-            <h4>Your items: click to put them in</h4>
+            <h4 id="storage-items-title"></h4>
             <input id="storage-search" type="text" placeholder="Search items..." autocomplete="off">
             <div class="storage-grid" id="storage-items"></div>`;
         panel.querySelector('.storage-close').addEventListener('click', () => this.storageClose());
         panel.querySelectorAll('.storage-amount').forEach((button) => {
             button.addEventListener('click', () => {
                 this.storageMode = Number(button.dataset.amount);
+                this.storageRender();
+            });
+        });
+        panel.querySelectorAll('.storage-tab').forEach((button) => {
+            button.addEventListener('click', () => {
+                this.storageTab = button.dataset.tab;
                 this.storageRender();
             });
         });
@@ -328,30 +398,97 @@ Object.assign(Game.prototype, {
         panel.querySelector('#storage-title').textContent = this.storageTitle;
         panel.querySelectorAll('.storage-amount').forEach((button) => button.classList.toggle('active', Number(button.dataset.amount) === mode));
         panel.querySelector('#storage-note').textContent = this.storageNote || '';
+        const isOven = this.storageKind === 'oven';
+        panel.querySelector('#storage-tabs').style.display = STORAGE_FREEZERS[this.storageKind] ? '' : 'none';
+        panel.querySelectorAll('.storage-tab').forEach((button) => button.classList.toggle('active', button.dataset.tab === this.storageTab));
 
         const slots = panel.querySelector('#storage-slots');
         slots.innerHTML = '';
-        if (!this.storageSlots) {
+        slots.className = isOven ? 'storage-oven' : 'storage-grid';
+        const shown = this.storageShownSlots();
+        if (!shown) {
             slots.textContent = 'Opening...';
+        } else if (isOven) {
+            this.storageRenderOven(slots, shown);
         } else {
-            this.storageSlots.forEach((slot, index) => {
-                if (!slot || !slot.count) {
-                    const empty = document.createElement('div');
-                    empty.className = 'storage-cell empty';
-                    slots.appendChild(empty);
-                    return;
-                }
-                slots.appendChild(this.storageCell(slot.type, slot.count, this.getBlockDisplayName(slot.type), () => this.storageTake(index)));
-            });
+            shown.forEach((slot, index) => slots.appendChild(this.storageSlotCell(slot, index)));
         }
 
         const items = panel.querySelector('#storage-items');
         items.innerHTML = '';
+        panel.querySelector('#storage-items-title').textContent = isOven ? 'Your food and fuel: click to put them in' : 'Your items: click to put them in';
         const query = (this.storageSearch || '').trim().toLowerCase();
         const matches = this.inventory.filter((type) => this.getInventoryCount(type) > 0 && this.world.blockTypes[type] &&
-            (!query || `${type} ${this.getBlockDisplayName(type)}`.toLowerCase().includes(query)));
+            (!isOven || applianceOvenTakes(type)) && (!query || `${type} ${this.getBlockDisplayName(type)}`.toLowerCase().includes(query)));
         matches.slice(0, STORAGE_LIST_MAX).forEach((type) => {
             items.appendChild(this.storageCell(type, this.getInventoryCount(type), this.getBlockDisplayName(type), () => this.storagePut(type)));
+        });
+        this.storageRenderProgress();
+    },
+
+    // One slot of the grid or the oven; those that are changing carry a bar (storageRenderProgress).
+    storageSlotCell(slot, index) {
+        if (!slot || !slot.count) {
+            const empty = document.createElement('div');
+            empty.className = 'storage-cell empty';
+            return empty;
+        }
+        const cell = this.storageCell(slot.type, slot.count, this.getBlockDisplayName(slot.type), () => this.storageTake(index));
+        if (this.storageContents && this.storageContents.cold && applianceSlotProgress(this.storageKind, this.storageTab, slot) !== null) {
+            const bar = document.createElement('div');
+            bar.className = 'storage-bar';
+            bar.dataset.slot = index;
+            bar.appendChild(document.createElement('i'));
+            cell.appendChild(bar);
+        }
+        return cell;
+    },
+
+    storageRenderOven(slots, shown) {
+        const piece = (index, caption) => {
+            const box = document.createElement('div');
+            box.className = 'storage-oven-slot';
+            box.textContent = caption;
+            box.appendChild(this.storageSlotCell(shown[index], index));
+            return box;
+        };
+        const bars = document.createElement('div');
+        bars.className = 'storage-oven-bars';
+        bars.innerHTML = '<div>Fire<div class="storage-bar" id="storage-fire"><i></i></div></div><div>Cooking<div class="storage-bar" id="storage-cook"><i></i></div></div>';
+        slots.append(piece(0, 'Food'), piece(1, 'Fuel'), bars, piece(2, 'Result'));
+    },
+
+    // What changes on its own: the bars and the line of status.
+    storageRenderProgress() {
+        const panel = this.storagePanel;
+        if (!panel || !this.storageAt) return;
+        const contents = this.storageContents;
+        const status = panel.querySelector('#storage-status');
+        status.classList.remove('off');
+        status.textContent = '';
+        if (!contents) return;
+        if (contents.oven) {
+            const { burn, burnMax, cook, cookMax } = contents.oven;
+            status.textContent = storageOvenStatus(contents.oven);
+            const fire = panel.querySelector('#storage-fire i');
+            const food = panel.querySelector('#storage-cook i');
+            if (fire) fire.style.width = `${storagePercent(burn, burnMax)}%`;
+            if (food) food.style.width = `${storagePercent(cook, cookMax)}%`;
+        }
+        if (!contents.cold) return;
+        const table = applianceColdTable(this.storageKind, this.storageTab);
+        if (contents.powered) {
+            const names = [...new Set(Object.keys(table.changes))].map((type) => this.getBlockDisplayName(type)).join(', ');
+            status.textContent = `Power on: it ${table.verb} in about ${table.seconds === 60 ? 'a minute' : `${table.seconds / 60} minutes`}: ${names}`;
+        } else {
+            status.textContent = 'No power: works as a cupboard, nothing in it changes';
+            status.classList.add('off');
+        }
+        const shown = this.storageShownSlots() || [];
+        panel.querySelectorAll('#storage-slots .storage-bar[data-slot]').forEach((bar) => {
+            const progress = applianceSlotProgress(this.storageKind, this.storageTab, shown[Number(bar.dataset.slot)]);
+            bar.classList.toggle('paused', !contents.powered);
+            bar.firstChild.style.width = `${(progress || 0) * 100}%`;
         });
     }
 });

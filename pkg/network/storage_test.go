@@ -18,6 +18,8 @@ var storageEye = &[3]float64{0.5, 1.5, 0.5}
 func newTestBook() (*storageBook, fakeCropWorld) {
 	book := newStorageBook()
 	book.deliver = func(*Client, []byte) bool { return true }
+	book.powered = func([3]int) bool { return false }
+	book.adopt = func(int, int, int, string) {}
 	return book, fakeCropWorld{{0, 0, 0}: "chest"}
 }
 
@@ -44,6 +46,12 @@ func TestStorageCell(t *testing.T) {
 		{"wardrobe", 5, 45, true},
 		{"wardrobe:lower:e", 5, 45, true},
 		{"wardrobe:upper:n", 4, 45, true},
+		{"fridge", 5, 18, true},
+		{"fridge:lower:e", 5, 18, true},
+		{"fridge:upper:e", 4, 18, true},
+		{"chest_freezer:w", 5, 36, true},
+		{"oven:e:on", 5, 3, true},
+		{"oven", 5, 3, true},
 		{"stone", 5, 0, false},
 		{"chest_of_sorts", 5, 0, false},
 	}
@@ -238,7 +246,7 @@ func TestStorageBreakSpillsOnceAndClosesPanels(t *testing.T) {
 		return spill
 	}
 	spill := breakChest()
-	if len(spill) != 2 || spill[0] != (StorageSlot{"stone", 10}) || spill[1] != (StorageSlot{"dirt", 3}) {
+	if len(spill) != 2 || spill[0] != (StorageSlot{Type: "stone", Count: 10}) || spill[1] != (StorageSlot{Type: "dirt", Count: 3}) {
 		t.Fatalf("spill: %+v", spill)
 	}
 	if !strings.Contains(sent[len(sent)-1], "storageClosed") || len(book.viewers) != 0 || len(book.viewing) != 0 {
@@ -357,8 +365,8 @@ func TestStoragePersistence(t *testing.T) {
 	}
 	// Hand-edited or damaged slots do not load.
 	restored.load(map[string]StorageBlock{
-		"1,0,0": {X: 1, Slots: []StorageSlot{{"stone", -5}, {"", 3}, {"bad name", 1}, {"stone", storageMaxStack + 1}}},
-		"2,0,0": {X: 2, Slots: []StorageSlot{{}, {"stone", 2}}},
+		"1,0,0": {X: 1, Slots: []StorageSlot{{Type: "stone", Count: -5}, {Count: 3}, {Type: "bad name", Count: 1}, {Type: "stone", Count: storageMaxStack + 1}}},
+		"2,0,0": {X: 2, Slots: []StorageSlot{{}, {Type: "stone", Count: 2}}},
 	}, nil)
 	if len(restored.blocks) != 1 || restored.blocks[blockKey(2, 0, 0)].Slots[1].Count != 2 {
 		t.Fatalf("load: %+v", restored.blocks)
@@ -454,7 +462,7 @@ func TestStorageUpperHalfAloneIsNotStorage(t *testing.T) {
 }
 
 func TestRamsDoNotMoveStorage(t *testing.T) {
-	for _, name := range []string{"chest", "chest:e", "barrel", "wardrobe", "wardrobe:upper:s", "fridge", "fridge:upper:e",
+	for _, name := range []string{"chest", "chest:e", "barrel", "wardrobe", "wardrobe:upper:s", "fridge", "fridge:upper:e", "chest_freezer", "chest_freezer:e", "oven", "oven:e:on",
 		"floor_lamp", "floor_lamp:upper", "bathtub", "bathtub:head:e"} {
 		if mechMovable(name) {
 			t.Errorf("%s should not move", name)
@@ -473,8 +481,10 @@ func TestRamsDoNotMoveStorage(t *testing.T) {
 	}
 }
 
-// The whole path through the real message handlers and chunk store.
-func TestStorageThroughMessages(t *testing.T) {
+// The real message handlers and chunk store: returns a player standing next to (2, 120, 2), a way to
+// make new ones, and how to talk to them.
+func storageMessages(t *testing.T) (newClient func(string) *Client, send func(*Client, string, interface{}), expect func(*Client, string) json.RawMessage) {
+	t.Helper()
 	t.Chdir(t.TempDir())
 	previous := chunkStore
 	store, err := world.Open(filepath.Join(t.TempDir(), "chunks"), nil)
@@ -488,7 +498,7 @@ func TestStorageThroughMessages(t *testing.T) {
 		storage = newStorageBook()
 	})
 
-	newClient := func(id string) *Client {
+	newClient = func(id string) *Client {
 		client := &Client{ID: id, username: id, send: make(chan []byte, 256), done: make(chan struct{})}
 		clientsMu.Lock()
 		clients[client] = true
@@ -506,11 +516,11 @@ func TestStorageThroughMessages(t *testing.T) {
 		})
 		return client
 	}
-	send := func(client *Client, kind string, payload interface{}) {
+	send = func(client *Client, kind string, payload interface{}) {
 		data, _ := json.Marshal(payload)
 		handleMessage(client, Message{Type: kind, Payload: data})
 	}
-	expect := func(client *Client, kind string) json.RawMessage {
+	expect = func(client *Client, kind string) json.RawMessage {
 		for {
 			select {
 			case data := <-client.send:
@@ -526,6 +536,19 @@ func TestStorageThroughMessages(t *testing.T) {
 			}
 		}
 	}
+	return newClient, send, expect
+}
+
+// A single player of storageMessages.
+func storageMessageRig(t *testing.T) (*Client, func(*Client, string, interface{}), func(*Client, string) json.RawMessage) {
+	t.Helper()
+	newClient, send, expect := storageMessages(t)
+	return newClient("alice"), send, expect
+}
+
+// The whole path through the real message handlers and chunk store.
+func TestStorageThroughMessages(t *testing.T) {
+	newClient, send, expect := storageMessages(t)
 	at := map[string]int{"x": 2, "y": 120, "z": 2}
 
 	alice, bob := newClient("alice"), newClient("bob")
@@ -544,7 +567,7 @@ func TestStorageThroughMessages(t *testing.T) {
 	// Bob sees it in his open panel, and it is on disk already.
 	var seen storageSnapshot
 	json.Unmarshal(expect(bob, "storageContents"), &seen)
-	if seen.Slots[0] != (StorageSlot{"stone", 7}) || seen.Capacity != 27 {
+	if seen.Slots[0] != (StorageSlot{Type: "stone", Count: 7}) || seen.Capacity != 27 {
 		t.Fatalf("bob sees: %+v", seen)
 	}
 	saved, err := os.ReadFile(worldStatePath)

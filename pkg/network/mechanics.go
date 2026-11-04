@@ -86,7 +86,7 @@ var mechSoft = map[string]bool{
 var mechFixed = map[string]bool{
 	"bedrock": true, "lift_platform": true, "sign": true, "ladder": true, "sound_block": true,
 	"bed": true, "farmland": true, "chest": true, "barrel": true, "wardrobe": true,
-	"fridge": true, "floor_lamp": true, "bathtub": true,
+	"fridge": true, "chest_freezer": true, "oven": true, "floor_lamp": true, "bathtub": true,
 }
 
 // mechMovable reports whether a ram may push or pull the block `name`.
