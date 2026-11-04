@@ -133,7 +133,7 @@ class ConstructionBuilder {
 // The designs. Each one: label, size [w, h, d], foundation (what goes under the floor layer),
 // anchorX (the x, on the z = 0 edge, that ends up straight ahead of the player), start (where a
 // visitor arrives, for the tests), levels (places every visitor must be able to walk to, for the
-// tests) and generate(b, size). Only what is drawn is built: the rest of the box becomes air, and
+// tests), optionally darkRooms (left out of the tests of light) and generate(b, size). Only what is drawn is built: the rest of the box becomes air, and
 // undrawn cells of the floor layer keep their ground.
 
 // A timber cottage: birch and spruce on a cobble plinth, a dark oak gable roof made of stairs.
@@ -655,6 +655,358 @@ function constructionBellTower(b) {
     b.set(4, top + 9, 7, 'gold_block');
 }
 
+// A furniture showroom, like a store: one floor, a one-way route along a yellow line from the
+// entrance, round a ring of corridors with furnished rooms open towards them, back to the exit next
+// to the entrance. Every piece of js/game/furniture.js, decor.js and mirrors.js stands in a scene
+// (test/js/constructions.test.js checks that). In the middle, the light room: no sky within
+// SKY_REACH columns of it, a thick roof, and a long entry lane so that no light from outside gets in.
+// Its chests are empty: what they hold lives on the server, and a build only places blocks.
+// A sign's label shows 6 lines of 26 characters and its reader (the F key) all of it, up to 288
+// bytes, so each one has its Spanish first, whole on the label, and its English after it.
+function constructionShowroom(b) {
+    const colors = FURNITURE_COLORS.map(([color]) => color);
+    const wall = (x0, z0, x1, z1, type = 'birch_planks') => b.box(x0, 1, z0, x1, 4, z1, type);
+    const skylight = (x0, z0, x1, z1) => b.box(x0, 5, z0, x1, 5, z1, 'glass');
+    const sign = (x, z, es, en) => b.set(x, 1, z, 'sign', { t: `${es} // ${en}` });
+    const piece = (x, y, z, base, shape, facing) => b.shaped(x, y, z, base, shape, { facing });
+    const sofa = (x, z, color, facing) => piece(x, 1, z, `${color}_sofa`, 'sofa', facing);
+    const chair = (x, z, wood, facing) => piece(x, 1, z, `${wood}_chair`, 'chair', facing);
+    const tall = (x, z, base, facing) => {
+        b.shaped(x, 1, z, base, base, { half: 'lower', facing });
+        b.shaped(x, 2, z, base, base, { half: 'upper', facing });
+    };
+    const floorLamp = (x, z) => {
+        b.shaped(x, 1, z, 'floor_lamp', 'floor_lamp', { half: 'lower' });
+        b.shaped(x, 2, z, 'floor_lamp', 'floor_lamp', { half: 'upper' });
+    };
+    const lantern = (x, y, z, mount = 'hanging') => b.shaped(x, y, z, 'lantern', 'lantern', { mount });
+    const oven = (x, z, facing, fire) => b.shaped(x, 1, z, 'oven', 'oven', { facing, fire });
+    const curtain = (x, y, z, color, facing, drawn = 'closed') => b.shaped(x, y, z, `${color}_curtain`, 'curtain', { facing, drawn });
+    // The foot here, the head one block on, the way it faces.
+    const bathtub = (x, z, facing) => {
+        const [dx, dz] = SHAPE_DIRECTIONS[facing];
+        b.shaped(x, 1, z, 'bathtub', 'bathtub', { part: 'foot', facing });
+        b.shaped(x + dx, 1, z + dz, 'bathtub', 'bathtub', { part: 'head', facing });
+    };
+
+    // ---- Floors ----
+    b.box(0, 0, 0, 55, 0, 51, 'limestone');
+    b.box(11, 0, 4, 22, 0, 13, 'spruce_planks');
+    b.box(1, 0, 4, 9, 0, 16, 'dark_oak_planks');
+    b.box(1, 0, 18, 10, 0, 26, 'slate');
+    b.box(1, 0, 28, 10, 0, 38, 'birch_planks');
+    for (let z = 40; z <= 50; z++) {
+        for (let x = 1; x <= 9; x++) b.set(x, 0, z, (x + z) % 2 ? 'marble' : 'basalt');
+    }
+    b.box(11, 0, 43, 20, 0, 50, 'planks');
+    b.box(22, 0, 43, 39, 0, 50, 'marble');
+    b.box(41, 0, 43, 54, 0, 50, 'spruce_planks');
+    b.box(46, 0, 41, 54, 0, 42, 'spruce_planks');
+    b.box(46, 0, 18, 54, 0, 39, 'basalt');
+    b.box(34, 0, 4, 54, 0, 13, 'birch_planks');
+    b.box(46, 0, 14, 54, 0, 16, 'birch_planks');
+
+    // ---- The outside, the roof, the two doors ----
+    b.walls(0, 1, 3, 55, 4, 51, 'brick');
+    b.walls(0, 1, 3, 55, 1, 51, 'stone_bricks');
+    b.box(0, 5, 3, 55, 5, 51, 'dark_oak_planks');
+    for (const x of [25, 30]) {
+        b.box(x - 1, 1, 3, x + 2, 3, 3, 'dark_oak_wood');
+        b.box(x, 1, 3, x + 1, 2, 3, null);
+        b.doubleDoor(x, 1, 3, x + 1, 3, 'oak_door', 's');
+    }
+
+    // ---- The inside walls ----
+    wall(10, 4, 10, 13);
+    wall(1, 17, 10, 17);
+    wall(1, 27, 10, 27);
+    wall(1, 39, 10, 39);
+    wall(10, 43, 10, 50);
+    wall(21, 43, 21, 50);
+    wall(40, 43, 40, 50);
+    wall(23, 4, 23, 13);
+    wall(28, 4, 28, 16, 'dark_oak_planks');
+    wall(33, 4, 33, 13);
+    wall(45, 17, 54, 17);
+    wall(45, 40, 54, 40);
+
+    // ---- The route, on the corridors: a daylight strip on the lane that is far from the light room ----
+    const line = 'yellow_wool';
+    b.box(25, 0, 4, 25, 0, 15, line);
+    b.box(12, 0, 15, 25, 0, 15, line);
+    b.box(12, 0, 15, 12, 0, 41, line);
+    b.box(12, 0, 41, 43, 0, 41, line);
+    b.box(43, 0, 15, 43, 0, 41, line);
+    b.box(30, 0, 15, 43, 0, 15, line);
+    b.box(30, 0, 4, 30, 0, 15, line);
+    skylight(11, 14, 27, 14);
+    skylight(29, 14, 44, 14);
+    skylight(11, 15, 11, 42);
+    skylight(11, 42, 44, 42);
+    skylight(44, 15, 44, 42);
+
+    // ---- The two lobbies ----
+    skylight(24, 8, 27, 8);
+    skylight(29, 8, 32, 8);
+    lantern(25, 4, 11);
+    lantern(30, 4, 11);
+    sign(24, 5, 'Bienvenido. Sigue la línea amarilla: pasa por todo y vuelve a la salida. F ante un cartel: lo lees entero.',
+        'Welcome to the showroom. Follow the yellow line: it goes through everything and back to the exit. Press F at a sign to read all of it.');
+    sign(32, 5, 'Salida. /build undo lo quita todo otra vez.', 'Exit. /build undo takes it all away again.');
+
+    // ---- 1. The living room ----
+    sign(22, 13, 'SALÓN. Clic derecho en un sofá: te sientas; Agacharse: te levantas. Clic derecho en una cortina: se corre.',
+        'Living room. Right click a sofa to sit, Sneak to stand. Right click a curtain to draw it. The clock tells the game time.');
+    skylight(13, 7, 20, 7);
+    skylight(13, 12, 20, 12);
+    b.box(13, 1, 6, 19, 1, 11, 'light_gray_carpet');
+    for (let x = 13; x <= 16; x++) sofa(x, 4, 'red', 's');
+    for (let z = 6; z <= 8; z++) sofa(11, z, 'blue', 'e');
+    sofa(22, 8, 'green', 'w');
+    floorLamp(12, 4);
+    b.set(15, 1, 9, 'table');
+    b.set(16, 1, 9, 'table');
+    b.set(16, 2, 9, 'table_lamp');
+    b.set(15, 2, 9, 'vase');
+    b.box(22, 1, 4, 22, 3, 6, 'bookshelf');
+    ['sunset', 'peaks', 'meadow', 'night', 'shapes', 'fish'].forEach((name, i) => {
+        piece(11 + i, 3, 4, `painting_${name}`, 'painting', 's');
+    });
+    piece(22, 3, 8, 'wall_clock', 'wall_clock', 'w');
+    piece(22, 3, 10, 'wall_shelf', 'wall_shelf', 'w');
+    piece(22, 3, 11, 'wall_shelf', 'wall_shelf', 'w');
+    b.box(19, 2, 3, 21, 3, 3, 'glass_pane');
+    for (const y of [2, 3]) {
+        curtain(19, y, 4, 'orange', 's');
+        curtain(20, y, 4, 'orange', 's', 'open');
+        curtain(21, y, 4, 'orange', 's');
+    }
+    b.set(11, 1, 4, 'flower_pot');
+    b.set(18, 1, 4, 'flower_pot');
+    b.set(22, 1, 12, 'flower_pot');
+
+    // ---- 2. The dining room ----
+    sign(9, 13, 'COMEDOR. Clic derecho en silla, banco o taburete: te sientas. Agacharse: te levantas.',
+        'Dining room. Right click a chair, the bench or the stool to sit, Sneak to stand. The tables join, the bench too.');
+    skylight(2, 6, 8, 6);
+    skylight(2, 13, 8, 13);
+    b.box(0, 2, 8, 0, 3, 11, 'glass_pane');
+    b.box(3, 1, 9, 7, 1, 10, 'table');
+    ['oak', 'birch', 'dark_oak', 'oak', 'birch'].forEach((wood, i) => chair(3 + i, 8, wood, 's'));
+    chair(2, 9, 'dark_oak', 'e');
+    for (let x = 3; x <= 7; x++) piece(x, 1, 11, 'bench', 'bench', 'n');
+    b.set(8, 1, 10, 'stool');
+    b.set(5, 4, 9, 'chandelier');
+    b.set(4, 2, 9, 'candle');
+    b.set(6, 2, 10, 'candle');
+
+    // ---- 3. The kitchen ----
+    sign(10, 18, 'COCINA. Clic derecho en el horno: se enciende. En el banco de trabajo: abre las recetas. En el barril: guarda cosas.',
+        'Kitchen. Right click the oven to light it, the workbench for recipes, the barrel to store things. The stools seat you.');
+    skylight(4, 20, 8, 20);
+    skylight(4, 25, 8, 25);
+    tall(1, 19, 'fridge', 'e');
+    oven(1, 21, 'e', 'off');
+    piece(1, 1, 22, 'sink', 'sink', 'e');
+    b.set(1, 1, 23, 'workbench');
+    b.set(1, 1, 25, 'barrel');
+    b.box(5, 1, 22, 6, 1, 23, 'table');
+    for (const [x, z] of [[4, 22], [7, 23], [5, 21], [6, 24]]) b.set(x, 1, z, 'stool');
+    lantern(6, 2, 23, 'floor');
+    lantern(5, 4, 22);
+
+    // ---- 4. The bedroom ----
+    sign(10, 28, 'DORMITORIO. Clic derecho en armario y cofre: guardan cosas. F en la cama: duermes. Mírate en el espejo.',
+        'Bedroom. Right click the wardrobe and the chest to store things, and the curtain to draw it. F on the bed to sleep. Look in the mirror.');
+    skylight(4, 30, 8, 30);
+    skylight(4, 37, 8, 37);
+    b.box(4, 1, 31, 8, 1, 35, 'purple_carpet');
+    b.box(1, 1, 32, 2, 1, 33, 'bed');
+    for (const z of [31, 34]) {
+        piece(1, 1, z, 'bedside_table', 'bedside_table', 'e');
+        b.set(1, 2, z, 'table_lamp');
+    }
+    tall(3, 28, 'wardrobe', 's');
+    piece(3, 1, 32, 'chest', 'chest', 'e');
+    b.box(0, 2, 36, 0, 3, 37, 'glass_pane');
+    for (const y of [2, 3]) {
+        for (const z of [36, 37]) curtain(1, y, z, 'cyan', 'e');
+    }
+    piece(6, 2, 38, 'wall_mirror', 'wall_mirror', 'n');
+    piece(6, 3, 38, 'wall_mirror', 'wall_mirror', 'n');
+
+    // ---- 5. The bathroom ----
+    sign(9, 43, 'BAÑO. Clic derecho en el váter: te sientas. Agacharse: te levantas. La bañera se pisa por dentro. Mírate en el espejo.',
+        'Bathroom. Right click the toilet to sit, Sneak to stand. You can step into the bathtub. Look in the mirror.');
+    skylight(3, 42, 7, 42);
+    skylight(3, 46, 7, 46);
+    piece(1, 1, 44, 'sink', 'sink', 'e');
+    piece(1, 2, 44, 'wall_mirror', 'wall_mirror', 'e');
+    piece(1, 3, 44, 'wall_mirror', 'wall_mirror', 'e');
+    piece(1, 1, 47, 'toilet', 'toilet', 'e');
+    bathtub(4, 50, 'e');
+    b.set(3, 1, 50, 'candle');
+    b.set(7, 1, 50, 'candle');
+    lantern(5, 4, 43);
+
+    // ---- 6. The study ----
+    sign(20, 43, 'ESTUDIO. Clic derecho en la silla: te sientas. En el cofre: guarda cosas. Las estanterías son adorno.',
+        'Study. Right click the chair to sit, the chest to store things. The bookshelves are decoration.');
+    skylight(12, 45, 19, 45);
+    b.box(12, 1, 50, 19, 3, 50, 'bookshelf');
+    piece(15, 1, 47, 'desk', 'desk', 's');
+    chair(15, 48, 'dark_oak', 'n');
+    b.set(15, 2, 47, 'table_lamp');
+    floorLamp(18, 47);
+    piece(11, 1, 47, 'chest', 'chest', 'e');
+
+    // ---- 7. The stained glass gallery, with its back to the daylight ----
+    sign(22, 43, 'VIDRIERAS. Los 16 colores, en bloque y en panel, contra el cielo: filtran lo que hay detrás.',
+        'Stained glass. All 16 colours, as blocks and as panes, against the sky: they filter what is behind them.');
+    skylight(24, 48, 27, 48);
+    skylight(28, 45, 36, 45);
+    skylight(28, 49, 36, 49);
+    colors.forEach((color, i) => {
+        b.set(22 + i, 2, 51, `${color}_stained_glass`);
+        b.set(22 + i, 3, 51, `${color}_stained_glass_pane`);
+    });
+    b.box(38, 2, 51, 39, 3, 51, 'glass');
+    lantern(32, 4, 47);
+    // Red behind blue, in front of clear glass: as blocks, and as panes with a gap between them
+    // (next to each other they would join front to back).
+    sign(37, 46, 'Rojo detrás de azul, en bloque y en panel: pasa muy poca luz. Míralo desde aquí, hacia el cielo.',
+        'Red behind blue, as blocks and as panes: very little light gets through. Look at the sky through them from here.');
+    b.box(38, 1, 48, 38, 1, 49, 'stone_bricks');
+    b.set(38, 2, 48, 'blue_stained_glass');
+    b.set(38, 2, 49, 'red_stained_glass');
+    b.set(39, 1, 47, 'stone_bricks');
+    b.set(39, 1, 49, 'stone_bricks');
+    b.set(39, 2, 47, 'blue_stained_glass_pane');
+    b.set(39, 2, 49, 'red_stained_glass_pane');
+    // A pane in front of a mirror.
+    for (let z = 47; z <= 49; z++) {
+        for (let y = 1; y <= 3; y++) piece(22, y, z, 'wall_mirror', 'wall_mirror', 'e');
+        b.set(23, 2, z, 'cyan_stained_glass_pane');
+    }
+    sign(23, 46, 'Panel cian ante un espejo: la vidriera filtra también el reflejo.',
+        'A cyan pane in front of a mirror: the stained glass filters the reflection too.');
+    // A piece under water, seen through the glass side, or from above off the step.
+    b.box(24, 1, 43, 27, 2, 46, 'stone_bricks');
+    b.box(24, 1, 43, 27, 2, 43, 'glass');
+    b.box(25, 1, 46, 26, 2, 46, 'lime_wool');
+    b.box(25, 1, 44, 26, 2, 45, 'water');
+    b.set(25, 1, 45, 'magenta_stained_glass');
+    b.box(24, 1, 42, 27, 1, 42, 'stone_bricks_slab');
+    sign(28, 43, 'Bajo el agua: el bloque magenta del estanque se ve mal, es un defecto conocido. Mira por el cristal y desde el escalón.',
+        'Under water: the magenta block in the pool looks wrong, a known flaw. Look through the glass side and from the step.');
+
+    // ---- 8. The light room: bays of one light each along a dark aisle, a floor to measure on ----
+    b.walls(14, 1, 17, 41, 4, 39, 'limestone');
+    wall(38, 18, 38, 38, 'limestone');
+    wall(39, 18, 40, 26, 'limestone');
+    wall(15, 26, 37, 26, 'limestone');
+    wall(15, 30, 37, 30, 'limestone');
+    for (const x of [20, 26, 32]) {
+        wall(x, 18, x, 25, 'limestone');
+        wall(x, 31, x, 38, 'limestone');
+    }
+    b.box(38, 1, 27, 38, 3, 29, null);
+    b.box(39, 1, 39, 40, 2, 39, null);
+    b.doubleDoor(39, 1, 39, 40, 39, 'dark_oak_door', 'n');
+    b.walls(14, 6, 17, 38, 7, 39, 'limestone');
+    b.box(14, 8, 17, 38, 8, 39, 'slate');
+    const bays = [
+        // [x, z, the mouth's z, what to do with the middle of the bay, Spanish, English]
+        [17, 34, 30, (x, z) => b.set(x, 1, z, 'candle'), 'Vela: nivel 9.', 'Candle: level 9.'],
+        [23, 34, 30, (x, z) => lantern(x, 1, z, 'floor'), 'Farol de pie: nivel 13.', 'Standing lantern: level 13.'],
+        [29, 34, 30, (x, z) => lantern(x, 4, z), 'Farol colgado: nivel 13.', 'Hanging lantern: level 13.'],
+        [35, 34, 30, (x, z) => { b.set(x, 1, z, 'table'); b.set(x, 2, z, 'table_lamp'); }, 'Lámpara de mesa: nivel 12.', 'Table lamp: level 12.'],
+        [17, 22, 26, floorLamp, 'Lámpara de pie: nivel 14.', 'Floor lamp: level 14.'],
+        [23, 22, 26, (x, z) => b.set(x, 4, z, 'chandelier'), 'Candelabro: nivel 14.', 'Chandelier: level 14.'],
+        [29, 22, 26, (x, z) => oven(x, z, 's', 'on'), 'Horno encendido: nivel 11. Clic derecho: se apaga.', 'Lit oven: level 11. Right click puts it out.'],
+        [35, 22, 26, () => {}, 'Sin ninguna luz: así de oscuro es.', 'No light at all: this is how dark it is.']
+    ];
+    for (const [x, z, mouth, place, es, en] of bays) {
+        b.box(x - 1, 1, mouth, x + 1, 3, mouth, null);
+        const ahead = Math.sign(mouth - z);
+        for (let k = -3; k <= 3; k++) b.set(x, 0, z + k * ahead, k % 2 ? 'white_wool' : 'black_wool');
+        place(x, z);
+        sign(x + 2, mouth - ahead, es, en);
+    }
+    sign(38, 40, 'SALA DE LUZ. Oscura aposta: una luz por sala. Las rayas del suelo miden hasta dónde llega. Entra y vuelve por aquí.',
+        'Light room. Dark on purpose: one light per bay. The stripes on the floor measure its reach. In and back out through here.');
+    b.set(39, 1, 38, 'candle');
+
+    // ---- 9. Joins: what joins and what does not ----
+    sign(41, 43, 'UNIONES. Sofás del mismo color se unen; rojo y azul no. Banco igual, si mira igual. Las mesas se unen en fila.',
+        'Joins. Sofas of a colour join; red and blue do not. Benches too, if they face the same way. Tables join in a row.');
+    skylight(43, 45, 53, 45);
+    skylight(47, 42, 53, 42);
+    for (let x = 43; x <= 46; x++) sofa(x, 50, 'red', 'n');
+    for (let x = 47; x <= 50; x++) sofa(x, 50, 'blue', 'n');
+    for (let x = 43; x <= 46; x++) piece(x, 1, 47, 'bench', 'bench', 'n');
+    piece(47, 1, 47, 'bench', 'bench', 's');
+    b.box(49, 1, 47, 53, 1, 47, 'table');
+    lantern(48, 4, 48);
+    lantern(50, 4, 43);
+
+    // ---- 10. The hall of mirrors: a long room to step back in, the sofas in all colours to reflect ----
+    sign(54, 18, 'ESPEJOS. Refleja de verdad hasta 14 bloques: aléjate hasta aquí y es solo textura. Hay cubos y dos paredes.',
+        'Mirrors. A real reflection up to 14 blocks: step back to here and it is only its texture. Cubes, and mirrors on two walls.');
+    skylight(47, 19, 53, 19);
+    skylight(47, 25, 53, 25);
+    skylight(47, 31, 53, 31);
+    skylight(47, 37, 53, 37);
+    colors.forEach((color, i) => sofa(46, 20 + i, color, 'e'));
+    for (let x = 48; x <= 53; x++) {
+        for (let y = 1; y <= 3; y++) piece(x, y, 39, 'wall_mirror', 'wall_mirror', 'n');
+    }
+    for (let z = 22; z <= 33; z++) {
+        for (let y = 1; y <= 3; y++) piece(54, y, z, 'wall_mirror', 'wall_mirror', 'w');
+    }
+    b.box(49, 1, 28, 49, 2, 28, 'mirror');
+    b.box(52, 1, 34, 52, 2, 34, 'mirror');
+    lantern(50, 4, 22);
+    lantern(50, 4, 28);
+    lantern(50, 4, 35);
+
+    // ---- 11. The storage corner, empty: try it with someone else ----
+    sign(46, 16, 'ALMACÉN, vacío. Cofre, barril y armario: guarda algo y que otro jugador lo vea moverse. Lo de dentro vive en el servidor.',
+        'Storage, empty. Chest, barrel, wardrobe: store something and have another player watch it move. Contents live on the server.');
+    skylight(50, 15, 53, 15);
+    piece(47, 1, 16, 'chest', 'chest', 'n');
+    b.set(48, 1, 16, 'barrel');
+    tall(49, 16, 'wardrobe', 'n');
+    lantern(47, 4, 14);
+
+    // ---- 12. The sample wall: every curtain and every carpet ----
+    sign(34, 4, 'MUESTRAS. Las 16 cortinas (clic derecho: se corren, cada una por su cuenta) y las 16 alfombras, para pisarlas.',
+        'Samples. The 16 curtains (right click draws each one by itself) and the 16 carpets, to walk on.');
+    skylight(36, 9, 53, 9);
+    colors.forEach((color, i) => {
+        for (let y = 1; y <= 3; y++) curtain(36 + i, y, 4, color, 's');
+        b.box(36 + i, 1, 6, 36 + i, 1, 7, `${color}_carpet`);
+    });
+
+    // ---- Night: lanterns from the ceiling, outside the light room. A hanging one lights the floor
+    // well within 4 steps, and this lattice packs such diamonds with no gaps. ----
+    const [w, , d] = b.size;
+    for (let z = 4; z <= 50; z++) {
+        for (let x = 1; x <= 54; x++) {
+            if ((x + 9 * z) % 41 || (x >= 14 && x <= 41 && z >= 17 && z <= 39)) continue;
+            if (!b.cells.has((4 * d + z) * w + x)) lantern(x, 4, z);
+        }
+    }
+    // The corners the walls keep the lattice from.
+    for (const [x, z] of [
+        [26, 5], [31, 5], [21, 5], [21, 10], [11, 12], [8, 6], [9, 11], [2, 15], [26, 15], [33, 16],
+        [2, 26], [5, 28], [9, 37], [13, 21], [13, 30], [2, 41], [8, 47], [12, 49], [24, 49], [30, 50],
+        [35, 50], [38, 50], [16, 40], [20, 40], [27, 40], [35, 40], [49, 41], [54, 41], [54, 46], [46, 32],
+        [46, 23], [50, 38], [53, 38], [54, 30], [53, 20], [53, 16], [53, 12], [53, 5], [44, 4], [35, 11], [35, 7],
+        [42, 32], [42, 23], [42, 46], [50, 18]
+    ]) lantern(x, 4, z);
+}
+
 const CONSTRUCTION_DESIGNS = {
     house: {
         label: 'Small house',
@@ -699,6 +1051,34 @@ const CONSTRUCTION_DESIGNS = {
             { name: 'the east belfry', at: [26, 33, 7] }
         ],
         generate: constructionCathedral
+    },
+    showroom: {
+        label: 'Furniture showroom',
+        size: [56, 10, 52],
+        foundation: 'stone_bricks',
+        anchorX: 25,
+        start: [25, 1, 1],
+        // In the order of the route.
+        levels: [
+            { name: 'the entrance lobby', at: [26, 1, 8] },
+            { name: 'the living room', at: [18, 1, 10] },
+            { name: 'the dining room', at: [5, 1, 14] },
+            { name: 'the kitchen', at: [8, 1, 22] },
+            { name: 'the bedroom', at: [7, 1, 29] },
+            { name: 'the bathroom', at: [6, 1, 44] },
+            { name: 'the study', at: [15, 1, 44] },
+            { name: 'the stained glass gallery', at: [32, 1, 46] },
+            { name: 'the light room', at: [25, 1, 28] },
+            { name: 'the far bay of the light room', at: [17, 1, 20] },
+            { name: 'the joins', at: [45, 1, 45] },
+            { name: 'the hall of mirrors', at: [50, 1, 19] },
+            { name: 'the storage corner', at: [48, 1, 15] },
+            { name: 'the sample wall', at: [44, 1, 10] },
+            { name: 'the exit lobby', at: [31, 1, 5] }
+        ],
+        // Dark on purpose [x0, z0, x1, z1]: the light room and the lane into it.
+        darkRooms: [[15, 18, 40, 38]],
+        generate: constructionShowroom
     }
 };
 

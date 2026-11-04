@@ -1,6 +1,7 @@
 // Node tests for /build (js/game/constructions.js): the designs, their rotation, that every level
-// can be walked to with the real collision rules of camera.js, the light inside, and the command:
-// creative only, batched, waiting for chunks, reaching the server, and the undo.
+// can be walked to with the real collision rules of camera.js, the light inside, what the showroom
+// has to hold, and the command: creative only, batched, waiting for chunks, reaching the server,
+// and the undo.
 // Run with: node --test test/js
 
 const test = require('node:test');
@@ -35,9 +36,19 @@ function loadGame() {
     for (const file of ['joinery.js', 'chemistry.js', 'blueprints.js', 'constructions.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
-    vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS,
+    // The furniture modules, as in index.html; what they add is what the showroom has to hold.
+    context.FURNITURE_ITEMS = [];
+    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js']) {
+        const before = new Set(vm.runInContext('Object.keys(BLOCK_TYPES)', context));
+        vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
+        for (const type of vm.runInContext('Object.keys(BLOCK_TYPES)', context)) {
+            if (!before.has(type)) context.FURNITURE_ITEMS.push(type);
+        }
+    }
+    vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS,
         constructionPlan, constructionLayout, constructionTurnType, constructionDiff, constructionFindGround,
-        CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS });`, context);
+        CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS, SHAPE_OPPOSITE, SHAPE_MASK, FURNITURE_COLORS, MIRROR_RANGE,
+        mirrorFacesOf, mirrorLineClear, seatStandOffsets });`, context);
     return context;
 }
 
@@ -290,7 +301,11 @@ function indoors({ plan, world, reached }) {
     return [...cells.values()].filter(Boolean);
 }
 
-test('the inside is lit by torches at night', () => {
+function inDarkRoom(plan, x, z) {
+    return (plan.darkRooms || []).some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+}
+
+test('the inside is lit at night, by torches and the other lights', () => {
     for (const name of NAMES) {
         const site = visit(name);
         const { plan, world } = site;
@@ -302,7 +317,8 @@ test('the inside is lit by torches at night', () => {
             queue.push([x, y, z, level]);
         };
         for (const cell of plan.cells) {
-            if (cell.type === 'torch') put(cell.x, cell.y, cell.z, 14);
+            const level = world.registry.lightLevel[world.registry.id(cell.type)];
+            if (level) put(cell.x, cell.y, cell.z, level);
         }
         for (let head = 0; head < queue.length; head++) {
             const [x, y, z, level] = queue[head];
@@ -314,43 +330,397 @@ test('the inside is lit by torches at night', () => {
                 put(nx, ny, nz, level - 1);
             }
         }
-        const dark = indoors(site).filter(([x, y, z]) => (levels.get(`${x},${y},${z}`) || 0) < 6);
+        const dark = indoors(site).filter(([x, y, z]) => !inDarkRoom(plan, x, z) && (levels.get(`${x},${y},${z}`) || 0) < 6);
         assert.deepEqual(dark.map((cell) => cell.join(',')), [], `${name}: dark at night`);
     }
 });
+
+// As ChunkMesher.skyAt: open sky within 3 columns of the cell, or a roof less than 4 up.
+function skyOf(world, plan) {
+    const top = new Map();
+    const topOf = (x, z) => {
+        const key = `${x},${z}`;
+        if (!top.has(key)) {
+            let y = plan.size[1] + 8;
+            while (y > -8) {
+                const id = world.getBlockId(x, y, z);
+                if (id && world.registry.solid[id] && !world.registry.transparent[id]) break;
+                y--;
+            }
+            top.set(key, y);
+        }
+        return top.get(key);
+    };
+    return (x, y, z) => {
+        let light = y > topOf(x, z) ? 1 : Math.max(0, 1 - (topOf(x, z) - y) / 4);
+        for (let dz = -3; dz <= 3; dz++) {
+            for (let dx = -3; dx <= 3; dx++) {
+                if (y > topOf(x + dx, z + dz)) light = Math.max(light, 1 - Math.max(Math.abs(dx), Math.abs(dz)) * 0.22);
+            }
+        }
+        return light;
+    };
+}
 
 test('daylight reaches the rooms too', () => {
     for (const name of NAMES) {
         const site = visit(name);
         const { world, plan } = site;
-        // As ChunkMesher.skyAt: open sky within 3 columns of the cell, or a roof less than 4 up.
-        const top = new Map();
-        const topOf = (x, z) => {
-            const key = `${x},${z}`;
-            if (!top.has(key)) {
-                let y = plan.size[1] + 8;
-                while (y > -8) {
-                    const id = world.getBlockId(x, y, z);
-                    if (id && world.registry.solid[id] && !world.registry.transparent[id]) break;
-                    y--;
-                }
-                top.set(key, y);
-            }
-            return top.get(key);
-        };
-        const sky = (x, y, z) => {
-            let light = y > topOf(x, z) ? 1 : Math.max(0, 1 - (topOf(x, z) - y) / 4);
-            for (let dz = -3; dz <= 3; dz++) {
-                for (let dx = -3; dx <= 3; dx++) {
-                    if (y > topOf(x + dx, z + dz)) light = Math.max(light, 1 - Math.max(Math.abs(dx), Math.abs(dz)) * 0.22);
-                }
-            }
-            return light;
-        };
+        const sky = skyOf(world, plan);
         // The stair towers are the exception: their torches light them by day as well.
-        const rooms = indoors(site).filter(([x, , z]) => !(name === 'cathedral' && (x <= 7 || x >= 21) && z <= 10));
+        const rooms = indoors(site).filter(([x, , z]) => !inDarkRoom(plan, x, z) && !(name === 'cathedral' && (x <= 7 || x >= 21) && z <= 10));
         const dark = rooms.filter(([x, y, z]) => sky(x, y, z) <= 0);
         assert.deepEqual(dark.map((cell) => cell.join(',')), [], `${name}: dark by day`);
+    }
+});
+
+// ---------------------------------------------------------------------------------------
+// The showroom
+
+// A world's block definitions and flags, for reading plans without placing them.
+const blocks = makeWorld(() => 0, 1);
+const defOf = (type) => blocks.blockTypes[type];
+const baseOf = (type) => defOf(type).variantOf || type;
+const stateOf = (type) => defOf(type).state || {};
+const idOf = (type) => blocks.registry.id(type || 'air');
+const COLORS = ctx.FURNITURE_COLORS.map(([color]) => color);
+const TURNS = [0, 1, 2, 3];
+const DIRECTIONS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+// The bedroom's existing bed and the mirror cube of chemistry.js are not in the furniture modules.
+const SHOWROOM_ALSO = ['bed', 'mirror'];
+// What the showroom leaves out on purpose, with the reason. Nothing so far.
+const SHOWROOM_EXCEPTIONS = {};
+
+// The showroom turned: cells in the same order as the plan's, and a map to read them by position.
+function showroomLayout(turns) {
+    const plan = ctx.constructionPlan('showroom');
+    const layout = ctx.constructionLayout(plan, turns, { x: 3, z: -5 }, 0, blocks.blockTypes);
+    const grid = new Map(layout.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
+    return { plan, layout, typeAt: (x, y, z) => grid.get(`${x},${y},${z}`) };
+}
+
+function showroomCellsOf(plan, test) {
+    return plan.cells.filter((cell) => test(baseOf(cell.type), cell));
+}
+
+test('the showroom holds every item of the furniture modules, and all 16 colours', () => {
+    const items = ctx.FURNITURE_ITEMS;
+    // The list really is read from the modules: if this fails, the loader above is broken.
+    assert.ok(items.length > 100, `${items.length} items`);
+    for (const known of ['oak_chair', 'wall_mirror', 'chandelier', 'painting_fish', 'black_sofa', 'pink_stained_glass_pane', 'cyan_carpet', 'lime_curtain']) {
+        assert.ok(items.includes(known), known);
+    }
+    const plan = ctx.constructionPlan('showroom');
+    const placed = new Set(plan.cells.map((cell) => baseOf(cell.type)));
+    const missing = [...items, ...SHOWROOM_ALSO].filter((item) => !placed.has(item) && !SHOWROOM_EXCEPTIONS[item]);
+    assert.deepEqual(missing, []);
+    assert.equal(COLORS.length, 16);
+    for (const color of COLORS) {
+        for (const kind of ['sofa', 'stained_glass', 'stained_glass_pane', 'carpet', 'curtain']) assert.ok(placed.has(`${color}_${kind}`), `${color}_${kind}`);
+    }
+});
+
+test('the showroom: facing, walls, ceilings, two-part pieces and joins hold in all 4 turns', () => {
+    const wallShapes = new Set(['painting', 'wall_mirror', 'wall_clock', 'wall_shelf', 'curtain']);
+    const rotate = (mask, turns) => ((mask << turns) | (mask >> (4 - turns))) & 15;
+    const masks = new Map();
+    for (const turns of TURNS) {
+        const { plan, layout, typeAt } = showroomLayout(turns);
+        const solidAt = (x, y, z) => {
+            const type = typeAt(x, y, z);
+            return Boolean(type) && blocks.registry.solid[idOf(type)] === 1;
+        };
+        const counts = { wall: 0, hanging: 0, linked: 0, joined: 0 };
+        layout.cells.forEach((cell, index) => {
+            const def = defOf(cell.type);
+            const state = stateOf(cell.type);
+            const where = `${cell.type} at ${cell.x},${cell.y},${cell.z}, turned ${turns}`;
+            if (wallShapes.has(def.shape)) {
+                // The wall is behind its back, opposite the way it faces.
+                const [dx, dz] = DIRECTIONS[state.facing];
+                assert.ok(solidAt(cell.x - dx, cell.y, cell.z - dz), `no wall behind ${where}`);
+                counts.wall++;
+            }
+            if (def.shape === 'chandelier' || state.mount === 'hanging') {
+                assert.ok(solidAt(cell.x, cell.y + 1, cell.z), `nothing above ${where}`);
+                counts.hanging++;
+            }
+            const shape = def.shape && ctx.BLOCK_SHAPES[def.shape];
+            if (shape && shape.linked && def.shape !== 'door') {
+                for (const [dx, dy, dz] of shape.linked(state)) {
+                    const other = typeAt(cell.x + dx, cell.y + dy, cell.z + dz);
+                    assert.ok(other && baseOf(other) === baseOf(cell.type), `incomplete: ${where}`);
+                    assert.equal(stateOf(other).facing, state.facing, where);
+                    assert.notEqual(stateOf(other).half ?? stateOf(other).part, state.half ?? state.part, where);
+                }
+                counts.linked++;
+            }
+            if (['sofa', 'bench', 'table'].includes(def.shape)) {
+                const neighbour = (facing) => idOf(typeAt(cell.x + DIRECTIONS[facing][0], cell.y, cell.z + DIRECTIONS[facing][1]));
+                const mask = blocks.shapes.mask(idOf(cell.type), neighbour('n'), neighbour('e'), neighbour('s'), neighbour('w'));
+                const source = plan.cells[index];
+                const key = `${source.x},${source.y},${source.z}`;
+                if (turns === 0) masks.set(key, mask);
+                else assert.equal(mask, rotate(masks.get(key), turns), `joins differ: ${where}`);
+                counts.joined++;
+            }
+        });
+        assert.ok(counts.wall > 40 && counts.hanging > 10 && counts.linked > 8 && counts.joined > 30, JSON.stringify(counts));
+    }
+    // What should join does, unturned. Bits: n 1, e 2, s 4, w 8.
+    const mask = (x, z) => masks.get(`${x},1,${z}`);
+    assert.equal(mask(45, 50), 2 | 8, 'red sofas join');
+    assert.equal(mask(46, 50), 8, 'the last red sofa joins red, not blue');
+    assert.equal(mask(47, 50), 2, 'the first blue sofa joins blue, not red');
+    assert.equal(mask(46, 47), 8, 'the bench stops at the one facing the other way');
+    assert.equal(mask(47, 47), 0, 'which joins nothing');
+    assert.equal(mask(51, 47), 2 | 8, 'tables in a row');
+    assert.equal(mask(53, 47), 8);
+    assert.equal(mask(5, 9), 2 | 4 | 8, 'the dining tables join both ways');
+    assert.equal(mask(5, 11), 2 | 8, 'the dining bench');
+    assert.equal(mask(22, 8), 0, 'a lone armchair');
+    assert.equal(mask(14, 4), 2 | 8, 'the sofa in the living room');
+    assert.equal(mask(46, 25), 0, 'the sofas in all colours keep their arms');
+});
+
+test('the showroom: what is used can be walked up to, in all 4 turns', () => {
+    for (const turns of TURNS) {
+        const { plan, layout } = showroomLayout(turns);
+        const world = makeWorld(() => 0, 5);
+        placeOpen(world, layout);
+        const [fx, fz] = ctx.SHAPE_DIRECTIONS[LOOK_BY_TURNS[turns]];
+        const at = ([x, y, z]) => [3 + fx * z + fz * (x - plan.anchorX), y, -5 + fz * z - fx * (x - plan.anchorX)];
+        const [sx, sy, sz] = at(plan.start);
+        const reached = new Set(walkable(world, sx, sy, sz).map(([x, z, feet]) => `${Math.floor(x)},${Math.floor(z)}`));
+        const near = (x, z, reach) => {
+            for (let dz = -reach; dz <= reach; dz++) {
+                for (let dx = -reach; dx <= reach; dx++) {
+                    if (reached.has(`${x + dx},${z + dz}`)) return true;
+                }
+            }
+            return false;
+        };
+        for (const cell of layout.cells) {
+            const def = defOf(cell.type);
+            const shape = def.shape && ctx.BLOCK_SHAPES[def.shape];
+            const where = `${cell.type} at ${cell.x},${cell.y},${cell.z}, turned ${turns}`;
+            const used = def.seat || def.storageSlots || def.workbench || (shape && shape.toggle);
+            const furniture = ctx.FURNITURE_ITEMS.includes(baseOf(cell.type));
+            if (used && def.shape !== 'door') assert.ok(near(cell.x, cell.z, 1), `cannot reach ${where}`);
+            else if (furniture) assert.ok(near(cell.x, cell.z, 3), `cannot get close to ${where}`);
+            if (def.seat) {
+                assert.ok(!world.registry.fullCube[world.getBlockId(cell.x, cell.y + 1, cell.z)], `no room to sit on ${where}`);
+                const facing = def.state && def.state.facing ? def.state.facing : 'n';
+                const stands = ctx.seatStandOffsets(facing).some(([dx, dz]) => reached.has(`${cell.x + dx},${cell.z + dz}`));
+                assert.ok(stands, `nowhere to stand up from ${where}`);
+            }
+        }
+    }
+});
+
+test('the showroom is a one-way loop: entrance and exit only meet through the rooms', () => {
+    const plan = ctx.constructionPlan('showroom');
+    // From the entrance lobby to the exit lobby, with one stretch of the route walled off or none,
+    // and the outer walls solid: no way out by the doors, nor by the windows, as the fill steps onto
+    // a sill and in half-block steps over a pane, which a player cannot.
+    const reachesExit = ([x0, z0, x1, z1]) => {
+        const world = makeWorld(() => 0, 5);
+        placeOpen(world, plan);
+        const stone = (x, y, z) => world.setEditedBlock(x, y, z, 'stone');
+        for (let y = 1; y <= 4; y++) {
+            for (let x = 0; x <= 55; x++) {
+                stone(x, y, 3);
+                stone(x, y, 51);
+            }
+            for (let z = 3; z <= 51; z++) {
+                stone(0, y, z);
+                stone(55, y, z);
+            }
+        }
+        for (let x = x0; x <= x1; x++) {
+            for (let z = z0; z <= z1; z++) {
+                for (let y = 1; y <= 4; y++) stone(x, y, z);
+            }
+        }
+        return walkable(world, 26, 1, 8).some(([x, z]) => Math.floor(x) === 31 && Math.floor(z) === 5);
+    };
+    assert.ok(reachesExit([0, 0, -1, -1]), 'the loop is whole');
+    // Across the corridor where a wall between rooms meets it: elsewhere one could go round through a room.
+    for (const stretch of [[11, 27, 13, 27], [21, 40, 21, 42], [42, 17, 44, 17], [33, 14, 33, 16]]) {
+        assert.ok(!reachesExit(stretch), `the corridor at ${stretch} is not the only way`);
+    }
+});
+
+test('the showroom: the light room gets no sky and no light from outside, and each bay its own', () => {
+    const plan = ctx.constructionPlan('showroom');
+    const room = [15, 18, 37, 38];
+    const inRoom = (x, z) => x >= room[0] && x <= room[2] && z >= room[1] && z <= room[3];
+    const { world } = visit('showroom');
+    const air = [];
+    for (let x = room[0]; x <= room[2]; x++) {
+        for (let z = room[1]; z <= room[3]; z++) {
+            for (let y = 1; y <= 4; y++) {
+                if (!world.registry.fullCube[world.getBlockId(x, y, z)]) air.push([x, y, z]);
+            }
+        }
+    }
+    assert.ok(air.length > 1000);
+    // No sky, in the model the mesher uses (walls and ceiling read the cells next to them).
+    const sky = skyOf(world, plan);
+    assert.deepEqual(air.filter(([x, y, z]) => sky(x, y, z) > 0).map((cell) => cell.join(',')), []);
+    // No window, skylight or stained glass in its walls or roof.
+    for (const cell of plan.cells) {
+        if (cell.x < 14 || cell.x > 38 || cell.z < 17 || cell.z > 39 || !(cell.y === 5 || cell.y === 8)) continue;
+        assert.ok(!world.registry.transparent[world.registry.id(cell.type)], `${cell.type} at ${cell.x},${cell.y},${cell.z}`);
+    }
+
+    const fields = new Map();
+    const lightIn = (source, x, y, z) => {
+        const [cx, cz] = [Math.floor(x / 16), Math.floor(z / 16)];
+        const key = `${cx},${cz}`;
+        if (!fields.has(key)) fields.set(key, new ctx.LightField(source, cx, cz));
+        return fields.get(key).get(x, y, z);
+    };
+    // Only what stands outside it: not one level gets in.
+    const outside = makeWorld(() => 0, 5);
+    placeOpen(outside, { cells: plan.cells.filter((cell) => !inRoom(cell.x, cell.z) || !world.registry.lightEmitter[world.registry.id(cell.type)]) });
+    const leaks = air.filter(([x, y, z]) => lightIn(outside, x, y, z) > 0);
+    assert.deepEqual(leaks.map((cell) => cell.join(',')), [], 'light from outside');
+
+    // Everything: each light as strong as it says where it stands, and weak at the next one's.
+    fields.clear();
+    const lights = plan.cells.filter((cell) => inRoom(cell.x, cell.z) && world.registry.lightEmitter[world.registry.id(cell.type)]);
+    assert.deepEqual(lights.map((cell) => baseOf(cell.type)).sort(), ['candle', 'chandelier', 'floor_lamp', 'lantern', 'lantern', 'oven', 'table_lamp']);
+    for (const light of lights) {
+        const level = world.registry.lightLevel[world.registry.id(light.type)];
+        assert.ok(level >= 9, light.type);
+        assert.equal(lightIn(world, light.x, light.y, light.z), level, light.type);
+        for (const other of lights) {
+            if (other === light) continue;
+            const rival = world.registry.lightLevel[world.registry.id(other.type)];
+            assert.ok(rival - Math.abs(other.x - light.x) - Math.abs(other.z - light.z) < level, `${other.type} drowns ${light.type}`);
+        }
+    }
+    assert.ok(stateOf(lights.find((cell) => baseOf(cell.type) === 'oven').type).fire === 'on', 'the oven burns');
+    const chandelier = lights.find((cell) => baseOf(cell.type) === 'chandelier');
+    assert.equal(chandelier.y, 4);
+    // The bay with no light is lit only faintly, through its mouth.
+    assert.ok(lightIn(world, 35, 1, 19) <= 1, `level ${lightIn(world, 35, 1, 19)} at the back of the empty bay`);
+});
+
+test('the showroom: the stained glass, the mirrors and the storage are set up for their tests', () => {
+    const plan = ctx.constructionPlan('showroom');
+    const { world, reached } = visit('showroom');
+    const typeAt = (x, y, z) => world.getBlockTypeAt(x, y, z);
+    // All 16 in a row, facing the outside: nothing but sky beyond the back wall.
+    COLORS.forEach((color, i) => {
+        assert.equal(typeAt(22 + i, 2, 51), `${color}_stained_glass`);
+        assert.equal(typeAt(22 + i, 3, 51), `${color}_stained_glass_pane`);
+        for (const y of [2, 3]) assert.ok(!world.registry.solid[world.getBlockId(22 + i, y, 52)]);
+    });
+    // Red behind blue from where one stands, clear glass behind them both.
+    assert.equal(typeAt(38, 2, 48), 'blue_stained_glass');
+    assert.equal(typeAt(38, 2, 49), 'red_stained_glass');
+    assert.equal(typeAt(38, 2, 51), 'glass');
+    assert.equal(typeAt(39, 2, 47), 'blue_stained_glass_pane');
+    assert.equal(typeAt(39, 2, 49), 'red_stained_glass_pane');
+    assert.equal(typeAt(39, 2, 51), 'glass');
+    // A pane in front of a mirror.
+    assert.equal(baseOf(typeAt(22, 2, 48)), 'wall_mirror');
+    assert.equal(typeAt(23, 2, 48), 'cyan_stained_glass_pane');
+    // A piece under water, in a pool that holds it.
+    assert.equal(typeAt(25, 1, 45), 'magenta_stained_glass');
+    assert.equal(typeAt(25, 2, 45), 'water');
+    for (const [x, z] of [[25, 44], [26, 44], [26, 45]]) {
+        for (const y of [1, 2]) assert.equal(typeAt(x, y, z), 'water');
+    }
+    for (let x = 24; x <= 27; x++) {
+        for (let z = 43; z <= 46; z++) {
+            if (x >= 25 && x <= 26 && z >= 44 && z <= 45) continue;
+            for (const y of [1, 2]) assert.ok(world.registry.solid[world.getBlockId(x, y, z)], `the pool leaks at ${x},${y},${z}`);
+        }
+    }
+
+    // Mirrors on two walls, and cubes.
+    const mirrors = plan.cells.filter((cell) => baseOf(cell.type) === 'wall_mirror' && cell.x >= 46);
+    assert.deepEqual([...new Set(mirrors.map((cell) => defOf(cell.type).state.facing))].sort(), ['n', 'w']);
+    assert.ok(plan.cells.filter((cell) => cell.type === 'mirror').length >= 2);
+    // Somewhere to walk: within reach of a back wall mirror, and out of it, with a clear view of it.
+    const opaque = (x, y, z) => world.registry.fullCube[world.getBlockId(x, y, z)] === 1;
+    const faces = mirrors.filter((cell) => defOf(cell.type).state.facing === 'n').flatMap((cell) => ctx.mirrorFacesOf(defOf(cell.type), cell.x, cell.y, cell.z));
+    let inside = 0;
+    let beyond = 0;
+    for (const [x, z, feet] of reached) {
+        if (x < 46 || x > 54 || z < 18 || z > 39) continue;
+        const eye = [x, feet + 1.62, z];
+        for (const face of faces) {
+            const distance = Math.hypot(eye[0] - face.center[0], eye[1] - face.center[1], eye[2] - face.center[2]);
+            if (!ctx.mirrorLineClear(opaque, eye, [face.center[0], face.center[1], face.center[2] - 0.05])) continue;
+            if (distance < ctx.MIRROR_RANGE - 1) inside++;
+            if (distance > ctx.MIRROR_RANGE + 1) beyond++;
+        }
+    }
+    assert.ok(inside > 100 && beyond > 100, `${inside} near, ${beyond} far`);
+
+    // The storage corner, side by side, empty: a build sends blocks and nothing else.
+    assert.equal(baseOf(typeAt(47, 1, 16)), 'chest');
+    assert.equal(baseOf(typeAt(48, 1, 16)), 'barrel');
+    assert.equal(baseOf(typeAt(49, 1, 16)), 'wardrobe');
+});
+
+test('the showroom: the signs reach the server, name their room and fit', () => {
+    const plan = ctx.constructionPlan('showroom');
+    const { world } = visit('showroom');
+    const signs = plan.cells.filter((cell) => cell.type === 'sign');
+    const texts = signs.map((cell) => cell.meta.t);
+    for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES']) {
+        assert.ok(texts.some((text) => text.startsWith(name)), name);
+    }
+    for (const cell of signs) {
+        const text = cell.meta.t;
+        const [es, en] = text.split(' // ');
+        assert.ok(es && en, text);
+        // What the server keeps, what a label shows (the reader shows it all).
+        assert.ok(Buffer.byteLength(text) <= 288, `${Buffer.byteLength(text)} bytes: ${text}`);
+        assert.equal(world.wrapSignText(es, 26, 6).join(' '), es, `too long for its label: ${es}`);
+        // The label floats above the sign.
+        assert.ok(!world.registry.fullCube[world.getBlockId(cell.x, cell.y + 1, cell.z)], text);
+    }
+});
+
+test('/build showroom: every turn ends as planned, signs with their text, and undo clears it', () => {
+    for (const [look, turns] of [[{ x: 0, z: 1 }, 0], [{ x: -1, z: 0 }, 1], [{ x: 0, z: -1 }, 2], [{ x: 1, z: 0 }, 3]]) {
+        const world = makeWorld(() => 0, 6);
+        const flat = new Map();
+        const { game, sent } = makeGame(world, { look });
+        game.constructionCommand('build', ['showroom']);
+        run(game);
+        assert.ok(sent.every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks and nothing else');
+        const [fx, fz] = ctx.SHAPE_DIRECTIONS[LOOK_BY_TURNS[turns]];
+        const anchor = { x: fx * 3, z: fz * 3 };
+        const layout = ctx.constructionLayout(ctx.constructionPlan('showroom'), turns, anchor, 0, world.blockTypes);
+        for (const cell of layout.cells) {
+            flat.set(`${cell.x},${cell.y},${cell.z}`, cell);
+            assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type, `${cell.x},${cell.y},${cell.z} turned ${turns}`);
+        }
+        const signs = sent.filter(({ payload }) => payload.blockType === 'sign');
+        assert.equal(signs.length, layout.cells.filter((cell) => cell.type === 'sign').length);
+        for (const { payload } of signs) {
+            assert.ok(payload.text);
+            assert.equal(world.getSignTextAt(payload.x, payload.y, payload.z), payload.text);
+            assert.equal(payload.text, flat.get(`${payload.x},${payload.y},${payload.z}`).meta.t);
+        }
+        // What the server and other players end up with is the same.
+        const other = makeWorld(() => 0, 6);
+        replay(other, sent);
+        for (const cell of layout.cells) assert.equal(other.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type);
+        if (turns === 0) {
+            game.constructionCommand('build', ['undo']);
+            run(game);
+            for (const cell of layout.cells) {
+                if (cell.y > 0) assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), null);
+            }
+        }
     }
 });
 
