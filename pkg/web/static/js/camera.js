@@ -66,6 +66,8 @@ class CameraController {
         this.isOnLadder = false;
         // While riding, the mount's settings (see setMount) replace the player's body and gait.
         this.mount = null;
+        // While sitting: where the eye stays, { x, y, z } (see setSeat).
+        this.seat = null;
         
         this.init();
     }
@@ -312,6 +314,20 @@ class CameraController {
         this.camera.position.y = feetY + this.eyeHeight;
     }
 
+    // Sits (seat = { x, y, z }, the eye's position) or stands up (null). A seated player does not
+    // move, fall, jump or crouch, and only looks around (js/game/seating.js).
+    setSeat(seat) {
+        this.seat = seat;
+        this.flying = false;
+        this.isCrouching = false;
+        this.eyeHeight = this.standingEyeHeight;
+        this.stepSmoothing = 0;
+        this.velocityY = 0;
+        this.knockbackX = 0;
+        this.knockbackZ = 0;
+        if (seat) this.camera.position.set(seat.x, seat.y, seat.z);
+    }
+
     // Shoves the player along (dirX, dirZ) and pops them slightly into the air.
     applyKnockback(dirX, dirZ, strength, lift = 4) {
         const length = Math.hypot(dirX, dirZ) || 1;
@@ -352,8 +368,8 @@ class CameraController {
 
     updatePhysics(delta) {
         const wasCrouching = this.isCrouching;
-        if (!this.flightAllowed || this.mount) this.flying = false;
-        this.isCrouching = this.keys.crouch && !this.mount && !this.flying;
+        if (!this.flightAllowed || this.mount || this.seat) this.flying = false;
+        this.isCrouching = this.keys.crouch && !this.mount && !this.flying && !this.seat;
         if (wasCrouching !== this.isCrouching) {
             const previousEyeHeight = this.eyeHeight;
             this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
@@ -371,6 +387,20 @@ class CameraController {
         this.lookInput.deltaY = 0;
 
         if (this.spawnSettling && !this.updateSpawnSettling(delta)) {
+            this.camera.rotation.order = 'YXZ';
+            this.camera.rotation.y = this.yaw;
+            this.camera.rotation.x = this.pitch;
+            return;
+        }
+
+        if (this.seat) {
+            this.camera.position.set(this.seat.x, this.seat.y, this.seat.z);
+            this.velocityY = 0;
+            this.knockbackX = 0;
+            this.knockbackZ = 0;
+            this.onGround = true;
+            this.isInWater = false;
+            this.isOnLadder = false;
             this.camera.rotation.order = 'YXZ';
             this.camera.rotation.y = this.yaw;
             this.camera.rotation.x = this.pitch;
@@ -589,6 +619,7 @@ class CameraController {
     }
 
     setPosition(position) {
+        this.seat = null;
         this.stepSmoothing = 0;
         this.camera.position.set(position.x, position.y, position.z);
         this.yaw = position.yaw ?? this.yaw;

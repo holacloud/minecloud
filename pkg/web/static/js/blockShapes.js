@@ -86,12 +86,13 @@ function expandBlockStates(blockTypes) {
         for (const state of shapeStateCombinations(shape.states)) {
             const name = shapeStateName(base, shape, state);
             const extra = shape.variant ? shape.variant(state, def) : {};
-            const suffix = shape.materialKey ? shape.materialKey(state) : null;
+            const suffix = shape.materialKey ? shape.materialKey(state, def) : null;
+            const key = def.materialKey || base;
             const variant = {
                 ...def,
                 ...extra,
                 state,
-                materialKey: suffix ? `${base}#${suffix}` : base
+                materialKey: suffix ? `${key}#${suffix}` : key
             };
             if (name !== base) {
                 variant.variantOf = base;
@@ -185,9 +186,10 @@ class BlockShapeSet {
 // ---------------------------------------------------------------------------------------
 // Inventory icons: boxes drawn in the same isometric view as drawCubeIcon (blockTextures.js).
 
-// faces: { top, side } canvases. The view looks from +x +z, so the visible faces of each box
-// are its top, its +z face (left) and its +x face (right).
-function drawShapeIcon(ctx, size, boxes, faces) {
+// faces: { top, side, left } canvases (left, optional: the +z face, a piece's front). The view
+// looks from +x +z, so the visible faces of each box are its top, its +z face (left) and its +x
+// face (right). fit: the shape fills the icon instead of keeping a cube's scale (small things).
+function drawShapeIcon(ctx, size, boxes, faces, fit = false) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     const project = (x, y, z) => [x - z, (x + z) * 0.5 - y * 1.15];
     for (const [x0, y0, z0, x1, y1, z1] of boxes) {
@@ -198,7 +200,7 @@ function drawShapeIcon(ctx, size, boxes, faces) {
         }
     }
     // Same scale as a full cube icon (0.86 of the icon wide), smaller if the shape is taller.
-    const scale = Math.min(size * 0.43, (size * 0.94) / Math.max(1e-6, maxY - minY));
+    const scale = Math.min(fit ? (size * 0.86) / Math.max(1e-6, maxX - minX) : size * 0.43, (size * 0.94) / Math.max(1e-6, maxY - minY));
     const offsetX = size / 2 - ((minX + maxX) / 2) * scale;
     const offsetY = size / 2 - ((minY + maxY) / 2) * scale;
     const point = (x, y, z) => {
@@ -235,7 +237,7 @@ function drawShapeIcon(ctx, size, boxes, faces) {
         // Top: image x runs towards -z, image y towards +x (as in drawCubeIcon).
         drawFace(faces.top, [1 - z1, x0, z1 - z0, x1 - x0], point(x0, y1, z1), point(x0, y1, z0), point(x1, y1, z1), 0);
         // +z face (left): image x along +x, image y downwards.
-        drawFace(faces.side, [x0, clampV(1 - top), x1 - x0, Math.max(0.05, top - y0)], point(x0, y1, z1), point(x1, y1, z1), point(x0, y0, z1), 0.22);
+        drawFace(faces.left || faces.side, [x0, clampV(1 - top), x1 - x0, Math.max(0.05, top - y0)], point(x0, y1, z1), point(x1, y1, z1), point(x0, y0, z1), 0.22);
         // +x face (right): image x along -z, image y downwards.
         drawFace(faces.side, [1 - z1, clampV(1 - top), z1 - z0, Math.max(0.05, top - y0)], point(x1, y1, z1), point(x1, y1, z0), point(x1, y0, z1), 0.38);
     }

@@ -45,6 +45,8 @@ the pages. On a phone or tablet, see [Touch controls](222).
 - [Switches](207), [sensors](208) and [logic gates](209): [memory and delays](210), [example circuits](211) and
   [logic for the curious](212).
 - [Motor rams](217) and [lifts](218): electricity that moves blocks, with [mechanical projects](219).
+- [Furniture](223): [chairs](224), [tables](225), [chests that store things](226), [kitchen and bath](227),
+  [lights](228), [stained glass](229), [carpets and curtains](230), [paintings and a clock](231), [mirrors](232).
 
 ---
 

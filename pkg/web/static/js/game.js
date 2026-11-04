@@ -993,6 +993,11 @@ class Game {
             return;
         }
 
+        if ((event.code === 'ShiftLeft' || event.code === 'ShiftRight') && !event.repeat && this.seated) {
+            this.seatStandUp();
+            return;
+        }
+
         if (event.code === 'KeyC' && !event.repeat) {
             event.preventDefault();
             this.toggleCraftingPanel();

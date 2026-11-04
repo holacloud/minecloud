@@ -45,6 +45,19 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:sound_block) [Bloque de sonido](66)
 - ![](item:spray_paint) [Pintura en spray](67)
 
+## Muebles
+
+- ![](item:oak_chair) [Índice de muebles](223)
+- ![](item:oak_chair) [Sillas y sofás](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, y sofás de 16 colores (red_sofa...)
+- ![](item:table) [Mesas](225): table, bedside_table, desk
+- ![](item:chest) [Cofres y armarios](226): chest, barrel, wardrobe, bookshelf, wall_shelf
+- ![](item:oven) [Cocina y baño](227): workbench, oven, sink, fridge, toilet, bathtub
+- ![](item:lantern) [Luces sin electricidad](228): candle, lantern, table_lamp, floor_lamp, chandelier
+- ![](item:blue_stained_glass) [Vidrieras](229): 16 colores, en bloque y en panel (blue_stained_glass, blue_stained_glass_pane...)
+- ![](item:red_carpet) [Alfombras y cortinas](230): 16 colores (red_carpet, red_curtain...)
+- ![](item:wall_clock) [Cuadros, reloj y adornos](231): seis cuadros (painting_sunset...), wall_clock, flower_pot, vase
+- ![](item:wall_mirror) [Espejos](232): wall_mirror, mirror
+
 ## Herramientas
 
 - ![](item:iron_pickaxe) [Picos](68)

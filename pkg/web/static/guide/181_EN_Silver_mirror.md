@@ -17,7 +17,8 @@ At the [lab bench](117), with a reaction you have to **discover**: it shows as "
 ## What it is for
 
 - Place it like any block. Breaking: **0.25 s**.
-- It is decorative: it does not really reflect the world, but it looks great in a bathroom or a hall.
+- It is a real [mirror](232): up close, its six sides reflect the world and you.
+- With 1 plank it makes 2 wall mirrors, to hang in a bathroom or a hall.
 
 ## Trivia
 

@@ -86,8 +86,16 @@ function registerFrameUpdate(updater) {
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
 //   glow                          emissive strength: the block lights up its own texture
-//   lightEmission                 gives torch light to the world around it (lit lamps)
-//   faces entries                 may also be { pattern, tint } to tint a shared pattern
+//   lightEmission                 gives light to the world around it: true (as a torch, 14) or
+//                                 a level from 1 to 14
+//   filterGlass                   stained glass: drawn as a colour filter on what is behind it
+//                                 (see WorldRenderer.createFaceMaterial)
+//   mirrorSurface                 'cube' or 'wall' (needs `facing`): reflects, js/game/mirrors.js
+//   materialKey                   shows the materials of another block with the same looks
+//   shareFaces                    its states share materials face by face (js/game/furniture.js)
+//   faces entries                 may also be { pattern, tint } to tint a shared pattern, with
+//                                 glow (of that face alone) and minSize (of its texture in pixels)
+//   faces.front                   the side it faces (state `facing`), when it has a front
 //   textureOf                     another block type whose textures it reuses (slabs, stairs)
 //   shape                         a non-cube shape from registerBlockShape ('stairs', 'door',
 //                                 'trapdoor', 'fence', 'fence_gate', 'pane'; see js/blockShapes.js)
@@ -101,7 +109,8 @@ function registerBlockType(id, definition) {
 
 // Procedural block textures: registerTexturePattern(name, paint, { sprite }), where
 // paint(factory, surface, tint, seed) fills the surface like the patterns of blockTextures.js.
-// sprite: true for cutout sprites (clamped instead of tiled).
+// sprite: true for cutout sprites (clamped instead of tiled); rtx: { roughness, metalness,
+// normalScale } for its PBR look in RTX and Ultra.
 const TEXTURE_PATTERNS = {};
 function registerTexturePattern(name, paint, options = {}) {
     TEXTURE_PATTERNS[name] = { ...options, paint };
@@ -128,6 +137,8 @@ function registerBlockBreakHandler(handler) {
 //   linked(state)            [[dx, dy, dz]] cells that form one object with it (door halves)
 //   toggle(state, ctx)       the state after a right click (doors, gates), or null
 //   iconState, iconMask      state and connections shown in the inventory icon
+//   iconBoxes                boxes to draw in the icon instead (furniture two cells long)
+//   iconFit                  small things: the icon fills the slot instead of matching a cube's scale
 const BLOCK_SHAPES = {};
 function registerBlockShape(name, shape) {
     BLOCK_SHAPES[name] = shape;

@@ -119,6 +119,9 @@ type persistedWorldState struct {
 	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
 	Crops         map[string]Crop       `json:"crops,omitempty"`
 	Power         map[string]PowerBlock `json:"power,omitempty"`
+	// What chests hold, and the answers clients may still ask about (storage.go).
+	Storage    map[string]StorageBlock `json:"storage,omitempty"`
+	StorageLog []storageOutcome        `json:"storageLog,omitempty"`
 }
 
 var (
@@ -241,6 +244,7 @@ func loadWorldState() error {
 	stateMu.Unlock()
 	loadCrops(persisted.Crops)
 	loadPower(persisted.Power)
+	storage.load(persisted.Storage, persisted.StorageLog)
 
 	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
 	return nil
@@ -269,6 +273,7 @@ func saveWorldState() {
 	stateMu.RUnlock()
 	persisted.Crops = snapshotCrops()
 	persisted.Power = snapshotPower()
+	persisted.Storage, persisted.StorageLog = storage.snapshot()
 
 	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
 		log.Printf("Failed to create world state directory: %v", err)
@@ -430,6 +435,7 @@ func (c *Client) readPump() {
 		stateMu.Lock()
 		delete(gameState.Players, c.ID)
 		stateMu.Unlock()
+		storage.forget(c)
 
 		if c.ID != "" {
 			c.voiceEnabled = false
@@ -580,7 +586,9 @@ func handleMessage(client *Client, msg Message) {
 		json.Unmarshal(msg.Payload, &payload)
 
 		// The chunk store is the source of truth; never call it while holding stateMu.
-		cropsChanged, err := setBlockTracked(payload.X, payload.Y, payload.Z, "")
+		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
+			return setBlockTracked(payload.X, payload.Y, payload.Z, "")
+		})
 		if err != nil {
 			log.Printf("blockBreak: %v", err)
 			return
@@ -591,9 +599,10 @@ func handleMessage(client *Client, msg Message) {
 		delete(gameState.Blocks, key)
 		removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
 		stateMu.Unlock()
-		if hadMetadata || cropsChanged {
+		if hadMetadata || cropsChanged || len(spill) > 0 {
 			saveWorldState()
 		}
+		storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 
 		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
 		broadcastToAll(createMessage("blockBreak", payload))
@@ -636,7 +645,9 @@ func handleMessage(client *Client, msg Message) {
 		if payload.BlockType == "" {
 			return
 		}
-		cropsChanged, err := setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
+		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
+			return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
+		})
 		if err != nil {
 			log.Printf("blockPlace: %v", err)
 			return
@@ -651,9 +662,10 @@ func handleMessage(client *Client, msg Message) {
 			delete(gameState.Blocks, key)
 		}
 		stateMu.Unlock()
-		if hadMetadata || hasBlockMetadata(payload) || cropsChanged {
+		if hadMetadata || hasBlockMetadata(payload) || cropsChanged || len(spill) > 0 {
 			saveWorldState()
 		}
+		storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 		recordSignMessage(client, payload)
 
 		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
@@ -838,6 +850,9 @@ func handleMessage(client *Client, msg Message) {
 
 	case "creativeAuth":
 		handleCreativeAuth(client, msg.Payload)
+
+	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
+		handleStorageMessage(client, msg)
 
 	case "powerProbe":
 		handlePowerProbe(client, msg.Payload)

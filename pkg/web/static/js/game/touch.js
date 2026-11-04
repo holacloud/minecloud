@@ -379,11 +379,15 @@ Object.assign(Game.prototype, {
             controller.setTouchJump(true);
         }, () => controller.setTouchJump(false));
 
-        // Sneak toggles (so the thumb is free); while flying it sinks only while held, and
-        // while riding it gets off.
+        // Sneak toggles (so the thumb is free); while flying it sinks only while held, while
+        // riding it gets off and while sitting it stands up.
         this.touchBindButton(sneak, () => {
             if (this.ridingMob) {
                 this.dismount();
+                return;
+            }
+            if (this.seated) {
+                this.seatStandUp();
                 return;
             }
             if (controller.flying) {

@@ -286,6 +286,16 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 219 | Proyectos mecánicos | Mechanical projects | 4 builds: secret door, rising step, two-storey lift, night shutter |
 | 220 | Generador de radioisótopos | Radioisotope generator | rtg: a steady 80 W day and night with no fuel (generators 201, electricity 200, items index 48, contents 0); real RTGs: decay heat, half-life, Seebeck thermocouples, Voyager, New Horizons, Curiosity, Perseverance, safety |
 | 222 | Controles táctiles | Touch controls | phones and tablets: joystick, drag / tap / hold on the world, Mine, Use, Jump, Sneak, Run, the ☰ menu and the chat bar (contents 0, js/game/touch.js) |
+| 223 | Índice de muebles | Furniture | the furniture families (contents 0, items index 48) |
+| 224 | Sillas y sofás | Chairs and sofas | oak_chair, birch_chair, dark_oak_chair, stool, bench, `<colour>_sofa`: sitting, pieces that join |
+| 225 | Mesas | Tables | table, bedside_table, desk |
+| 226 | Cofres y armarios | Chests and wardrobes | chest, barrel, wardrobe (they really store items, on the server), bookshelf, wall_shelf |
+| 227 | Cocina y baño | Kitchen and bath | workbench, oven, sink, fridge, toilet, bathtub; what china is |
+| 228 | Luces sin electricidad | Lights without electricity | candle, lantern, table_lamp, floor_lamp, chandelier; how a candle burns |
+| 229 | Vidrieras | Stained glass | `<colour>_stained_glass`, `<colour>_stained_glass_pane`; why metal oxides colour glass (links to the element pages) |
+| 230 | Alfombras y cortinas | Carpets and curtains | `<colour>_carpet`, `<colour>_curtain` |
+| 231 | Cuadros, reloj y adornos | Paintings, clock and ornaments | painting_sunset, painting_peaks, painting_meadow, painting_night, painting_shapes, painting_fish, wall_clock, flower_pot, vase |
+| 232 | Espejos | Mirrors | wall_mirror, mirror: real reflection up close (js/game/mirrors.js); how a mirror works, links to 181 |
 
 ### Secret pages
 

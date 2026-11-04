@@ -362,10 +362,12 @@ Object.assign(Game.prototype, {
     renderFrame(delta) {
         this.world.animateMaterials(this.clock.elapsedTime);
         if (!this.ultraModeEnabled || !this.ultraTarget) {
+            this.mirrorsRender(delta);
             this.renderer.render(this.scene, this.camera);
             return;
         }
         this.updateUltra(delta);
+        this.mirrorsRender(delta);
         this.renderer.setRenderTarget(this.ultraTarget);
         this.renderer.render(this.scene, this.camera);
         // Adds bloom onto the HDR target in place.

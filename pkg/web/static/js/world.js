@@ -30,6 +30,10 @@ class WorldRenderer {
         this.materials = new Map();
         // Variants of the block materials that multiply in per-vertex ambient occlusion.
         this.chunkMaterials = new Map();
+        // Materials of blocks with `shareFaces`, by what the face shows, and the chunk variant of
+        // each material of an array, so that those stay shared too.
+        this.faceMaterials = new Map();
+        this.chunkFaceMaterials = new WeakMap();
         this.mesher = new ChunkMesher(this);
         // Chunks waiting to be (re)meshed, drained a few per frame nearest-first.
         this.rebuildQueue = new Set();
@@ -492,6 +496,7 @@ class WorldRenderer {
         this.rtxModeEnabled = enabled;
         this.disposeCache(this.chunkMaterials);
         this.disposeCache(this.materials);
+        this.disposeCache(this.faceMaterials);
         this.disposeCache(this.textures);
         this.iconCache.clear();
 
@@ -507,6 +512,7 @@ class WorldRenderer {
         this.windUniforms.windStrength.value = enabled ? 1 : 0;
         this.disposeCache(this.chunkMaterials);
         this.disposeCache(this.materials);
+        this.disposeCache(this.faceMaterials);
         this.disposeCache(this.textures);
         this.iconCache.clear();
         for (const key of this.activeChunks) {
@@ -564,9 +570,11 @@ class WorldRenderer {
             const shape = this.shapes.shapes[id];
             const iconType = shape.iconState ? shapeStateName(def.variantOf || type, shape, shape.iconState) : type;
             const iconId = this.registry.id(iconType) || id;
-            drawShapeIcon(ctx, size, this.shapes.boxes(iconId, shape.iconMask || 0), {
-                top: this.generateFaceCanvas(faces.top), side: this.generateFaceCanvas(faces.side)
-            });
+            drawShapeIcon(ctx, size, shape.iconBoxes || this.shapes.boxes(iconId, shape.iconMask || 0), {
+                top: this.generateFaceCanvas(faces.top),
+                side: this.generateFaceCanvas(faces.side),
+                left: faces.front ? this.generateFaceCanvas(faces.front) : null
+            }, Boolean(shape.iconFit));
         } else if (this.isAlphaCutoutType(type) && type !== 'leaves' && !type.endsWith('_leaves') || type === 'spray_paint') {
             ctx.drawImage(this.generateFaceCanvas(faces.side), size * 0.1, size * 0.1, size * 0.8, size * 0.8);
         } else {
@@ -677,7 +685,7 @@ class WorldRenderer {
     }
 
     // Which procedural pattern (and tint) each face of a block uses.
-    // Returns { top, side, bottom }, each { pattern, tint, label }.
+    // Returns { top, side, bottom } and maybe front, each { pattern, tint, label, glow, minSize }.
     getFaceTextureSpecs(type) {
         const def = this.blockTypes[type] || {};
         if (def.textureOf || def.slabSource) return this.getFaceTextureSpecs(def.textureOf || def.slabSource);
@@ -688,9 +696,13 @@ class WorldRenderer {
         if (def.faces) {
             // Entries are pattern names or { pattern, tint } ({ pattern, tintOf: 'spruce_planks' }
             // borrows the tint of another block's texture).
-            const face = (entry) => typeof entry === 'string' ? spec(entry)
-                : spec(entry.pattern, entry.tintOf ? this.getFaceTextureSpecs(entry.tintOf).side.tint : entry.tint ?? null, entry.label ?? null);
-            return { top: face(def.faces.top), side: face(def.faces.side), bottom: face(def.faces.bottom || def.faces.side) };
+            const face = (entry) => typeof entry === 'string' ? spec(entry) : {
+                ...spec(entry.pattern, entry.tintOf ? this.getFaceTextureSpecs(entry.tintOf).side.tint : entry.tint ?? null, entry.label ?? null),
+                glow: entry.glow, minSize: entry.minSize
+            };
+            const specs = { top: face(def.faces.top), side: face(def.faces.side), bottom: face(def.faces.bottom || def.faces.side) };
+            if (def.faces.front) specs.front = face(def.faces.front);
+            return specs;
         }
 
         switch (type) {
@@ -736,8 +748,8 @@ class WorldRenderer {
         return this.textureFactory.generate(faceSpec.pattern, {
             tint: faceSpec.tint,
             label: faceSpec.label,
-            // Labels (element symbols) need a few more pixels to stay legible.
-            size: faceSpec.label ? Math.max(32, this.textureSize()) : this.textureSize(),
+            // Labels (element symbols) need a few more pixels to stay legible; so do `minSize` faces.
+            size: Math.max(faceSpec.label ? 32 : 0, faceSpec.minSize || 0, this.textureSize()),
             hd: this.rtxModeEnabled
         });
     }
@@ -796,12 +808,29 @@ class WorldRenderer {
             case 'water': return { roughness: 0.03, metalness: 0, normalScale: 1, emissive: 0x061a26 };
             case 'wool': return { roughness: 1, metalness: 0, normalScale: 0.6 };
             case 'torch': return { roughness: 0.8, metalness: 0, normalScale: 0.2, emissive: 0x6b3a08 };
-            default: return { roughness: 0.85, metalness: 0, normalScale: 0.6 };
+            default: return (TEXTURE_PATTERNS[pattern] && TEXTURE_PATTERNS[pattern].rtx) || { roughness: 0.85, metalness: 0, normalScale: 0.6 };
         }
     }
 
     createFaceMaterial(type, faceSpec) {
         const def = this.blockTypes[type] || {};
+        // Stained glass is a filter in all three modes: its texture multiplies what is already on
+        // screen, so what is behind keeps its detail and takes the tint, and any number of panes
+        // give the same result in any order (no sorting problem). It writes no depth. It ignores
+        // light, fog and tone mapping, which were already applied to what it filters; it needs no
+        // normal or roughness maps, as nothing lights it. Multiplying is the same in linear (the
+        // Ultra target) and sRGB (the canvas, for the same reason (ab)^g = a^g b^g).
+        if (def.filterGlass) {
+            return new THREE.MeshBasicMaterial({
+                map: this.getTexture(faceSpec, 'albedo'),
+                transparent: true,
+                blending: THREE.MultiplyBlending,
+                depthWrite: false,
+                fog: false,
+                toneMapped: false,
+                side: THREE.FrontSide
+            });
+        }
         const alphaCutout = this.isAlphaCutoutType(type);
         const transparent = Boolean(def.transparent) && !alphaCutout;
         const depthWrite = type === 'water' ? true : (!transparent || alphaCutout);
@@ -815,9 +844,10 @@ class WorldRenderer {
         };
 
         // Glowing blocks (registerBlockType `glow`: emissive strength) light up their own texture.
-        const glow = def.glow ? { emissive: 0xffffff, emissiveMap: common.map, emissiveIntensity: def.glow } : null;
+        const glowValue = faceSpec.glow ?? def.glow;
+        const glow = glowValue ? { emissive: 0xffffff, emissiveMap: common.map, emissiveIntensity: glowValue } : null;
         if (!this.rtxModeEnabled) {
-            return new THREE.MeshLambertMaterial(glow ? { ...common, ...glow, emissiveIntensity: Math.min(1, def.glow) } : common);
+            return new THREE.MeshLambertMaterial(glow ? { ...common, ...glow, emissiveIntensity: Math.min(1, glowValue) } : common);
         }
 
         const props = this.getRTXMaterialProps(faceSpec.pattern);
@@ -848,13 +878,29 @@ class WorldRenderer {
         if (material) return material;
 
         const faces = this.getFaceTextureSpecs(type);
-        const key = (face) => `${face.pattern}:${face.tint}:${face.label || ''}`;
-        if (key(faces.top) === key(faces.side) && key(faces.bottom) === key(faces.side)) {
-            material = this.createFaceMaterial(type, faces.side);
+        const key = (face) => `${face.pattern}:${face.tint}:${face.label || ''}:${face.glow || ''}`;
+        // `shareFaces` blocks reuse the material of any face that shows the same thing.
+        const make = (face) => {
+            if (!def || !def.shareFaces) return this.createFaceMaterial(type, face);
+            const faceKey = `${key(face)}:${def.glow || ''}`;
+            let shared = this.faceMaterials.get(faceKey);
+            if (!shared) {
+                shared = this.createFaceMaterial(type, face);
+                this.faceMaterials.set(faceKey, shared);
+            }
+            return shared;
+        };
+        if (faces.front && def.state && def.state.facing) {
+            // A front goes on the one side the block faces.
+            const side = make(faces.side);
+            material = [side, side, make(faces.top), make(faces.bottom), side, side];
+            material[{ e: 0, w: 1, s: 4, n: 5 }[def.state.facing]] = make(faces.front);
+        } else if (key(faces.top) === key(faces.side) && key(faces.bottom) === key(faces.side)) {
+            material = make(faces.side);
         } else {
-            const side = this.createFaceMaterial(type, faces.side);
-            const top = this.createFaceMaterial(type, faces.top);
-            const bottom = key(faces.bottom) === key(faces.top) ? top : this.createFaceMaterial(type, faces.bottom);
+            const side = make(faces.side);
+            const top = make(faces.top);
+            const bottom = key(faces.bottom) === key(faces.top) ? top : make(faces.bottom);
             material = [side, side, top, bottom, side, side];
         }
 
@@ -993,19 +1039,21 @@ class WorldRenderer {
             : this.isCrossGeometry(type) && type !== 'torch' ? 'plant'
                 : type === 'water' ? 'water' : null;
         const withVertexColors = (base) => {
-            const clone = base.clone();
+            // Keep shared entries shared (the four side faces, the faces of `shareFaces` blocks).
+            let clone = this.chunkFaceMaterials.get(base);
+            if (clone) return clone;
+            clone = base.clone();
             clone.vertexColors = true;
             this.addBlockLight(clone, foliage);
+            this.chunkFaceMaterials.set(base, clone);
             return clone;
         };
         const base = this.getMaterial(type);
-        if (Array.isArray(base)) {
-            // Keep shared entries shared (e.g. the four side faces).
-            const clones = new Map();
-            material = base.map((entry) => {
-                if (!clones.has(entry)) clones.set(entry, withVertexColors(entry));
-                return clones.get(entry);
-            });
+        if (def && def.filterGlass) {
+            // A filter needs no ambient occlusion or baked light (see createFaceMaterial).
+            material = base;
+        } else if (Array.isArray(base)) {
+            material = base.map(withVertexColors);
         } else {
             material = withVertexColors(base);
         }
@@ -1256,6 +1304,15 @@ class WorldRenderer {
             waterMesh.receiveShadow = this.rtxModeEnabled;
             waterMesh.userData.blockType = 'water';
             chunk.add(waterMesh);
+        }
+
+        // Stained glass: own object and no shadow (it is see-through, and light passes), drawn
+        // after the other see-through things it may have in front of or behind it, so that it
+        // filters them too; before spray paint and sign labels, which are on its near side.
+        const glassMesh = result.glass.length ? ChunkMesher.toMesh(result.glass) : null;
+        if (glassMesh) {
+            glassMesh.renderOrder = 60;
+            chunk.add(glassMesh);
         }
 
         for (const { type, x, y, z } of result.special) {

@@ -17,6 +17,10 @@ Object.assign(Game.prototype, {
             this.localPlayerAvatar.rotation.y = this.ridingMob.rotation.y;
             this.poseRider(this.localPlayerAvatar);
         }
+        if (this.seated) {
+            this.localPlayerAvatar.rotation.y = this.seated.avatarYaw;
+            this.poseSeated(this.localPlayerAvatar);
+        }
         this.localPlayerAvatar.userData.targetAction = this.getCurrentPlayerAction();
         this.applyAvatarAction(this.localPlayerAvatar, delta);
     },
@@ -427,6 +431,10 @@ Object.assign(Game.prototype, {
             this.applyAvatarHeadPitch(avatar, avatar.userData.targetPitch, alpha);
             this.animatePlayerAvatar(avatar, previousPosition, delta, !avatar.userData.mountMob);
             if (avatar.userData.mountMob) this.updateRemoteMount(avatar, previousPosition, delta);
+            if (typeof avatar.userData.seatYaw === 'number') {
+                avatar.rotation.y = avatar.userData.seatYaw;
+                this.poseSeated(avatar);
+            }
             this.applyAvatarAction(avatar, delta);
         }
     },
@@ -498,6 +506,8 @@ Object.assign(Game.prototype, {
         avatar.userData.targetPitch = typeof player.pitch === 'number' ? player.pitch : 0;
         avatar.userData.targetAction = this.normalizePlayerAction(player.action);
         this.syncRemoteMount(avatar, mountInfo ? player.mount : '', player.mountYaw);
+        // Sitting (js/game/seating.js): the eye is already where it should be.
+        avatar.userData.seatYaw = player.mount === 'seat' ? player.mountYaw || 0 : null;
     },
 
     raycastPlayer(maxDistance) {

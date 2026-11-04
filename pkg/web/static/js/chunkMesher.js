@@ -21,7 +21,7 @@ const MAX_BLOCK_LIGHT = 14;
 const SKY_REACH = 3;
 
 // Torch light around one chunk: a breadth-first flood from every torch (and other light
-// emitter, registry.lightEmitter) within reach,
+// emitter, registry.lightEmitter, at its registry.lightLevel) within reach,
 // losing one level per block and stopped by opaque full cubes.
 class LightField {
     constructor(world, chunkX, chunkZ) {
@@ -49,7 +49,7 @@ class LightField {
                     const z = (chunkZ + dz) * CHUNK_SIZE + Math.floor(index / CHUNK_SIZE) % CHUNK_SIZE;
                     const y = Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE)) + WORLD_MIN_Y;
                     if (x < this.minX || z < this.minZ || x >= this.minX + this.sizeX || z >= this.minZ + this.sizeZ) continue;
-                    torches.push(x, y, z);
+                    torches.push(x, y, z, registry.lightLevel[column.blocks[index]]);
                 }
             }
         }
@@ -57,7 +57,7 @@ class LightField {
 
         let minY = WORLD_MAX_Y;
         let maxY = WORLD_MIN_Y;
-        for (let i = 1; i < torches.length; i += 3) {
+        for (let i = 1; i < torches.length; i += 4) {
             minY = Math.min(minY, torches[i]);
             maxY = Math.max(maxY, torches[i]);
         }
@@ -85,10 +85,10 @@ class LightField {
 
     flood(registry, torches) {
         const queue = [];
-        for (let i = 0; i < torches.length; i += 3) {
+        for (let i = 0; i < torches.length; i += 4) {
             const index = this.cellIndex(torches[i], torches[i + 1], torches[i + 2]);
             if (index < 0) continue;
-            this.levels[index] = MAX_BLOCK_LIGHT;
+            this.levels[index] = Math.max(this.levels[index], torches[i + 3]);
             queue.push(torches[i], torches[i + 1], torches[i + 2]);
         }
         const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
@@ -352,7 +352,8 @@ class ChunkMesher {
         return t * t;
     }
 
-    // Returns { buckets: MeshBucket[], water: MeshBucket|null, special: [{type, x, y, z}] }.
+    // Returns { buckets: MeshBucket[], water: MeshBucket|null, glass: MeshBucket[], special:
+    // [{type, x, y, z}] }. Stained glass (registry.filterGlass) is its own mesh, as water is.
     build(chunkX, chunkZ, options = {}) {
         const world = this.world;
         const registry = world.registry;
@@ -387,17 +388,20 @@ class ChunkMesher {
         const bedrockId = registry.id('bedrock');
         const hidden = options.hiddenBlock || null;
         const buckets = new Map();
+        const glassBuckets = new Map();
         const special = [];
         let water = null;
 
-        const bucketFor = (material) => {
-            let bucket = buckets.get(material);
+        const bucketIn = (map, material) => {
+            let bucket = map.get(material);
             if (!bucket) {
                 bucket = new MeshBucket(material);
-                buckets.set(material, bucket);
+                map.set(material, bucket);
             }
             return bucket;
         };
+        const bucketFor = (material) => bucketIn(buckets, material);
+        const glassBucketFor = (material) => bucketIn(glassBuckets, material);
 
         const blocks = column.blocks;
         const end = Math.min(blocks.length, chunkIndex(0, column.maxY + 1, 0));
@@ -450,7 +454,7 @@ class ChunkMesher {
             }
 
             if (registry.shaped[id]) {
-                this.addShapedBlock(bucketFor, id, type, px, y, pz, lx, lz, worldX, worldZ, cellLight, cellSky);
+                this.addShapedBlock(registry.filterGlass[id] ? glassBucketFor : bucketFor, id, type, px, y, pz, lx, lz, worldX, worldZ, cellLight, cellSky);
                 continue;
             }
 
@@ -462,6 +466,7 @@ class ChunkMesher {
 
             const material = world.getChunkMaterial(type);
             const height = registry.height[id] || 1;
+            const cubeBucketFor = registry.filterGlass[id] ? glassBucketFor : bucketFor;
             for (let f = 0; f < 6; f++) {
                 // The underside of the world is never visible.
                 if (f === 3 && id === bedrockId) continue;
@@ -470,7 +475,7 @@ class ChunkMesher {
                 const neighborId = this.idAt(px + face.normal[0], y + face.normal[1], pz + face.normal[2]);
                 if (!lowTop && !this.isFaceVisible(id, neighborId)) continue;
 
-                const bucket = bucketFor(Array.isArray(material) ? material[f] : material);
+                const bucket = cubeBucketFor(Array.isArray(material) ? material[f] : material);
                 const ao = face.corners.map((corner) => this.vertexAO(px, y, pz, face, corner, lowTop));
                 // Partial-height blocks (slabs) squash the face and its texture vertically.
                 const sideFace = face.normal[1] === 0;
@@ -493,7 +498,7 @@ class ChunkMesher {
             }
         }
 
-        return { buckets: Array.from(buckets.values()), water, special };
+        return { buckets: Array.from(buckets.values()), water, glass: Array.from(glassBuckets.values()), special };
     }
 
     // Non-cube blocks (stairs, doors, fences...): the faces of their boxes (js/blockShapes.js).

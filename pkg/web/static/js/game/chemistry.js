@@ -327,7 +327,7 @@ registerTexturePattern('mirror', (f, s, tint, seed) => {
         const sheen = Math.max(0, 1 - Math.abs(u + v - 0.9) / 0.12) * 0.5 + Math.max(0, 1 - Math.abs(u + v - 1.15) / 0.05) * 0.35;
         f.put(s, x, y, f.mix(f.tone(s, silver, (v - 0.5) * 0.2), [255, 255, 255], sheen), 0.5);
     });
-});
+}, { rtx: { roughness: 0.06, metalness: 1, normalScale: 0.05 } });
 
 // Deep blue glass, a little darker at the edges.
 registerTexturePattern('cobalt_glass', (f, s, tint, seed) => {
@@ -360,7 +360,7 @@ registerBlockType('light_bulb', {
     faces: { top: 'light_bulb', side: 'light_bulb' }
 });
 registerBlockType('mirror', {
-    color: 0xc9d3dc, name: 'Silver Mirror', breakDuration: 0.25,
+    color: 0xc9d3dc, name: 'Silver Mirror', breakDuration: 0.25, mirrorSurface: 'cube', // js/game/mirrors.js
     faces: { top: 'mirror', side: 'mirror' }
 });
 registerBlockType('cobalt_glass', {

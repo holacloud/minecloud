@@ -36,8 +36,9 @@ import (
 // so clients can carry the player standing on what moved (and draw the lift smoothly).
 //
 // Blocks that never move: bedrock, liquids, electric blocks, rams, arms and platforms, doors
-// and beds (two cells), blocks with server metadata (signs, ladders, sound blocks) and crops
-// with their farmland (crops.go keeps a registry of them). Air, water, lava and small plants
+// and beds (two cells), furniture of two cells, chests (storage.go keeps their contents by
+// position), blocks with server metadata (signs, ladders, sound blocks) and crops with their
+// farmland (crops.go keeps a registry of them). Air, water, lava and small plants
 // are free space: a pushed line may end in them (the plant or the liquid is gone).
 //
 // mechanicsKinds is the table of these electric blocks; js/game/mechanics.js mirrors it
@@ -84,7 +85,8 @@ var mechSoft = map[string]bool{
 // Blocks that never move (see the header); electric blocks, doors and crops are checked apart.
 var mechFixed = map[string]bool{
 	"bedrock": true, "lift_platform": true, "sign": true, "ladder": true, "sound_block": true,
-	"bed": true, "farmland": true, "chest": true,
+	"bed": true, "farmland": true, "chest": true, "barrel": true, "wardrobe": true,
+	"fridge": true, "floor_lamp": true, "bathtub": true,
 }
 
 // mechMovable reports whether a ram may push or pull the block `name`.

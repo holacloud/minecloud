@@ -45,6 +45,8 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 - [Interruptores](207), [sensores](208) y [puertas lógicas](209): [memoria y retardos](210),
   [circuitos de ejemplo](211) y [lógica para curiosos](212).
 - [Empujadores](217) y [ascensores](218): electricidad que mueve bloques, con [proyectos mecánicos](219).
+- [Muebles](223): [sillas](224), [mesas](225), [cofres que guardan de verdad](226), [cocina y baño](227),
+  [luces](228), [vidrieras](229), [alfombras y cortinas](230), [cuadros y un reloj](231), [espejos](232).
 
 ---
 

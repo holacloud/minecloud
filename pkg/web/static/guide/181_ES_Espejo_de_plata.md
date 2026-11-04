@@ -17,7 +17,8 @@ En la [mesa de laboratorio](117), con una reacción que hay que **descubrir**: e
 ## Para qué sirve
 
 - Se coloca como cualquier bloque. Rotura: **0,25 s**.
-- Es decorativo: no refleja de verdad el mundo, pero queda muy bien en un baño o un salón.
+- Es un [espejo](232) de verdad: de cerca, sus seis caras reflejan el mundo y a ti.
+- Con 1 tabla salen 2 espejos de pared, para colgar en un baño o un salón.
 
 ## Curiosidades
 

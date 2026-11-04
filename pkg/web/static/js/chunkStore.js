@@ -44,8 +44,12 @@ class BlockRegistry {
         this.fullCube = new Uint8Array(count);
         // Non-cube shapes (stairs, doors, fences...; js/blockShapes.js), meshed and collided as boxes.
         this.shaped = new Uint8Array(count);
-        // Blocks that give torch light (torches, and `lightEmission` blocks such as lit lamps).
+        // Blocks that give torch light (torches, and `lightEmission` blocks such as lit lamps),
+        // and how much: a level up to 14 (true in `lightEmission` means a torch's).
         this.lightEmitter = new Uint8Array(count);
+        this.lightLevel = new Uint8Array(count);
+        // Stained glass: meshed apart and drawn as a filter (see the chunk mesher).
+        this.filterGlass = new Uint8Array(count);
         for (let id = 1; id < count; id++) {
             const def = blockTypes[this.names[id]];
             this.fluid[id] = def.fluid ? 1 : 0;
@@ -56,6 +60,8 @@ class BlockRegistry {
             this.height[id] = this.solid[id] ? (def.collisionHeight ?? def.height ?? 1) : 0;
             this.fullCube[id] = this.solid[id] && !this.transparent[id] && !this.shaped[id] && this.height[id] === 1 ? 1 : 0;
             this.lightEmitter[id] = this.names[id] === 'torch' || def.lightEmission ? 1 : 0;
+            this.lightLevel[id] = this.lightEmitter[id] ? (typeof def.lightEmission === 'number' ? def.lightEmission : 14) : 0;
+            this.filterGlass[id] = def.filterGlass ? 1 : 0;
         }
     }
 

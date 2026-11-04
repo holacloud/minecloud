@@ -45,6 +45,19 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:sound_block) [Sound block](66)
 - ![](item:spray_paint) [Spray paint](67)
 
+## Furniture
+
+- ![](item:oak_chair) [Furniture index](223)
+- ![](item:oak_chair) [Chairs and sofas](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, and 16 colours of sofa (red_sofa...)
+- ![](item:table) [Tables](225): table, bedside_table, desk
+- ![](item:chest) [Chests and wardrobes](226): chest, barrel, wardrobe, bookshelf, wall_shelf
+- ![](item:oven) [Kitchen and bath](227): workbench, oven, sink, fridge, toilet, bathtub
+- ![](item:lantern) [Lights without electricity](228): candle, lantern, table_lamp, floor_lamp, chandelier
+- ![](item:blue_stained_glass) [Stained glass](229): 16 colours, as blocks and panes (blue_stained_glass, blue_stained_glass_pane...)
+- ![](item:red_carpet) [Carpets and curtains](230): 16 colours (red_carpet, red_curtain...)
+- ![](item:wall_clock) [Paintings, clock and ornaments](231): six paintings (painting_sunset...), wall_clock, flower_pot, vase
+- ![](item:wall_mirror) [Mirrors](232): wall_mirror, mirror
+
 ## Tools
 
 - ![](item:iron_pickaxe) [Pickaxes](68)

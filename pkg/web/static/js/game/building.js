@@ -33,6 +33,10 @@ Object.assign(Game.prototype, {
             lines.push(`<span class="label">Sign:</span> ${preview}`);
         }
 
+        if (type.startsWith('wall_clock')) {
+            lines.push(`<span class="label">Time:</span> ${decorClockText(this.timeOfDay)}`);
+        }
+
         if (type === 'sound_block') {
             const state = this.world.getSoundBlockStateAt(worldPos.x, worldPos.y, worldPos.z);
             lines.push(`<span class="label">Sound:</span> ${state.instrument} note ${state.note + 1}`);
