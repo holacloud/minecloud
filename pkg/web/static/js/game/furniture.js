@@ -203,6 +203,17 @@ furnShape('wall_shelf', {
     place: furnPlaceOnWall
 });
 
+// A whole block with its books on the side that looks at the player who placed it, plain wood on
+// the others. Bookshelves saved when it had no facing are the first state, `bookshelf`, with books
+// on all four sides, as they were; breaking and placing one again gives it a front.
+registerBlockShape('bookshelf', {
+    states: [['facing', ['all', ...SHAPE_FACINGS]]],
+    boxes: () => [[0, 0, 0, 1, 1, 1]],
+    variant: (state, def) => (state.facing === 'all' ? def.allSides : {}),
+    materialKey: (state) => state.facing,
+    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx) } }]
+});
+
 furnShape('workbench', {
     facing: false,
     boxes: [[0, 13, 0, 16, 16, 16], [1, 0, 1, 3, 13, 3], [13, 0, 1, 15, 13, 3], [1, 0, 13, 3, 13, 15], [13, 0, 13, 15, 13, 15], [3, 4, 3, 13, 5, 13]],
@@ -393,30 +404,97 @@ function furnPaintWardrobe(f, s, tint, seed, upper) {
 registerTexturePattern('wardrobe_lower', (f, s, tint, seed) => furnPaintWardrobe(f, s, tint, seed, false));
 registerTexturePattern('wardrobe_upper', (f, s, tint, seed) => furnPaintWardrobe(f, s, tint, seed, true));
 
-// Shelves of books of many colours. Used on the bookshelf (two rows) and, in one row, elsewhere.
-const FURN_BOOKS = [0xa8342c, 0x2f5fa8, 0x3a8a4c, 0xd8b84a, 0x7e4cc2, 0xc97a2c, 0x30343c, 0xd8d0c0];
+// The front of a bookshelf, on a grid of 32 cells by 32 whatever the resolution: a frame, two
+// shelves in shadow, books of many sizes with detail on their spines, gaps, and a book leaning
+// across each gap. It is painted once per pattern (seedFor), so every bookshelf shows the same books.
+const FURN_BOOKS = [0xa8342c, 0x2f5fa8, 0x3a8a4c, 0xd8b84a, 0x7e4cc2, 0xc97a2c, 0x30343c, 0xd8d0c0, 0x7a2a3a, 0x1f6a70, 0x8a5a34, 0x4a5a2c];
+const FURN_SHELF_GRID = 32;
+const FURN_SHELF_FRAME = 2;
+// A row's top and bottom in the grid (the shelf board fills the 2 cells between them).
+const FURN_SHELF_ROWS = [[2, 15], [17, 30]];
+
+// The books of a row: { x, width, height, color, spine, lean }, left to right. x and width are in
+// grid cells at the shelf; a leaning book's top is `lean` cells to the side of its foot.
+function furnShelfBooks(f, seed, row) {
+    const books = [];
+    const end = FURN_SHELF_GRID - FURN_SHELF_FRAME;
+    const room = FURN_SHELF_ROWS[row][1] - FURN_SHELF_ROWS[row][0];
+    let x = FURN_SHELF_FRAME + Math.floor(f.hash(row, 91, seed) * 2);
+    let lean = 0;
+    for (let i = 0; x < end - 1; i++) {
+        const pick = (salt) => f.hash(i, row * 7 + salt, seed);
+        if (i > 0 && !lean && pick(1) < 0.17) {
+            // A gap, and the next book falls back across it.
+            const gap = 2 + Math.floor(pick(2) * 4);
+            x += gap;
+            lean = -Math.min(gap - 1, 2 + Math.floor(pick(3) * 2));
+            continue;
+        }
+        const width = Math.min(end - x, pick(4) < 0.12 ? 4 : 2 + Math.floor(pick(5) * 2));
+        const book = {
+            x, width, lean,
+            height: Math.round(room * (0.62 + pick(6) * 0.34)),
+            color: FURN_BOOKS[Math.floor(pick(7) * FURN_BOOKS.length)],
+            spine: Math.floor(pick(8) * 5)
+        };
+        books.push(book);
+        x += width;
+        lean = 0;
+    }
+    return books;
+}
+
+// A shade and a height for a spine at tx across it (0 to 1) and ty up it (0 at its foot).
+function furnShelfSpine(book, tx, ty, grid) {
+    let k = (0.5 - tx) * 0.34;
+    let detail = 0;
+    if (tx * book.width > book.width - 0.7) k -= 0.3;
+    if (book.spine === 1 && (Math.abs(ty - 0.16) < 0.05 || Math.abs(ty - 0.84) < 0.05)) detail = 1;
+    if (book.spine === 2 && ty > 0.56 && ty < 0.8 && tx > 0.1 && tx < 0.9) detail = 2;
+    if (book.spine === 3 && Math.abs(ty - 0.7) < 0.04) detail = 1;
+    if (book.spine === 3 && Math.abs(tx - 0.5) < 0.2 && ty > 0.2 && ty < 0.5 && Math.floor(ty * grid) % 2 === 0) detail = 1;
+    if (book.spine === 4 && ty > 0.28 && ty < 0.42) k -= 0.28;
+    return { k, detail };
+}
+
 registerTexturePattern('bookshelf', (f, s, tint, seed) => {
-    const wood = f.rgb(tint ?? 0xb48a56);
-    const px = 1 / s.size;
+    const wood = f.rgb(tint ?? 0x9a7148);
+    const gold = f.rgb(0xdcc068);
+    const label = f.rgb(0xe8dfc8);
+    const rows = FURN_SHELF_ROWS.map((_, row) => furnShelfBooks(f, seed, row));
     f.each(s, (x, y, u, v) => {
-        const row = v < 0.5 ? 0 : 1;
-        const inRow = v < 0.5 ? v * 2 : (v - 0.5) * 2;
-        if (inRow < 2.2 * px * 2 || inRow > 1 - px * 2 || u < px * 1.2 || u > 1 - px * 1.2) {
-            f.put(s, x, y, furnWood(f, s, wood, u, v, seed), 0.8);
+        const gx = u * FURN_SHELF_GRID;
+        const gy = v * FURN_SHELF_GRID;
+        const row = FURN_SHELF_ROWS.findIndex(([top, bottom]) => gy >= top && gy < bottom);
+        const stile = gx < FURN_SHELF_FRAME || gx >= FURN_SHELF_GRID - FURN_SHELF_FRAME;
+        if (stile || row < 0) {
+            // The frame and the shelf boards: lit along their top edge, dark along the bottom.
+            const inBoard = (gy % (FURN_SHELF_ROWS[1][0] - 2)) / 2;
+            const k = stile ? (gx < FURN_SHELF_FRAME ? 0.05 : -0.08) : inBoard < 0.3 ? 0.16 : inBoard > 0.7 ? -0.2 : 0;
+            f.put(s, x, y, f.tone(s, f.mix(furnWood(f, s, wood, u, v, seed, stile, 2), wood, 0.3), k), stile ? 1 : 0.9);
             return;
         }
-        const slot = Math.floor(u * 7);
-        const book = FURN_BOOKS[Math.floor(f.hash(slot, row, seed) * FURN_BOOKS.length)];
-        const top = 0.14 + f.hash(slot, row + 5, seed) * 0.3;
-        if (inRow < top) {
-            f.put(s, x, y, f.tone(s, wood, -0.7), 0.05);
+        const [top, bottom] = FURN_SHELF_ROWS[row];
+        const up = bottom - gy;
+        // The shelf above shades the top of the row, the frame its sides.
+        const shadow = Math.max(0, 0.34 - (gy - top) * 0.09) + Math.max(0, 0.12 - Math.min(gx - FURN_SHELF_FRAME, FURN_SHELF_GRID - FURN_SHELF_FRAME - gx) * 0.06);
+        for (const book of rows[row]) {
+            if (up >= book.height) continue;
+            const ty = up / book.height;
+            const tx = (gx - book.x - book.lean * ty) / book.width;
+            if (tx < 0 || tx >= 1) continue;
+            const { k, detail } = furnShelfSpine(book, tx, ty, FURN_SHELF_GRID);
+            const color = detail === 1 ? gold : detail === 2 ? label : f.rgb(book.color);
+            const grain = (f.hash(x, y, seed) - 0.5) * 0.06;
+            // The rounded spine stands out of the shelf in the height map.
+            const round = 0.62 + Math.sin(Math.min(1, tx) * Math.PI) * 0.26 + (detail ? 0.08 : 0);
+            f.put(s, x, y, f.tone(s, color, k + grain - shadow), round);
             return;
         }
-        const gap = (u * 7) % 1 < 0.14;
-        const band = Math.abs(inRow - 0.55 - f.hash(slot, row + 9, seed) * 0.2) < 0.05;
-        f.put(s, x, y, f.tone(s, f.rgb(book), gap ? -0.5 : band ? 0.25 : (f.hash(x, y, seed) - 0.5) * 0.1), gap ? 0.25 : 0.6);
+        // The back of the shelf, deep in shadow.
+        f.put(s, x, y, f.tone(s, wood, -0.7 - shadow * 0.15 + (f.hash(x, y, seed) - 0.5) * 0.04), 0.04);
     });
-});
+}, { rtx: { roughness: 0.68, metalness: 0, normalScale: 1.3 } });
 
 // One row of books above a board, for the wall shelf.
 registerTexturePattern('wall_shelf_side', (f, s, tint, seed) => {
@@ -688,9 +766,12 @@ furnBlock('wardrobe', {
     faces: FURN_WARDROBE_FACES('wardrobe_lower'),
     halves: { lower: { faces: FURN_WARDROBE_FACES('wardrobe_lower') }, upper: { faces: FURN_WARDROBE_FACES('wardrobe_upper') } }
 });
-registerBlockType('bookshelf', {
-    color: 0xB48A56, name: 'Bookshelf', breakDuration: 0.6, category: 'wood',
-    faces: { top: { pattern: 'planks', tintOf: 'planks' }, side: 'bookshelf', bottom: { pattern: 'planks', tintOf: 'planks' } }
+const FURN_BOOKSHELF_FRONT = { pattern: 'bookshelf', minSize: FURN_SHELF_GRID };
+const FURN_PLAIN_PLANKS = { pattern: 'planks', tintOf: 'planks' };
+furnBlock('bookshelf', {
+    color: 0xB48A56, name: 'Bookshelf', shape: 'bookshelf', breakDuration: 0.6, category: 'wood',
+    faces: { top: FURN_PLAIN_PLANKS, side: FURN_PLAIN_PLANKS, bottom: FURN_PLAIN_PLANKS, front: FURN_BOOKSHELF_FRONT },
+    allSides: { faces: { top: FURN_PLAIN_PLANKS, side: FURN_BOOKSHELF_FRONT, bottom: FURN_PLAIN_PLANKS } }
 });
 furnBlock('wall_shelf', {
     color: 0xB48A56, name: 'Wall Shelf', shape: 'wall_shelf', breakDuration: 0.35, category: 'wood', solid: false,

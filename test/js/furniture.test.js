@@ -80,6 +80,7 @@ function loadGame() {
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
         GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
+        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory,
         mirrorFacesOf, mirrorFaceInView, mirrorLineClear, mirrorPickFace, mirrorPlaneKey, mirrorQuadPositions, mirrorTargetSize, mirrorRefreshInterval,
         MIRROR_RANGE, MIRROR_TARGET_MAX });`, context);
     return context;
@@ -300,10 +301,84 @@ test('collisions: seats hold you at seat height, small things let you through, n
     // Tables and storage are solid, so you can stand on them and not inside them.
     for (const type of ['table', 'chest', 'wardrobe', 'bedside_table', 'oven', 'workbench']) assert.ok(collision(type).length > 0, type);
     // No piece turns its cell into a full cube for light or faces.
-    for (const item of ITEMS) {
-        if (item !== 'bookshelf') assert.equal(world.registry.fullCube[world.registry.id(item)], 0, item);
+    for (const item of ITEMS) assert.equal(world.registry.fullCube[world.registry.id(item)], 0, item);
+    // The bookshelf is a whole block to walk into and stand on, all the same.
+    assert.deepEqual(JSON.parse(JSON.stringify(collision('bookshelf:e'))), [[0, 0, 0, 1, 1, 1]]);
+});
+
+test('the bookshelf: books of many sizes and colours, with gaps and some leaning, inside the frame', () => {
+    const f = new ctx.BlockTextureFactory();
+    const seed = f.seedFor('bookshelf', null);
+    const books = ctx.FURN_SHELF_ROWS.map((_, row) => ctx.furnShelfBooks(f, seed, row));
+    for (const [row, list] of books.entries()) {
+        const [top, bottom] = ctx.FURN_SHELF_ROWS[row];
+        assert.ok(list.length >= 5, `row ${row}: ${list.length} books`);
+        for (const book of list) {
+            assert.ok(book.x >= 2 && book.x + book.width <= 30, 'inside the frame');
+            assert.ok(book.height > 0 && book.height <= bottom - top, 'under the shelf above');
+            assert.ok(book.x + book.lean >= 2, 'its lean stays inside too');
+        }
+        for (let i = 1; i < list.length; i++) assert.ok(list[i].x >= list[i - 1].x + list[i - 1].width, 'they do not overlap at the foot');
     }
-    assert.equal(world.registry.fullCube[world.registry.id('bookshelf')], 1);
+    const all = books.flat();
+    assert.ok(new Set(all.map((book) => book.width)).size >= 2);
+    assert.ok(new Set(all.map((book) => book.height)).size >= 3);
+    assert.ok(new Set(all.map((book) => book.color)).size >= 4);
+    assert.ok(new Set(all.map((book) => book.spine)).size >= 3);
+    // Over a few seeds gaps and leaning books turn up, and the rows differ.
+    let leaning = 0;
+    for (let other = 0; other < 8; other++) {
+        leaning += [0, 1].flatMap((row) => ctx.furnShelfBooks(f, other, row)).filter((book) => book.lean < 0).length;
+        assert.notDeepEqual(ctx.furnShelfBooks(f, other, 0), ctx.furnShelfBooks(f, other + 1, 0));
+    }
+    assert.ok(leaning >= 4, `${leaning} leaning books`);
+    const gaps = (list) => list.some((book, i) => i > 0 && book.x > list[i - 1].x + list[i - 1].width);
+    assert.ok([0, 1, 2, 3, 4, 5, 6, 7].some((other) => gaps(ctx.furnShelfBooks(f, other, 1))));
+    // Painted at the sizes of normal, RTX and Ultra: the frame stands out, the back of the shelf is
+    // deep and dark, and the height map (the normal map) sees the difference.
+    for (const size of [32, 128, 256]) {
+        const s = f.createSurface(size, size > 32);
+        ctx.TEXTURE_PATTERNS.bookshelf.paint(f, s, null, seed);
+        const at = (u, v) => Math.floor(v * size) * size + Math.floor(u * size);
+        const light = (i) => s.color[i * 3] + s.color[i * 3 + 1] + s.color[i * 3 + 2];
+        assert.ok(s.height[at(0.01, 0.5)] > 0.9, 'frame');
+        assert.ok(s.height[at(0.5, 0.5)] > 0.8, 'the shelf between the rows');
+        let deep = 0;
+        const seen = new Set();
+        for (let i = 0; i < size * size; i++) {
+            if (s.height[i] < 0.1) {
+                deep++;
+                assert.ok(light(i) < 200, 'the back is dark');
+            }
+            seen.add(`${Math.round(s.color[i * 3] / 16)},${Math.round(s.color[i * 3 + 1] / 16)},${Math.round(s.color[i * 3 + 2] / 16)}`);
+        }
+        assert.ok(deep > size * size * 0.05, 'there is depth above the books');
+        assert.ok(seen.size > 12, `${seen.size} colours`);
+    }
+    assert.ok(ctx.TEXTURE_PATTERNS.bookshelf.rtx.normalScale > 1, 'RTX and Ultra feel the relief');
+});
+
+test('the bookshelf: books on the side that looks at you, plain wood on the rest; old ones keep theirs', () => {
+    const world = makeWorld();
+    const place = world.getPlacementBlocks('bookshelf', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look: { x: 0, y: -0.5, z: -1 } });
+    assert.equal(place[0].blockType, 'bookshelf:s');
+    const front = world.getMaterial('bookshelf:n')[5];
+    const planks = world.getMaterial('planks');
+    const plain = Array.isArray(planks) ? planks[0] : planks;
+    for (const [type, face] of Object.entries({ 'bookshelf:e': 0, 'bookshelf:w': 1, 'bookshelf:s': 4, 'bookshelf:n': 5 })) {
+        const material = world.getMaterial(type);
+        assert.equal(material[face], front, type);
+        assert.equal(material.filter((entry) => entry === front).length, 1, type);
+        assert.equal(world.getDropTypeForBlock(type), 'bookshelf');
+    }
+    assert.equal(world.getFaceTextureSpecs('bookshelf:e').top.pattern, 'planks');
+    assert.equal(world.getFaceTextureSpecs('bookshelf:e').side.pattern, 'planks');
+    assert.ok(plain, 'planks exist');
+    // What a saved world has under the plain name stays as it was, and stays put when a build turns.
+    assert.equal(world.getFaceTextureSpecs('bookshelf').side.pattern, 'bookshelf');
+    assert.equal(world.getFaceTextureSpecs('bookshelf').top.pattern, 'planks');
+    assert.equal(ctx.constructionTurnType('bookshelf', 1, world.blockTypes), 'bookshelf');
+    assert.equal(ctx.constructionTurnType('bookshelf:e', 1, world.blockTypes), 'bookshelf:s');
 });
 
 test('lights use the block-light system, each at its level, with no power', () => {

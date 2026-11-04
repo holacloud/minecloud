@@ -768,7 +768,14 @@ function constructionShowroom(b) {
     b.set(16, 1, 9, 'table');
     b.set(16, 2, 9, 'table_lamp');
     b.set(15, 2, 9, 'vase');
-    b.box(22, 1, 4, 22, 3, 6, 'bookshelf');
+    const bookshelves = (x0, z0, x1, z1, facing) => {
+        for (let y = 1; y <= 3; y++) {
+            for (let z = z0; z <= z1; z++) {
+                for (let x = x0; x <= x1; x++) piece(x, y, z, 'bookshelf', 'bookshelf', facing);
+            }
+        }
+    };
+    bookshelves(22, 4, 22, 6, 'w');
     ['sunset', 'peaks', 'meadow', 'night', 'shapes', 'fish'].forEach((name, i) => {
         piece(11 + i, 3, 4, `painting_${name}`, 'painting', 's');
     });
@@ -853,7 +860,7 @@ function constructionShowroom(b) {
     sign(20, 43, 'ESTUDIO. Clic derecho en la silla: te sientas. En el cofre: guarda cosas. Las estanterías son adorno.',
         'Study. Right click the chair to sit, the chest to store things. The bookshelves are decoration.');
     skylight(12, 45, 19, 45);
-    b.box(12, 1, 50, 19, 3, 50, 'bookshelf');
+    bookshelves(12, 50, 19, 50, 'n');
     piece(15, 1, 47, 'desk', 'desk', 's');
     chair(15, 48, 'dark_oak', 'n');
     b.set(15, 2, 47, 'table_lamp');
