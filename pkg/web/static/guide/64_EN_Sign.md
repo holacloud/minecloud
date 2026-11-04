@@ -2,8 +2,8 @@
 
 ![Sign](item:sign)
 
-A wooden block on which you can **write a message** for passers-by. Other players can read it and **react with
-emojis**.
+A wooden **post with a board** on which you can **write a message** for passers-by. Other players can read it and
+**react with emojis**.
 
 | In-game name | Id | Break |
 |---|---|---|
@@ -17,10 +17,18 @@ emojis**.
 
 ## How to use it
 
-1. **Place it** with a right click. A box opens: "Write the sign message (up to 288 characters)".
+1. **Place it** with a right click. On the ground it stands on its post, **looking at you**. On the side of a block
+   it hangs against it as a wall board, with no post. A box opens: "Write the sign message (up to 288 characters)".
 2. Write your message, up to **288 characters**, and accept. If you leave it empty or cancel, the sign is not
    placed.
 3. **To read it**, look at the sign and press **F**: the reader opens with the full text.
+
+The board **grows with the text**: a few words in big letters on a small board, a long message in smaller letters on
+a bigger one. A post's board reads the right way round **from both sides**, and it can be read at night too. You can
+walk past a post, and through a wall board.
+
+If the text has ` // ` in it, the board only shows what comes before it, and the reader all of it: handy for saying
+the same thing in two languages.
 
 When you aim at a sign, the block inspector already shows the start of the message.
 

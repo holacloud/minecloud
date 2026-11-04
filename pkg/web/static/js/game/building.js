@@ -21,7 +21,7 @@ Object.assign(Game.prototype, {
 
         const name = this.getBlockDisplayName(type);
         const breakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
-        const signText = type === 'sign' ? this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z) : '';
+        const signText = isSignBlockType(type) ? this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z) : '';
         const lines = [
             `<span class="label">Block:</span> ${name}`,
             `<span class="label">Coords:</span> ${worldPos.x}, ${worldPos.y}, ${worldPos.z}`,
@@ -548,6 +548,13 @@ Object.assign(Game.prototype, {
                 const collisionHeight = this.world.registry.height[partId];
                 if (collisionHeight > 0 && this.cameraController.intersectsBody(eye, part.x, part.y, part.z, collisionHeight)) return;
             }
+            // Whatever way it faces, a sign needs its text before it is anything.
+            let signText = null;
+            if (blockType === 'sign') {
+                signText = this.promptSignText();
+                if (!signText) return;
+                parts[0].text = signText;
+            }
             if (parts.length > 1 || parts[0].blockType !== blockType) {
                 if (!parts.map((part) => this.world.addBlock(part)).some(Boolean)) return;
                 this.consumeSelectedBlock();
@@ -560,10 +567,8 @@ Object.assign(Game.prototype, {
             }
 
             const payload = { x: newPos.x, y: newPos.y, z: newPos.z, blockType: blockType };
-            if (blockType === 'sign') {
-                const text = this.promptSignText();
-                if (!text) return;
-                payload.text = text;
+            if (signText) {
+                payload.text = signText;
             } else if (blockType === 'sound_block') {
                 payload.instrument = 'bell';
                 payload.note = 0;

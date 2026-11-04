@@ -164,7 +164,7 @@ Object.assign(Game.prototype, {
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos) return false;
-        if (this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z) !== 'sign') return false;
+        if (!isSignBlockType(this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z))) return false;
 
         const text = this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z);
         if (!text) return false;

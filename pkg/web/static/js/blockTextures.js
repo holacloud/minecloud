@@ -568,13 +568,16 @@ class BlockTextureFactory {
                 });
             },
 
+            // The upper half is the board (the small one of a sign with no text, and the icon);
+            // the post, in the middle, runs down through the lower half.
             sign(s, tint, seed) {
-                f.patterns().planks(s, 0xc49a62, seed);
-                const board = f.rgb(0xe6cfa4);
+                f.patterns().planks(s, 0x7a5532, seed);
+                const board = f.rgb(0x8a6a42);
+                const text = f.rgb(0xf0dcb4);
                 f.each(s, (x, y, u, v) => {
-                    if (u < 0.14 || u > 0.86 || v < 0.16 || v > 0.6) return;
-                    const line = v > 0.24 && v < 0.54 && ((v * 10) % 1) < 0.25 && u > 0.22 && u < 0.78;
-                    f.put(s, x, y, f.tone(s, board, line ? -0.35 : (f.hash(x, y, seed) - 0.5) * 0.06), 0.8);
+                    if (v >= 0.52) return;
+                    const line = v > 0.14 && v < 0.42 && ((v * 12) % 1) < 0.3 && u > 0.2 && u < 0.8;
+                    f.put(s, x, y, line ? text : f.tone(s, board, (f.hash(x, y, seed) - 0.5) * 0.08), 0.8);
                 });
             },
 

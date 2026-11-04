@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 )
 
 const chunkDataPath = "data/chunks"
+
+// The bytes of a sign's text the server keeps.
+const signMaxTextBytes = 288
 
 var chunkStore *world.Store
 
@@ -81,6 +85,29 @@ func takeLegacyEdits(chunkX, chunkZ int) []world.Edit {
 	// Persist the shrunk legacy maps outside the store lock.
 	go saveWorldState()
 	return edits
+}
+
+// isSignBlock reports whether a block name is a sign, in any of its states: sign, sign:e:post...
+// Worlds saved before signs had states hold the plain name.
+func isSignBlock(name string) bool {
+	base, _, _ := strings.Cut(name, ":")
+	return base == "sign"
+}
+
+// sanitizeSignPayload keeps a placed sign's text within its limit, and takes text and votes off
+// anything that is not a sign.
+func sanitizeSignPayload(payload *Block) {
+	if !isSignBlock(payload.BlockType) {
+		payload.Text = ""
+		payload.Votes = nil
+		return
+	}
+	if len(payload.Text) > signMaxTextBytes {
+		payload.Text = payload.Text[:signMaxTextBytes]
+	}
+	if payload.Votes == nil {
+		payload.Votes = map[string]int{"thumbup": 0, "thumbdown": 0, "heart": 0, "happy": 0, "star": 0}
+	}
 }
 
 func hasBlockMetadata(b Block) bool {

@@ -134,6 +134,12 @@ var powerSeeThrough = map[string]bool{
 	"flower_yellow": true, "copper_wire": true, "wire_post": true, "iron_bars": true, "ladder": true, "sign": true,
 }
 
+// powerLetsSunThrough looks at the block whatever its state (sign:e:post is a sign).
+func powerLetsSunThrough(name string) bool {
+	base, _, _ := strings.Cut(name, ":")
+	return powerSeeThrough[base]
+}
+
 // PowerBlock is an electric block in the world. Energy (J) is the charge of a battery.
 type PowerBlock struct {
 	X      int     `json:"x"`
@@ -360,7 +366,7 @@ func (g *powerGrid) surroundings(b *PowerBlock, w cropWorld, now time.Time) *pow
 		s.skyOpen = true
 		for dy := 1; dy <= powerSkyScan; dy++ {
 			name, err := w.Block(b.X, b.Y+dy, b.Z)
-			if err != nil || !powerSeeThrough[name] {
+			if err != nil || !powerLetsSunThrough(name) {
 				s.skyOpen = false
 				break
 			}
@@ -369,7 +375,7 @@ func (g *powerGrid) surroundings(b *PowerBlock, w cropWorld, now time.Time) *pow
 		s.cover = 0
 		for dy := 1; dy <= powerCoverScan; dy++ {
 			name, err := w.Block(b.X, b.Y+dy, b.Z)
-			if err == nil && !powerSeeThrough[name] && name != "water" {
+			if err == nil && !powerLetsSunThrough(name) && name != "water" {
 				s.cover++
 			}
 		}

@@ -80,7 +80,7 @@ function loadGame() {
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
         GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
-        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory,
+        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, ITEM_USE_HANDLERS,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval,
         MIRROR_RANGE, MIRROR_TARGET_MAX });`, context);
@@ -1228,4 +1228,230 @@ test('mirrors: sheen quads carry the normal of their faces and show what does no
     game.mirrorPickWait = 0;
     game.mirrorsRender(0.016);
     assert.equal(game.mirrorSheen.visible, false);
+});
+
+// ---------------------------------------------------------------------------------------
+// Signs
+
+// A game with what placeBlock asks of it, clicking a face of `target` with `item` in hand. No item
+// handler runs: they are for other tests. Returns what went to the server.
+function makePlacingGame(world, item, target, normal, look = { x: 0, y: -0.5, z: -1 }) {
+    const sent = [];
+    const messages = [];
+    const counts = { [item]: 3 };
+    const game = new ctx.Game();
+    const camera = { position: new Vector3(20, 3, 20), rotation: {} };
+    Object.assign(game, {
+        world,
+        cameraController: { eyeHeight: 1.62, yaw: 0, pitch: 0, intersectsBoxes: () => false, intersectsBody: () => false, isCrouching: false, camera },
+        network: { connected: true, send: (type, payload) => sent.push({ type, payload }) },
+        placeDistance: 6,
+        hitIndicator: { style: {} },
+        tryUseItemOnMob: () => false, tryMountMob: () => false,
+        raycastBlock: () => ({ object: { userData: { blockPosition: target } }, faceIndex: 0, point: new Vector3(target.x + 0.5, target.y + 1, target.z + 0.5), face: { normal } }),
+        getSelectedHeldItemType: () => item, getSelectedBlockType: () => item,
+        getInventoryCount: (type) => counts[type] || 0,
+        consumeSelectedBlock() { counts[item]--; },
+        getItemDefinition: () => null,
+        getInteractionRay: () => ({ origin: camera.position, reachOrigin: camera.position, direction: look }),
+        getLocalPlayerPosition: () => camera.position,
+        playPlaceSound() {}, showHitIndicator() {}, saveRespawnPoint() {},
+        receiveSystemMessage: ({ text }) => messages.push(text),
+        promptSignText: () => 'Hola'
+    });
+    return { game, sent, messages, counts };
+}
+function withoutItemHandlers(run) {
+    const saved = ctx.ITEM_USE_HANDLERS.splice(0);
+    try {
+        return run();
+    } finally {
+        ctx.ITEM_USE_HANDLERS.push(...saved);
+    }
+}
+
+test('signs: on the ground a post that looks at the player, against a side a board on the wall', () => {
+    const world = makeWorld();
+    const place = (click) => world.getPlacementBlocks('sign', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look: { x: 0, y: -0.5, z: -1 }, ...click })[0].blockType;
+    assert.equal(place({}), 'sign:s:post');
+    assert.equal(place({ look: { x: 1, y: -0.2, z: 0 } }), 'sign:w:post');
+    assert.equal(place({ look: { x: -1, y: -0.2, z: 0 } }), 'sign:e:post');
+    assert.equal(place({ look: { x: 0, y: -0.5, z: 1 } }), 'sign', 'north and post are the plain name');
+    assert.equal(place({ normal: { x: 1, y: 0, z: 0 } }), 'sign:e:wall');
+    assert.equal(place({ normal: { x: 0, y: 0, z: -1 } }), 'sign:n:wall');
+    // A whole family under one item, all dropping it and sharing materials.
+    const family = Object.keys(world.blockTypes).filter((type) => ctx.isSignBlockType(type));
+    assert.equal(family.length, 8);
+    for (const type of family) {
+        assert.equal(world.getDropTypeForBlock(type), 'sign', type);
+        assert.equal(world.getMaterial(type), world.getMaterial('sign'), type);
+        assert.equal(world.registry.fullCube[world.registry.id(type)], 0, type);
+    }
+    assert.ok(!ctx.isSignBlockType('sign_post') && !ctx.isSignBlockType(null) && !ctx.isSignBlockType('stone'));
+    // Only the post stops you; a wall board nothing, and it sits against its wall.
+    const collision = (type) => JSON.parse(JSON.stringify(world.shapes.collision(world.registry.id(type))));
+    assert.equal(collision('sign').length, 1);
+    assert.ok(collision('sign')[0][3] - collision('sign')[0][0] < 0.25);
+    assert.equal(collision('sign:e:wall').length, 0);
+    assert.ok(near(Math.min(...world.shapes.boxes(world.registry.id('sign:e:wall')).map((box) => box[0])), 0), 'its back on the wall to the west');
+    assert.equal(world.registry.solid[world.registry.id('sign:e:wall')], 0);
+    // They turn with a build, and keep their mount.
+    assert.equal(ctx.constructionTurnType('sign', 1, world.blockTypes), 'sign:e:post');
+    assert.equal(ctx.constructionTurnType('sign:e:wall', 1, world.blockTypes), 'sign:s:wall');
+    assert.equal(ctx.constructionTurnType('sign:w:post', 2, world.blockTypes), 'sign:e:post');
+});
+
+test('signs: a saved plain sign keeps its text and votes; every state keeps them; other blocks do not', () => {
+    const world = makeWorld();
+    world.rebuildAfterChange = () => {};
+    const votes = { thumbup: 2, thumbdown: 0, heart: 0, happy: 0, star: 1 };
+    world.loadBlocks({ blocks: { a: { x: 3, y: 1, z: 3, blockType: 'sign', text: 'old sign', votes } } });
+    assert.equal(world.getSignTextAt(3, 1, 3), 'old sign');
+    assert.equal(world.getSignVotesAt(3, 1, 3).star, 1);
+    assert.equal(world.getBlockTypeAt(3, 1, 3), 'sign');
+    for (const type of ['sign:e:post', 'sign:n:wall']) {
+        world.loadBlocks({ blocks: { a: { x: 5, y: 1, z: 5, blockType: type, text: type, votes } } });
+        assert.equal(world.getSignTextAt(5, 1, 5), type);
+        world.addBlock({ x: 6, y: 1, z: 6, blockType: type, text: 'hello' });
+        assert.equal(world.getSignTextAt(6, 1, 6), 'hello');
+        // A vote comes back as the block with its new votes.
+        world.addBlock({ x: 6, y: 1, z: 6, blockType: type, text: 'hello', votes });
+        assert.equal(world.getSignVotesAt(6, 1, 6).thumbup, 2);
+        world.removeBlockAt(6, 1, 6);
+        assert.equal(world.getSignTextAt(6, 1, 6), '');
+    }
+    world.addBlock({ x: 6, y: 1, z: 6, blockType: 'sign:e:post', text: 'hello' });
+    world.addBlock({ x: 6, y: 1, z: 6, blockType: 'stone' });
+    assert.equal(world.getSignTextAt(6, 1, 6), '', 'gone with the sign');
+});
+
+test('signs: placing asks for the text in every state and sends it, and cancelling places nothing', () => {
+    withoutItemHandlers(() => {
+        const world = makeWorld();
+        world.rebuildAfterChange = () => {};
+        // On the floor, looking north, it comes out as a state that has its own name.
+        const onFloor = makePlacingGame(world, 'sign', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 });
+        onFloor.game.placeBlock();
+        assert.equal(world.getBlockTypeAt(3, 1, 3), 'sign:s:post');
+        assert.equal(world.getSignTextAt(3, 1, 3), 'Hola');
+        assert.equal(onFloor.sent[0].payload.blockType, 'sign:s:post');
+        assert.equal(onFloor.sent[0].payload.text, 'Hola');
+        assert.equal(onFloor.counts.sign, 2);
+        // Looking south it is the plain name, by the other path.
+        const plain = makePlacingGame(world, 'sign', { x: 5, y: 0, z: 3 }, { x: 0, y: 1, z: 0 }, { x: 0, y: -0.5, z: 1 });
+        plain.game.placeBlock();
+        assert.equal(world.getBlockTypeAt(5, 1, 3), 'sign');
+        assert.equal(plain.sent[0].payload.text, 'Hola');
+        const cancelled = makePlacingGame(world, 'sign', { x: 7, y: 0, z: 3 }, { x: 0, y: 1, z: 0 });
+        cancelled.game.promptSignText = () => null;
+        cancelled.game.placeBlock();
+        assert.equal(world.getBlockTypeAt(7, 1, 3), null);
+        assert.equal(cancelled.sent.length, 0);
+        assert.equal(cancelled.counts.sign, 3);
+        // The F key and the inspector read any state.
+        const reader = new ctx.Game();
+        const opened = [];
+        Object.assign(reader, { world, breakDistance: 6, raycastBlock: () => ({ object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0 }), openSignReader: (text) => opened.push(text) });
+        assert.equal(reader.tryReadSign(), true);
+        assert.deepEqual(Array.from(opened), ['Hola']);
+    });
+});
+
+test('signs: the board grows with the text and shows all of it; 288 bytes still fit', () => {
+    const world = makeWorld();
+    const short = world.signBoardLayout('Mine');
+    const middle = world.signBoardLayout('Sheep farm to the north, past the old bridge and the mill');
+    const long = world.signBoardLayout('Lorem ipsum dolor sit amet '.repeat(11).trim().slice(0, 288));
+    assert.ok(short.width === 1 && short.height <= 0.6, 'a short text fits the post');
+    assert.ok(middle.width > short.width && long.width >= middle.width && long.height > middle.height);
+    assert.equal(short.lines.join(' '), 'Mine');
+    assert.equal(long.truncated, false, '288 bytes are all on the board');
+    // Letters stay readable: how wide one is on the board, in blocks.
+    const letter = (layout) => layout.width / Math.max(...Array.from(layout.lines, (line) => line.length));
+    assert.ok(letter(short) > 0.2);
+    assert.ok(letter(long) > 0.04, `${letter(long)}`);
+    // One long word breaks across lines rather than being lost.
+    const word = world.signBoardLayout('x'.repeat(200));
+    assert.equal(word.truncated, false);
+    assert.equal(word.lines.join('').length, 200);
+    // A translation after " // " is for the reader.
+    assert.equal(world.signBoardLayout('Hola // Hello').lines.join(' '), 'Hola');
+    assert.equal(world.signBoardLayout('see http://example.com/a').lines.join(' '), 'see http://example.com/a');
+    // Something that would not fit ends in an ellipsis instead of being cut silently.
+    const over = world.signBoardLayout('wide '.repeat(200));
+    assert.equal(over.truncated, true);
+    assert.ok(over.lines[over.lines.length - 1].endsWith('…'));
+});
+
+test('signs: the board reads from both sides, stands on its post, and keeps out of walls', () => {
+    const world = makeWorld();
+    const long = 'Bienvenido. Sigue la línea amarilla: pasa por todo y vuelve a la salida. F ante un cartel.';
+    // A post in the open: centred on it, its foot halfway up the cell.
+    const free = world.signBoardPlacement('sign', 3, 1, 3, long);
+    assert.ok(free.width > 1 && near(free.x, 0) && near(free.z, 0));
+    assert.ok(near(free.y - free.height / 2, 0.5));
+    // The first state is a north-facing post: a wall to its east pushes the board west, and between
+    // two walls it stays one block wide.
+    put(world, 4, 1, 3, 'stone');
+    const pushed = world.signBoardPlacement('sign', 3, 1, 3, long);
+    assert.ok(pushed.x < 0 && near(pushed.x + pushed.width / 2, 0.5), 'its end at the wall');
+    put(world, 2, 1, 3, 'stone');
+    const tight = world.signBoardPlacement('sign', 3, 1, 3, long);
+    assert.ok(near(tight.width, 1) && near(tight.x, 0));
+    // A wall board lies against its wall: east-facing, on a wall to the west.
+    const onWall = world.signBoardPlacement('sign:e:wall', 8, 1, 3, 'Mine');
+    assert.ok(onWall.x < -0.4 && near(onWall.z, 0));
+    assert.ok(near(onWall.y, 0.5));
+    // A box with the text on both faces, the same picture, so neither is mirrored; a wall board's
+    // back is plain. Aiming anywhere at it is aiming at the sign.
+    const made = [];
+    const realMesh = ctx.THREE.Mesh;
+    ctx.THREE.Mesh = class { constructor(geometry, material) { this.geometry = geometry; this.material = material; this.userData = {}; made.push(this); } };
+    ctx.THREE.BoxGeometry = class { constructor(...size) { this.size = size; } rotateY(angle) { this.turn = angle; } };
+    ctx.THREE.MeshBasicMaterial = class extends Material {};
+    try {
+        const { mesh } = world.createSignLabel('Hola', 'sign:e:post', 9, 2, 4);
+        assert.equal(mesh.material.length, 6);
+        assert.equal(mesh.material[4], mesh.material[5]);
+        assert.ok(mesh.material[4].map);
+        assert.notEqual(mesh.material[0], mesh.material[4]);
+        assert.equal(mesh.userData.isSignLabel, true);
+        assert.deepEqual(JSON.parse(JSON.stringify(mesh.userData.blockPosition)), { x: 9, y: 2, z: 4 });
+        assert.ok(near(mesh.geometry.turn, Math.PI / 2), 'turned in its geometry, for the face normals of a click');
+        const { mesh: wall } = world.createSignLabel('Hola', 'sign:e:wall', 9, 2, 4);
+        assert.notEqual(wall.material[5], wall.material[4]);
+    } finally {
+        ctx.THREE.Mesh = realMesh;
+        delete ctx.THREE.BoxGeometry;
+        delete ctx.THREE.MeshBasicMaterial;
+    }
+});
+
+test('signs: nothing in the client or the server compares with the plain name any more', () => {
+    const js = path.join(STATIC, 'js');
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : entry.name.endsWith('.js') ? [path.join(dir, entry.name)] : []));
+    for (const file of walk(js)) {
+        const lines = fs.readFileSync(file, 'utf8').split('\n');
+        lines.forEach((line, index) => {
+            if (!/[=!]== 'sign'/.test(line)) return;
+            // isSignBlockType itself, and the item in hand, which is never a state.
+            const allowed = (file.endsWith('blockShapes.js') && /return type === 'sign'/.test(line)) || (file.endsWith('building.js') && /blockType === 'sign'/.test(line));
+            assert.ok(allowed, `${path.relative(js, file)}:${index + 1}: ${line.trim()}`);
+        });
+    }
+    const network = path.join(ROOT, 'pkg', 'network');
+    for (const name of fs.readdirSync(network).filter((file) => file.endsWith('.go') && !file.endsWith('_test.go'))) {
+        assert.ok(!/[=!]= "sign"/.test(fs.readFileSync(path.join(network, name), 'utf8').replace('base == "sign"', '')), name);
+    }
+});
+
+test('the guide tells of the post, the wall board and the text on both sides, in both languages', () => {
+    const guide = path.join(STATIC, 'guide');
+    const read = (name) => fs.readFileSync(path.join(guide, name), 'utf8');
+    assert.match(read('64_EN_Sign.md'), /post with a board/);
+    assert.match(read('64_EN_Sign.md'), /wall board/);
+    assert.match(read('64_EN_Sign.md'), /from both sides/);
+    assert.match(read('64_ES_Cartel.md'), /poste de madera con un tablero/);
+    assert.match(read('64_ES_Cartel.md'), /tablero de pared/);
+    assert.match(read('64_ES_Cartel.md'), /por los dos lados/);
 });

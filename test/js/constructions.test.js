@@ -671,7 +671,7 @@ test('the showroom: the stained glass, the mirrors and the storage are set up fo
 test('the showroom: the signs reach the server, name their room and fit', () => {
     const plan = ctx.constructionPlan('showroom');
     const { world } = visit('showroom');
-    const signs = plan.cells.filter((cell) => cell.type === 'sign');
+    const signs = plan.cells.filter((cell) => baseOf(cell.type) === 'sign');
     const texts = signs.map((cell) => cell.meta.t);
     for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES']) {
         assert.ok(texts.some((text) => text.startsWith(name)), name);
@@ -680,11 +680,29 @@ test('the showroom: the signs reach the server, name their room and fit', () => 
         const text = cell.meta.t;
         const [es, en] = text.split(' // ');
         assert.ok(es && en, text);
-        // What the server keeps, what a label shows (the reader shows it all).
+        // What the server keeps, what a board shows (the reader shows it all).
         assert.ok(Buffer.byteLength(text) <= 288, `${Buffer.byteLength(text)} bytes: ${text}`);
-        assert.equal(world.wrapSignText(es, 26, 6).join(' '), es, `too long for its label: ${es}`);
-        // The label floats above the sign.
+        const board = world.signBoardPlacement(cell.type, cell.x, cell.y, cell.z, text);
+        assert.equal(board.truncated, false, text);
+        assert.equal(board.lines.join(' '), es, `not what its board shows: ${es}`);
+        // The board rises into the cell above, with nothing in the way.
         assert.ok(!world.registry.fullCube[world.getBlockId(cell.x, cell.y + 1, cell.z)], text);
+        // It looks at open floor.
+        const [dx, dz] = ctx.SHAPE_DIRECTIONS[board.facing];
+        assert.ok(!world.registry.fullCube[world.getBlockId(cell.x + dx, cell.y, cell.z + dz)], `looks at a wall: ${text}`);
+        assert.ok(!world.registry.fullCube[world.getBlockId(cell.x + dx, cell.y + 1, cell.z + dz)], `looks at a wall: ${text}`);
+        // Neither end of it is lost in a wall, at either of the heights it spans.
+        for (const side of [-1, 1]) {
+            const end = (-dz * side * board.width) / 2 + board.x;
+            const endZ = (dx * side * board.width) / 2 + board.z;
+            for (const height of [cell.y, cell.y + 1]) {
+                const inset = 0.02 * side;
+                const type = world.getBlockTypeAt(Math.floor(cell.x + 0.5 + end - dz * -inset), height, Math.floor(cell.z + 0.5 + endZ + dx * -inset));
+                assert.ok(!type || !world.registry.fullCube[world.registry.id(type)], `its end is in ${type}: ${text}`);
+            }
+        }
+        // Only the post stops a visitor.
+        for (const box of world.shapes.collision(world.registry.id(cell.type))) assert.ok(box[3] - box[0] < 0.3 && box[5] - box[2] < 0.3);
     }
 });
 
@@ -703,8 +721,10 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
             flat.set(`${cell.x},${cell.y},${cell.z}`, cell);
             assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type, `${cell.x},${cell.y},${cell.z} turned ${turns}`);
         }
-        const signs = sent.filter(({ payload }) => payload.blockType === 'sign');
-        assert.equal(signs.length, layout.cells.filter((cell) => cell.type === 'sign').length);
+        const isSign = (type) => type === 'sign' || String(type).startsWith('sign:');
+        const signs = sent.filter(({ payload }) => isSign(payload.blockType));
+        assert.equal(signs.length, 25);
+        assert.equal(signs.length, layout.cells.filter((cell) => isSign(cell.type)).length);
         for (const { payload } of signs) {
             assert.ok(payload.text);
             assert.equal(world.getSignTextAt(payload.x, payload.y, payload.z), payload.text);

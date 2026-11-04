@@ -375,7 +375,7 @@ Object.assign(Game.prototype, {
                     if (!type || !this.blueprintIsPlaceable(type)) continue;
                     const cell = { x, y, z, type };
                     if (type === 'ladder') cell.meta = { f: this.world.getLadderFacingAt(wx, wy, wz) };
-                    else if (type === 'sign') cell.meta = { t: this.world.getSignTextAt(wx, wy, wz) };
+                    else if (isSignBlockType(type)) cell.meta = { t: this.world.getSignTextAt(wx, wy, wz) };
                     else if (type === 'sound_block') {
                         const state = this.world.getSoundBlockStateAt(wx, wy, wz);
                         cell.meta = { i: state.instrument, o: state.note };
@@ -557,7 +557,8 @@ Object.assign(Game.prototype, {
             if (point.distanceTo(ray.reachOrigin) > this.placeDistance + 0.05) continue;
             const cell = wanted.get(`${Math.floor(point.x)},${Math.floor(point.y)},${Math.floor(point.z)}`);
             if (!cell) continue;
-            if (cell.type !== item) return false;
+            // A piece's state comes with the plan; what the player holds is the piece.
+            if ((this.world.blockTypes[cell.type].variantOf || cell.type) !== item) return false;
             if (!this.blueprintPlaceCell(cell, true)) return false;
             this.blueprintRefreshStatus();
             return true;
@@ -575,14 +576,14 @@ Object.assign(Game.prototype, {
         const payload = { x: cell.wx, y: cell.wy, z: cell.wz, blockType: cell.type };
         const meta = cell.meta || {};
         if (cell.type === 'ladder') payload.facing = meta.f || 'pz';
-        else if (cell.type === 'sign') {
+        else if (isSignBlockType(cell.type)) {
             payload.text = meta.t || (consume ? this.promptSignText() : '');
             if (!payload.text) return false;
         } else if (cell.type === 'sound_block') {
             payload.instrument = meta.i || 'bell';
             payload.note = Number.isInteger(meta.o) ? meta.o : 0;
         }
-        if (consume && this.getInventoryCount(cell.type) <= 0) return false;
+        if (consume && this.getInventoryCount(this.world.blockTypes[cell.type].variantOf || cell.type) <= 0) return false;
         if (!this.world.addBlock(payload)) return false;
         if (consume) this.consumeSelectedBlock();
         if (this.network.connected) this.network.send('blockPlace', payload);

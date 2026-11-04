@@ -276,7 +276,7 @@ func recordChatMessage(client *Client, text string) {
 }
 
 func recordSignMessage(client *Client, block Block) {
-	if signMessageStore == nil || client == nil || block.BlockType != "sign" || block.Text == "" {
+	if signMessageStore == nil || client == nil || !isSignBlock(block.BlockType) || block.Text == "" {
 		return
 	}
 

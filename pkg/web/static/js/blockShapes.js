@@ -416,6 +416,37 @@ registerBlockShape('fence_gate', {
     iconState: { facing: 'n', open: 'closed' }
 });
 
+// Signs: a post with a small board on it, or against a wall the board alone (clicking a block's
+// side). They look at the player who places them. Only the post stops you. The text goes on a
+// bigger board of its own, drawn when the chunk is (WorldRenderer.createSignLabel). The text is kept
+// by position; its first state is the plain name `sign`, which is what saved worlds have.
+function isSignBlockType(type) {
+    return type === 'sign' || (typeof type === 'string' && type.startsWith('sign:'));
+}
+
+registerBlockShape('sign', {
+    states: [['facing', SHAPE_FACINGS], ['mount', ['post', 'wall']]],
+    boxes(state) {
+        const boxes = state.mount === 'wall'
+            ? [[PX, 4 * PX, 15 * PX, 15 * PX, 12 * PX, 1]]
+            : [[7 * PX, 0, 7 * PX, 9 * PX, 1, 9 * PX], [PX, 8 * PX, 7 * PX, 15 * PX, 15.5 * PX, 9 * PX]];
+        return rotateShapeBoxes(boxes, state.facing);
+    },
+    collision(state) {
+        return state.mount === 'wall' ? [] : [[6.5 * PX, 0, 6.5 * PX, 9.5 * PX, 1, 9.5 * PX]];
+    },
+    variant(state) {
+        return state.mount === 'wall' ? { solid: false } : {};
+    },
+    place(ctx) {
+        if (Math.abs(ctx.normal.y) < 0.5) {
+            return [{ dx: 0, dy: 0, dz: 0, state: { facing: shapeFacingFromVector(ctx.normal.x, ctx.normal.z), mount: 'wall' } }];
+        }
+        return [{ dx: 0, dy: 0, dz: 0, state: { facing: shapeFacingFromVector(-ctx.look.x, -ctx.look.z), mount: 'post' } }];
+    },
+    iconState: { facing: 's', mount: 'post' }
+});
+
 // Panes (glass panes, iron bars): a 2-pixel sheet that joins neighbouring panes and solid
 // cubes. A pane with one neighbour runs straight through; on its own it shows as a cross.
 const PANE_POST = [7 * PX, 0, 7 * PX, 9 * PX, 1, 9 * PX];

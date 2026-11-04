@@ -1,3 +1,12 @@
+// Boards for sign texts, from short to long: [letters a line, lines, width and height in blocks].
+const SIGN_BOARD_SIZES = [[12, 3, 1, 0.56], [18, 4, 1.25, 0.7], [26, 6, 1.6, 0.95], [38, 9, 1.8, 1.1]];
+const SIGN_BOARD_THICKNESS = 0.135;
+const SIGN_BOARD_PIXELS = 512;
+// How high a post's board starts, in its cell; it may rise into the cell above, like a torch's light.
+const SIGN_BOARD_BOTTOM = 0.5;
+// A box's +z face turned to look each way.
+const SIGN_BOARD_TURN = { n: Math.PI, e: Math.PI / 2, s: 0, w: -Math.PI / 2 };
+
 class WorldRenderer {
     constructor(scene) {
         this.scene = scene;
@@ -91,7 +100,7 @@ class WorldRenderer {
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
             bed: { color: 0xC05050, name: 'Bed', breakDuration: 0.55 },
-            sign: { color: 0xB78A55, name: 'Sign', breakDuration: 0.35 },
+            sign: { color: 0xB78A55, name: 'Sign', breakDuration: 0.35, shape: 'sign', lightPasses: true, faces: { top: 'sign', side: 'sign' } },
             cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
             stone_bricks: { color: 0x8D8D8D, name: 'Stone Bricks', breakDuration: 1.05 },
@@ -626,41 +635,121 @@ class WorldRenderer {
         return lines.slice(0, maxLines);
     }
 
-    createSignLabel(text) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
+    // What a sign's board shows: what comes before " // ", when a text has it (a language and its
+    // translation, as in the showroom), and the reader (F) shows all of it.
+    signBoardText(text) {
+        return text.split(' // ')[0];
+    }
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgba(28, 18, 10, 0.88)';
-        ctx.fillRect(22, 26, 468, 204);
-        ctx.strokeStyle = 'rgba(238, 215, 171, 0.55)';
-        ctx.lineWidth = 8;
-        ctx.strokeRect(22, 26, 468, 204);
+    // The board that fits a text, the smallest whole one: { lines, width, height, truncated }, in
+    // blocks. Short texts get big letters, and the longest still all fit: 288 bytes in the last size.
+    signBoardLayout(text) {
+        const shown = this.signBoardText(text).replace(/\s+/g, ' ').trim();
+        const letters = shown.replace(/ /g, '').length;
+        // With every word whole if it can be, or else broken across lines.
+        for (const whole of [true, false]) {
+            for (const [columns, rows, width, height] of SIGN_BOARD_SIZES) {
+                const lines = this.wrapSignText(shown, columns, rows);
+                const fits = whole ? lines.join(' ') === shown : lines.join('').replace(/ /g, '').length === letters;
+                if (fits) return { lines, width, height, truncated: false };
+            }
+        }
+        const [columns, rows, width, height] = SIGN_BOARD_SIZES[SIGN_BOARD_SIZES.length - 1];
+        const lines = this.wrapSignText(shown, columns, rows);
+        lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, columns - 1)}\u2026`;
+        return { lines, width, height, truncated: true };
+    }
+
+    // Where the board of the sign `type` at a cell goes, relative to the cell's middle at the height
+    // of the cell's floor: its middle, and the way it looks. A board wider than its cell leans away
+    // from a wall on one side, and between two walls it stays one block wide.
+    signBoardPlacement(type, x, y, z, text) {
+        const state = this.blockTypes[type].state;
+        const [dx, dz] = SHAPE_DIRECTIONS[state.facing];
+        const layout = this.signBoardLayout(text);
+        const wall = state.mount === 'wall';
+        const blocked = (side) => {
+            const cx = x - dz * side;
+            const cz = z + dx * side;
+            return this.registry.fullCube[this.getBlockId(cx, y, cz)] === 1 || (!wall && this.registry.fullCube[this.getBlockId(cx, y + 1, cz)] === 1);
+        };
+        let width = layout.width;
+        let along = 0;
+        if (width > 1) {
+            const plus = blocked(1);
+            const minus = blocked(-1);
+            if (plus && minus) width = 1;
+            else if (plus) along = -(width - 1) / 2;
+            else if (minus) along = (width - 1) / 2;
+        }
+        const back = wall ? 0.5 - SIGN_BOARD_THICKNESS / 2 : 0;
+        return {
+            ...layout, width,
+            facing: state.facing,
+            x: -dz * along - dx * back,
+            y: wall ? 0.5 : SIGN_BOARD_BOTTOM + layout.height / 2,
+            z: dx * along - dz * back
+        };
+    }
+
+    // The face of a board: painted wood with the text burnt light on it, the same from both sides.
+    createSignBoardTexture(layout) {
+        const canvas = document.createElement('canvas');
+        canvas.width = SIGN_BOARD_PIXELS;
+        canvas.height = Math.round((SIGN_BOARD_PIXELS * layout.height) / layout.width);
+        const ctx = canvas.getContext('2d');
+        const { width, height } = canvas;
+        ctx.fillStyle = '#33231a';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#2a1c14';
+        for (let plank = 1; plank < 4; plank++) ctx.fillRect(0, (height * plank) / 4 - 1, width, 2);
+        ctx.strokeStyle = '#8a6a42';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(5, 5, width - 10, height - 10);
+
+        const innerWidth = width * 0.9;
+        const row = (height * 0.86) / layout.lines.length;
+        const longest = layout.lines.reduce((a, b) => (b.length > a.length ? b : a), '');
+        let font = Math.min(row * 0.8, innerWidth / (Math.max(longest.length, 1) * 0.55));
+        ctx.font = `bold ${font}px Arial`;
+        const measured = ctx.measureText(longest).width;
+        if (measured > innerWidth) {
+            font *= innerWidth / measured;
+            ctx.font = `bold ${font}px Arial`;
+        }
         ctx.fillStyle = '#f6e4bd';
-        ctx.font = 'bold 28px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        const lines = this.wrapSignText(text, 26, 6);
-        const startY = 64;
-        lines.forEach((line, index) => {
-            ctx.fillText(line, 256, startY + index * 30);
-        });
+        const first = height / 2 - (row * (layout.lines.length - 1)) / 2;
+        layout.lines.forEach((line, index) => ctx.fillText(line, width / 2, first + index * row));
 
         const texture = new THREE.CanvasTexture(canvas);
         if (THREE.sRGBEncoding) {
             texture.encoding = THREE.sRGBEncoding;
         }
+        // Text on a board seen at an angle.
+        texture.anisotropy = 4;
         texture.needsUpdate = true;
+        return texture;
+    }
 
-        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(1.6, 0.8, 1);
-        sprite.renderOrder = 120;
-        sprite.userData.isSignLabel = true;
-        return sprite;
+    // A sign's board, with no light of its own to depend on: it can be read in the dark. Its faces
+    // read the right way round from either side, since each of a box's faces is a picture of its own.
+    // The geometry is turned, not the mesh, so a click on it knows which way it looks. It belongs
+    // to the sign's cell for aiming and breaking (`blockPosition`), overhang included.
+    createSignLabel(text, type, x, y, z) {
+        const placement = this.signBoardPlacement(type, x, y, z, text);
+        const material = new THREE.MeshBasicMaterial({ map: this.createSignBoardTexture(placement) });
+        if (!this.signEdgeMaterial) this.signEdgeMaterial = new THREE.MeshBasicMaterial({ color: 0x8a6a42 });
+        const edge = this.signEdgeMaterial;
+        const wall = this.blockTypes[type].state.mount === 'wall';
+        const geometry = new THREE.BoxGeometry(placement.width, placement.height, SIGN_BOARD_THICKNESS);
+        geometry.rotateY(SIGN_BOARD_TURN[placement.facing]);
+        const mesh = new THREE.Mesh(geometry, [edge, edge, edge, edge, material, wall ? edge : material]);
+        mesh.userData.isSignLabel = true;
+        mesh.userData.ownsGeometry = true;
+        mesh.userData.blockPosition = { x, y, z };
+        return { mesh, placement };
     }
 
     createLadderMesh(facing) {
@@ -725,7 +814,7 @@ class WorldRenderer {
             case 'copper_block': case 'iron_block': case 'gold_block':
                 return uniform(spec('metal', def.color));
             case 'dirt': case 'stone': case 'cobblestone': case 'sand': case 'bedrock': case 'stone_bricks':
-            case 'glass': case 'water': case 'bed': case 'sign': case 'sound_block': case 'torch':
+            case 'glass': case 'water': case 'bed': case 'sound_block': case 'torch':
             case 'ladder': case 'tall_grass': case 'spray_paint':
                 return uniform(spec(type));
         }
@@ -1269,6 +1358,11 @@ class WorldRenderer {
                 if (child.material.map) child.material.map.dispose();
                 child.material.dispose();
             }
+            if (child.userData.isSignLabel) {
+                const board = child.material[4];
+                board.map.dispose();
+                board.dispose();
+            }
             if (child.userData.ownsGeometry && child.geometry) {
                 child.geometry.dispose();
             }
@@ -1308,7 +1402,7 @@ class WorldRenderer {
 
         // Stained glass: own object and no shadow (it is see-through, and light passes), drawn
         // after the other see-through things it may have in front of or behind it, so that it
-        // filters them too; before spray paint and sign labels, which are on its near side.
+        // filters them too; before spray paint, which is on its near side.
         const glassMesh = result.glass.length ? ChunkMesher.toMesh(result.glass) : null;
         if (glassMesh) {
             glassMesh.renderOrder = 60;
@@ -1318,12 +1412,12 @@ class WorldRenderer {
         for (const { type, x, y, z } of result.special) {
             const blockKey = this.blockKey(x, y, z);
 
-            if (type === 'sign') {
+            if (isSignBlockType(type)) {
                 const text = this.signTextByKey.get(blockKey);
                 if (text) {
-                    const sprite = this.createSignLabel(text);
-                    sprite.position.set(x - baseX + 0.5, y + 1.15, z - baseZ + 0.5);
-                    chunk.add(sprite);
+                    const { mesh, placement } = this.createSignLabel(text, type, x, y, z);
+                    mesh.position.set(x - baseX + 0.5 + placement.x, y + placement.y, z - baseZ + 0.5 + placement.z);
+                    chunk.add(mesh);
                 }
             }
 
@@ -1710,10 +1804,10 @@ class WorldRenderer {
         const previousType = this.getBlockTypeAt(x, y, z);
         const changed = this.setEditedBlock(x, y, z, payload.blockType);
         const key = this.blockKey(x, y, z);
-        if (payload.blockType === 'sign' && Object.prototype.hasOwnProperty.call(payload, 'text')) {
+        if (isSignBlockType(payload.blockType) && Object.prototype.hasOwnProperty.call(payload, 'text')) {
             this.signTextByKey.set(key, payload.text || '');
             this.signVotesByKey.set(key, payload.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
-        } else if (payload.blockType === 'sign' && payload.votes) {
+        } else if (isSignBlockType(payload.blockType) && payload.votes) {
             this.signVotesByKey.set(key, payload.votes);
         } else if (payload.blockType === 'sound_block') {
             this.soundBlockStateByKey.set(key, { instrument: payload.instrument || 'bell', note: Number.isInteger(payload.note) ? payload.note : 0 });
@@ -1751,7 +1845,7 @@ class WorldRenderer {
             this.setEditedBlock(x, y, z, block.blockType);
 
             const blockKey = this.blockKey(x, y, z);
-            if (block.blockType === 'sign' && block.text) {
+            if (isSignBlockType(block.blockType) && block.text) {
                 this.signTextByKey.set(blockKey, block.text);
                 this.signVotesByKey.set(blockKey, block.votes || { thumbup: 0, thumbdown: 0, heart: 0, happy: 0, star: 0 });
             } else if (block.blockType === 'sound_block') {

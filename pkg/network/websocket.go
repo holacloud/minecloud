@@ -610,17 +610,7 @@ func handleMessage(client *Client, msg Message) {
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
-		if payload.BlockType == "sign" {
-			if len(payload.Text) > 288 {
-				payload.Text = payload.Text[:288]
-			}
-			if payload.Votes == nil {
-				payload.Votes = map[string]int{"thumbup": 0, "thumbdown": 0, "heart": 0, "happy": 0, "star": 0}
-			}
-		} else {
-			payload.Text = ""
-			payload.Votes = nil
-		}
+		sanitizeSignPayload(&payload)
 		if payload.BlockType == "sound_block" {
 			payload.Instrument = strings.TrimSpace(payload.Instrument)
 			if payload.Instrument == "" {
@@ -832,7 +822,7 @@ func handleMessage(client *Client, msg Message) {
 		key := blockKey(payload.X, payload.Y, payload.Z)
 		stateMu.Lock()
 		block, ok := gameState.Blocks[key]
-		if ok && block.BlockType == "sign" {
+		if ok && isSignBlock(block.BlockType) {
 			if block.Votes == nil {
 				block.Votes = map[string]int{}
 			}

@@ -418,7 +418,7 @@ class ChunkMesher {
             const px = lx + 1;
             const pz = lz + 1;
 
-            if (type === 'sign' || id === ladderId) {
+            if (isSignBlockType(type) || id === ladderId) {
                 special.push({ type, x: worldX, y, z: worldZ });
             }
             if (id === ladderId) continue;
