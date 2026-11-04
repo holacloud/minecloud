@@ -824,12 +824,14 @@ function constructionShowroom(b) {
     lantern(5, 4, 22);
 
     // ---- 4. The bedroom ----
-    sign(10, 28, 'e', 'DORMITORIO. Clic derecho en armario y cofre: guardan cosas. F en la cama: duermes. Mírate en el espejo.',
-        'Bedroom. Right click the wardrobe and the chest to store things, and the curtain to draw it. F on the bed to sleep. Look in the mirror.');
+    sign(10, 28, 'e', 'DORMITORIO. Clic derecho en armario y cofre: guardan cosas. En la cama: te tumbas, y de noche duermes. Mírate en el espejo.',
+        'Bedroom. Right click the wardrobe and the chest to store things, the bed to lie down and, at night, sleep. Sneak gets up. Look in the mirror.');
     skylight(4, 30, 8, 30);
     skylight(4, 37, 8, 37);
     b.box(4, 1, 31, 8, 1, 35, 'purple_carpet');
-    b.box(1, 1, 32, 2, 1, 33, 'bed');
+    // Two beds side by side, the head at the wall.
+    piece(1, 1, 32, 'bed', 'bed', 'w');
+    piece(1, 1, 33, 'bed', 'bed', 'w');
     for (const z of [31, 34]) {
         piece(1, 1, z, 'bedside_table', 'bedside_table', 'e');
         b.set(1, 2, z, 'table_lamp');

@@ -552,19 +552,27 @@ class BlockTextureFactory {
                 });
             },
 
-            bed(s, tint, seed) {
+            // A bed seen from above, with its head on the side `facing`: pillow and sheet at the
+            // head, a quilted blanket from there on. Painted once for each way it can lie.
+            bed_top_n(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [u, v]); },
+            bed_top_s(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [1 - u, 1 - v]); },
+            bed_top_e(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [v, 1 - u]); },
+            bed_top_w(s, tint, seed) { f.paintBedTop(s, seed, (u, v) => [1 - v, u]); },
+
+            // By height, as the boxes cut it: dark legs, the wooden frame, the blanket down the
+            // mattress's side with the sheet showing at the top, the pillow above.
+            bed_side(s, tint, seed) {
+                const legs = f.rgb(0x4a3020);
+                const frame = f.rgb(0x8a5a34);
                 const blanket = f.rgb(0xb8423f);
                 const sheet = f.rgb(0xf1ebdc);
                 f.each(s, (x, y, u, v) => {
+                    const height = (1 - v) * 16;
                     const grain = (f.hash(x, y, seed) - 0.5) * 0.08;
-                    if (v < 0.3 && u > 0.12 && u < 0.88 && v > 0.06) {
-                        f.put(s, x, y, f.tone(s, sheet, grain + (v < 0.1 ? 0.04 : 0)), 0.8);
-                    } else if (v < 0.36) {
-                        f.put(s, x, y, f.tone(s, sheet, grain - 0.08), 0.6);
-                    } else {
-                        const quilt = ((Math.floor(u * 4) + Math.floor(v * 5)) % 2) * 0.06;
-                        f.put(s, x, y, f.tone(s, blanket, grain + quilt - (v < 0.42 ? 0.15 : 0)), 0.7);
-                    }
+                    if (height < 2) f.put(s, x, y, f.tone(s, legs, grain), 0.7);
+                    else if (height < 4) f.put(s, x, y, f.tone(s, frame, grain + (height < 2.6 ? -0.15 : 0.05)), 0.9);
+                    else if (height < 8.2) f.put(s, x, y, f.tone(s, blanket, grain + (height > 7.4 ? 0.08 : (Math.floor(u * 4) % 2) * 0.05)), 0.6);
+                    else f.put(s, x, y, f.tone(s, sheet, grain), 0.7);
                 });
             },
 
@@ -961,6 +969,26 @@ class BlockTextureFactory {
         };
         this.cache.set(key, result);
         return result;
+    }
+
+    // A bed's top. `across(u, v)` gives [across it, from its head to its foot], from 0 to 1.
+    paintBedTop(s, seed, across) {
+        const blanket = this.rgb(0xb8423f);
+        const sheet = this.rgb(0xf1ebdc);
+        this.each(s, (x, y, u, v) => {
+            const [a, b] = across(u, v);
+            const grain = (this.hash(x, y, seed) - 0.5) * 0.08;
+            if (b < 0.4) {
+                // The pillow's box is 3..13 by 1..5.5; a shadow lies round it on the sheet.
+                const pillow = a > 3 / 16 && a < 13 / 16 && b > 1 / 16 && b < 5.5 / 16;
+                const near = a > 2.2 / 16 && a < 13.8 / 16 && b < 6.2 / 16;
+                this.put(s, x, y, this.tone(s, sheet, grain + (pillow ? 0.05 : near ? -0.16 : -0.06)), pillow ? 0.9 : 0.6);
+            } else {
+                const quilt = ((Math.floor(a * 4) + Math.floor(b * 5)) % 2) * 0.06;
+                const fold = b < 0.47;
+                this.put(s, x, y, this.tone(s, fold ? sheet : blanket, grain + (fold ? -0.02 : quilt)), fold ? 0.8 : 0.6);
+            }
+        });
     }
 
     drawLabel(canvas, label, tint) {

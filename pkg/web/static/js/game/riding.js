@@ -64,7 +64,7 @@ Object.assign(Game.prototype, {
     // What playerMove reports about the mount, or null when on foot.
     getMountState() {
         // Sitting travels the same way (see updateOtherPlayer): the key "seat" is no species.
-        if (this.seated) return { key: 'seat', yaw: this.seated.avatarYaw };
+        if (this.seated) return { key: this.seated.lying ? 'bed' : 'seat', yaw: this.seated.avatarYaw };
         const mob = this.ridingMob;
         if (!mob) return null;
         return { key: `${mob.userData.species}:${mob.userData.variant}`, yaw: mob.rotation.y };

@@ -300,7 +300,7 @@ Object.assign(Game.prototype, {
         // The block is gone: drop its shaking stand-in right away.
         this.disposeMiningBlockVisual();
 
-        if (blockType === 'bed' && this.isRespawnBoundToBlock(position)) {
+        if (isBedBlockType(blockType) && this.isRespawnBoundToBlock(position)) {
             this.respawnPoint = null;
             window.localStorage.removeItem('minecloud-respawn-point');
             this.receiveSystemMessage({ text: 'Respawn point reset because your bed was removed' });
@@ -558,6 +558,9 @@ Object.assign(Game.prototype, {
             if (parts.length > 1 || parts[0].blockType !== blockType) {
                 if (!parts.map((part) => this.world.addBlock(part)).some(Boolean)) return;
                 this.consumeSelectedBlock();
+                if (blockType === 'bed') {
+                    this.setRespawnPointFromBlock(newPos);
+                }
                 this.playPlaceSound(blockType);
                 this.placeActionTimer = 0.35;
                 this.showHitIndicator();

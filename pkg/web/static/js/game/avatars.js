@@ -9,6 +9,7 @@ Object.assign(Game.prototype, {
         this.localPlayerAvatar.visible = this.cameraViewMode !== 'first';
         this.localPlayerAvatar.position.set(anchor.x, anchor.y - this.cameraController.eyeHeight, anchor.z);
         this.localPlayerAvatar.rotation.y = this.cameraController.yaw + Math.PI;
+        this.poseUpright(this.localPlayerAvatar);
         this.applyAvatarHeadPitch(this.localPlayerAvatar, this.cameraController.pitch, 1);
         this.updateAvatarHeldItem(this.localPlayerAvatar, this.getSelectedHeldItemType());
         this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
@@ -17,7 +18,9 @@ Object.assign(Game.prototype, {
             this.localPlayerAvatar.rotation.y = this.ridingMob.rotation.y;
             this.poseRider(this.localPlayerAvatar);
         }
-        if (this.seated) {
+        if (this.seated && this.seated.lying) {
+            this.poseLying(this.localPlayerAvatar, this.seated.avatarYaw, bedAvatarFeet(anchor, this.seated.avatarYaw));
+        } else if (this.seated) {
             this.localPlayerAvatar.rotation.y = this.seated.avatarYaw;
             this.poseSeated(this.localPlayerAvatar);
         }
@@ -435,6 +438,11 @@ Object.assign(Game.prototype, {
                 avatar.rotation.y = avatar.userData.seatYaw;
                 this.poseSeated(avatar);
             }
+            if (typeof avatar.userData.lyingYaw === 'number') {
+                this.poseLying(avatar, avatar.userData.lyingYaw, avatar.userData.targetPosition);
+            } else {
+                this.poseUpright(avatar);
+            }
             this.applyAvatarAction(avatar, delta);
         }
     },
@@ -491,7 +499,9 @@ Object.assign(Game.prototype, {
         // Riders' eyes are higher; their avatar sits on the saddle.
         const mountInfo = player.mount ? (getMobSpecies(player.mount.split(':')[0]) || {}).mount : null;
         const avatarHeight = mountInfo ? mountInfo.eyeHeight - mountInfo.seat : 1.62;
-        const nextFeetPosition = new THREE.Vector3(player.x, player.y - avatarHeight, player.z);
+        const lying = player.mount === 'bed';
+        const feet = lying ? bedAvatarFeet(player, player.mountYaw || 0) : { x: player.x, y: player.y - avatarHeight, z: player.z };
+        const nextFeetPosition = new THREE.Vector3(feet.x, feet.y, feet.z);
         if (!avatar.userData.initialized) {
             avatar.userData.lastPosition.copy(nextFeetPosition);
             avatar.userData.targetPosition.copy(nextFeetPosition);
@@ -506,8 +516,10 @@ Object.assign(Game.prototype, {
         avatar.userData.targetPitch = typeof player.pitch === 'number' ? player.pitch : 0;
         avatar.userData.targetAction = this.normalizePlayerAction(player.action);
         this.syncRemoteMount(avatar, mountInfo ? player.mount : '', player.mountYaw);
-        // Sitting (js/game/seating.js): the eye is already where it should be.
+        // Sitting (js/game/seating.js): the eye is already where it should be. Lying: flat, see above.
         avatar.userData.seatYaw = player.mount === 'seat' ? player.mountYaw || 0 : null;
+        avatar.userData.lyingYaw = lying ? player.mountYaw || 0 : null;
+        avatar.userData.seatEye = player.mount === 'seat' || lying ? { x: player.x, y: player.y, z: player.z } : null;
     },
 
     raycastPlayer(maxDistance) {

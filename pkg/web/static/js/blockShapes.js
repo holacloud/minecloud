@@ -447,6 +447,32 @@ registerBlockShape('sign', {
     iconState: { facing: 's', mount: 'post' }
 });
 
+// Beds: legs, a frame, a mattress and a pillow at the head, in one cell, the head away from the
+// player who places it (`facing` is the way the head lies; the plain name `bed`, what saved worlds
+// have, looks north). You stand on the mattress. Lying down is js/game/seating.js (`lieDown`).
+function isBedBlockType(type) {
+    return type === 'bed' || (typeof type === 'string' && type.startsWith('bed:'));
+}
+
+registerBlockShape('bed', {
+    states: [['facing', SHAPE_FACINGS]],
+    boxes(state) {
+        return rotateShapeBoxes([
+            [PX, 0, PX, 3 * PX, 2 * PX, 3 * PX], [13 * PX, 0, PX, 15 * PX, 2 * PX, 3 * PX],
+            [PX, 0, 13 * PX, 3 * PX, 2 * PX, 15 * PX], [13 * PX, 0, 13 * PX, 15 * PX, 2 * PX, 15 * PX],
+            [0, 2 * PX, 0, 1, 4 * PX, 1],
+            [PX, 4 * PX, PX / 2, 15 * PX, 9 * PX, 15.5 * PX],
+            [3 * PX, 9 * PX, PX, 13 * PX, 11 * PX, 5.5 * PX]
+        ], state.facing);
+    },
+    collision: () => [[0, 0, 0, 1, 9 * PX, 1]],
+    // A top does not turn with its box, so each way has its own, with the pillow at the head.
+    variant: (state, def) => ({ faces: { ...def.faces, top: `bed_top_${state.facing}` } }),
+    materialKey: (state) => state.facing,
+    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: shapeFacingFromVector(ctx.look.x, ctx.look.z) } }],
+    iconState: { facing: 'n' }
+});
+
 // Panes (glass panes, iron bars): a 2-pixel sheet that joins neighbouring panes and solid
 // cubes. A pane with one neighbour runs straight through; on its own it shows as a cross.
 const PANE_POST = [7 * PX, 0, 7 * PX, 9 * PX, 1, 9 * PX];

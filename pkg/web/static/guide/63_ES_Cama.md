@@ -2,8 +2,8 @@
 
 ![Cama](item:bed)
 
-Una cama roja y blandita. Sirve para dos cosas muy importantes: **elegir dónde reapareces** y **saltarte la
-noche**.
+Una cama roja y blandita, con su armazón, colchón y almohada. Puedes **tumbarte** en ella, y sirve para dos cosas muy
+importantes: **elegir dónde reapareces** y **saltarte la noche**.
 
 | Nombre en el juego | Id | Rotura |
 |---|---|---|
@@ -21,19 +21,29 @@ Las dos dan la misma cama.
 ## Punto de reaparición
 
 - Al **colocar** una cama, tu punto de reaparición pasa a ser **encima de ella**. El chat lo confirma: «Respawn
-  point updated to your bed».
+  point updated to your bed». La almohada queda en el lado más lejano, el que no da a ti.
 - Cuenta la **última** cama que colocaste.
 - Si **rompes** esa cama, el punto se borra («Respawn point reset because your bed was removed»). Sin cama,
   reapareces en el último sitio seguro donde estuviste de pie.
 - El comando `/spawn` te lleva a tu punto de reaparición. Ver [Comandos del chat](12).
 
+## Tumbarse
+
+**Clic derecho** en la cama, o mírala y pulsa **F**: te tumbas con la cabeza en la almohada, mirando hacia arriba. No
+puedes andar, pero sí mirar alrededor. **Agacharte** te levanta (Mayús, o el botón de agacharse en una pantalla
+táctil), y también te levantas si alguien rompe la cama. Los demás te ven tumbado en ella, y en cada cama cabe una
+persona.
+
+Para construir contra una cama en vez de tumbarte, agáchate al hacer clic, como con las sillas.
+
 ## Dormir
 
 1. Espera a que sea **de noche** (de las 18:00 a las 6:00; `/time` te dice la hora).
-2. Mira la cama y pulsa **F**.
-3. Te despiertas al **amanecer**. Si juegas solo, además el cielo se despeja.
+2. Túmbate en la cama.
+3. **Amanece** al momento, y sigues en la cama hasta que te levantes. Si juegas solo, además el cielo se despeja.
 
-De día solo verás «You can only sleep at night». Puedes dormir en **cualquier** cama, no solo en la tuya.
+De día solo descansas: «You can only sleep at night», y el tiempo sigue. Puedes dormir en **cualquier** cama, no solo
+en la tuya.
 
 **Jugando con otros:** cuando alguien duerme, **amanece para todos** y el chat dice quién ha dormido.
 

@@ -188,17 +188,27 @@ Object.assign(Game.prototype, {
             Math.abs(this.respawnPoint.z - (position.z + 0.5)) < 0.001;
     },
 
+    // F: lies down on the bed looked at (js/game/seating.js), which sleeps at night; already in
+    // bed, it asks to sleep again.
     trySleepInBed() {
+        if (this.seated && this.seated.lying) {
+            this.bedTrySleep();
+            return true;
+        }
         const hit = this.raycastBlock(this.breakDistance);
         if (!hit) return false;
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos) return false;
-        if (this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z) !== 'bed') return false;
+        if (!isBedBlockType(this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z))) return false;
+        return this.seatTrySit(worldPos);
+    },
 
+    // Night passes for everyone, by the server's word when online. By day you only rest.
+    bedTrySleep() {
         if (!this.isNightTime()) {
             this.receiveSystemMessage({ text: 'You can only sleep at night' });
-            return true;
+            return;
         }
 
         if (this.network && this.network.connected) {
@@ -209,7 +219,6 @@ Object.assign(Game.prototype, {
             this.receiveSystemMessage({ text: 'You slept until dawn' });
         }
         this.playTone({ frequency: 520, duration: 0.08, type: 'triangle', volume: 0.03, release: 0.08 });
-        return true;
     },
 
     updateSurvival(delta) {

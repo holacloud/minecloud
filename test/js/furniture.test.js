@@ -80,7 +80,7 @@ function loadGame() {
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, TEXTURE_PATTERNS, Game,
         GAME_CONTENT_HOOKS, MODAL_PANELS, FURNITURE_COLORS, STORAGE_KINDS, DECOR_PAINTINGS, DECOR_GLASS, shapeStateName, constructionTurnType,
         storageClickAmount, storageApplyOutcome, decorClockAngles, decorClockText, seatEyePosition, seatStandOffsets, STORAGE_MAX_STACK, STORAGE_MAX_AMOUNT,
-        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, ITEM_USE_HANDLERS,
+        furnShelfBooks, FURN_SHELF_ROWS, BlockTextureFactory, isSignBlockType, isBedBlockType, ITEM_USE_HANDLERS, bedEyePosition, bedAvatarFeet, SEAT_YAW, getMobSpecies,
         mirrorFacesOf, mirrorViewOf, mirrorFaceCover, mirrorFaceDistance, mirrorFaceSight, mirrorLineClear, mirrorRankPlanes, mirrorPlaneBudget, mirrorPlanesToDraw, mirrorPlaneKey,
         mirrorQuadPositions, mirrorQuadNormals, mirrorTargetSize, mirrorRefreshInterval,
         MIRROR_RANGE, MIRROR_TARGET_MAX });`, context);
@@ -1454,4 +1454,269 @@ test('the guide tells of the post, the wall board and the text on both sides, in
     assert.match(read('64_ES_Cartel.md'), /poste de madera con un tablero/);
     assert.match(read('64_ES_Cartel.md'), /tablero de pared/);
     assert.match(read('64_ES_Cartel.md'), /por los dos lados/);
+});
+
+// ---------------------------------------------------------------------------------------
+// Beds
+
+function makeBedGame(night = false) {
+    const parts = makeSittingGame();
+    const sleeps = [];
+    const tones = [];
+    Object.assign(parts.game, {
+        isNightTime: () => night,
+        network: { connected: true, requestSleep: () => sleeps.push(1) },
+        playTone: (tone) => tones.push(tone)
+    });
+    return { ...parts, sleeps, tones };
+}
+const avatarStub = () => {
+    const axis = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } });
+    return {
+        position: new Vector3(),
+        rotation: { x: 0, y: 0, z: 0, order: 'XYZ' },
+        userData: { avatarParts: { head: { rotation: axis() }, leftLeg: { rotation: axis() }, rightLeg: { rotation: axis() }, leftArm: { rotation: axis() }, rightArm: { rotation: axis() } } }
+    };
+};
+
+test('beds: a frame, a mattress and a pillow at the head, in the same name, with the mattress to stand on', () => {
+    const world = makeWorld();
+    const place = (look) => world.getPlacementBlocks('bed', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look })[0].blockType;
+    assert.equal(place({ x: 0, y: -0.5, z: -1 }), 'bed', 'head away from you: north is the plain name');
+    assert.equal(place({ x: 1, y: -0.5, z: 0 }), 'bed:e');
+    assert.equal(place({ x: 0, y: -0.5, z: 1 }), 'bed:s');
+    assert.equal(place({ x: -1, y: -0.5, z: 0 }), 'bed:w');
+    assert.equal(world.blockTypes.bed.state.facing, 'n', 'a saved bed is one of them');
+    assert.equal(world.blockTypes.bed.name, 'Bed');
+    for (const type of ['bed', 'bed:e', 'bed:s', 'bed:w']) {
+        assert.equal(world.getDropTypeForBlock(type), 'bed');
+        const boxes = JSON.parse(JSON.stringify(world.shapes.boxes(world.registry.id(type))));
+        assert.ok(boxes.length >= 4 && boxes.every((box) => box[0] >= 0 && box[3] <= 1 && box[2] >= 0 && box[5] <= 1), type);
+        assert.deepEqual(JSON.parse(JSON.stringify(world.shapes.collision(world.registry.id(type)))), [[0, 0, 0, 1, 9 / 16, 1]]);
+        assert.equal(world.registry.solid[world.registry.id(type)], 1);
+    }
+    // The pillow, the box above the mattress, is at the head; the top is painted to match.
+    const pillow = (type) => world.shapes.boxes(world.registry.id(type)).reduce((a, b) => (b[4] > a[4] ? b : a));
+    assert.ok(pillow('bed')[5] < 0.5);
+    assert.ok(pillow('bed:s')[2] > 0.5);
+    assert.ok(pillow('bed:e')[0] > 0.5);
+    assert.ok(pillow('bed:w')[3] < 0.5);
+    const f = new ctx.BlockTextureFactory();
+    const whiteAt = (pattern, u, v) => {
+        const s = f.createSurface(32, false);
+        f.patterns()[pattern](s, null, 7);
+        const i = Math.floor(v * 32) * 32 + Math.floor(u * 32);
+        return s.color[i * 3 + 2] > 150;
+    };
+    assert.ok(whiteAt('bed_top_n', 0.5, 0.2) && !whiteAt('bed_top_n', 0.5, 0.8));
+    assert.ok(whiteAt('bed_top_s', 0.5, 0.8) && !whiteAt('bed_top_s', 0.5, 0.2));
+    assert.ok(whiteAt('bed_top_e', 0.8, 0.5) && !whiteAt('bed_top_e', 0.2, 0.5));
+    assert.ok(whiteAt('bed_top_w', 0.2, 0.5) && !whiteAt('bed_top_w', 0.8, 0.5));
+    assert.equal(world.getFaceTextureSpecs('bed:e').top.pattern, 'bed_top_e');
+    assert.equal(world.getFaceTextureSpecs('bed').top.pattern, 'bed_top_n');
+    // They turn with a build.
+    assert.equal(ctx.constructionTurnType('bed', 1, world.blockTypes), 'bed:e');
+    assert.equal(ctx.constructionTurnType('bed:w', 1, world.blockTypes), 'bed');
+    assert.ok(!ctx.isBedBlockType('bedrock') && ctx.isBedBlockType('bed:e') && ctx.isBedBlockType('bed'));
+});
+
+test('beds: right click lies you down at the pillow looking up; no walking; Sneak gets you up', () => {
+    const { world, game, controller, camera, messages, sleeps } = makeBedGame(false);
+    put(world, 3, 1, 3, 'bed:e');
+    assert.equal(game.seatTrySit({ x: 3, y: 1, z: 3 }), true);
+    assert.ok(game.seated && game.seated.lying);
+    const eye = ctx.bedEyePosition(3, 1, 3, 9 / 16, 'e');
+    assert.ok(near(camera.position.x, eye.x) && near(camera.position.y, eye.y) && near(camera.position.z, eye.z));
+    assert.ok(eye.x > 3.5, 'towards the head');
+    assert.ok(eye.y < 2, 'low, inside its cell');
+    assert.ok(controller.pitch > 0.8, 'looking up');
+    assert.ok(near(controller.yaw, Math.PI / 2), 'towards the foot, to the west');
+    // By day: you rest. Time goes on: the server is not asked.
+    assert.equal(sleeps.length, 0);
+    assert.ok(messages.some((text) => /Sneak gets up/.test(text)));
+    assert.ok(messages.includes('You can only sleep at night'));
+    controller.keys.forward = true;
+    controller.moveInput.y = 1;
+    controller.keys.jump = true;
+    for (let i = 0; i < 30; i++) controller.update(1 / 30);
+    assert.ok(near(camera.position.x, eye.x) && near(camera.position.y, eye.y), 'did not move');
+    controller.keys.forward = false;
+    controller.keys.jump = false;
+    controller.moveInput.y = 0;
+    assert.equal(game.getMountState().key, 'bed');
+    game.seatStandUp();
+    assert.equal(game.seated, null);
+    assert.equal(controller.seat, null);
+    assert.equal(controller.pitch, 0);
+    assert.ok(near(camera.position.y, 1 + 1.62), 'on the floor beside it');
+    assert.equal(game.getMountState(), null);
+});
+
+test('beds: at night lying down asks to sleep, once, through the same path; F asks again', () => {
+    const { world, game, sleeps, messages } = makeBedGame(true);
+    put(world, 3, 1, 3, 'bed');
+    game.raycastBlock = () => ({ object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0 });
+    assert.equal(game.trySleepInBed(), true);
+    assert.ok(game.seated && game.seated.lying);
+    assert.equal(sleeps.length, 1);
+    assert.ok(!messages.includes('You can only sleep at night'));
+    // Lying, looking up at nothing: F still works.
+    game.raycastBlock = () => null;
+    assert.equal(game.trySleepInBed(), true);
+    assert.equal(sleeps.length, 2);
+    // And right click on the same bed.
+    game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(sleeps.length, 3);
+    // Offline the night ends here, as it did.
+    const alone = makeBedGame(true);
+    put(alone.world, 3, 1, 3, 'bed');
+    alone.game.network = { connected: false };
+    alone.game.timeOfDay = 0.9;
+    alone.game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(alone.game.timeOfDay, 0);
+    assert.equal(alone.game.weatherState, 'clear');
+    // Looking at something else, F is for the next thing.
+    const other = makeBedGame(true);
+    put(other.world, 3, 1, 3, 'stone');
+    other.game.raycastBlock = () => ({ object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0 });
+    assert.equal(other.game.trySleepInBed(), false);
+    other.game.raycastBlock = () => null;
+    assert.equal(other.game.trySleepInBed(), false);
+});
+
+test('beds: a bed that goes releases you, a saved one works, a roof or someone else stops you', () => {
+    for (const change of ['air', 'stone']) {
+        const { world, game, controller, camera } = makeBedGame();
+        put(world, 3, 1, 3, 'bed');
+        game.seatTrySit({ x: 3, y: 1, z: 3 });
+        game.seatUpdate();
+        assert.ok(game.seated, 'still lying while it stands');
+        put(world, 3, 1, 3, change);
+        game.seatUpdate();
+        assert.equal(game.seated, null, change);
+        assert.equal(controller.seat, null);
+        for (let i = 0; i < 40; i++) controller.update(1 / 30);
+        assert.ok(camera.position.y - 1.62 >= 1 - 1e-6, 'not stuck below the floor');
+    }
+    const roofed = makeBedGame();
+    put(roofed.world, 3, 1, 3, 'bed');
+    put(roofed.world, 3, 2, 3, 'stone');
+    roofed.game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(roofed.game.seated, undefined);
+    assert.match(roofed.messages[0], /no room to lie down/);
+    // Another player in it, whose body sticks out of the cell.
+    const shared = makeBedGame();
+    put(shared.world, 3, 1, 3, 'bed');
+    const eye = ctx.bedEyePosition(3, 1, 3, 9 / 16, 'n');
+    shared.game.otherPlayerMeshes.set('x', { position: new Vector3(3.5, 1.7, 5.3), userData: { seatEye: eye } });
+    shared.game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(shared.game.seated, undefined);
+    assert.match(shared.messages[0], /already lying/);
+    // A sitter's chair is still theirs.
+    const chair = makeBedGame();
+    put(chair.world, 3, 1, 3, 'oak_chair');
+    chair.game.otherPlayerMeshes.set('x', { position: new Vector3(3.5, 1.2, 3.5), userData: { seatEye: { x: 3.5, y: 2.45, z: 3.5 } } });
+    chair.game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(chair.game.seated, undefined);
+    assert.match(chair.messages[0], /already sitting/);
+    // Sitting is what it was.
+    const seat = makeBedGame();
+    put(seat.world, 3, 1, 3, 'oak_chair');
+    seat.game.seatTrySit({ x: 3, y: 1, z: 3 });
+    assert.equal(seat.game.getMountState().key, 'seat');
+    assert.ok(!seat.game.seated.lying);
+});
+
+test('beds: others see you flat on it: the head on the pillow, and upright again afterwards', () => {
+    const game = new ctx.Game();
+    for (const [facing, head] of Object.entries({ n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] })) {
+        const eye = ctx.bedEyePosition(3, 1, 3, 9 / 16, facing);
+        const yaw = ctx.SEAT_YAW[facing];
+        const feet = ctx.bedAvatarFeet(eye, yaw);
+        // The feet are a body's length from the eye, away from the head, at a mattress's height.
+        assert.ok(near(feet.x, eye.x - head[0] * 1.55) && near(feet.z, eye.z - head[1] * 1.55), facing);
+        assert.ok(feet.y > 1 + 9 / 16 && feet.y < eye.y, 'on the mattress, under the eye');
+        // The model's local -z goes to the head (see poseLying): rotated about y by the body's yaw.
+        assert.ok(near(-Math.sin(yaw), head[0]) && near(-Math.cos(yaw), head[1]), facing);
+        const avatar = avatarStub();
+        game.poseLying(avatar, yaw, feet);
+        assert.equal(avatar.rotation.order, 'YXZ');
+        assert.ok(near(avatar.rotation.x, -Math.PI / 2) && near(avatar.rotation.y, yaw));
+        assert.ok(near(avatar.position.x, feet.x) && near(avatar.position.y, feet.y) && near(avatar.position.z, feet.z));
+        game.poseUpright(avatar);
+        assert.equal(avatar.rotation.x, 0);
+        assert.equal(avatar.rotation.order, 'XYZ');
+    }
+    // Standing avatars are left alone.
+    const standing = avatarStub();
+    standing.rotation.x = 0.3;
+    game.poseUpright(standing);
+    assert.equal(standing.rotation.x, 0.3);
+    // A remote player, from what playerMove says: the key no species answers to.
+    const remote = new ctx.Game();
+    const avatar = avatarStub();
+    avatar.position.lerp = () => avatar.position;
+    Object.assign(avatar.userData, { initialized: true, appearanceKey: 'same', lastPosition: new Vector3(), targetPosition: new Vector3() });
+    Object.assign(remote, {
+        otherPlayerMeshes: new Map([['p', avatar]]), remotePlayerNames: new Map(),
+        normalizeHairStyle: (style) => style, getPlayerAppearance: () => ({ key: 'same' }), updateAvatarNameTag() {}, updateAvatarHeldItem() {},
+        normalizePlayerAction: (action) => action, applyAvatarHeadPitch() {}, syncRemoteMount() {}, animatePlayerAvatar() {}, applyAvatarAction() {}
+    });
+    assert.ok(!ctx.getMobSpecies('bed'), 'no mob answers to the key');
+    const yaw = ctx.SEAT_YAW.e;
+    const eye = ctx.bedEyePosition(3, 1, 3, 9 / 16, 'e');
+    remote.updateOtherPlayer({ id: 'p', ...eye, yaw: 0, pitch: 1, mount: 'bed', mountYaw: yaw });
+    const feet = ctx.bedAvatarFeet(eye, yaw);
+    assert.ok(near(avatar.userData.targetPosition.x, feet.x) && near(avatar.userData.targetPosition.y, feet.y));
+    assert.deepEqual(JSON.parse(JSON.stringify(avatar.userData.seatEye)), JSON.parse(JSON.stringify(eye)));
+    remote.updateRemotePlayers(0.016);
+    assert.ok(near(avatar.rotation.x, -Math.PI / 2) && near(avatar.rotation.y, yaw));
+    assert.ok(near(avatar.position.x, feet.x) && near(avatar.position.z, feet.z));
+    // They get up: on their feet at once, under their eye as anyone.
+    remote.updateOtherPlayer({ id: 'p', x: 5.5, y: 2.62, z: 3.5, yaw: 0, pitch: 0, mount: '', mountYaw: 0 });
+    remote.updateRemotePlayers(0.016);
+    assert.equal(avatar.rotation.x, 0);
+    assert.equal(avatar.userData.seatEye, null);
+    assert.ok(near(avatar.userData.targetPosition.y, 1));
+});
+
+test('beds: placing one binds the respawn point in every direction, and breaking that one unbinds it', () => {
+    withoutItemHandlers(() => {
+        for (const [look, type] of [[{ x: 0, y: -0.5, z: -1 }, 'bed'], [{ x: 1, y: -0.5, z: 0 }, 'bed:e'], [{ x: 0, y: -0.5, z: 1 }, 'bed:s'], [{ x: -1, y: -0.5, z: 0 }, 'bed:w']]) {
+            const world = makeWorld();
+            world.rebuildAfterChange = () => {};
+            const { game, sent, messages } = makePlacingGame(world, 'bed', { x: 3, y: 0, z: 3 }, { x: 0, y: 1, z: 0 }, look);
+            game.placeBlock();
+            assert.equal(world.getBlockTypeAt(3, 1, 3), type);
+            assert.equal(sent[0].payload.blockType, type);
+            assert.ok(messages.includes('Respawn point updated to your bed'), type);
+            assert.ok(near(game.respawnPoint.x, 3.5) && near(game.respawnPoint.z, 3.5), type);
+            assert.ok(near(game.respawnPoint.y, 1 + 1 + 1.62), 'on top of it, as it was');
+            assert.equal(game.isRespawnBoundToBlock({ x: 3, y: 1, z: 3 }), true);
+        }
+    });
+    const source = fs.readFileSync(path.join(STATIC, 'js', 'game', 'building.js'), 'utf8');
+    assert.match(source, /isBedBlockType\(blockType\) && this\.isRespawnBoundToBlock\(position\)/, 'any state of the bed unbinds');
+});
+
+test('beds: lying goes through the item-use handler, and crouching still builds against it', () => {
+    const { world, game } = makeBedGame();
+    put(world, 3, 1, 3, 'bed:s');
+    const handler = ctx.ITEM_USE_HANDLERS.find((candidate) => /seatTrySit/.test(candidate.toString()));
+    const hit = { object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0 };
+    game.cameraController.isCrouching = true;
+    assert.equal(handler.call(game, 'stone', hit), false);
+    assert.equal(game.seated, undefined);
+    game.cameraController.isCrouching = false;
+    assert.equal(handler.call(game, 'stone', hit), true);
+    assert.ok(game.seated.lying);
+});
+
+test('the guide tells how to lie down, in both languages', () => {
+    const guide = path.join(STATIC, 'guide');
+    const read = (name) => fs.readFileSync(path.join(guide, name), 'utf8');
+    assert.match(read('63_EN_Bed.md'), /## Lying down/);
+    assert.match(read('63_EN_Bed.md'), /Sneak/);
+    assert.match(read('63_ES_Cama.md'), /## Tumbarse/);
+    assert.match(read('63_ES_Cama.md'), /Agacharte/);
 });

@@ -99,7 +99,10 @@ class WorldRenderer {
             gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
-            bed: { color: 0xC05050, name: 'Bed', breakDuration: 0.55 },
+            bed: {
+                color: 0xC05050, name: 'Bed', breakDuration: 0.55, shape: 'bed', lightPasses: true, lieDown: 9 / 16,
+                faces: { top: 'bed_top_n', side: 'bed_side', bottom: { pattern: 'planks', tint: 0xb48a56 } }
+            },
             sign: { color: 0xB78A55, name: 'Sign', breakDuration: 0.35, shape: 'sign', lightPasses: true, faces: { top: 'sign', side: 'sign' } },
             cactus: { color: 0x3F8D37, name: 'Cactus', breakDuration: 0.45 },
             glass: { color: 0xBFE8F5, name: 'Glass', transparent: true, opacity: 0.42, breakDuration: 0.22 },
@@ -814,7 +817,7 @@ class WorldRenderer {
             case 'copper_block': case 'iron_block': case 'gold_block':
                 return uniform(spec('metal', def.color));
             case 'dirt': case 'stone': case 'cobblestone': case 'sand': case 'bedrock': case 'stone_bricks':
-            case 'glass': case 'water': case 'bed': case 'sound_block': case 'torch':
+            case 'glass': case 'water': case 'sound_block': case 'torch':
             case 'ladder': case 'tall_grass': case 'spray_paint':
                 return uniform(spec(type));
         }
