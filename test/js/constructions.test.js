@@ -48,7 +48,7 @@ function loadGame() {
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, LightField, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS,
         constructionPlan, constructionLayout, constructionTurnType, constructionDiff, constructionFindGround,
         CONSTRUCTION_RATE, CONSTRUCTION_FRAME_MAX, SHAPE_DIRECTIONS, SHAPE_OPPOSITE, SHAPE_MASK, FURNITURE_COLORS, MIRROR_RANGE, ELECTRIC_KINDS,
-        mirrorFacesOf, mirrorLineClear, seatStandOffsets, signBoardLayoutFor });`, context);
+        mirrorFacesOf, mirrorLineClear, seatStandOffsets, bedStandOffsets, signBoardLayoutFor });`, context);
     return context;
 }
 
@@ -158,8 +158,8 @@ test('the designs have the sizes and materials asked for, and differ', () => {
     assert.ok(blocks.hall.has('brick') && !blocks.cathedral.has('brick'));
     assert.ok(blocks.cathedral.has('limestone') && !blocks.hall.has('limestone') && !blocks.house.has('limestone'));
     // The basics of the house, the glass of the cathedral.
-    for (const type of ['bed:s:foot', 'bed:s:head', 'lab_bench', 'torch', 'glass_pane', 'grass']) assert.ok(blocks.house.has(type), type);
-    for (const type of ['cobalt_glass', 'glass', 'gold_block', 'neon_lamp']) assert.ok(blocks.cathedral.has(type), type);
+    for (const type of ['bed:s:foot', 'bed:s:head', 'workbench', 'lantern', 'glass_pane', 'grass']) assert.ok(blocks.house.has(type) || blocks.house.has(`${type}:floor`), type);
+    for (const type of ['blue_stained_glass', 'glass', 'gold_block', 'neon_lamp', 'argon_lamp']) assert.ok(blocks.cathedral.has(type), type);
     assert.ok(blocks.house.has('dark_oak_stairs:e:bottom') && blocks.house.has('dark_oak_stairs:w:bottom'), 'a roof of stairs');
 });
 
@@ -391,13 +391,15 @@ const SHOWROOM_ALSO = ['bed', 'mirror'];
 // What the showroom leaves out on purpose, with the reason. Nothing so far.
 const SHOWROOM_EXCEPTIONS = {};
 
-// The showroom turned: cells in the same order as the plan's, and a map to read them by position.
-function showroomLayout(turns) {
-    const plan = ctx.constructionPlan('showroom');
+// A design turned: cells in the same order as the plan's, and a map to read them by position.
+function designLayout(name, turns) {
+    const plan = ctx.constructionPlan(name);
     const layout = ctx.constructionLayout(plan, turns, { x: 3, z: -5 }, 0, blocks.blockTypes);
     const grid = new Map(layout.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
     return { plan, layout, typeAt: (x, y, z) => grid.get(`${x},${y},${z}`) };
 }
+
+const showroomLayout = (turns) => designLayout('showroom', turns);
 
 function showroomCellsOf(plan, test) {
     return plan.cells.filter((cell) => test(baseOf(cell.type), cell));
@@ -776,7 +778,7 @@ test('/build: a bed the box cuts goes whole and comes back whole; stopping leave
     const a = { x: 2, y: 1, z: 1, type: 'bed:e:foot', prev: { type: null } };
     const other = { x: 9, y: 1, z: 1, type: 'stone', prev: { type: null } };
     const b = { x: 3, y: 1, z: 1, type: 'bed:e:head', prev: { type: null } };
-    game.constructionJob = { label: 'x', verb: 'Building', ops: [a, other, b], done: 1, undoing: false };
+    game.constructionJob = { label: 'x', verb: 'Building', ops: [a, other, b], done: 1, undoing: false, held: new Set() };
     game.constructionUndo.applied.push(a);
     game.constructionStop();
     assert.deepEqual(applied, [b], 'the other half, not the rest');
@@ -850,6 +852,224 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
                 if (cell.y > 0) assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), null);
             }
         }
+    }
+});
+
+// ---------------------------------------------------------------------------------------
+// The house, the hall and the cathedral: built before there was furniture, furnished since
+
+const FURNISHED = {
+    house: {
+        gone: ['lab_bench', 'dark_oak_wood', 'white_wool', 'red_wool', 'torch', 'oak_trapdoor', 'spruce_stairs'],
+        holds: ['table', 'oak_chair', 'oven', 'workbench', 'sink', 'fridge', 'rtg', 'chest', 'wardrobe', 'bed', 'bedside_table', 'table_lamp', 'green_sofa',
+            'red_carpet', 'green_curtain', 'painting_sunset', 'wall_clock', 'bookshelf', 'flower_pot', 'wall_mirror', 'candle', 'lantern', 'floor_lamp', 'barrel']
+    },
+    hall: {
+        gone: ['torch', 'oak_trapdoor', 'spruce_planks_slab'],
+        holds: ['table', 'bench', 'dark_oak_chair', 'barrel', 'chest', 'red_carpet', 'blue_carpet', 'chandelier', 'lantern', 'floor_lamp', 'flower_pot', 'vase',
+            'wall_clock', 'painting_fish', 'red_curtain', 'orange_stained_glass_pane', 'yellow_stained_glass_pane']
+    },
+    cathedral: {
+        gone: ['cobalt_glass', 'red_wool', 'torch', 'dark_oak_stairs'],
+        holds: ['bench', 'chandelier', 'candle', 'red_carpet', 'white_carpet', 'lantern', 'flower_pot', 'dark_oak_chair', 'neon_lamp', 'argon_lamp',
+            'blue_stained_glass', 'red_stained_glass', 'yellow_stained_glass', 'purple_stained_glass', 'green_stained_glass', 'cyan_stained_glass']
+    }
+};
+const FURNISHED_NAMES = Object.keys(FURNISHED);
+const FURNISHED_WALL_SHAPES = new Set(['painting', 'wall_mirror', 'wall_clock', 'wall_shelf', 'curtain']);
+const FURNISHED_ON_THE_FLOOR = new Set(['candle', 'vase', 'flower_pot', 'table_lamp', 'carpet']);
+
+// The world with a turned design in it, everywhere one can walk, and a way to read both.
+function furnishedSite(name, turns) {
+    const { plan, layout, typeAt } = designLayout(name, turns);
+    const world = makeWorld(() => 0, 5);
+    placeOpen(world, layout);
+    const [fx, fz] = ctx.SHAPE_DIRECTIONS[LOOK_BY_TURNS[turns]];
+    const at = ([x, y, z]) => [3 + fx * z + fz * (x - plan.anchorX), y, -5 + fz * z - fx * (x - plan.anchorX)];
+    const [sx, sy, sz] = at(plan.start);
+    const reached = walkable(world, sx, sy, sz);
+    return { plan, layout, typeAt, world, reached, cells: new Set(reached.map(([x, z]) => `${Math.floor(x)},${Math.floor(z)}`)), at };
+}
+
+test('the first three designs: the stand-ins are gone and the real pieces are there, in all 4 turns', () => {
+    for (const name of FURNISHED_NAMES) {
+        const { gone, holds } = FURNISHED[name];
+        for (const turns of TURNS) {
+            const { layout } = designLayout(name, turns);
+            const placed = new Set(layout.cells.map((cell) => baseOf(cell.type)));
+            for (const type of gone) assert.ok(!placed.has(type), `${name} still has ${type}, turned ${turns}`);
+            for (const type of holds) assert.ok(placed.has(type), `${name} has no ${type}, turned ${turns}`);
+            // Nothing a build could not fill or light pretends to be: no contents, no fire.
+            for (const cell of layout.cells) {
+                if (baseOf(cell.type) === 'oven') assert.equal(stateOf(cell.type).fire, 'off');
+                if (defOf(cell.type).storageSlots) assert.ok(!cell.meta, `${name}: ${cell.type} is not empty`);
+            }
+        }
+    }
+    const beds = ctx.constructionPlan('house').cells.filter((cell) => baseOf(cell.type) === 'bed');
+    assert.deepEqual(beds.map((cell) => stateOf(cell.type).part).sort(), ['foot', 'head']);
+});
+
+test('the first three designs: walls, ceilings, floors, two-part pieces and joins hold in all 4 turns', () => {
+    const rotate = (mask, turns) => ((mask << turns) | (mask >> (4 - turns))) & 15;
+    for (const name of FURNISHED_NAMES) {
+        const masks = new Map();
+        for (const turns of TURNS) {
+            const { plan, layout, typeAt } = designLayout(name, turns);
+            const solidAt = (x, y, z) => {
+                const type = typeAt(x, y, z);
+                return Boolean(type) && blocks.registry.solid[idOf(type)] === 1;
+            };
+            layout.cells.forEach((cell, index) => {
+                const def = defOf(cell.type);
+                const state = stateOf(cell.type);
+                const where = `${name}: ${cell.type} at ${cell.x},${cell.y},${cell.z}, turned ${turns}`;
+                if (FURNISHED_WALL_SHAPES.has(def.shape)) {
+                    const [dx, dz] = DIRECTIONS[state.facing];
+                    assert.ok(solidAt(cell.x - dx, cell.y, cell.z - dz) || defOf(typeAt(cell.x - dx, cell.y, cell.z - dz) || 'stone').shape === 'pane', `no wall behind ${where}`);
+                }
+                if (def.shape === 'chandelier' || state.mount === 'hanging') assert.ok(solidAt(cell.x, cell.y + 1, cell.z), `nothing above ${where}`);
+                if (FURNISHED_ON_THE_FLOOR.has(def.shape) || state.mount === 'floor') assert.ok(solidAt(cell.x, cell.y - 1, cell.z), `nothing under ${where}`);
+                const shape = def.shape && ctx.BLOCK_SHAPES[def.shape];
+                if (shape && shape.linked && def.shape !== 'door') {
+                    for (const [dx, dy, dz] of shape.linked(state)) {
+                        const other = typeAt(cell.x + dx, cell.y + dy, cell.z + dz);
+                        assert.ok(other && baseOf(other) === baseOf(cell.type), `incomplete: ${where}`);
+                        assert.equal(stateOf(other).facing, state.facing, where);
+                        assert.notEqual(stateOf(other).half ?? stateOf(other).part, state.half ?? state.part, where);
+                    }
+                }
+                if (['sofa', 'bench', 'table'].includes(def.shape)) {
+                    const neighbour = (facing) => idOf(typeAt(cell.x + DIRECTIONS[facing][0], cell.y, cell.z + DIRECTIONS[facing][1]));
+                    const mask = blocks.shapes.mask(idOf(cell.type), neighbour('n'), neighbour('e'), neighbour('s'), neighbour('w'));
+                    const source = plan.cells[index];
+                    const key = `${source.x},${source.y},${source.z}`;
+                    if (turns === 0) masks.set(key, mask);
+                    else assert.equal(mask, rotate(masks.get(key), turns), `joins differ: ${where}`);
+                }
+            });
+        }
+        // What should join does, unturned. Bits: n 1, e 2, s 4, w 8.
+        const mask = (x, y, z) => masks.get(`${x},${y},${z}`);
+        if (name === 'house') {
+            assert.equal(mask(5, 1, 10), 2, 'the table of two boards');
+            assert.equal(mask(2, 1, 5), 2, 'the sofa of two');
+        }
+        if (name === 'hall') {
+            assert.equal(mask(9, 1, 16), 2 | 4 | 8, 'the long table');
+            assert.equal(mask(9, 1, 15), 2 | 8, 'its bench');
+            assert.equal(mask(12, 1, 15), 8, 'which ends at the chairs');
+            assert.equal(mask(7, 1, 11), 2, 'a stall');
+        }
+        if (name === 'cathedral') {
+            assert.equal(mask(8, 1, 12), 2, 'a pew from the aisle');
+            assert.equal(mask(10, 1, 12), 2 | 8);
+            assert.equal(mask(12, 1, 12), 8, 'and it stops at the carpet');
+            assert.equal(mask(18, 1, 12), 2 | 8, 'the other side too');
+        }
+    }
+});
+
+test('the first three designs: what is used can be reached, seats and beds stood up from, doors clear, in all 4 turns', () => {
+    for (const name of FURNISHED_NAMES) {
+        for (const turns of TURNS) {
+            const { layout, world, cells } = furnishedSite(name, turns);
+            const camera = { position: new Vector3(0, 0, 0), rotation: {} };
+            const player = new ctx.CameraController(camera, { addEventListener() {} });
+            player.setCollisionBoxGetter((x, y, z) => world.getCollisionBoxes(x, y, z));
+            // Game.seatStandUp's rule: the first of the offsets that has room is where one ends up.
+            const standsAt = (cell, offsets) => offsets.find(([dx, dz]) => {
+                const [x, z] = [cell.x + 0.5 + dx, cell.z + 0.5 + dz];
+                const floor = player.getFloorY(x, z, cell.y + 1.2);
+                return floor > -50 && Math.abs(floor - cell.y) <= 1.6 && player.canStandAt(x, z, floor);
+            });
+            const near = (x, z, reach) => {
+                for (let dz = -reach; dz <= reach; dz++) {
+                    for (let dx = -reach; dx <= reach; dx++) {
+                        if (cells.has(`${x + dx},${z + dz}`)) return true;
+                    }
+                }
+                return false;
+            };
+            for (const cell of layout.cells) {
+                const def = defOf(cell.type);
+                const shape = def.shape && ctx.BLOCK_SHAPES[def.shape];
+                const where = `${name}: ${cell.type} at ${cell.x},${cell.y},${cell.z}, turned ${turns}`;
+                if (def.shape === 'door') {
+                    if (stateOf(cell.type).half !== 'lower') continue;
+                    const [dx, dz] = DIRECTIONS[stateOf(cell.type).facing];
+                    assert.ok(cells.has(`${cell.x + dx},${cell.z + dz}`) && cells.has(`${cell.x - dx},${cell.z - dz}`), `blocked: ${where}`);
+                    continue;
+                }
+                if (def.seat || def.storageSlots || def.workbench || def.lieDown || (shape && shape.toggle)) assert.ok(near(cell.x, cell.z, 1), `cannot reach ${where}`);
+                if (def.seat) {
+                    assert.ok(!world.registry.fullCube[world.getBlockId(cell.x, cell.y + 1, cell.z)], `no room to sit on ${where}`);
+                    const stand = standsAt(cell, ctx.seatStandOffsets(stateOf(cell.type).facing || 'n'));
+                    assert.ok(stand && (stand[0] || stand[1]), `nowhere to stand up from ${where}`);
+                    assert.ok(cells.has(`${cell.x + stand[0]},${cell.z + stand[1]}`), `stands up out of the way from ${where}`);
+                }
+                if (def.lieDown && stateOf(cell.type).part === 'head') {
+                    const stand = standsAt(cell, ctx.bedStandOffsets(stateOf(cell.type).facing));
+                    assert.ok(stand && cells.has(`${cell.x + stand[0]},${cell.z + stand[1]}`), `nowhere to get up from ${where}`);
+                }
+            }
+        }
+    }
+});
+
+test('the house: the fridge has a generator hidden under it, on a network of their own', () => {
+    const plan = ctx.constructionPlan('house');
+    const cells = new Map(plan.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell]));
+    const baseAt = (x, y, z) => { const cell = cells.get(`${x},${y},${z}`); return cell ? baseOf(cell.type) : null; };
+    const fridge = plan.cells.find((cell) => baseOf(cell.type) === 'fridge' && stateOf(cell.type).half === 'lower');
+    assert.equal(baseAt(fridge.x, fridge.y - 1, fridge.z), 'rtg');
+    const seen = new Set([`${fridge.x},${fridge.y},${fridge.z}`]);
+    const queue = [[fridge.x, fridge.y, fridge.z]];
+    const members = [];
+    while (queue.length) {
+        const [x, y, z] = queue.pop();
+        members.push(baseAt(x, y, z));
+        for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+            const key = `${x + dx},${y + dy},${z + dz}`;
+            if (seen.has(key) || !ctx.ELECTRIC_KINDS[baseAt(x + dx, y + dy, z + dz)]) continue;
+            seen.add(key);
+            queue.push([x + dx, y + dy, z + dz]);
+        }
+    }
+    // Only the fridge's lower half asks for power (powerDemandOf in pkg/network/power.go).
+    assert.deepEqual(members.sort(), ['fridge', 'fridge', 'rtg']);
+    assert.ok(ctx.ELECTRIC_KINDS.fridge.watts <= ctx.ELECTRIC_KINDS.rtg.watts);
+    assert.equal(plan.cells.filter((cell) => baseOf(cell.type) === 'rtg').length, 1);
+});
+
+test('the cathedral: pews look at the altar, the carpet runs to it, candles on it, the rose is stained glass with lamps', () => {
+    const plan = ctx.constructionPlan('cathedral');
+    const cells = new Map(plan.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell.type]));
+    const benches = plan.cells.filter((cell) => baseOf(cell.type) === 'bench');
+    assert.equal(benches.length, 90);
+    for (const bench of benches) assert.equal(stateOf(bench.type).facing, 's', 'the altar is towards +z');
+    for (let z = 5; z <= 40; z++) {
+        for (const x of [13, 14, 15]) assert.equal(cells.get(`${x},1,${z}`), 'red_carpet', `${x},1,${z}`);
+    }
+    for (const x of [13, 15]) assert.equal(baseOf(cells.get(`${x},4,48`)), 'candle');
+    assert.equal(baseOf(cells.get('14,4,48')), 'white_carpet');
+    assert.equal(plan.cells.filter((cell) => baseOf(cell.type) === 'chandelier').length, 20);
+    // The rose: in its plane, within its ring.
+    const cx = 14;
+    const cy = 18;
+    const rose = plan.cells.filter((cell) => cell.z === 4 && Math.hypot(cell.x - cx, cell.y - cy) <= 6.4);
+    const count = (test) => rose.filter((cell) => test(cell.type)).length;
+    assert.equal(count((type) => type === 'neon_lamp'), 8);
+    assert.equal(count((type) => type === 'argon_lamp'), 8);
+    assert.ok(count((type) => type.endsWith('_stained_glass')) > 60);
+    assert.equal(count((type) => type === 'glass'), 0);
+    assert.equal(cells.get(`${cx},${cy},4`), 'gold_block');
+    assert.equal(new Set(rose.map((cell) => cell.type).filter((type) => type.endsWith('_stained_glass'))).size, 6);
+    // Mirrored: the same on both sides of the axis.
+    for (const cell of rose) assert.equal(cells.get(`${2 * cx - cell.x},${cell.y},4`), cell.type);
+    // The tall windows are stained glass, not clear.
+    for (const y of [2, 10, 18]) {
+        for (const dz of [2, 3, 4]) assert.ok(cells.get(`1,${y},${12 + dz}`).endsWith('_stained_glass'), `${y},${dz}`);
     }
 });
 

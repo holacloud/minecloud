@@ -64,6 +64,10 @@ class WorldRenderer {
         // (set by the game once the network exists) and decoded off the main thread.
         this.chunkSource = null;
         this.generatingChunks = new Set();
+        // Chunks kept and asked for whatever the distance, while /build reads a big box.
+        this.keptChunks = null;
+        // While set, chunks to mesh go in here instead of the queue (a big /build meshes in lumps).
+        this.heldRebuilds = null;
         this.chunkRequestBatch = [];
         this.chunkProcessQueue = [];
         this.isProcessingChunks = false;
@@ -1191,8 +1195,19 @@ class WorldRenderer {
     // Columns are kept a little beyond the render distance so turning around is cheap.
     isWithinRetention(chunkX, chunkZ) {
         if (this.lastPlayerChunkX === null) return true;
+        const kept = this.keptChunks;
+        if (kept && chunkX >= kept.minX && chunkX <= kept.maxX && chunkZ >= kept.minZ && chunkZ <= kept.maxZ) return true;
         const margin = this.renderDistance + 2;
         return Math.abs(chunkX - this.lastPlayerChunkX) <= margin && Math.abs(chunkZ - this.lastPlayerChunkZ) <= margin;
+    }
+
+    // How far from the player the server should keep pending requests (it takes up to 16).
+    chunkFocusRadius(playerChunkX, playerChunkZ) {
+        const kept = this.keptChunks;
+        const near = this.renderDistance + 2;
+        if (!kept) return near;
+        const far = Math.max(Math.abs(kept.minX - playerChunkX), Math.abs(kept.maxX - playerChunkX), Math.abs(kept.minZ - playerChunkZ), Math.abs(kept.maxZ - playerChunkZ));
+        return Math.max(near, Math.min(16, far));
     }
 
     getColumnAt(x, z) {
@@ -1281,7 +1296,7 @@ class WorldRenderer {
 
     requestRebuild(chunkX, chunkZ) {
         const key = this.chunkKey(chunkX, chunkZ);
-        if (this.activeChunks.has(key) && this.columns.has(key)) this.rebuildQueue.add(key);
+        if (this.activeChunks.has(key) && this.columns.has(key)) (this.heldRebuilds || this.rebuildQueue).add(key);
     }
 
     // Meshes queued chunks nearest to the player first, within a per-frame time budget
@@ -1447,10 +1462,11 @@ class WorldRenderer {
         // beyond the retention radius; mirror that so they are requested again on return. It is
         // sent whenever it changes and again after every (re)connection (a new connection starts
         // focused on 0,0), always before the requests it should order.
-        const focusKey = `${playerChunkX},${playerChunkZ}`;
+        const focusRadius = this.chunkFocusRadius(playerChunkX, playerChunkZ);
+        const focusKey = `${playerChunkX},${playerChunkZ},${focusRadius}`;
         if (this.chunkSource && this.chunkSource.connected() && this.sentChunkFocus !== focusKey) {
             this.sentChunkFocus = focusKey;
-            this.chunkSource.focus(playerChunkX, playerChunkZ, this.renderDistance + 2);
+            this.chunkSource.focus(playerChunkX, playerChunkZ, focusRadius);
         }
         this.flushChunkRequests();
 

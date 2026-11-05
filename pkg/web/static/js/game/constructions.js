@@ -16,8 +16,13 @@
 // - At most CONSTRUCTION_RATE blocks per second go out, in small batches every frame, holding back
 //   while the socket has a backlog or is down. Nothing starts until every chunk of the box is
 //   loaded, since what is there has to be read for the undo.
+// - A box bigger than what the player has loaded: the world keeps and asks for its chunks whatever
+//   the distance (WorldRenderer.keptChunks), only until what is there has been read. A design with
+//   `rate` reads in slices over the frames too. After that the build needs no chunk: the blocks and
+//   what they replaced are in the ops, and the server loads what it has to change.
 // - "/build undo" puts back what the last build replaced (it lasts until the page reloads);
-//   "/build stop" stops one half way, keeping what is done and undoable.
+//   "/build stop" stops one half way, keeping what is done and undoable. After a reconnection a
+//   build sends the last CONSTRUCTION_RESEND blocks again, as they may have died with the socket.
 // Mixed into Game.prototype; the chat command is wired in social.js.
 
 const CONSTRUCTION_RATE = 240;
@@ -25,7 +30,16 @@ const CONSTRUCTION_FRAME_MAX = 40;
 const CONSTRUCTION_BACKLOG_BYTES = 64 * 1024;
 const CONSTRUCTION_GAP = 3;
 const CONSTRUCTION_SCAN_ABOVE = 4;
+// Seconds without a new chunk before giving up, and between asking again for the ones missing.
 const CONSTRUCTION_CHUNK_WAIT = 30;
+const CONSTRUCTION_CHUNK_RETRY = 4;
+// The most a frame gives to reading a box in slices: its time (ms) and its steps (about a column).
+const CONSTRUCTION_SCAN_MS = 6;
+const CONSTRUCTION_SCAN_STEPS = 1500;
+const CONSTRUCTION_RESEND = 4000;
+// A design with a `rate` re-meshes what it touched this often (seconds), not every frame: a dense
+// chunk takes tens of milliseconds, and the same one is touched for many frames in a row.
+const CONSTRUCTION_MESH_EVERY = 2;
 const CONSTRUCTION_FACINGS = ['n', 'e', 's', 'w'];
 // Quarter turns of the box that bring its local 's' (the way the player looks) to each facing.
 const CONSTRUCTION_TURNS = { s: 0, w: 1, n: 2, e: 3 };
@@ -142,11 +156,49 @@ class ConstructionBuilder {
 // visitor arrives, for the tests), levels (places every visitor must be able to walk to, for the
 // tests), optionally darkRooms (left out of the tests of light) and generate(b, size). Only what is drawn is built: the rest of the box becomes air, and
 // undrawn cells of the floor layer keep their ground.
+// For the very big ones, optionally: groundY (the layers up to this one are ground: undrawn cells
+// keep it, and 'air' digs a cell out), rate (blocks per second; it also reads the box in slices) and
+// site (a generator given { readType, blockTypes, min, size, turns, anchor, fromY }, which yields now
+// and then and returns { refuse: message } or { baseY, grade }; grade(x, z), for a column at the rim,
+// gives { top, type, keep, soil } and that column follows it: see constructionDiffColumn).
 
-// A timber cottage: birch and spruce on a cobble plinth, a dark oak gable roof made of stairs.
-// There are no chest, furnace or crafting table blocks in this game: a lab bench (which does
-// open a workplace), a hearth and a pair of crates stand in for them.
+// The pieces of js/game/furniture.js, decor.js and mirrors.js the way the designs place them, with
+// the states their block names want, and turned by b.sym like the rest. Storage and ovens are
+// empty and unlit: what they hold and their fire live on the server, and a build only places blocks.
+function constructionFurnisher(b) {
+    const lantern = (x, y, z, mount = 'hanging') => b.shaped(x, y, z, 'lantern', 'lantern', { mount });
+    return {
+        lantern,
+        piece: (x, y, z, base, shape, facing) => b.shaped(x, y, z, base, shape, { facing: b.facing(facing) }),
+        // Both cells of what stands two high.
+        tall(x, y, z, base, facing) {
+            b.shaped(x, y, z, base, base, { half: 'lower', facing: b.facing(facing) });
+            b.shaped(x, y + 1, z, base, base, { half: 'upper', facing: b.facing(facing) });
+        },
+        floorLamp(x, y, z) {
+            b.shaped(x, y, z, 'floor_lamp', 'floor_lamp', { half: 'lower' });
+            b.shaped(x, y + 1, z, 'floor_lamp', 'floor_lamp', { half: 'upper' });
+        },
+        curtain: (x, y, z, color, facing, drawn = 'closed') => b.shaped(x, y, z, `${color}_curtain`, 'curtain', { facing: b.facing(facing), drawn }),
+        oven: (x, y, z, facing) => b.shaped(x, y, z, 'oven', 'oven', { facing: b.facing(facing), fire: 'off' }),
+        // A row along x, joined: they look the same way.
+        benches(x0, x1, y, z, facing) {
+            for (let x = x0; x <= x1; x++) b.shaped(x, y, z, 'bench', 'bench', { facing: b.facing(facing) });
+        },
+        // A fence post with a lantern standing on it.
+        lanternPost(x, y, z, fence, height = 1) {
+            b.box(x, y, z, x, y + height - 1, z, fence);
+            lantern(x, y + height, z, 'floor');
+        }
+    };
+}
+
+// A timber cottage: birch and spruce on a cobble plinth, a dark oak gable roof made of stairs. One
+// room of 7 by 7: the kitchen along the east wall, under the chimney; the bed, chest and wardrobe
+// along the west wall; the sofa by the door; the table in the back, under the window. No bathroom:
+// it would take a wall and a quarter of the room. x = 7 stays clear from the door to the oven.
 function constructionHouse(b) {
+    const { piece, tall, lantern, floorLamp, curtain, oven, lanternPost } = constructionFurnisher(b);
     const fence = 'spruce_fence';
     // The yard: a path to the gate, a fence in front, flowers.
     b.box(0, 0, 0, 10, 0, 13, 'grass');
@@ -156,7 +208,7 @@ function constructionHouse(b) {
     b.box(10, 1, 0, 10, 1, 3, fence);
     b.gate(5, 1, 0, 'spruce_fence_gate', 's');
     b.sym(() => {
-        b.lampPost(4, 1, 3, fence);
+        lanternPost(4, 1, 3, fence);
         b.set(2, 1, 2, 'flower_red');
         b.set(3, 1, 1, 'flower_yellow');
         b.set(2, 1, 1, 'leaves');
@@ -165,7 +217,6 @@ function constructionHouse(b) {
     // Plinth, floor, walls.
     b.box(1, 0, 4, 9, 0, 12, 'cobblestone');
     b.box(2, 0, 5, 8, 0, 11, 'spruce_planks');
-    b.box(4, 0, 7, 6, 0, 9, 'red_wool');
     b.walls(1, 1, 4, 9, 1, 12, 'cobblestone');
     b.walls(1, 2, 4, 9, 3, 12, 'birch_planks');
     for (const x of [1, 9]) {
@@ -178,13 +229,18 @@ function constructionHouse(b) {
     b.set(5, 3, 4, 'spruce_wood');
     b.door(5, 1, 4, 'oak_door', 's');
 
-    // Windows.
+    // Windows, their curtains drawn back by day but for the bed's. Right click draws them.
     b.sym(() => {
         b.set(2, 2, 4, 'glass_pane');
         b.box(1, 2, 6, 1, 2, 7, 'glass_pane');
         b.set(1, 2, 10, 'glass_pane');
+        curtain(2, 2, 5, 'green', 's', 'open');
+        curtain(2, 2, 6, 'green', 'e', 'open');
+        curtain(2, 2, 7, 'green', 'e', 'open');
+        curtain(2, 2, 10, 'green', 'e', b.flipped ? 'open' : 'closed');
     });
     b.box(4, 2, 12, 6, 2, 12, 'glass_pane');
+    for (const x of [4, 5, 6]) curtain(x, 2, 11, 'green', 'n', x === 5 ? 'open' : 'closed');
 
     // The roof: stairs up both slopes to a ridge running front to back, the gables filled in.
     for (let k = 0; k <= 4; k++) {
@@ -204,30 +260,62 @@ function constructionHouse(b) {
     }
     for (const z of [4, 12]) b.set(5, 5, z, 'glass_pane');
 
-    // The hearth, with its chimney through the roof.
+    // The kitchen, from the back: the oven under the chimney, the sink under its window, the
+    // workbench, the fridge. Under the fridge, in the floor, the generator that feeds it and nothing
+    // else: they touch, and 30 W of its 80 W is the whole network, so it never blacks out.
     b.set(8, 0, 11, 'brick');
-    b.set(8, 1, 11, 'torch');
-    b.set(7, 1, 11, 'brick');
-    b.set(7, 2, 11, 'brick');
+    oven(8, 1, 11, 'w');
     b.box(8, 2, 11, 8, 7, 11, 'brick');
+    piece(8, 1, 10, 'sink', 'sink', 'w');
+    b.set(8, 1, 9, 'workbench');
+    piece(8, 2, 9, 'wall_shelf', 'wall_shelf', 'w');
+    tall(8, 1, 8, 'fridge', 'w');
+    b.set(8, 0, 8, 'rtg');
+    b.set(8, 1, 7, 'barrel');
 
-    // Bed, crates, workplace, table with two seats, light.
+    // The table for four, under the back window.
+    b.box(5, 1, 10, 6, 1, 10, 'table');
+    for (const x of [5, 6]) {
+        piece(x, 1, 9, 'oak_chair', 'chair', 's');
+        piece(x, 1, 11, 'oak_chair', 'chair', 'n');
+    }
+    b.set(5, 2, 10, 'candle');
+    b.set(6, 2, 10, 'vase');
+
+    // The bed, head to the wall, with a lamp by it; at its foot the chest, then the wardrobe.
     b.bed(2, 1, 10, 's');
-    b.set(3, 1, 11, 'white_wool');
-    b.set(2, 1, 9, 'dark_oak_wood');
-    b.set(2, 2, 9, 'torch');
-    b.set(2, 1, 8, 'dark_oak_wood');
-    b.set(8, 1, 7, 'lab_bench');
-    b.lampPost(8, 1, 5, fence);
-    b.table(4, 6, 1, 8, 8, fence);
-    b.set(5, 2, 8, 'torch');
-    b.stairs(5, 1, 7, 'spruce_stairs', 'n');
-    b.stairs(5, 1, 9, 'spruce_stairs', 's');
+    piece(3, 1, 11, 'bedside_table', 'bedside_table', 'n');
+    b.set(3, 2, 11, 'table_lamp');
+    piece(2, 2, 11, 'painting_meadow', 'painting', 'n');
+    b.box(3, 1, 9, 3, 1, 10, 'blue_carpet');
+    piece(2, 1, 9, 'chest', 'chest', 'e');
+    piece(2, 2, 9, 'painting_peaks', 'painting', 'e');
+    tall(2, 1, 8, 'wardrobe', 'e');
+    b.set(2, 1, 7, 'flower_pot');
+
+    // By the door: the sofa on its carpet with a lamp, the clock over the door, a mirror on the post
+    // beside it, and the bookshelf, with a pot on top and one in the corner.
+    piece(2, 1, 5, 'green_sofa', 'sofa', 's');
+    piece(3, 1, 5, 'green_sofa', 'sofa', 's');
+    piece(3, 2, 5, 'painting_sunset', 'painting', 's');
+    floorLamp(4, 1, 5);
+    b.box(3, 1, 6, 5, 1, 7, 'red_carpet');
+    piece(5, 3, 5, 'wall_clock', 'wall_clock', 's');
+    piece(6, 2, 5, 'wall_mirror', 'wall_mirror', 's');
+    piece(6, 3, 5, 'wall_mirror', 'wall_mirror', 's');
+    for (let y = 1; y <= 3; y++) piece(7, y, 5, 'bookshelf', 'bookshelf', 's');
+    b.set(7, 4, 5, 'flower_pot');
+    b.set(8, 1, 5, 'flower_pot');
+
+    // Light from under the roof: the room is too low for a chandelier.
+    lantern(3, 5, 8);
+    lantern(7, 5, 8);
 }
 
 // A brick market hall on a paved plaza: wide doors on all four sides, dark oak columns and tie
 // beams, a tall roof glazed along the ridge, stalls along the long walls and tables in the middle.
 function constructionHall(b) {
+    const { piece, lantern, floorLamp, curtain, benches, lanternPost } = constructionFurnisher(b);
     const fence = 'dark_oak_fence';
     const wood = 'dark_oak_wood';
     const [front, back] = [8, 25];
@@ -243,13 +331,17 @@ function constructionHall(b) {
     // A fountain ahead of the door.
     b.walls(14, 1, 2, 17, 1, 5, 'stone_bricks_slab');
     b.box(15, 0, 3, 16, 0, 4, 'water');
-    // Trees, benches and street lamps.
+    // Trees, benches and street lamps. The benches have their back to the hall and look out.
     b.sym(() => {
         b.box(7, 1, 3, 7, 3, 3, 'wood');
         b.box(6, 4, 2, 8, 4, 4, 'leaves');
         b.set(7, 5, 3, 'leaves');
-        b.box(10, 1, 6, 11, 1, 6, 'stone_bricks_slab');
-        for (const [x, z] of [[1, 1], [1, 9], [1, 18], [1, 28], [10, 1], [10, 28]]) b.lampPost(x, 1, z, fence, 3);
+        benches(9, 11, 1, 6, 'n');
+        b.set(12, 1, 6, 'flower_pot');
+        for (const z of [10, 11, 12, 21, 22, 23]) piece(3, 1, z, 'bench', 'bench', 'w');
+        benches(8, 10, 1, 26, 's');
+        b.set(11, 1, 26, 'flower_pot');
+        for (const [x, z] of [[1, 1], [1, 9], [1, 18], [1, 28], [10, 1], [10, 28]]) lanternPost(x, 1, z, fence, 3);
     });
 
     // Floor and walls.
@@ -275,28 +367,42 @@ function constructionHall(b) {
         for (const [z0, z1] of [[10, 12], [21, 23]]) b.box(x, 3, z0, x, 5, z1, 'glass_pane');
     }
 
-    // Wide doors in timber frames: four leaves in front, two on the other sides.
+    // Curtains drawn back on the windows of the two short walls.
+    b.sym(() => {
+        for (let y = 3; y <= 5; y++) {
+            for (const z of [10, 12, 21, 23]) curtain(5, y, z, 'red', 'e', 'open');
+        }
+    });
+
+    // Wide doors in timber frames: four leaves in front, two on the other sides. Coloured glass over them.
+    const fanlight = (a, y) => `${(a + y) % 2 ? 'orange' : 'yellow'}_stained_glass_pane`;
     b.box(13, 3, front, 18, 3, front, wood);
-    b.box(14, 4, front, 17, 6, front, 'glass_pane');
+    for (let y = 4; y <= 6; y++) {
+        for (let x = 14; x <= 17; x++) {
+            b.set(x, y, front, fanlight(x, y));
+            b.set(x, y, back, fanlight(x, y));
+        }
+    }
     b.box(14, 1, front, 17, 2, front, null);
     b.doubleDoor(14, 1, front, 15, front, 'oak_door', 's');
     b.doubleDoor(16, 1, front, 17, front, 'oak_door', 's');
     b.box(14, 3, back, 17, 3, back, wood);
-    b.box(14, 4, back, 17, 6, back, 'glass_pane');
     b.box(15, 1, back, 16, 2, back, null);
     b.doubleDoor(15, 1, back, 16, back, 'oak_door', 'n');
     for (const [x, facing] of [[4, 'e'], [27, 'w']]) {
         b.box(x, 3, 15, x, 3, 18, wood);
-        b.box(x, 4, 15, x, 6, 18, 'glass_pane');
+        for (let y = 4; y <= 6; y++) {
+            for (let z = 15; z <= 18; z++) b.set(x, y, z, fanlight(z, y));
+        }
         b.box(x, 1, 16, x, 2, 17, null);
         b.doubleDoor(x, 1, 16, x, 17, 'oak_door', facing);
     }
 
-    // Columns and tie beams, with torches along the beams.
+    // Columns and tie beams, with chandeliers under the beams.
     for (const x of columns) {
         b.box(x, 8, front + 1, x, 8, back - 1, wood);
         for (const z of [13, 20]) b.box(x, 1, z, x, 7, z, wood);
-        for (const z of [10, 13, 16, 20, 23]) b.set(x, 9, z, 'torch');
+        for (const z of [12, 15, 18, 21]) b.set(x, 7, z, 'chandelier');
     }
 
     // The roof: stairs up both slopes to a ridge along x, glass near the ridge (it lights the
@@ -318,39 +424,65 @@ function constructionHall(b) {
     }
     for (const x of [4, 27]) b.box(x, 9, 13, x, 13, 20, 'glass_pane');
 
-    // Stalls along the front and back walls: a counter between two posts under a striped awning.
-    const goods = ['flower_red', 'mushroom_red', 'flower_yellow', 'mushroom_brown'];
-    let good = 0;
-    for (const [counter, behind] of [[10, 9], [23, 24]]) {
+    // Stalls along the front and back walls: a table between two posts under a striped awning that
+    // runs back to the wall, a lane behind it to serve from, the stock against the wall, a lantern
+    // under the awning and a mat for the customer. The stock is empty, as in every build.
+    const wares = [['flower_pot', 'vase'], ['mushroom_red', 'mushroom_brown'], ['flower_red', 'flower_yellow'], ['vase', 'candle']];
+    const mats = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'yellow', 'brown'];
+    let stall = 0;
+    for (const [counter, lane, stock, mat, facing] of [[11, 10, 9, 12, 's'], [22, 23, 24, 21, 'n']]) {
         for (const x0 of [6, 10, 18, 22]) {
             b.box(x0, 1, counter, x0, 3, counter, fence);
             b.box(x0 + 3, 1, counter, x0 + 3, 3, counter, fence);
-            b.box(x0 + 1, 1, counter, x0 + 2, 1, counter, 'dark_oak_planks');
-            b.set(x0 + 1, 2, counter, goods[good++ % goods.length]);
-            b.set(x0 + 2, 2, counter, 'torch');
+            b.box(x0 + 1, 1, counter, x0 + 2, 1, counter, 'table');
+            const [left, right] = wares[stall % wares.length];
+            b.set(x0 + 1, 2, counter, left);
+            b.set(x0 + 2, 2, counter, right);
+            b.box(x0 + 1, 1, mat, x0 + 2, 1, mat, `${mats[stall]}_carpet`);
+            b.set(x0 + 1, 1, stock, 'barrel');
+            piece(x0 + 2, 1, stock, 'chest', 'chest', facing);
             for (let x = x0; x <= x0 + 3; x++) {
                 const stripe = x % 2 ? 'red_wool' : 'white_wool';
-                b.set(x, 4, counter, stripe);
-                b.set(x, 4, behind, stripe);
+                for (const z of [counter, lane, stock]) b.set(x, 4, z, stripe);
             }
+            lantern(x0 + 1, 3, lane);
+            stall++;
         }
     }
 
-    // Two long tables with their benches, leaving the middle free from door to door.
+    // Two long tables of joined boards with their benches, a pair of chairs at the end towards the
+    // middle, which stays free from door to door, and free at the side doors too.
     b.sym(() => {
-        b.table(7, 12, 1, 16, 17, fence);
-        for (const x of [9, 10]) b.set(x, 2, 16, 'torch');
-        b.box(8, 1, 15, 11, 1, 15, 'spruce_planks_slab');
-        b.box(8, 1, 18, 11, 1, 18, 'spruce_planks_slab');
-        b.lampPost(14, 1, 12, fence);
-        b.lampPost(14, 1, 21, fence);
+        b.box(7, 1, 16, 12, 1, 17, 'table');
+        benches(7, 12, 1, 15, 's');
+        benches(7, 12, 1, 18, 'n');
+        piece(13, 1, 16, 'dark_oak_chair', 'chair', 'w');
+        piece(13, 1, 17, 'dark_oak_chair', 'chair', 'w');
+        b.set(8, 2, 16, 'candle');
+        b.set(11, 2, 17, 'candle');
+        b.set(9, 2, 17, 'vase');
+        b.set(10, 2, 16, 'flower_pot');
+        floorLamp(14, 1, 12);
+        floorLamp(14, 1, 21);
+        // Pots by the doors and the middle columns, a clock on those, paintings on the walls.
+        b.set(13, 1, 9, 'flower_pot');
+        b.set(14, 1, 24, 'flower_pot');
+        b.set(13, 1, 14, 'flower_pot');
+        b.set(13, 1, 19, 'flower_pot');
+        piece(13, 3, 12, 'wall_clock', 'wall_clock', 'n');
+        piece(5, 3, 14, b.flipped ? 'painting_fish' : 'painting_sunset', 'painting', 'e');
+        piece(5, 3, 19, b.flipped ? 'painting_shapes' : 'painting_meadow', 'painting', 'e');
+        piece(8, 3, 14, b.flipped ? 'painting_night' : 'painting_peaks', 'painting', 's');
+        piece(8, 3, 19, b.flipped ? 'painting_meadow' : 'painting_fish', 'painting', 'n');
     });
 }
 
 // A limestone cathedral: two bell towers on the front, a nave with galleries on two levels over the
 // aisles, marble piers, a glass roof on stone ribs (it lights the inside by day), a rose window over
-// the door and a raised chancel in a rounded apse.
+// the door and a raised chancel in a rounded apse. Stained glass in every tall window, long benches
+// facing the altar, a red carpet from the door to the altar, chandeliers on chains from the ridge.
 function constructionCathedral(b) {
+    const { piece, lantern, benches, lanternPost } = constructionFurnisher(b);
     const stone = 'limestone';
     const trim = 'stone_bricks';
     const pier = 'marble';
@@ -373,7 +505,7 @@ function constructionCathedral(b) {
     for (let z = 5; z <= lastZ; z++) {
         for (let x = 7; x <= 21; x++) b.set(x, 0, z, (x + z) % 2 ? pier : 'basalt');
     }
-    b.box(13, 0, 0, 15, 0, 41, 'red_wool');
+    b.box(13, 1, 5, 15, 1, 40, 'red_carpet');
 
     b.sym(() => {
         // ---- Outer wall of the aisles, with buttresses ----
@@ -403,19 +535,24 @@ function constructionCathedral(b) {
             }
             for (const z of piers) {
                 b.set(6, floor, z, pier);
-                b.set(5, floor + 1, z + 1, 'torch');
-                if (z + 3 <= lastZ) b.set(2, floor + 1, z + 3, 'torch');
+                lantern(5, floor + 1, z + 1, 'floor');
+                if (z + 3 <= lastZ) lantern(2, floor + 1, z + 3, 'floor');
             }
         });
 
-        // ---- Tall windows, one per bay and storey ----
-        for (const z of piers) {
-            if (z + 4 > lastZ) continue;
-            for (const [y0, y1] of [[2, 6], [10, 14], [18, 22]]) {
-                b.box(1, y0, z + 2, 1, y1 - 1, z + 4, 'cobalt_glass');
-                b.box(1, y0, z + 3, 1, y1, z + 3, 'glass');
-            }
-        }
+        // ---- Tall windows, one per bay and storey: two colours in a check on the sides, a pale
+        // light down the middle with a yellow medallion, the colours moving on a bay per storey ----
+        const lights = [['blue', 'light_blue'], ['red', 'orange'], ['purple', 'magenta'], ['green', 'lime'], ['cyan', 'blue']];
+        piers.forEach((z, bay) => {
+            if (z + 4 > lastZ) return;
+            [[2, 6], [10, 14], [18, 22]].forEach(([y0, y1], storey) => {
+                const pair = lights[(bay + storey) % lights.length];
+                for (let y = y0; y < y1; y++) {
+                    for (const dz of [2, 4]) b.set(1, y, z + dz, `${pair[(y + dz / 2) % 2]}_stained_glass`);
+                }
+                for (let y = y0; y <= y1; y++) b.set(1, y, z + 3, `${y === y0 + 2 ? 'yellow' : 'white'}_stained_glass`);
+            });
+        });
 
         // ---- The roof over the aisles, a parapet and pinnacles ----
         b.box(1, roofY, 11, 6, roofY, 45, 'slate');
@@ -430,7 +567,7 @@ function constructionCathedral(b) {
             for (const dz of [-3, 2]) {
                 if (z + dz > lastZ) continue;
                 b.set(2, 4, z + dz, trim);
-                b.set(2, 5, z + dz, 'torch');
+                lantern(2, 5, z + dz, 'floor');
             }
         }
 
@@ -438,21 +575,22 @@ function constructionCathedral(b) {
         for (const z of piers) {
             for (const x of [5, 7]) {
                 b.set(x, 4, z, trim);
-                b.set(x, 5, z, 'torch');
+                lantern(x, 5, z, 'floor');
             }
+            // And one under each arch, between two piers.
+            if (z + 3 <= lastZ) lantern(6, 6, z + 3);
         }
 
         // ---- A side door into the aisle ----
         b.box(1, 1, 26, 1, 3, 28, trim);
         b.doubleDoor(1, 1, 26, 1, 27, 'spruce_door', 'e');
 
-        // ---- Pews, with torch stands along the middle aisle ----
-        for (let z = 12; z <= 38; z += 3) {
-            for (let x = 8; x <= 12; x++) b.stairs(x, 1, z, 'dark_oak_stairs', 'n');
-        }
-        for (let z = 13; z <= 39; z += 6) b.lampPost(12, 1, z, 'dark_oak_fence');
-        for (const z of [6, 9]) b.lampPost(8, 1, z, 'dark_oak_fence', 2);
-        b.lampPost(11, 1, 6, 'dark_oak_fence');
+        // ---- Pews: long benches looking at the altar, lantern stands along the carpet, kept off
+        // the row each bench stands up into ----
+        for (let z = 12; z <= 38; z += 3) benches(8, 12, 1, z, 's');
+        for (let z = 14; z <= 38; z += 6) lanternPost(12, 1, z, 'dark_oak_fence');
+        for (const z of [6, 9]) lanternPost(8, 1, z, 'dark_oak_fence', 2);
+        lanternPost(11, 1, 6, 'dark_oak_fence');
     });
 
     // ---- The nave's roof: ribs of stairs with glass between them, a slate ridge ----
@@ -471,15 +609,16 @@ function constructionCathedral(b) {
     }
     b.box(cx, roofY + 6, 5, cx, roofY + 6, lastZ, 'slate');
 
-    // ---- Chandeliers hanging from the ridge ----
-    for (const z of [17, 29, 40]) {
-        b.box(cx, 12, z, cx, roofY + 5, z, 'dark_oak_fence');
-        b.set(cx, 11, z, 'gold_block');
+    // ---- Crowns of five chandeliers, on chains from the ridge: low enough to light the floor ----
+    const crown = (z, ridge) => {
+        b.box(cx, 10, z, cx, ridge - 1, z, 'dark_oak_fence');
+        b.set(cx, 9, z, 'chandelier');
         for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            b.set(cx + dx, 11, z + dz, planks);
-            b.set(cx + dx, 12, z + dz, 'torch');
+            b.set(cx + dx, 10, z + dz, 'dark_oak_fence');
+            b.set(cx + dx, 9, z + dz, 'chandelier');
         }
-    }
+    };
+    for (const z of [17, 29, 40]) crown(z, roofY + 6);
 
     // ---- The front: wall and gable, the portal, the rose window ----
     b.box(1, 1, 4, 27, roofY, 4, stone);
@@ -490,23 +629,25 @@ function constructionCathedral(b) {
     b.box(17, 1, 4, 17, 7, 4, pier);
     b.box(11, 8, 4, 17, 8, 4, trim);
     b.box(12, 3, 4, 16, 3, 4, trim);
-    b.box(12, 4, 4, 16, 7, 4, 'glass');
-    b.box(13, 4, 4, 15, 6, 4, 'cobalt_glass');
+    b.box(12, 4, 4, 16, 7, 4, 'light_blue_stained_glass');
+    b.box(13, 4, 4, 15, 6, 4, 'blue_stained_glass');
+    b.set(cx, 5, 4, 'yellow_stained_glass');
     b.box(12, 1, 4, 16, 2, 4, trim);
     b.door(13, 1, 4, 'dark_oak_door', 's', 'right');
     b.door(14, 1, 4, 'dark_oak_door', 's', 'left');
     b.door(15, 1, 4, 'dark_oak_door', 's', 'left');
     b.sym(() => {
         b.stairs(12, 8, 3, roofRib, 'e', 'bottom');
-        b.box(9, 4, 4, 9, 10, 4, 'cobalt_glass');
-        b.box(9, 5, 4, 9, 9, 4, 'glass');
+        for (let y = 4; y <= 10; y++) b.set(9, y, 4, `${y === 4 || y === 10 ? 'blue' : y % 2 ? 'red' : 'yellow'}_stained_glass`);
     });
     constructionRose(b, cx, 18, 4, 6);
 
     // ---- The two bell towers ----
     b.sym(() => constructionBellTower(b));
 
-    // ---- The apse: a rounded end behind the chancel, walls of coloured glass ----
+    // ---- The apse: a rounded end behind the chancel, walls of coloured glass, a sun behind the gold
+    // cross: rings from yellow out to blue, each in a check with the next paler colour ----
+    const apseRings = [[4, 'yellow', 'white'], [7, 'orange', 'yellow'], [10, 'red', 'orange'], [13, 'purple', 'magenta'], [Infinity, 'blue', 'light_blue']];
     const halfWidth = { 45: 8, 46: 8, 47: 8, 48: 7, 49: 6, 50: 5, 51: 4, 52: 3 };
     const apseEnd = 52;
     for (let z = 45; z <= apseEnd; z++) {
@@ -519,7 +660,10 @@ function constructionCathedral(b) {
             if (dx !== hw && dx <= next) continue;
             b.box(x, 1, z, x, roofY, z, stone);
             if (dx !== 0 && z > 47) {
-                for (let y = 5; y <= 21; y++) b.set(x, y, z, y % 4 === 0 ? trim : (dx + y) % 2 ? 'cobalt_glass' : 'glass');
+                for (let y = 5; y <= 21; y++) {
+                    const ring = apseRings.find(([reach]) => Math.hypot(dx, y - 11) < reach);
+                    b.set(x, y, z, y % 4 === 0 ? trim : `${ring[1 + (dx + y) % 2]}_stained_glass`);
+                }
             }
         }
     }
@@ -541,31 +685,48 @@ function constructionCathedral(b) {
         b.set(x, 1, 43, pier);
         b.box(x, 1, 44, x, 2, 44, pier);
     }
+    // The carpet goes on up the middle to the altar: candles on it, either side of a white cloth.
+    b.box(13, 3, 44, 15, 3, 47, 'red_carpet');
     b.box(13, 3, 48, 15, 3, 48, 'marble');
-    b.box(13, 4, 48, 15, 4, 48, 'stone_bricks_slab');
+    b.set(14, 4, 48, 'white_carpet');
     b.box(cx, 3, 50, cx, 9, 50, 'gold_block');
     b.box(cx - 1, 7, 50, cx + 1, 7, 50, 'gold_block');
-    b.set(13, 5, 48, 'torch');
-    b.set(15, 5, 48, 'torch');
+    b.set(13, 4, 48, 'candle');
+    b.set(15, 4, 48, 'candle');
+    crown(47, roofY + 4);
     b.sym(() => {
-        b.lampPost(10, 3, 46, 'dark_oak_fence');
-        b.lampPost(11, 3, 49, 'dark_oak_fence');
+        // Round the altar, on the floor, with a pot; candlesticks behind it; a lantern at the steps.
+        for (const z of [47, 49]) b.set(12, 3, z, 'candle');
+        b.set(13, 3, 51, 'candle');
+        b.set(12, 3, 48, 'flower_pot');
+        b.set(11, 3, 49, 'dark_oak_fence');
+        b.set(11, 4, 49, 'candle');
+        lanternPost(10, 3, 46, 'dark_oak_fence');
+        // Seats for the clergy, along the wall, looking across.
+        piece(7, 3, 46, 'dark_oak_chair', 'chair', 'e');
+        piece(7, 3, 47, 'dark_oak_chair', 'chair', 'e');
     });
 }
 
-// A round window in the plane of the wall at z: gold in the middle, then glowing and coloured
-// sectors, in a stone ring. Lamps stand in for the stained glass colours the game does not have.
+// A round window in the plane of the wall at z, in real stained glass, in a stone ring. From the middle:
+// gold, then four neon lamps on its corners in a star of yellow and orange; red and blue petals; a
+// ring of light blue and purple with twelve lamps set in it like the hours of a clock, the four on
+// the axes neon and the other eight argon. The lamps glow by day and night, in every graphics mode,
+// when the glass goes dark. They give no light to the room (no `lightEmission`).
 function constructionRose(b, cx, cy, z, radius) {
     for (let y = cy - radius; y <= cy + radius; y++) {
         for (let x = cx - radius; x <= cx + radius; x++) {
-            const d = Math.hypot(x - cx, y - cy);
+            const [dx, dy] = [Math.abs(x - cx), Math.abs(y - cy)];
+            const d = Math.hypot(dx, dy);
             if (d > radius + 0.4) continue;
             const sector = Math.floor(((Math.atan2(y - cy, x - cx) + Math.PI) / (Math.PI * 2)) * 8 + 0.5) % 8;
             let type = 'stone_bricks';
             if (d < 1) type = 'gold_block';
-            else if (d < 2.5) type = sector % 2 ? 'neon_lamp' : 'cobalt_glass';
-            else if (d < 4.2) type = sector % 2 ? 'cobalt_glass' : 'glass';
-            else if (d < 5.4) type = sector % 2 ? 'glass' : 'argon_lamp';
+            else if (dx === 1 && dy === 1) type = 'neon_lamp';
+            else if (d < 2.5) type = sector % 2 ? 'orange_stained_glass' : 'yellow_stained_glass';
+            else if (d < 4.2) type = sector % 2 ? 'blue_stained_glass' : 'red_stained_glass';
+            else if (d === 5) type = dx === 0 || dy === 0 ? 'neon_lamp' : 'argon_lamp';
+            else if (d < 5.4) type = sector % 2 ? 'light_blue_stained_glass' : 'purple_stained_glass';
             b.set(x, y, z, type);
         }
     }
@@ -575,6 +736,7 @@ function constructionRose(b, cx, cy, z, radius) {
 // solid core and a stair that winds around it, 2 up per side, so it passes over the same corner
 // every 8 blocks: that is where the door to each gallery is, and the belfry floor.
 function constructionBellTower(b) {
+    const { lantern } = constructionFurnisher(b);
     const trim = 'stone_bricks';
     const stair = 'stone_brick_stairs';
     const belfry = 32;
@@ -588,7 +750,7 @@ function constructionBellTower(b) {
     b.box(2, 0, 5, 6, 0, 9, trim);
     b.box(3, 1, 6, 5, belfry - 1, 8, trim);
 
-    b.set(6, 1, 6, 'torch');
+    lantern(6, 1, 6, 'floor');
     // The way in, from the aisle.
     b.box(3, 1, 10, 3, 2, 10, null);
     // Narrow windows on the two outer sides.
@@ -603,7 +765,7 @@ function constructionBellTower(b) {
         b.stairs(2, base + 2, 7, stair, 'n');
         b.set(2, base + 2, 6, trim);
         b.set(2, base + 2, 5, trim);
-        b.set(2, base + 3, 5, 'torch');
+        lantern(2, base + 3, 5, 'floor');
         b.stairs(3, base + 3, 5, stair, 'e');
         b.stairs(4, base + 4, 5, stair, 'e');
         b.set(5, base + 4, 5, trim);
@@ -612,7 +774,7 @@ function constructionBellTower(b) {
         b.stairs(6, base + 6, 7, stair, 's');
         b.set(6, base + 6, 8, trim);
         b.set(6, base + 6, 9, trim);
-        b.set(6, base + 7, 9, 'torch');
+        lantern(6, base + 7, 9, 'floor');
         b.stairs(5, base + 7, 9, stair, 'w');
         b.stairs(4, base + 8, 9, stair, 'w');
         b.set(3, base + 8, 9, trim);
@@ -631,7 +793,7 @@ function constructionBellTower(b) {
     b.box(5, belfry + 1, 6, 5, belfry + 1, 8, 'iron_bars');
     b.set(4, belfry + 1, 8, 'iron_bars');
     b.set(6, belfry + 1, 6, 'iron_bars');
-    for (const [x, z] of [[2, 5], [4, 6], [5, 5]]) b.set(x, belfry + 1, z, 'torch');
+    for (const [x, z] of [[2, 5], [4, 6], [5, 5]]) lantern(x, belfry + 1, z, 'floor');
     b.box(1, belfry + 2, 6, 1, belfry + 4, 8, 'iron_bars');
     b.box(7, belfry + 2, 6, 7, belfry + 4, 8, 'iron_bars');
     b.box(3, belfry + 2, 4, 5, belfry + 4, 4, 'iron_bars');
@@ -1045,7 +1207,9 @@ const CONSTRUCTION_DESIGNS = {
         start: [5, 1, 1],
         levels: [
             { name: 'by the bed', at: [3, 1, 10] },
-            { name: 'by the hearth', at: [8, 1, 10] }
+            { name: 'by the oven', at: [7, 1, 11] },
+            { name: 'by the fridge', at: [7, 1, 8] },
+            { name: 'the sofa\'s carpet', at: [3, 1, 6] }
         ],
         generate: constructionHouse
     },
@@ -1058,7 +1222,8 @@ const CONSTRUCTION_DESIGNS = {
         levels: [
             { name: 'the middle of the hall', at: [15, 1, 19] },
             { name: 'the far side', at: [15, 1, 28] },
-            { name: 'behind a stall', at: [8, 1, 9] }
+            { name: 'behind a stall', at: [8, 1, 10] },
+            { name: 'behind a stall at the back', at: [23, 1, 23] }
         ],
         generate: constructionHall
     },
@@ -1142,6 +1307,7 @@ function constructionLayout(plan, turns, anchor, baseY, blockTypes) {
         min,
         size,
         foundation: plan.foundation,
+        groundY: plan.groundY,
         cells: cells.map((cell) => ({
             ...cell,
             x: min.x + cell.x,
@@ -1171,17 +1337,39 @@ function constructionFindGround(readType, x, z, fromY, blockTypes) {
 // What has to change, as ops { x, y, z, type, meta, prev: { type, meta } } (type null: remove),
 // removals from the top down and then blocks from the bottom up. read(x, y, z) -> { type, meta }.
 function constructionDiff(layout, read, blockTypes) {
-    const wanted = new Map();
-    const key = (x, y, z) => `${x},${y},${z}`;
-    layout.cells.forEach((cell) => wanted.set(key(cell.x, cell.y, cell.z), cell));
     const ops = [];
+    for (const step of constructionDiffSteps(layout, read, blockTypes, ops)) void step;
+    return constructionOrder(ops);
+}
+
+// The same, a column at a time and chunk by chunk (so that blocks in a layer go out chunk by chunk,
+// not re-meshing seven chunks a frame): yields after each column, adding to `ops`.
+function* constructionDiffSteps(layout, read, blockTypes, ops) {
     const { min, size } = layout;
-    const inBox = (x, z) => x >= min.x && x < min.x + size[0] && z >= min.z && z < min.z + size[2];
-    const change = (x, y, z, type, meta, current) => {
+    const wanted = new Map();
+    const keyOf = (x, y, z) => ((y - min.y) * size[2] + (z - min.z)) * size[0] + (x - min.x);
+    layout.cells.forEach((cell) => wanted.set(keyOf(cell.x, cell.y, cell.z), cell));
+    for (let cx = floorDiv(min.x, CHUNK_SIZE) * CHUNK_SIZE; cx < min.x + size[0]; cx += CHUNK_SIZE) {
+        for (let cz = floorDiv(min.z, CHUNK_SIZE) * CHUNK_SIZE; cz < min.z + size[2]; cz += CHUNK_SIZE) {
+            for (let x = Math.max(cx, min.x); x < Math.min(cx + CHUNK_SIZE, min.x + size[0]); x++) {
+                for (let z = Math.max(cz, min.z); z < Math.min(cz + CHUNK_SIZE, min.z + size[2]); z++) {
+                    constructionDiffColumn(layout, x, z, (y) => wanted.get(keyOf(x, y, z)), read, blockTypes, ops);
+                    yield;
+                }
+            }
+        }
+    }
+}
+
+function constructionDiffColumn(layout, x, z, cellAt, read, blockTypes, ops) {
+    const { min, size } = layout;
+    const inBox = (ax, az) => ax >= min.x && ax < min.x + size[0] && az >= min.z && az < min.z + size[2];
+    const change = (y, type, meta, current) => {
         const def = current.type && blockTypes[current.type];
         if (def && def.unbreakable) return;
-        if (current.type === type && !meta) return;
-        ops.push({ x, y, z, type, meta, prev: current });
+        const wants = type === 'air' ? null : type;
+        if (current.type === wants && !meta) return;
+        ops.push({ x, y, z, type: wants, meta, prev: current });
         // A bed the box cuts in two goes whole, and an undo brings it back whole.
         if (isBedBlockType(current.type)) {
             for (const other of shapeLinkedCells(current.type, { x, y, z }, (ax, ay, az) => read(ax, ay, az).type, blockTypes)) {
@@ -1189,27 +1377,41 @@ function constructionDiff(layout, read, blockTypes) {
             }
         }
     };
-    for (let x = min.x; x < min.x + size[0]; x++) {
-        for (let z = min.z; z < min.z + size[2]; z++) {
-            // The volume: what the plan says, air everywhere else.
-            for (let y = min.y + 1; y < min.y + size[1]; y++) {
-                const cell = wanted.get(key(x, y, z));
-                change(x, y, z, cell ? cell.type : null, cell && cell.meta, read(x, y, z));
-            }
-            // The floor layer: what the plan says, or the ground if there is some.
-            const floor = wanted.get(key(x, min.y, z));
-            const current = read(x, min.y, z);
-            if (floor) change(x, min.y, z, floor.type, floor.meta, current);
-            else if (!constructionIsGround(current.type, blockTypes)) change(x, min.y, z, layout.foundation, undefined, current);
-            // The foundation, down to the terrain.
-            for (let y = min.y - 1; y >= WORLD_MIN_Y; y--) {
-                const below = read(x, y, z);
-                if (constructionIsGround(below.type, blockTypes)) break;
-                change(x, y, z, layout.foundation, undefined, below);
-            }
+    const top = min.y + size[1];
+    // The rim of a big site: above its height air, then `type` (or the ground there if `keep`), and
+    // `soil` down to what is ground. It ignores the plan.
+    const grade = layout.grade && layout.grade(x, z);
+    if (grade) {
+        for (let y = top - 1; y > grade.top; y--) change(y, null, undefined, read(x, y, z));
+        const surface = read(x, grade.top, z);
+        if (!grade.keep || !constructionIsGround(surface.type, blockTypes)) change(grade.top, grade.type, undefined, surface);
+        for (let y = grade.top - 1; y >= WORLD_MIN_Y; y--) {
+            const below = read(x, y, z);
+            if (constructionIsGround(below.type, blockTypes)) break;
+            change(y, grade.soil, undefined, below);
         }
+        return;
     }
-    return constructionOrder(ops);
+    const groundY = min.y + (layout.groundY || 0);
+    // The volume: what the plan says, air everywhere else.
+    for (let y = groundY + 1; y < top; y++) {
+        const cell = cellAt(y);
+        change(y, cell ? cell.type : null, cell && cell.meta, read(x, y, z));
+    }
+    // The floor layer (and those under it, if the ground is higher): what the plan says, or the
+    // ground if there is some.
+    for (let y = groundY; y >= min.y; y--) {
+        const floor = cellAt(y);
+        const current = read(x, y, z);
+        if (floor) change(y, floor.type, floor.meta, current);
+        else if (!constructionIsGround(current.type, blockTypes)) change(y, layout.foundation, undefined, current);
+    }
+    // The foundation, down to the terrain.
+    for (let y = min.y - 1; y >= WORLD_MIN_Y; y--) {
+        const below = read(x, y, z);
+        if (constructionIsGround(below.type, blockTypes)) break;
+        change(y, layout.foundation, undefined, below);
+    }
 }
 
 function constructionOrder(ops) {
@@ -1250,7 +1452,7 @@ Object.assign(Game.prototype, {
     },
 
     constructionBusy() {
-        if (!this.constructionJob && !this.constructionWaiting) return false;
+        if (!this.constructionJob && !this.constructionWaiting && !this.constructionScan) return false;
         this.receiveSystemMessage({ text: 'Still building: wait for it, or /build stop' });
         return true;
     },
@@ -1270,7 +1472,13 @@ Object.assign(Game.prototype, {
         const plan = constructionPlan(name);
         // Where the box lands on the map (the height does not matter yet).
         const { min, size } = constructionLayout(plan, turns, anchor, 0, this.world.blockTypes);
-        this.constructionWaiting = { plan, turns, anchor, fromY, min, size, waited: 0, told: false };
+        this.constructionWaiting = { plan, turns, anchor, fromY, min, size, waited: 0, retry: 0, left: Infinity, told: false };
+        this.world.keptChunks = {
+            minX: floorDiv(min.x, CHUNK_SIZE),
+            maxX: floorDiv(min.x + size[0] - 1, CHUNK_SIZE),
+            minZ: floorDiv(min.z, CHUNK_SIZE),
+            maxZ: floorDiv(min.z + size[2] - 1, CHUNK_SIZE)
+        };
         this.constructionTryBegin();
     },
 
@@ -1298,7 +1506,8 @@ Object.assign(Game.prototype, {
         return { type, meta: undefined };
     },
 
-    // Once every chunk is here: read the ground and what is there, and start placing.
+    // Once every chunk is here: read the ground and what is there, and start placing. A design with
+    // a `rate` is read over several frames (constructionScanUpdate), the others right now.
     constructionTryBegin() {
         const waiting = this.constructionWaiting;
         const missing = this.constructionMissingChunks(waiting);
@@ -1307,22 +1516,84 @@ Object.assign(Game.prototype, {
                 waiting.told = true;
                 this.receiveSystemMessage({ text: `${waiting.plan.label}: waiting for ${missing.length} chunks to load...` });
             }
+            // Anything arriving counts as progress: a big box takes longer than the patience for one chunk.
+            if (missing.length < waiting.left) {
+                waiting.left = missing.length;
+                waiting.waited = 0;
+            }
             return;
         }
         this.constructionWaiting = null;
-        const blockTypes = this.world.blockTypes;
-        const readType = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
-        const baseY = constructionFindGround(readType, waiting.anchor.x, waiting.anchor.z, waiting.fromY, blockTypes);
-        if (baseY === null || baseY + waiting.size[1] > WORLD_MAX_Y) {
-            this.receiveSystemMessage({ text: `${waiting.plan.label}: it does not fit here` });
+        const steps = this.constructionScanSteps(waiting);
+        this.constructionScan = { waiting, steps };
+        if (waiting.plan.rate) {
+            this.receiveSystemMessage({ text: `${waiting.plan.label}: looking at the site...` });
             return;
         }
-        const layout = constructionLayout(waiting.plan, waiting.turns, waiting.anchor, baseY, blockTypes);
-        const ops = constructionDiff(layout, (x, y, z) => this.constructionRead(x, y, z), blockTypes);
+        let step = steps.next();
+        while (!step.done) step = steps.next();
+        this.constructionScanDone(waiting, step.value);
+    },
+
+    // Reads the box; yields often, returns { ops } or { refuse }.
+    * constructionScanSteps({ plan, turns, anchor, fromY, min, size }) {
+        const blockTypes = this.world.blockTypes;
+        const readType = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        let baseY;
+        let grade = null;
+        if (plan.site) {
+            const site = yield* plan.site({ readType, blockTypes, min, size, turns, anchor, fromY });
+            if (site.refuse) return site;
+            ({ baseY, grade } = site);
+        } else {
+            baseY = constructionFindGround(readType, anchor.x, anchor.z, fromY, blockTypes);
+        }
+        if (baseY === null || baseY < WORLD_MIN_Y || baseY + size[1] > WORLD_MAX_Y) return { refuse: `${plan.label}: it does not fit here` };
+        const layout = constructionLayout(plan, turns, anchor, baseY, blockTypes);
+        layout.grade = grade;
+        const ops = [];
+        yield* constructionDiffSteps(layout, (x, y, z) => this.constructionRead(x, y, z), blockTypes, ops);
+        return { ops: constructionOrder(ops) };
+    },
+
+    // One frame's slice of the reading. A reconnection empties the world under it: then it starts again.
+    constructionScanUpdate() {
+        const { waiting, steps } = this.constructionScan;
+        if (this.constructionMissingChunks(waiting).length) {
+            this.constructionScan = null;
+            this.constructionWaiting = { ...waiting, waited: 0, retry: 0, left: Infinity, told: false };
+            return;
+        }
+        const start = performance.now();
+        for (let count = 0; count < CONSTRUCTION_SCAN_STEPS; count++) {
+            const step = steps.next();
+            if (step.done) {
+                this.constructionScanDone(waiting, step.value);
+                return;
+            }
+            if (performance.now() - start > CONSTRUCTION_SCAN_MS) return;
+        }
+    },
+
+    constructionScanDone(waiting, { refuse, ops }) {
+        this.constructionScan = null;
+        this.world.keptChunks = null;
+        if (refuse) {
+            this.receiveSystemMessage({ text: refuse });
+            return;
+        }
+        const { label, rate = CONSTRUCTION_RATE } = waiting.plan;
         // Only the last build can be undone; it grows as blocks go out.
-        this.constructionUndo = { label: waiting.plan.label, applied: [] };
-        this.constructionJob = { label: waiting.plan.label, verb: 'Building', ops, done: 0, credit: 0, nextReport: 0.2, undoing: false };
-        this.receiveSystemMessage({ text: `Building ${waiting.plan.label}: ${ops.length} block changes...` });
+        this.constructionUndo = { label, rate, applied: [] };
+        this.constructionJob = this.constructionNewJob(label, 'Building', ops, rate, false);
+        this.receiveSystemMessage({ text: `Building ${label}: ${ops.length} block changes...` });
+        if (waiting.plan.rate) {
+            this.receiveSystemMessage({ text: `That is about ${Math.ceil(ops.length / rate / 60)} minutes, from the ground up, with no need to walk. Keep this tab open: /build undo lives in it. /build stop stops it` });
+        }
+    },
+
+    constructionNewJob(label, verb, ops, rate, undoing) {
+        return { label, verb, ops, rate, done: 0, credit: 0, nextReport: 0.1, undoing, socket: this.network && this.network.ws, held: new Set(), meshed: 0 };
     },
 
     constructionStartUndo() {
@@ -1333,14 +1604,16 @@ Object.assign(Game.prototype, {
             return;
         }
         const ops = constructionUndoOps(undo.applied);
-        this.constructionJob = { label: undo.label, verb: 'Undoing', ops, done: 0, credit: 0, nextReport: 0.2, undoing: true };
+        this.constructionJob = this.constructionNewJob(undo.label, 'Undoing', ops, undo.rate || CONSTRUCTION_RATE, true);
         this.constructionUndo = null;
         this.receiveSystemMessage({ text: `Undoing ${undo.label}: ${ops.length} block changes...` });
     },
 
     constructionStop() {
-        if (this.constructionWaiting) {
+        if (this.constructionWaiting || this.constructionScan) {
             this.constructionWaiting = null;
+            this.constructionScan = null;
+            this.world.keptChunks = null;
             this.receiveSystemMessage({ text: 'Build cancelled' });
             return;
         }
@@ -1351,10 +1624,11 @@ Object.assign(Game.prototype, {
         }
         this.constructionFinishBeds(job);
         this.constructionJob = null;
+        this.constructionMeshHeld(job);
         // An undo stopped half way can still be finished: what it has not put back stays undoable.
         if (job.undoing) {
             const left = job.ops.slice(job.done).map((op) => ({ ...op, type: op.prev.type, meta: op.prev.meta, prev: { type: op.type, meta: op.meta } }));
-            this.constructionUndo = left.length ? { label: job.label, applied: left } : null;
+            this.constructionUndo = left.length ? { label: job.label, rate: job.rate, applied: left } : null;
         }
         this.receiveSystemMessage({ text: `Stopped after ${job.done} of ${job.ops.length} block changes${job.undoing ? '' : '. /build undo takes them back'}` });
     },
@@ -1380,6 +1654,12 @@ Object.assign(Game.prototype, {
         job.done += finish.length;
     },
 
+    constructionMeshHeld(job) {
+        job.meshed = 0;
+        for (const key of job.held) this.world.rebuildQueue.add(key);
+        job.held.clear();
+    },
+
     // One block, the way a player places or breaks it.
     constructionApply(op) {
         if (!op.type) {
@@ -1402,33 +1682,60 @@ Object.assign(Game.prototype, {
     constructionUpdate(delta) {
         if (!this.creativeMode) {
             // Creative mode went off: stop quietly, what is done stays undoable if it is turned on again.
+            if (this.constructionJob) this.constructionMeshHeld(this.constructionJob);
             this.constructionJob = null;
             this.constructionWaiting = null;
+            this.constructionScan = null;
+            this.world.keptChunks = null;
             return;
         }
         if (this.constructionWaiting) {
-            this.constructionWaiting.waited += delta;
+            const waiting = this.constructionWaiting;
+            waiting.waited += delta;
+            waiting.retry += delta;
+            // The server forgets requests when the player moves away, and all of them on a reconnection.
+            if (waiting.retry > CONSTRUCTION_CHUNK_RETRY) {
+                waiting.retry = 0;
+                for (const [cx, cz] of this.constructionMissingChunks(waiting)) this.world.generatingChunks.delete(this.world.chunkKey(cx, cz));
+            }
             this.constructionTryBegin();
             if (this.constructionWaiting && this.constructionWaiting.waited > CONSTRUCTION_CHUNK_WAIT) {
                 const { label } = this.constructionWaiting.plan;
                 this.constructionWaiting = null;
+                this.world.keptChunks = null;
                 this.receiveSystemMessage({ text: `${label}: those chunks did not load in time. Come closer, or raise the render distance, and try again` });
             }
         }
+        if (this.constructionScan) this.constructionScanUpdate();
         const job = this.constructionJob;
         if (!job) return;
         // Nothing is lost while the connection is down or backed up: the blocks just wait.
         const socket = this.network && this.network.ws;
         if (!this.network || !this.network.connected) return;
         if (socket && socket.bufferedAmount > CONSTRUCTION_BACKLOG_BYTES) return;
+        // Except what the old socket still held when it died: send the last ones again.
+        if (socket !== job.socket) {
+            const back = Math.min(job.done, CONSTRUCTION_RESEND);
+            job.done -= back;
+            job.socket = socket;
+            if (!job.undoing && this.constructionUndo) this.constructionUndo.applied.length -= back;
+        }
+        const lumps = job.rate > CONSTRUCTION_RATE;
+        if (lumps) {
+            this.world.immediateRebuildMs = Infinity;
+            this.world.heldRebuilds = job.held;
+            job.meshed += delta;
+        }
 
-        job.credit = Math.min(CONSTRUCTION_FRAME_MAX, job.credit + delta * CONSTRUCTION_RATE);
+        job.credit = Math.min(CONSTRUCTION_FRAME_MAX, job.credit + delta * job.rate);
         while (job.credit >= 1 && job.done < job.ops.length) {
             job.credit -= 1;
             const op = job.ops[job.done++];
             this.constructionApply(op);
             if (!job.undoing && this.constructionUndo) this.constructionUndo.applied.push(op);
         }
+        this.world.heldRebuilds = null;
+        if (lumps && (job.done >= job.ops.length || job.meshed > CONSTRUCTION_MESH_EVERY)) this.constructionMeshHeld(job);
         if (job.done >= job.ops.length) {
             this.constructionJob = null;
             this.receiveSystemMessage({
@@ -1440,12 +1747,12 @@ Object.assign(Game.prototype, {
         }
         const progress = job.done / job.ops.length;
         if (progress >= job.nextReport) {
-            job.nextReport += 0.2;
+            job.nextReport += 0.1;
             this.receiveSystemMessage({ text: `${job.verb} ${job.label}: ${Math.round(progress * 100)} % (${job.done} / ${job.ops.length})` });
         }
     }
 });
 
 registerFrameUpdate(function (delta) {
-    if (this.constructionJob || this.constructionWaiting) this.constructionUpdate(delta);
+    if (this.constructionJob || this.constructionWaiting || this.constructionScan) this.constructionUpdate(delta);
 });
