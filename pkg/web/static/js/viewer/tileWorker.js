@@ -6,11 +6,16 @@
 // groups of step x step columns. Heights snap to min(step, MAX_VERTICAL_STEP) so far
 // terrain becomes 2x2x2, 4x4x4 and 8x8x8 cubes. Tile edges get skirts that hide cracks
 // against neighbours drawn at another level of detail.
+//
+// A job may bring `overlay`, records of what players built (js/viewer/builtOverlay.js): sample
+// cells it covers take its height and colour, and boxes on top keep the shape of what stands
+// above them. Cells it does not cover stay exactly as generated.
 
-importScripts('/js/terrainGen.js');
+importScripts('/js/terrainGen.js', '/js/viewer/builtOverlay.js');
 
 const TILE_SAMPLES = 64;
 const MAX_VERTICAL_STEP = 8;
+const WATER_SURFACE = 0.875;
 
 const BLOCK_COLORS = {
     grass: [0x5f, 0x9a, 0x3a],
@@ -110,7 +115,7 @@ function sampleColor(mode, sample) {
     return BLOCK_COLORS[sample.block] || BLOCK_COLORS.stone;
 }
 
-function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
+function buildTile({ lod, tileX, tileZ, colorMode, trees, overlay = null }) {
     const step = 1 << lod;
     const verticalStep = Math.min(step, MAX_VERTICAL_STEP);
     const n = TILE_SAMPLES;
@@ -118,6 +123,7 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
     const originX = tileX * n * step;
     const originZ = tileZ * n * step;
     const samples = new Array(size * size);
+    const raster = overlay ? overlayRasterize(overlay, originX, originZ, lod) : null;
     let minTop = Infinity;
     let maxTop = -Infinity;
     let blocks = 0;
@@ -128,9 +134,15 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
             const worldX = originX + (i - 1) * step + (step >> 1);
             const worldZ = originZ + (j - 1) * step + (step >> 1);
             const surface = columnSurface(worldX, worldZ);
-            const top = Math.max(verticalStep, Math.round((surface.height + 1) / verticalStep) * verticalStep);
+            let top = Math.max(verticalStep, Math.round((surface.height + 1) / verticalStep) * verticalStep);
+            const built = raster ? overlayCell(raster, i, j) : null;
+            if (built) {
+                // Water in a column drawn lower than a full block, as the game's and the sea's.
+                const fluid = verticalStep === 1 && built.color & OVERLAY_FLUID_BIT;
+                top = fluid ? built.top - 1 + WATER_SURFACE : Math.round(built.top / verticalStep) * verticalStep;
+            }
             const sample = {
-                worldX, worldZ, surface, top,
+                worldX, worldZ, surface, top, built,
                 biome: surface.biome,
                 block: blockAt(worldX, surface.height, worldZ, surface)
             };
@@ -138,14 +150,14 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
             if (i > 0 && j > 0 && i <= n && j <= n) {
                 minTop = Math.min(minTop, top);
                 maxTop = Math.max(maxTop, top);
-                blocks += (top - BEDROCK_Y) * step * step;
+                blocks += Math.max(0, top - BEDROCK_Y) * step * step;
             }
         }
     }
 
     const land = new MeshWriter();
     const water = new MeshWriter();
-    const waterTop = WATER_LEVEL + 0.875;
+    const waterTop = WATER_LEVEL + WATER_SURFACE;
     const skirt = verticalStep * 2 + 4;
     const at = (i, j) => samples[j * size + i];
     const directions = [
@@ -163,15 +175,16 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
             const x1 = x0 + step;
             const z1 = z0 + step;
             const top = sample.top;
-            let color = sampleColor(colorMode, sample);
-            if (colorMode === 'blocks' && lod > 0 && sample.block === 'grass') {
+            const built = sample.built;
+            let color = built && colorMode !== 'height' ? overlayVertexColor(built.color) : sampleColor(colorMode, sample);
+            if (!built && colorMode === 'blocks' && lod > 0 && sample.block === 'grass') {
                 // Without individual trees, forests read as darker canopy from afar.
                 color = shade(color, 1 - sample.surface.climate.forest * 0.35);
             }
-            const topColor = jitter(color, sample.worldX, sample.worldZ);
+            const topColor = built ? color : jitter(color, sample.worldX, sample.worldZ);
             land.quad([[x0, top, z1], [x1, top, z1], [x1, top, z0], [x0, top, z0]], [0, 1, 0], [topColor, topColor, topColor, topColor]);
 
-            const sideBase = colorMode === 'blocks' ? (SIDE_COLORS[sample.block] || color) : color;
+            const sideBase = colorMode === 'blocks' && !built ? (SIDE_COLORS[sample.block] || color) : color;
             for (const { di, dj, normal } of directions) {
                 const neighbor = at(i + di, j + dj);
                 const edge = i + di < 1 || i + di > n || j + dj < 1 || j + dj > n;
@@ -189,19 +202,30 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
                 land.quad(corners, normal, [lower, lower, upper, upper]);
             }
 
-            if (top < waterTop) {
+            // What players changed answers for itself: a pit below sea level is dry.
+            if (top < waterTop && !built) {
                 const w = [58, 127, 196];
                 water.quad([[x0, waterTop, z1], [x1, waterTop, z1], [x1, waterTop, z0], [x0, waterTop, z0]], [0, 1, 0], [w, w, w, w]);
             }
 
-            if (trees && lod === 0) {
+            if (trees && lod === 0 && !built) {
                 const woodType = treeAt(sample.worldX, sample.worldZ, sample.surface);
                 if (woodType) addTree(land, x0, top, z0, sample.worldX, sample.worldZ, woodType);
             }
         }
     }
 
+    if (raster && raster.count) {
+        const tops = new Float64Array(size * size);
+        for (let i = 0; i < tops.length; i++) tops[i] = samples[i].top;
+        for (const box of overlayBoxes(raster, tops, skirt)) {
+            addOverlayBox(land, box, colorMode);
+            maxTop = Math.max(maxTop, box.top);
+        }
+    }
+
     return {
+        hasOverlay: Boolean(raster && raster.count),
         land: land.pack(),
         water: water.vertexCount ? water.pack() : null,
         minTop: Math.min(minTop, WATER_LEVEL) - skirt,
@@ -209,6 +233,23 @@ function buildTile({ lod, tileX, tileZ, colorMode, trees }) {
         blocks,
         columns: n * n * step * step
     };
+}
+
+// A box of what stands above its sample cell: its top, and walls down to what is next to it.
+function addOverlayBox(writer, box, colorMode) {
+    const { x0, z0, x1, z1, top } = box;
+    const color = colorMode === 'height' ? heightColor(top) : overlayVertexColor(box.color);
+    writer.quad([[x0, top, z1], [x1, top, z1], [x1, top, z0], [x0, top, z0]], [0, 1, 0], [color, color, color, color]);
+    const upper = shade(color, 0.86);
+    const lower = shade(color, 0.7);
+    for (const [di, dj, bottom] of box.walls) {
+        let corners;
+        if (di === 1) corners = [[x1, bottom, z1], [x1, bottom, z0], [x1, top, z0], [x1, top, z1]];
+        else if (di === -1) corners = [[x0, bottom, z0], [x0, bottom, z1], [x0, top, z1], [x0, top, z0]];
+        else if (dj === 1) corners = [[x0, bottom, z1], [x1, bottom, z1], [x1, top, z1], [x0, top, z1]];
+        else corners = [[x1, bottom, z0], [x0, bottom, z0], [x0, top, z0], [x1, top, z0]];
+        writer.quad(corners, [di, 0, dj], [lower, lower, upper, upper]);
+    }
 }
 
 // Simplified tree: trunk plus a canopy box sized like the game's tree shapes.

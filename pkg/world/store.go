@@ -24,6 +24,10 @@ type Edit struct {
 // the terrain. They are applied once, when the chunk is first generated.
 type LegacyEdits func(chunkX, chunkZ int) []Edit
 
+// EditHook is told (with the store's lock held, so it must only note it down) that a chunk now
+// holds something other than what the generator made.
+type EditHook func(chunkX, chunkZ int)
+
 // Store owns every chunk: loaded from disk, or generated on first use and persisted.
 // Once a chunk exists its stored data is the truth, so the generator can change without
 // altering explored parts of the world.
@@ -32,7 +36,10 @@ type Store struct {
 	legacy    LegacyEdits
 	maxLoaded int
 
-	mu      sync.Mutex
+	mu sync.Mutex
+	// What legacy would return, without taking it; see Snapshot. May be nil.
+	legacyPreview LegacyEdits
+	onEdit        EditHook
 	entries map[[2]int]*entry
 	clock   int64
 }
@@ -65,6 +72,15 @@ func local(v int) int {
 	return ((v % terrain.ChunkSize) + terrain.ChunkSize) % terrain.ChunkSize
 }
 
+// parseChunkFile reads the coordinates out of the file name path gives a chunk.
+func parseChunkFile(name string) (chunkX, chunkZ int, ok bool) {
+	var x, z int
+	if n, err := fmt.Sscanf(name, "c.%d.%d.bin", &x, &z); err != nil || n != 2 || name != fmt.Sprintf("c.%d.%d.bin", x, z) {
+		return 0, 0, false
+	}
+	return x, z, true
+}
+
 func (s *Store) path(chunkX, chunkZ int) string {
 	region := fmt.Sprintf("r.%d.%d", floorDiv(chunkX, 32), floorDiv(chunkZ, 32))
 	return filepath.Join(s.dir, region, fmt.Sprintf("c.%d.%d.bin", chunkX, chunkZ))
@@ -93,12 +109,10 @@ func (s *Store) load(chunkX, chunkZ int) (*entry, error) {
 		e.chunk = terrain.Generate(chunkX, chunkZ)
 		e.dirty = true
 		if s.legacy != nil {
-			for _, edit := range s.legacy(chunkX, chunkZ) {
-				name := edit.Block
-				if name == "" {
-					name = "air"
-				}
-				e.chunk.Set(local(edit.X), edit.Y, local(edit.Z), name)
+			edits := s.legacy(chunkX, chunkZ)
+			applyEdits(e.chunk, edits)
+			if len(edits) > 0 && s.onEdit != nil {
+				s.onEdit(chunkX, chunkZ)
 			}
 		}
 	default:
@@ -108,6 +122,69 @@ func (s *Store) load(chunkX, chunkZ int) (*entry, error) {
 	s.entries[key] = e
 	s.evictLocked()
 	return e, nil
+}
+
+func applyEdits(chunk *terrain.Chunk, edits []Edit) {
+	for _, edit := range edits {
+		name := edit.Block
+		if name == "" {
+			name = "air"
+		}
+		chunk.Set(local(edit.X), edit.Y, local(edit.Z), name)
+	}
+}
+
+// SetEditHook installs the function told about every chunk a player (or a legacy edit) changes.
+func (s *Store) SetEditHook(hook EditHook) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onEdit = hook
+}
+
+// SetLegacyPreview installs what Snapshot uses to see the legacy edits of a chunk not
+// generated yet, without consuming them.
+func (s *Store) SetLegacyPreview(preview LegacyEdits) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.legacyPreview = preview
+}
+
+// Dir is the directory the chunks are persisted under.
+func (s *Store) Dir() string {
+	return s.dir
+}
+
+// Snapshot returns a private copy of a chunk as it is or would be, changing nothing: a chunk that
+// is not stored is not created, marked as used or kept in memory, legacy edits stay where they
+// are, and no disk work happens with the store's lock held.
+func (s *Store) Snapshot(chunkX, chunkZ int) (*terrain.Chunk, error) {
+	s.mu.Lock()
+	if e, ok := s.entries[[2]int{chunkX, chunkZ}]; ok {
+		defer s.mu.Unlock()
+		return e.chunk.Clone(), nil
+	}
+	s.mu.Unlock()
+
+	data, err := os.ReadFile(s.path(chunkX, chunkZ))
+	if err == nil {
+		return Decode(data)
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	return s.unstored(chunkX, chunkZ), nil
+}
+
+// unstored is what a chunk not stored yet will be when it is first generated.
+func (s *Store) unstored(chunkX, chunkZ int) *terrain.Chunk {
+	s.mu.Lock()
+	preview := s.legacyPreview
+	s.mu.Unlock()
+	chunk := terrain.Generate(chunkX, chunkZ)
+	if preview != nil {
+		applyEdits(chunk, preview(chunkX, chunkZ))
+	}
+	return chunk
 }
 
 // Encoded returns the wire/disk encoding of a chunk, generating it if needed.
@@ -153,6 +230,9 @@ func (s *Store) SetBlock(x, y, z int, name string) error {
 	if e.chunk.Set(local(x), y, local(z), name) {
 		e.dirty = true
 		e.encoded = nil
+		if s.onEdit != nil {
+			s.onEdit(chunkX, chunkZ)
+		}
 	}
 	return nil
 }

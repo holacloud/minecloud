@@ -48,7 +48,35 @@ func initChunkStore() error {
 	}
 	chunkStore = store
 	go chunkStore.FlushEvery(5 * time.Second)
-	return nil
+	return startChangeIndex(store)
+}
+
+// previewLegacyEdits is what takeLegacyEdits would return, leaving everything in place.
+func previewLegacyEdits(chunkX, chunkZ int) []world.Edit {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	var edits []world.Edit
+	for _, k := range legacyIndex[[2]int{chunkX, chunkZ}] {
+		if block, ok := gameState.Blocks[k]; ok {
+			edits = append(edits, world.Edit{X: block.X, Y: block.Y, Z: block.Z, Block: block.BlockType})
+		} else if gameState.RemovedBlocks[k] {
+			var x, y, z int
+			fmt.Sscanf(k, "%d,%d,%d", &x, &y, &z)
+			edits = append(edits, world.Edit{X: x, Y: y, Z: z})
+		}
+	}
+	return edits
+}
+
+// pendingLegacyChunks lists the chunks with world.json edits not folded yet.
+func pendingLegacyChunks() [][2]int {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	keys := make([][2]int, 0, len(legacyIndex))
+	for key := range legacyIndex {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 // takeLegacyEdits is called by the store (with its lock held) when a chunk is generated.

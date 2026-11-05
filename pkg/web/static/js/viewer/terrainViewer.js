@@ -6,6 +6,10 @@
 // down to lod 0 (one sample per column); far nodes stay coarse. Tiles are built off the
 // main thread by a pool of workers, coarse and near ones first, and a node keeps drawing
 // its parent until its own children are ready.
+//
+// What players changed comes from the server (js/viewer/builtBlocks.js) and goes into the tiles
+// (js/viewer/builtOverlay.js, in the workers). Only tiles showing a changed chunk are built again,
+// and a tile keeps drawing the old mesh until the new one is there.
 
 const TILE_SAMPLES = 64;
 const MAX_LOD = 9;
@@ -22,9 +26,15 @@ class TerrainViewer {
         this.lastSelectionAt = 0;
         this.needsSelection = true;
 
+        this.built = new BuiltBlocks({
+            onChanged: (rows) => this.onBuiltChanged(rows),
+            onPages: () => { this.needsSelection = true; }
+        });
+
         this.initScene();
         this.initWorkers();
         this.initUI();
+        this.built.start();
         this.animate();
     }
 
@@ -172,8 +182,9 @@ class TerrainViewer {
 
         this.queue.clear();
         for (const [key, job] of wanted) {
-            if (!this.tiles.has(key)) this.queue.set(key, job);
-            else this.tiles.get(key).lastWanted = this.frameId;
+            const tile = this.tiles.get(key);
+            if (!tile || (tile.stale && !tile.pending)) this.queue.set(key, job);
+            if (tile) tile.lastWanted = this.frameId;
         }
         this.dispatch();
         this.evict(wanted);
@@ -189,24 +200,52 @@ class TerrainViewer {
     // ------------------------------------------------------------------ workers
 
     dispatch() {
+        // Wait for the first list of changes, or every tile showing one would be built twice.
+        if (!this.built.settled) return;
         for (const slot of this.workers) {
             if (slot.busy || this.queue.size === 0) continue;
             let best = null;
             for (const [key, job] of this.queue) {
-                if (!best || job.priority > best.job.priority) best = { key, job };
+                // Asked once per selection; the columns' arrival makes a new selection.
+                if (job.ready === undefined) job.ready = this.built.readyForTile(job.lod, job.tileX, job.tileZ);
+                if (job.ready && (!best || job.priority > best.job.priority)) best = { key, job };
             }
+            if (!best) return;
             this.queue.delete(best.key);
-            this.tiles.set(best.key, { mesh: null, pending: true, lastWanted: this.frameId });
+            const tile = this.tiles.get(best.key);
+            if (tile) {
+                // Built again: the old mesh stays until the new one replaces it.
+                tile.pending = true;
+                tile.stale = false;
+                tile.lastWanted = this.frameId;
+            } else {
+                this.tiles.set(best.key, { mesh: null, pending: true, lastWanted: this.frameId });
+            }
             slot.busy = best.key;
+            const overlay = this.built.recordsForTile(best.job.lod, best.job.tileX, best.job.tileZ);
             slot.worker.postMessage({
                 id: best.key,
                 lod: best.job.lod,
                 tileX: best.job.tileX,
                 tileZ: best.job.tileZ,
                 colorMode: this.settings.colorMode,
-                trees: this.settings.trees
-            });
+                trees: this.settings.trees,
+                overlay
+            }, overlay ? [overlay.buffer] : []);
         }
+    }
+
+    // Marks the tiles showing these chunks to be built again.
+    onBuiltChanged(rows) {
+        for (const row of rows) {
+            for (let lod = 0; lod <= MAX_LOD; lod++) {
+                for (const [tileX, tileZ] of overlayTilesForChunk(lod, row.x, row.z)) {
+                    const tile = this.tiles.get(this.tileKey(lod, tileX, tileZ));
+                    if (tile) tile.stale = true;
+                }
+            }
+        }
+        this.needsSelection = true;
     }
 
     onTileBuilt(slot, result) {
@@ -215,14 +254,16 @@ class TerrainViewer {
         if (tile) {
             const [lod, tileX, tileZ] = result.id.split(':').map(Number);
             const size = this.tileWorldSize(lod);
+            const shown = this.selected.has(result.id);
+            this.disposeTileMeshes(tile);
             tile.mesh = this.createMesh(result.land, this.landMaterial, size, result);
             tile.mesh.position.set(tileX * size, 0, tileZ * size);
-            tile.mesh.visible = false;
+            tile.mesh.visible = shown;
             this.scene.add(tile.mesh);
             if (result.water) {
                 tile.water = this.createMesh(result.water, this.waterMaterial, size, result);
                 tile.water.position.copy(tile.mesh.position);
-                tile.water.visible = false;
+                tile.water.visible = shown && this.settings.water;
                 tile.water.renderOrder = 1;
                 this.scene.add(tile.water);
             }
@@ -263,21 +304,24 @@ class TerrainViewer {
     disposeTile(key) {
         const tile = this.tiles.get(key);
         if (!tile) return;
+        this.disposeTileMeshes(tile);
+        this.tiles.delete(key);
+    }
+
+    disposeTileMeshes(tile) {
         for (const mesh of [tile.mesh, tile.water]) {
             if (!mesh) continue;
             this.scene.remove(mesh);
             mesh.geometry.dispose();
         }
-        this.tiles.delete(key);
+        tile.mesh = null;
+        tile.water = null;
     }
 
     // Drops every tile (e.g. after changing the colour mode) and rebuilds from coarse to fine.
     resetTiles() {
-        for (const key of Array.from(this.tiles.keys())) {
-            if (!this.tiles.get(key).pending) this.disposeTile(key);
-        }
         // Results of in-flight jobs are discarded because their entries are gone.
-        for (const key of Array.from(this.tiles.keys())) this.tiles.delete(key);
+        for (const key of Array.from(this.tiles.keys())) this.disposeTile(key);
         this.selected = new Set();
         this.needsSelection = true;
     }
@@ -299,6 +343,7 @@ class TerrainViewer {
             this.settings.water = e.target.checked;
             for (const key of this.selected) this.setVisible(key, true);
         });
+        $('built').addEventListener('change', (e) => this.built.setEnabled(e.target.checked));
         $('goto').addEventListener('submit', (e) => {
             e.preventDefault();
             const x = Number($('goto-x').value) || 0;
@@ -340,8 +385,10 @@ class TerrainViewer {
         const x = Math.floor(hit.point.x - hit.face.normal.x * 0.01);
         const z = Math.floor(hit.point.z - hit.face.normal.z * 0.01);
         const surface = columnSurface(x, z);
-        const block = blockAt(x, surface.height, z, surface);
-        this.probeEl.textContent = `x ${x}  z ${z}  ·  height ${surface.height}  ·  ${surface.biome}  ·  ${block}`;
+        const built = this.built.columnAt(x, z);
+        const height = built ? built.y : surface.height;
+        const block = built ? built.name : blockAt(x, surface.height, z, surface);
+        this.probeEl.textContent = `x ${x}  z ${z}  ·  height ${height}  ·  ${surface.biome}  ·  ${block}`;
     }
 
     updateStats() {
@@ -362,6 +409,7 @@ class TerrainViewer {
             `<b>${(columns / 1e6).toFixed(1)} km²</b> area`,
             `<b>${this.selected.size}</b> tiles · ${format(triangles)} triangles`,
             `<b>${this.queue.size + busy}</b> tiles pending (${this.workers.length} workers)`,
+            this.built.statusLine(),
             `centre x ${Math.round(target.x)} z ${Math.round(target.z)}`
         ].join('<br>');
     }

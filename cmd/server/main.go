@@ -69,6 +69,7 @@ func main() {
 	http.HandleFunc("/guide/index.json", web.HandleGuideIndex)
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
+	http.Handle("/viewer-api/", network.ViewerAPI())
 
 	server := &http.Server{Addr: config.Addr}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

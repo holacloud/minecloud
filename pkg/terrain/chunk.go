@@ -73,6 +73,11 @@ func (c *Chunk) Set(lx, y, lz int, name string) bool {
 	return true
 }
 
+// Clone returns an independent copy, safe to read while the original keeps changing.
+func (c *Chunk) Clone() *Chunk {
+	return &Chunk{X: c.X, Z: c.Z, Biome: c.Biome, Palette: append([]string(nil), c.Palette...), Blocks: append([]uint16(nil), c.Blocks...)}
+}
+
 var plants = map[string]bool{"tall_grass": true, "flower_red": true, "flower_yellow": true, "mushroom_red": true, "mushroom_brown": true}
 
 // Generate builds a self-contained chunk: terrain, water and decoration inside it, plus
