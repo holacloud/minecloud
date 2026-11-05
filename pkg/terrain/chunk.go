@@ -78,7 +78,8 @@ func (c *Chunk) Clone() *Chunk {
 	return &Chunk{X: c.X, Z: c.Z, Biome: c.Biome, Palette: append([]string(nil), c.Palette...), Blocks: append([]uint16(nil), c.Blocks...)}
 }
 
-var plants = map[string]bool{"tall_grass": true, "flower_red": true, "flower_yellow": true, "mushroom_red": true, "mushroom_brown": true}
+// A list, not a set: the palette order, and so the encoded bytes of a chunk, must not vary by run.
+var plants = []string{"tall_grass", "flower_red", "flower_yellow", "mushroom_red", "mushroom_brown"}
 
 // Generate builds a self-contained chunk: terrain, water and decoration inside it, plus
 // the parts of trees rooted in a small margin around it that fall inside.
@@ -87,7 +88,7 @@ func Generate(chunkX, chunkZ int) *Chunk {
 	minX := chunkX * ChunkSize
 	minZ := chunkZ * ChunkSize
 	plantIDs := map[uint16]bool{}
-	for name := range plants {
+	for _, name := range plants {
 		plantIDs[c.PaletteID(name)] = true
 	}
 

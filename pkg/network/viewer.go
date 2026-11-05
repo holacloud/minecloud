@@ -26,13 +26,17 @@ import (
 //
 //	GET changes?since=V[&limit=N]  chunks changed after version V, oldest first (JSON)
 //	GET surface?x0=&z0=&x1=&z1=    the changed columns of the chunks in a rectangle (binary)
+//	GET chunks?c=x,z,x,z...        whole chunks, as the game receives them (binary)
 //
-// They read only the index in memory (world.ChangeIndex). See js/viewer/builtBlocks.js for the reader.
+// The first two read only the index in memory (world.ChangeIndex); chunks reads the store through
+// Peek, which never creates anything. See js/viewer/builtBlocks.js for the reader.
 const (
 	viewerMaxChanges = 4096
 	// One side of a surface rectangle, which bounds a response: 1024 chunks of at most 256
 	// columns of 5 bytes, about 1.3 MB before compression. The viewer asks for 16.
 	viewerMaxRegion = 32
+	// Chunks in one chunks request (at most about 2 MB).
+	viewerMaxChunks = 16
 	// Same coordinate limit as the game's chunkRequest.
 	viewerCoordLimit = 1 << 20 / terrain.ChunkSize
 	// Requests served at once; more get a 503 and try again later, so the viewer can never
@@ -104,6 +108,7 @@ func ViewerAPI() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/viewer-api/changes", handleViewerChanges)
 	mux.HandleFunc("/viewer-api/surface", handleViewerSurface)
+	mux.HandleFunc("/viewer-api/chunks", handleViewerChunks)
 	withSession := SessionMiddleware(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {

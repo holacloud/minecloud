@@ -311,6 +311,65 @@ func TestLegacyEditsShowWithoutBeingTaken(t *testing.T) {
 	}
 }
 
+func TestPeekSeesEverythingAndChangesNothing(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Open(dir, nil)
+
+	// Not stored: generated for the answer and forgotten.
+	data, err := s.Peek(50, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if chunk, err := Decode(data); err != nil || chunk.X != 50 {
+		t.Fatalf("chunk %v, err %v", chunk, err)
+	}
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 || len(s.entries) != 0 {
+		t.Fatalf("%d files, %d loaded", len(entries), len(s.entries))
+	}
+
+	// Edited and not flushed: seen, from memory.
+	s.SetBlock(5, 150, 5, "stone")
+	data, _ = s.Peek(0, 0)
+	if chunk, _ := Decode(data); chunk.Get(5, 150, 5) != "stone" {
+		t.Fatal("an unflushed edit is not seen")
+	}
+	if s.entries[[2]int{0, 0}].encoded != nil {
+		t.Fatal("Peek filled the store's cache")
+	}
+
+	// Flushed and evicted: seen, from disk, and not loaded back.
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	delete(s.entries, [2]int{0, 0})
+	data, _ = s.Peek(0, 0)
+	if chunk, _ := Decode(data); chunk.Get(5, 150, 5) != "stone" {
+		t.Fatal("a saved edit is not seen")
+	}
+	if len(s.entries) != 0 {
+		t.Fatalf("%d loaded", len(s.entries))
+	}
+}
+
+func TestPeekShowsLegacyEditsWithoutTakingThem(t *testing.T) {
+	taken := false
+	s, _ := Open(t.TempDir(), func(int, int) []Edit { taken = true; return nil })
+	s.SetLegacyPreview(func(int, int) []Edit { return []Edit{{X: 1, Y: 150, Z: 1, Block: "brick"}} })
+	data, err := s.Peek(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if chunk, _ := Decode(data); chunk.Get(1, 150, 1) != "brick" {
+		t.Fatal("a legacy edit is not seen")
+	}
+	if taken {
+		t.Fatal("the legacy edits were taken")
+	}
+}
+
 func TestParseChunkFile(t *testing.T) {
 	for name, want := range map[string]bool{"c.3.-7.bin": true, "c.-3.7.bin": true, "c.3.bin": false, "c.3.4.bin.tmp": false, "x.3.4.bin": false, "c.3.4.bin ": false} {
 		x, z, ok := parseChunkFile(name)
@@ -339,6 +398,7 @@ func TestIndexWhileTheWorldChanges(t *testing.T) {
 				ix.Region(worker-1, 0, worker+1, 8)
 				_ = ix.Names()
 				s.Snapshot(worker, i%8)
+				s.Peek(worker, i%8)
 			}
 		}()
 	}

@@ -9,7 +9,8 @@
 //
 // What players changed comes from the server (js/viewer/builtBlocks.js) and goes into the tiles
 // (js/viewer/builtOverlay.js, in the workers). Only tiles showing a changed chunk are built again,
-// and a tile keeps drawing the old mesh until the new one is there.
+// and a tile keeps drawing the old mesh until the new one is there. Up close, the real blocks of
+// those chunks replace the tile (js/viewer/nearBlocks.js).
 
 const TILE_SAMPLES = 64;
 const MAX_LOD = 9;
@@ -25,6 +26,8 @@ class TerrainViewer {
         this.frameId = 0;
         this.lastSelectionAt = 0;
         this.needsSelection = true;
+        this.fps = 0;
+        this.lastStatsAt = 0;
 
         this.built = new BuiltBlocks({
             onChanged: (rows) => this.onBuiltChanged(rows),
@@ -32,6 +35,9 @@ class TerrainViewer {
         });
 
         this.initScene();
+        this.near = new NearBlocks({ scene: this.scene, built: this.built });
+        nearApplyMask(this.landMaterial, this.near.uniforms);
+        nearApplyMask(this.waterMaterial, this.near.uniforms);
         this.initWorkers();
         this.initUI();
         this.built.start();
@@ -237,6 +243,7 @@ class TerrainViewer {
 
     // Marks the tiles showing these chunks to be built again.
     onBuiltChanged(rows) {
+        this.near.onChanged(rows);
         for (const row of rows) {
             for (let lod = 0; lod <= MAX_LOD; lod++) {
                 for (const [tileX, tileZ] of overlayTilesForChunk(lod, row.x, row.z)) {
@@ -344,6 +351,7 @@ class TerrainViewer {
             for (const key of this.selected) this.setVisible(key, true);
         });
         $('built').addEventListener('change', (e) => this.built.setEnabled(e.target.checked));
+        $('near').addEventListener('change', (e) => this.near.setEnabled(e.target.checked));
         $('goto').addEventListener('submit', (e) => {
             e.preventDefault();
             const x = Number($('goto-x').value) || 0;
@@ -410,8 +418,10 @@ class TerrainViewer {
             `<b>${this.selected.size}</b> tiles · ${format(triangles)} triangles`,
             `<b>${this.queue.size + busy}</b> tiles pending (${this.workers.length} workers)`,
             this.built.statusLine(),
+            this.near.statusLine(),
+            `${this.fps} fps · ${this.renderer.info.render.calls} draw calls`,
             `centre x ${Math.round(target.x)} z ${Math.round(target.z)}`
-        ].join('<br>');
+        ].filter(Boolean).join('<br>');
     }
 
     animate() {
@@ -424,7 +434,12 @@ class TerrainViewer {
             this.lastSelectionAt = now;
             this.updateSelection();
         }
-        if (this.frameId % 15 === 0) this.updateStats();
+        this.near.update(now, this.camera.position);
+        if (this.frameId % 15 === 0) {
+            this.fps = Math.round(15000 / Math.max(1, now - this.lastStatsAt));
+            this.lastStatsAt = now;
+            this.updateStats();
+        }
         this.updateProbe(now);
         this.renderer.render(this.scene, this.camera);
     }

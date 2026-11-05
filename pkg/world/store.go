@@ -37,11 +37,11 @@ type Store struct {
 	maxLoaded int
 
 	mu sync.Mutex
-	// What legacy would return, without taking it; see Snapshot. May be nil.
+	// What legacy would return, without taking it; see Peek. May be nil.
 	legacyPreview LegacyEdits
 	onEdit        EditHook
-	entries map[[2]int]*entry
-	clock   int64
+	entries       map[[2]int]*entry
+	clock         int64
 }
 
 type entry struct {
@@ -141,7 +141,7 @@ func (s *Store) SetEditHook(hook EditHook) {
 	s.onEdit = hook
 }
 
-// SetLegacyPreview installs what Snapshot uses to see the legacy edits of a chunk not
+// SetLegacyPreview installs what Peek and Snapshot use to see the legacy edits of a chunk not
 // generated yet, without consuming them.
 func (s *Store) SetLegacyPreview(preview LegacyEdits) {
 	s.mu.Lock()
@@ -154,9 +154,33 @@ func (s *Store) Dir() string {
 	return s.dir
 }
 
-// Snapshot returns a private copy of a chunk as it is or would be, changing nothing: a chunk that
-// is not stored is not created, marked as used or kept in memory, legacy edits stay where they
-// are, and no disk work happens with the store's lock held.
+// Peek returns the encoding of a chunk as it is or would be, changing nothing: a chunk that is
+// not stored is not created, marked as used or kept in memory, legacy edits stay where they are,
+// and no disk or compression work happens with the store's lock held.
+func (s *Store) Peek(chunkX, chunkZ int) ([]byte, error) {
+	s.mu.Lock()
+	if e, ok := s.entries[[2]int{chunkX, chunkZ}]; ok {
+		if e.encoded != nil {
+			defer s.mu.Unlock()
+			return e.encoded, nil
+		}
+		chunk := e.chunk.Clone()
+		s.mu.Unlock()
+		return Encode(chunk)
+	}
+	s.mu.Unlock()
+
+	data, err := os.ReadFile(s.path(chunkX, chunkZ))
+	if err == nil {
+		return data, nil
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	return Encode(s.unstored(chunkX, chunkZ))
+}
+
+// Snapshot returns a private copy of a chunk as it is or would be, changing nothing (see Peek).
 func (s *Store) Snapshot(chunkX, chunkZ int) (*terrain.Chunk, error) {
 	s.mu.Lock()
 	if e, ok := s.entries[[2]int{chunkX, chunkZ}]; ok {

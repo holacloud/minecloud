@@ -109,6 +109,14 @@ func TestViewerRejectsBadInput(t *testing.T) {
 		fmt.Sprintf("/viewer-api/surface?x0=%d&z0=0&x1=%d&z1=0", limit, limit),
 		fmt.Sprintf("/viewer-api/surface?x0=0&z0=%d&x1=0&z1=%d", -limit, -limit),
 		"/viewer-api/surface?x0=99999999999999999999&z0=0&x1=0&z1=0",
+		"/viewer-api/chunks",
+		"/viewer-api/chunks?c=",
+		"/viewer-api/chunks?c=1",
+		"/viewer-api/chunks?c=1,2,3",
+		"/viewer-api/chunks?c=a,b",
+		"/viewer-api/chunks?c=1,",
+		fmt.Sprintf("/viewer-api/chunks?c=%d,0", limit),
+		"/viewer-api/chunks?c=" + strings.Repeat("0,0,", viewerMaxChunks) + "0,0",
 	} {
 		if code := viewerGet(t, target, nil).Code; code != http.StatusBadRequest {
 			t.Errorf("%s: %d", target, code)
@@ -252,6 +260,109 @@ func TestViewerSurface(t *testing.T) {
 	// A region with nothing in it is small and valid.
 	if recorder := viewerGet(t, "/viewer-api/surface?x0=100&z0=100&x1=131&z1=131", nil); recorder.Code != http.StatusOK || recorder.Body.Len() > 16 {
 		t.Fatalf("empty region: %d, %d bytes", recorder.Code, recorder.Body.Len())
+	}
+}
+
+// The chunks of a chunks response, decoded as the game's would be.
+func viewerChunkFrames(t *testing.T, data []byte) []*terrain.Chunk {
+	t.Helper()
+	if len(data) < 6 || string(data[:4]) != "MCB1" {
+		t.Fatalf("bad envelope: %q", data[:min(len(data), 6)])
+	}
+	count := int(binary.LittleEndian.Uint16(data[4:]))
+	data = data[6:]
+	chunks := make([]*terrain.Chunk, 0, count)
+	for range count {
+		size := binary.LittleEndian.Uint32(data)
+		chunk, err := world.Decode(data[4 : 4+size])
+		if err != nil {
+			t.Fatal(err)
+		}
+		chunks = append(chunks, chunk)
+		data = data[4+size:]
+	}
+	if len(data) != 0 {
+		t.Fatalf("%d bytes left over", len(data))
+	}
+	return chunks
+}
+
+func TestViewerChunksServesWhatPlayersSee(t *testing.T) {
+	store := setupViewer(t)
+	store.SetBlock(5, 140, 5, "gold_block")
+	if err := store.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	store.SetBlock(21, 141, 5, "brick")
+
+	recorder := viewerGet(t, "/viewer-api/chunks?c=0,0,1,0,-3,9", nil)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("%d %s", recorder.Code, recorder.Body.String())
+	}
+	chunks := viewerChunkFrames(t, recorder.Body.Bytes())
+	if len(chunks) != 3 || chunks[0].X != 0 || chunks[1].X != 1 || chunks[2].X != -3 || chunks[2].Z != 9 {
+		t.Fatalf("chunks = %+v", chunks)
+	}
+	if got := chunks[0].Get(5, 140, 5); got != "gold_block" {
+		t.Fatalf("saved edit: %s", got)
+	}
+	if got := chunks[1].Get(5, 141, 5); got != "brick" {
+		t.Fatalf("edit not flushed yet: %s", got)
+	}
+	generated := terrain.Generate(-3, 9)
+	for i := range generated.Blocks {
+		if chunks[2].Palette[chunks[2].Blocks[i]] != generated.Palette[generated.Blocks[i]] {
+			t.Fatalf("an unstored chunk differs from the generated one at %d", i)
+		}
+	}
+
+	etag := recorder.Header().Get("ETag")
+	if again := viewerGet(t, "/viewer-api/chunks?c=0,0,1,0,-3,9", map[string]string{"If-None-Match": etag}); again.Code != http.StatusNotModified {
+		t.Fatalf("revalidated: %d", again.Code)
+	}
+	store.SetBlock(5, 142, 5, "gold_block")
+	if after := viewerGet(t, "/viewer-api/chunks?c=0,0,1,0,-3,9", map[string]string{"If-None-Match": etag}); after.Code != http.StatusOK {
+		t.Fatalf("after an edit: %d", after.Code)
+	}
+	if full := viewerGet(t, "/viewer-api/chunks?c="+strings.TrimSuffix(strings.Repeat("7,7,", viewerMaxChunks), ","), nil); full.Code != http.StatusOK {
+		t.Fatalf("the most chunks allowed: %d", full.Code)
+	}
+}
+
+func TestViewerChunksCreateNothing(t *testing.T) {
+	store := setupViewer(t)
+	viewerGet(t, "/viewer-api/chunks?c=30,30,31,31,32,32", nil)
+	if err := store.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if files := viewerStoredFiles(t); files != 0 {
+		t.Fatalf("%d entries in the store's directory after reading", files)
+	}
+	changeIndex.Flush()
+	if version := changeIndex.Version(); version != 0 {
+		t.Fatalf("version %d after reading", version)
+	}
+}
+
+func TestViewerChunksCarryOnlyBlockNames(t *testing.T) {
+	store := setupViewer(t)
+	const secret = "SECRET-SIGN-TEXT"
+	stateMu.Lock()
+	previous := gameState.Blocks
+	gameState.Blocks = map[string]Block{"3,150,3": {X: 3, Y: 150, Z: 3, BlockType: "sign", Text: secret}}
+	stateMu.Unlock()
+	defer func() {
+		stateMu.Lock()
+		gameState.Blocks = previous
+		stateMu.Unlock()
+	}()
+	store.SetBlock(3, 150, 3, "sign")
+	recorder := viewerGet(t, "/viewer-api/chunks?c=0,0", nil)
+	if strings.Contains(recorder.Body.String(), secret) {
+		t.Fatal("the sign's text is in the response")
+	}
+	if chunk := viewerChunkFrames(t, recorder.Body.Bytes())[0]; chunk.Get(3, 150, 3) != "sign" {
+		t.Fatalf("block: %s", chunk.Get(3, 150, 3))
 	}
 }
 
@@ -488,8 +599,11 @@ func TestViewerUnderLoad(t *testing.T) {
 				default:
 				}
 				target := "/viewer-api/changes?since=0"
-				if (i+worker)%2 == 0 {
+				switch (i + worker) % 3 {
+				case 1:
 					target = "/viewer-api/surface?x0=0&z0=0&x1=15&z1=15"
+				case 2:
+					target = "/viewer-api/chunks?c=0,0,1,0,2,0,9,9"
 				}
 				request := httptest.NewRequest(http.MethodGet, target, nil)
 				request.Header.Set("Accept-Encoding", "gzip")
@@ -572,6 +686,11 @@ func BenchmarkViewerChangesFull5000(b *testing.B) {
 func BenchmarkViewerChangesPoll5000(b *testing.B) {
 	benchViewerWorld(b, 5000)
 	benchViewerRequest(b, fmt.Sprintf("/viewer-api/changes?since=%d", changeIndex.Version()), map[string]string{"Accept-Encoding": "gzip"})
+}
+
+func BenchmarkViewerChunksNine(b *testing.B) {
+	benchViewerWorld(b, 100)
+	benchViewerRequest(b, "/viewer-api/chunks?c=0,0,0,1,0,2,1,0,1,1,1,2,2,0,2,1,2,2", nil)
 }
 
 func BenchmarkViewerSurfacePage5000(b *testing.B) {
