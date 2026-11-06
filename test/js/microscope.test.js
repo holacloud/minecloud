@@ -52,10 +52,11 @@ function loadModules() {
     context.window.addEventListener = () => {};
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'extensions.js'), 'utf8'), context);
+    vm.runInContext(fs.readFileSync(path.join(JS, 'gameLang.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'chunkStore.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'blockShapes.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'mobSpecies.js'), 'utf8'), context);
-    for (const file of ['bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope.js']) {
+    for (const file of ['bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_SAMPLES, MICRO_ITEMS, MICRO_MAGNIFICATIONS, MICRO_DRY_SECONDS, MICRO_REVIVE_SECONDS, MICRO_TUN_SECONDS, MICRO_SLIDE_RADIUS,

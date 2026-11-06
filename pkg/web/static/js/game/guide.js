@@ -4,12 +4,11 @@
 // and capital letters (27A2, UR29) that the reader has to find. Pages link to each other with
 // [text](12) or [text](27A2), images are centred, and a page that does not exist yet says so.
 // H opens the book where it was left, /guide ID opens that page; inside, ←/→ turn the public
-// pages, and the language follows the browser until the reader picks ES or EN. Once a version
+// pages, and the language is the game's (js/gameLang.js): picked here or in the pause menu. Once a version
 // is stable, pages do not change: new topics, or a radically changed creature, get new pages.
 // Mixed into Game.prototype; the book is a modal panel (see registerModalPanel).
 
 const GUIDE_CONTENTS_PAGE = '0';
-const GUIDE_LANGS = ['ES', 'EN'];
 const GUIDE_TEXT = {
     ES: {
         title: 'Guía', contents: 'Índice', goTo: 'Ir a', close: 'Cerrar', page: 'Página', print: 'Imprimir',
@@ -113,8 +112,6 @@ Object.assign(Game.prototype, {
         this.guideIndex = null;
         this.guideCache = new Map();
         this.guideHistory = [];
-        this.guideLang = this.guideLoadSetting('minecloud-guide-lang') || (/^es\b/i.test(navigator.language || '') ? 'ES' : 'EN');
-        if (!GUIDE_LANGS.includes(this.guideLang)) this.guideLang = 'EN';
         this.guidePage = this.guidePageId(this.guideLoadSetting('minecloud-guide-page')) || GUIDE_CONTENTS_PAGE;
 
         const fonts = document.createElement('link');
@@ -127,6 +124,9 @@ Object.assign(Game.prototype, {
         this.guideBuildBook();
         window.addEventListener('keydown', (event) => this.guideOnKeyDown(event), true);
         this.guideAddPauseButton();
+        onGameLangChange(() => {
+            if (this.guideOpen) this.guideRender();
+        });
     },
 
     guideLoadSetting(key) {
@@ -154,7 +154,7 @@ Object.assign(Game.prototype, {
                     <div class="guide-head">
                         <span class="guide-book-title"></span>
                         <span class="guide-number"></span>
-                        ${GUIDE_LANGS.map((lang) => `<button class="guide-lang" type="button" data-lang="${lang}">${lang}</button>`).join('')}
+                        ${GAME_LANGS.map((lang) => `<button class="guide-lang" type="button" data-lang="${lang}">${lang}</button>`).join('')}
                         <button class="guide-close" type="button">✕</button>
                     </div>
                     <div class="guide-page"></div>
@@ -178,10 +178,10 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-contents').addEventListener('click', () => this.guideGo(GUIDE_CONTENTS_PAGE));
         // The printable guide (guide-print.html, js/guidePrint.js) in a new tab.
         book.querySelector('.guide-print').addEventListener('click', () => {
-            window.open(`guide-print.html?lang=${encodeURIComponent(this.guideLang)}`, '_blank', 'noopener');
+            window.open(`guide-print.html?lang=${encodeURIComponent(gameLang())}`, '_blank', 'noopener');
         });
         book.querySelectorAll('.guide-lang').forEach((button) => {
-            button.addEventListener('click', () => this.guideSetLang(button.dataset.lang));
+            button.addEventListener('click', () => setGameLang(button.dataset.lang));
         });
         book.querySelector('.guide-page').addEventListener('click', (event) => {
             const link = event.target.closest('a[data-page]');
@@ -290,13 +290,6 @@ Object.assign(Game.prototype, {
         return target === undefined ? undefined : String(target);
     },
 
-    guideSetLang(lang) {
-        if (!GUIDE_LANGS.includes(lang) || lang === this.guideLang) return;
-        this.guideLang = lang;
-        this.guideSaveSetting('minecloud-guide-lang', lang);
-        this.guideRender();
-    },
-
     guidePublicPages() {
         return [...new Set((this.guideIndex || []).filter((entry) => !entry.secret).map((entry) => Number(entry.page)))].sort((a, b) => a - b);
     },
@@ -323,7 +316,8 @@ Object.assign(Game.prototype, {
 
     async guideRender() {
         const book = this.guideBook;
-        const text = GUIDE_TEXT[this.guideLang];
+        const lang = gameLang();
+        const text = gameText(GUIDE_TEXT);
         const page = this.guidePage;
         const view = book.querySelector('.guide-page');
         this.guideSaveSetting('minecloud-guide-page', page);
@@ -333,7 +327,7 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-print').textContent = `🖨 ${text.print}`;
         book.querySelector('.guide-print').title = text.printTitle;
         book.querySelector('.guide-close').title = text.close;
-        book.querySelectorAll('.guide-lang').forEach((button) => button.classList.toggle('active', button.dataset.lang === this.guideLang));
+        book.querySelectorAll('.guide-lang').forEach((button) => button.classList.toggle('active', button.dataset.lang === lang));
 
         let index;
         try {
@@ -348,7 +342,7 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-next').disabled = this.guideNeighbour(1) === undefined;
 
         const entries = index.filter((entry) => entry.page === page);
-        const entry = entries.find((candidate) => candidate.lang === this.guideLang) || entries[0];
+        const entry = entries.find((candidate) => candidate.lang === lang) || entries[0];
         if (!entry) {
             book.querySelector('.guide-book-title').textContent = text.title;
             view.innerHTML = `<div class="guide-missing"><div class="guide-missing-title">${text.missing(page)}</div><p>${text.missingHint}</p></div>`;
@@ -359,8 +353,8 @@ Object.assign(Game.prototype, {
         view.innerHTML = `<div class="guide-notice">${text.loading}</div>`;
         try {
             const html = await this.guideLoadPage(entry);
-            if (page !== this.guidePage) return;
-            const notice = entry.lang !== this.guideLang ? `<div class="guide-notice">${text.otherLang}</div>` : '';
+            if (page !== this.guidePage || lang !== gameLang()) return;
+            const notice = entry.lang !== lang ? `<div class="guide-notice">${text.otherLang}</div>` : '';
             view.innerHTML = notice + html;
         } catch (_error) {
             view.innerHTML = `<div class="guide-missing"><div class="guide-missing-title">${text.offline}</div></div>`;

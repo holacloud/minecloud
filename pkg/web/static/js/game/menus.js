@@ -275,6 +275,14 @@ Object.assign(Game.prototype, {
 
         document.addEventListener('fullscreenchange', () => this.updateSettingsUI());
 
+        // The game's language: the same setting as the guide's selector, each following the other.
+        const languageSelect = document.getElementById('settings-language');
+        if (languageSelect) {
+            languageSelect.value = gameLang();
+            languageSelect.addEventListener('change', () => setGameLang(languageSelect.value));
+            onGameLangChange((lang) => { languageSelect.value = lang; });
+        }
+
         rtxToggle.addEventListener('click', () => this.toggleRTXMode());
         if (ultraToggle) ultraToggle.addEventListener('click', () => this.toggleUltraMode());
         fullscreenToggle.addEventListener('click', () => this.toggleFullscreen());

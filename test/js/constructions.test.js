@@ -38,7 +38,7 @@ function loadGame() {
     }
     // The furniture modules, as in index.html; what they add is what the showroom has to hold.
     context.FURNITURE_ITEMS = [];
-    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js', 'microbes.js', 'microscope.js', 'glow_block.js']) {
+    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'glow_block.js']) {
         const before = new Set(vm.runInContext('Object.keys(BLOCK_TYPES)', context));
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
         for (const type of vm.runInContext('Object.keys(BLOCK_TYPES)', context)) {

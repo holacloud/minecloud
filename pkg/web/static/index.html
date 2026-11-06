@@ -777,6 +777,14 @@
             font-size: 13px;
             color: #d9e6f7;
         }
+        .pause-row select {
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(61, 99, 177, 0.82);
+            color: #fff;
+            font: 700 13px/1 'Consolas', monospace;
+        }
         .pause-row input[type="range"] {
             width: 100%;
         }
@@ -1387,6 +1395,13 @@
             <label for="settings-fov">FOV: <span id="settings-fov-value">70</span></label>
             <input id="settings-fov" type="range" min="55" max="100" step="1" value="70">
         </div>
+        <div class="pause-row">
+            <label for="settings-language">Idioma / Language</label>
+            <select id="settings-language">
+                <option value="ES">Español</option>
+                <option value="EN">English</option>
+            </select>
+        </div>
         <div class="pause-actions">
             <div class="pause-actions-main">
                 <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
@@ -1480,6 +1495,7 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/extensions.js"></script>
+    <script src="js/gameLang.js"></script>
     <script src="js/camera.js"></script>
     <script src="js/chunkStore.js"></script>
     <script src="js/blockShapes.js"></script>
@@ -1544,6 +1560,7 @@
     <script src="js/game/smelters.js"></script>
     <script src="js/game/glow_block.js"></script>
     <script src="js/game/microbes.js"></script>
+    <script src="js/game/microscope_text.js"></script>
     <script src="js/game/microscope.js"></script>
     <script src="js/game/decor.js"></script>
     <script src="js/game/mirrors.js"></script>
