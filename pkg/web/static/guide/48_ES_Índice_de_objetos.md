@@ -182,3 +182,10 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:bug_net) [Red para insectos](95)
 - ![](item:cage_trap) [Jaula](96)
 - ![](item:firefly_jar) [Frasco de luciérnagas](97)
+
+## El microscopio
+
+- ![](item:microscope) [El microscopio](238): microscope, glass_slide, micropipette
+- ![](item:test_tube) [Cómo tomar una muestra](239): test_tube, moss, las `sample_*`
+- ![](item:tardigrade_tube) [Tardígrados](240): tardigrade_tube
+- ![](item:tardigrade_tun) [Criptobiosis](241): tardigrade_tun

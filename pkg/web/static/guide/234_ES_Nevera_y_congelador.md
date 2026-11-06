@@ -65,3 +65,5 @@ El "frío" no se puede fabricar: solo existe el calor, y la nevera **lo mueve**.
 3. En la rejilla negra de detrás el gas caliente suelta su calor a la habitación y vuelve a ser líquido. Y otra vez al principio.
 
 Por eso la parte de atrás de la nevera está caliente, y una nevera con la puerta abierta calienta la cocina. El calor no pasa solo de lo frío a lo caliente: moverlo cuesta arriba gasta energía, y por eso hace falta electricidad. En el juego, 30 W.
+
+En el congelador puede ir también algo raro: un tardígrado en su tubo. Sale convertido en barrilito, y el horno no lo devuelve a la vida, pero el agua sí: mira [Criptobiosis](241).

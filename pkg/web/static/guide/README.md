@@ -26,7 +26,7 @@ Supported:
 - Links to pages, `[text](12)` or `[text](27A2)`, and to the web.
 - Images on their own line, centred, with the alt text as caption:
   - `![caption](img/picture.png)`: a file in this folder.
-  - `![caption](mob:sheep)`: the bestiary portrait of a species.
+  - `![caption](mob:sheep)`: the bestiary portrait of a species, or of an organism (`MICRO_SPECIES`, js/game/microbes.js).
   - `![caption](item:torch)`: the inventory icon of an item.
 
   The same images inside a sentence or a table cell are drawn as small inline icons.
@@ -300,6 +300,14 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 234 | Nevera y congelador | Fridge and freezer | fridge (two compartments), chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread; food does not spoil in the game; bacteria and cold, water expanding as it freezes, how a fridge moves heat |
 | 235 | Fundición | Foundry | foundry: smelts with coal on the server (pkg/network/appliances.go, js/game/smelters.js), recipes and yields against the C menu; why sand melts into glass, why coal burns hotter than wood |
 | 236 | Horno de arco eléctrico | Electric arc furnace | arc_furnace: 150 W only while it has work, coal as an ingredient, silicon and steel, what can power it; how carbon pulls oxygen off silica, how an arc makes 2000 °C, from silicon to chips and solar cells |
+| 237 | El mundo pequeño | The small world | overview, all 16 organisms of js/game/microbes.js, rotifers and water fleas (contents 0, mobs index 16, bestiary 5) |
+| 238 | El microscopio | The microscope | microscope, glass_slide, micropipette: recipes, the light rule, preparing, the panel (items index 48) |
+| 239 | Cómo tomar una muestra | How to take a sample | test_tube, moss, the 21 `sample_*`: habitats and shares, fixed by the place (pkg/network/microscope.go) |
+| 240 | Tardígrados | Tardigrades | `tardigrade` (organism), tardigrade_tube: how to find and keep one, its states and body |
+| 241 | Criptobiosis | Cryptobiosis | tardigrade_tun: the experiments with the slide and the freezer; what real tuns survive and what they do not |
+| 242 | Células vegetales y animales | Plant and animal cells | `plant_cell`, `animal_cell`, the cheek smear |
+| 243 | Protozoos y algas | Protozoa and algae | `paramecium`, `amoeba`, `vorticella`, `euglena`, `diatom`, `spirogyra` |
+| 244 | Bacterias, casi todas son amigas | Bacteria, nearly all are friends | `soil_bacteria`, `lactobacillus`, `cyanobacteria`; `yeast` and `mushroom_spore`, which are fungi |
 
 ### Secret pages
 

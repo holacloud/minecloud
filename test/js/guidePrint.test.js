@@ -126,14 +126,20 @@ test('the game scripts run without a game and know every mob and item the pages 
     assert.ok(scripts.includes('js/world.js') && scripts.includes('js/game/bestiary.js'));
     assert.ok(!scripts.includes('js/game.js') && !scripts.includes('js/game/guide.js'));
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
-    vm.runInContext('this.printWorld = new WorldRenderer({}); this.printGame = Game; this.printModels = VoxelModels;', context);
+    vm.runInContext('this.printWorld = new WorldRenderer({}); this.printGame = Game; this.printModels = VoxelModels; this.printOrganisms = MICRO_SPECIES;', context);
 
     const refs = (kind) => new Set(publicSources().flatMap((source) => [...source.matchAll(new RegExp(`\\]\\(${kind}:([a-z0-9_]+)\\)`, 'g'))].map((match) => match[1])));
     for (const item of refs('item')) {
         assert.ok(context.printWorld.blockTypes[item], `item:${item}`);
         assert.doesNotThrow(() => context.printWorld.getInventoryIconUrl(item), `icon of ${item}`);
     }
-    for (const species of refs('mob')) assert.ok(context.printModels.mobBuilders[species], `mob:${species}`);
+    const portraits = Object.create(context.printGame.prototype);
+    for (const species of refs('mob')) {
+        // The organisms have no voxel model: their portrait is a drawing, and needs no game and no WebGL.
+        assert.ok(context.printModels.mobBuilders[species] || context.printOrganisms[species], `mob:${species}`);
+        if (context.printOrganisms[species]) assert.match(portraits.bestiaryRenderPortrait(species), /^data:image\/png/, species);
+    }
+    assert.ok(refs('mob').has('tardigrade'), 'the organisms are in the printed pages');
     assert.equal(typeof context.printGame.prototype.bestiaryRenderPortrait, 'function');
 });
 

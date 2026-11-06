@@ -29,3 +29,5 @@ The wax is made mostly of carbon ([C](144)) and hydrogen ([H](139)). Burning tur
 The yellow light comes from tiny bits of hot carbon glowing in the flame, which is the same soot you can catch on a cold spoon. Blow a candle out and you can see a thread of white smoke: that is wax vapour that has not burned. Bring a match close to the smoke and the flame jumps down it to the wick!
 
 > **Try it with an adult:** hold a cold spoon in the flame for two seconds. The black mark is carbon from the wax.
+
+A [microscope](238) needs light too, and any of these will do, set right beside it.

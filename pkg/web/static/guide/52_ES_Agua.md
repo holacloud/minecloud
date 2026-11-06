@@ -53,4 +53,4 @@ lleno para verterla ahí y recuperar el cubo vacío.
 - En el juego el agua es un bloque normal que no se derrama: puedes construir una cascada que se queda quieta en el
   aire.
 
-Ver también: [Cubo](111), [Pescar](6), [Salud, comida y peligros](9).
+Ver también: [Cubo](111), [Pescar](6), [Salud, comida y peligros](9), y lo que vive en ella: [Cómo tomar una muestra](239).

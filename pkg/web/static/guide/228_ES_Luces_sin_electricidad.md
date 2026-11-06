@@ -29,3 +29,5 @@ La cera está hecha sobre todo de carbono ([C](144)) e hidrógeno ([H](139)). Al
 La luz amarilla viene de trocitos diminutos de carbono muy caliente que brillan dentro de la llama: es el mismo hollín que puedes recoger en una cuchara fría. Si soplas una vela verás un hilo de humo blanco: es vapor de cera sin quemar. ¡Acerca una cerilla a ese humo y la llama baja por él hasta la mecha!
 
 > **Pruébalo con un adulto:** pon una cuchara fría en la llama durante dos segundos. La mancha negra es carbono de la cera.
+
+Un [microscopio](238) también necesita luz, y cualquiera de estas le sirve, puesta justo al lado.

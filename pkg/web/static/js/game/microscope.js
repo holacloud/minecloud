@@ -10,7 +10,8 @@
 //   power, the slider (or the wheel) the focus. It needs light, as a real one does: the sun by day on a
 //   block in the open, or anything that gives light right beside it (microscopeReadLight). Without
 //   light the field is black and the panel says why.
-// - A click on an organism identifies it (microscopeIdentified, the one call that says so). With a
+// - A click on an organism identifies it (microscopeIdentified, the one call that says so, and the only
+//   way into its card in the bestiary). With a
 //   micropipette and an empty tube a tardigrade can be drawn off into the tube.
 // - Left alone a slide dries in a game day. Only the tardigrades come through that, as tuns; a drop of
 //   water from a flask brings them back in about 20 s. The freezer turns a tube into a tun too
@@ -39,6 +40,9 @@ const MICROSCOPE_KIT = [
     ['sample_moss_a', 2], ['sample_still_water', 2], ['tardigrade_tube', 2], ['tardigrade_tun', 2],
     ['dirt', 4], ['flower_red', 4], ['milk', 2], ['leaves', 4], ['mushroom_red', 2], ['raw_fish', 2], ['white_wool', 2], ['honeycomb', 2]
 ];
+
+// The page of the microscope in the guide; the organisms carry their own (MICRO_SPECIES.page).
+const MICROSCOPE_GUIDE_PAGE = 238;
 
 // ---------------------------------------------------------------------------------------
 // Pure helpers (also used by test/js/microscope.test.js)
@@ -534,10 +538,10 @@ Object.assign(Game.prototype, {
             for (const entry of saved) {
                 if (entry && entry.reqId && entry.took && entry.gives) this.microscopePending.set(entry.reqId, { took: entry.took, gives: entry.gives, op: entry.op, at: 0 });
             }
-            this.microscopeKnown = new Set(JSON.parse(window.localStorage.getItem(MICROSCOPE_KNOWN_KEY) || '[]'));
         } catch (_error) {
-            this.microscopeKnown = this.microscopeKnown || new Set();
+            // Nothing readable: nothing to resume.
         }
+        this.microscopeMoveKnown();
     },
 
     microscopeSavePending() {
@@ -549,19 +553,24 @@ Object.assign(Game.prototype, {
         }
     },
 
-    // The one call that says "this organism has been identified". The bestiary hooks in here.
+    // The one call that says "this organism has been identified": it goes in the bestiary.
     microscopeIdentified(speciesId) {
-        const def = MICRO_SPECIES[speciesId];
-        if (!def) return;
-        if (!this.microscopeKnown) this.microscopeKnown = new Set();
-        if (this.microscopeKnown.has(speciesId)) return;
-        this.microscopeKnown.add(speciesId);
+        if (MICRO_SPECIES[speciesId] && this.bestiaryInstalled) this.bestiaryEncounter(speciesId);
+    },
+
+    // What the first version of this panel kept on its own moves into the bestiary, once.
+    microscopeMoveKnown() {
         try {
-            window.localStorage.setItem(MICROSCOPE_KNOWN_KEY, JSON.stringify([...this.microscopeKnown]));
+            const known = JSON.parse(window.localStorage.getItem(MICROSCOPE_KNOWN_KEY) || 'null');
+            if (!known || !this.bestiaryInstalled) return;
+            for (const id of known) {
+                if (MICRO_SPECIES[id] && !this.bestiaryData[id]) this.bestiaryRecord(id).encounters = 1;
+            }
+            this.bestiarySave();
+            window.localStorage.removeItem(MICROSCOPE_KNOWN_KEY);
         } catch (_error) {
-            // Blocked storage: it lasts until the page reloads.
+            // Nothing readable: nothing to move.
         }
-        this.playTone({ frequency: 760, duration: 0.09, type: 'triangle', volume: 0.025, release: 0.1 });
     },
 
     // ---- Requests ----
@@ -879,7 +888,11 @@ Object.assign(Game.prototype, {
         } else {
             this.microscopeNote = '';
             this.microscopeSelected = org;
-            this.microscopeIdentified(org.species);
+            // Each one counts once, however many times it is looked at.
+            if (!org.identified) {
+                org.identified = true;
+                this.microscopeIdentified(org.species);
+            }
         }
         this.microscopeRenderControls();
     },
@@ -896,6 +909,7 @@ Object.assign(Game.prototype, {
         panel.innerHTML = `
             <div class="micro-head">
                 <h3>Microscope</h3>
+                <button class="micro-guide" type="button" title="The microscope, in the guide">📖</button>
                 <button class="micro-close" type="button" aria-label="Close">✕</button>
             </div>
             <div class="micro-body">
@@ -915,6 +929,7 @@ Object.assign(Game.prototype, {
                             <div class="micro-fact"></div>
                             <div class="micro-state micro-fact"></div>
                             <button type="button" class="micro-capture"></button>
+                            <button type="button" class="micro-read">📖 In the guide</button>
                         </div>
                     </div>
                     <div id="micro-note"></div>
@@ -942,6 +957,10 @@ Object.assign(Game.prototype, {
         this.microscopeSofter = buffer();
 
         panel.querySelector('.micro-close').addEventListener('click', () => this.microscopeClose());
+        panel.querySelector('.micro-guide').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_GUIDE_PAGE));
+        panel.querySelector('.micro-read').addEventListener('click', () => {
+            if (this.microscopeSelected) this.microscopeOpenGuide(MICRO_SPECIES[this.microscopeSelected.species].page);
+        });
         panel.querySelectorAll('[data-power]').forEach((button) => button.addEventListener('click', () => this.microscopeSetPower(Number(button.dataset.power))));
         panel.querySelector('#micro-focus').addEventListener('input', (event) => this.microscopeSetFocus(Number(event.target.value) / 100));
         panel.querySelector('.micro-drop').addEventListener('click', () => this.microscopeSend('microscopeDrop', 'drop'));
@@ -1173,6 +1192,13 @@ Object.assign(Game.prototype, {
         else if (microFate(org.species, age, revived) === 'cyst') text = 'It has shut itself in a cyst.';
         else if (microFate(org.species, age, revived) === 'dead') text = 'The drying has killed it.';
         if (box.textContent !== text) box.textContent = text;
+    },
+
+    // Closes the panel and opens the book at `page`; closing the book returns to the game.
+    microscopeOpenGuide(page) {
+        if (typeof this.guideShow !== 'function') return;
+        this.microscopeClose();
+        this.guideShow(String(page));
     },
 
     // /microkit: everything for trying the microscope, in creative mode only.

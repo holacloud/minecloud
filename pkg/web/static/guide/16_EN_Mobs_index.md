@@ -45,3 +45,5 @@ To find out where each one lives, see [Biomes](15). To keep track of the ones yo
 | ![](mob:copper_golem) | [Copper golem](215) | a helper you build; runs on charge, turns green with time | 2026-11-02 |
 
 And to keep ants at home: [Ant farm](136).
+
+And smaller than any of them, in [the small world](237): ![](mob:tardigrade) [tardigrades](240), and fifteen others you can only meet through a [microscope](238).

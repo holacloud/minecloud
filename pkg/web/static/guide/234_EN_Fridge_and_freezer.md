@@ -65,3 +65,5 @@ There is no such thing as "cold" to make: there is only heat, and a fridge **mov
 3. In the black grid behind the fridge the hot gas gives its heat away to the room, and turns liquid again. Back to the start.
 
 So the back of a fridge is warm, and a fridge with its door open warms the kitchen. Heat does not go from cold to hot by itself: moving it uphill costs energy, which is why it needs electricity. In the game, 30 W.
+
+One odd thing can also go in the freezer: a tardigrade in its tube. It comes out as a tun, and an oven will not bring it back, but water will: see [Cryptobiosis](241).

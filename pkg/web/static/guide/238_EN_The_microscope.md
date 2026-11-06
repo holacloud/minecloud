@@ -1,0 +1,78 @@
+# The microscope
+
+![Microscope](item:microscope)
+
+A foot, an arm, a stage for the slide, a mirror under it and a brass tube with its lenses. Place it on a table and **right click** it to look. To build against it, crouch.
+
+## What you need
+
+| Recipe (C key) | Ingredients | What it is for |
+|---|---|---|
+| ![](item:microscope) 1 `microscope` | 2 `glass` + 1 `copper_block` + 1 `iron_ore` + 1 `planks` | to look |
+| ![](item:glass_slide) 4 `glass_slide` | 1 `glass` | what you put on the stage |
+| ![](item:test_tube) 3 `test_tube` | 1 `glass` | to [take samples](239) |
+| ![](item:micropipette) 1 `micropipette` | 1 `glass` + 1 `leather` | to keep a tardigrade |
+
+## It needs light
+
+A microscope shows nothing without light. **With no light the field is pitch black**, and the panel tells you so. There are two ways to light it:
+
+- **The sun**, by day, with the block out in the open: under the sky, under glass, or within two blocks of an opening with nothing in the way. The mirror catches it.
+- **A lamp**, day or night: anything that gives light within two blocks: a [candle, a lantern or a lamp](228), a torch, a lit [electric lamp](204).
+
+If the sun sets while you are looking, the field goes dark. A candle next to it fixes that.
+
+## Preparing a slide
+
+With an empty stage the panel lists what you can put on a slide. Each one uses one `glass_slide`:
+
+- A **sample** in a tube ([how to take one](239)). The empty tube comes back.
+- **Something you carry:**
+
+| Item | What you will see |
+|---|---|
+| ![](item:leaves) any leaves, ![](item:wheat) `wheat` | [plant cells](242) |
+| ![](item:raw_fish) `raw_fish` | [animal cells](242) |
+| ![](item:dirt) `dirt` | [soil bacteria](244) among grains of mineral |
+| ![](item:flower_red) flowers, ![](item:honeycomb) `honeycomb` | [yeast](244), and pollen in the honeycomb |
+| ![](item:milk) `milk`, ![](item:cheese) `cheese` | [lactobacillus](244) among drops of fat |
+| ![](item:mushroom_red) either mushroom | [spores](244) |
+| ![](item:white_wool) any wool | scaly fibres, and a few bacteria |
+
+- A **smear of your cheek**, the button in the panel: it costs only the slide, and shows [your own cells](242).
+
+**Take the slide off** and it comes back washed. What was on it is gone.
+
+Everybody looking at the same microscope sees the same slide: the same organisms in the same places. Each one moves in its own way on each screen.
+
+## Looking
+
+| To do this | With a mouse | On a phone |
+|---|---|---|
+| Move the stage | drag | drag with a finger |
+| Change the power | the 40×, 100×, 400× buttons, or + and - | the buttons, or pinch |
+| Focus | the slider, or the wheel | the slider |
+| Identify | click it | tap it |
+
+- **Power.** At 40× you see a wide field and the larger animals. At 400× you see the bacteria, but only a small part of the slide. Start low and go up. The line at the bottom of the field is a ruler.
+- **Focus.** Everything lies at its own depth in the drop, and what is at another depth looks blurred. The more power, the thinner the part that is sharp, so at 400× you have to keep turning.
+- **Identify.** Click what you see. If it is too small for this power or out of focus, the panel says what to do. Otherwise its sheet opens and it goes in your [bestiary](5).
+
+## Science and game
+
+**True:**
+
+- Student microscopes have just these powers: a 10× eyepiece and objectives of 4×, 10× and 40×.
+- Mirrors really were how microscopes were lit before electric lamps, and some still are. The light comes up **through** the slide, which is why specimens must be thin.
+- More power does mean a thinner slice in focus and a smaller field.
+- There is a limit: however good the lenses, light cannot show things much smaller than a quarter of a micrometre. For a virus you need an electron microscope.
+
+**Simplified in the game:**
+
+- A real microscope turns the image upside down, so the stage seems to move backwards. Here it follows your finger.
+- Light in the game has a simple rule. A real microscope needs a lot of light close to it: a candle would be dim at 400×.
+- Real slides usually have a thin glass cover on top, and stains to make the cells show.
+
+> **Try it for real:** a cheap school microscope, or even a clip-on lens for a phone, shows pond water and onion skin very well.
+
+See also: [The small world](237), [How to take a sample](239), [Lights without electricity](228).

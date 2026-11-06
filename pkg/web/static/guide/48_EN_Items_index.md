@@ -182,3 +182,10 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:bug_net) [Bug net](95)
 - ![](item:cage_trap) [Cage trap](96)
 - ![](item:firefly_jar) [Firefly jar](97)
+
+## The microscope
+
+- ![](item:microscope) [The microscope](238): microscope, glass_slide, micropipette
+- ![](item:test_tube) [How to take a sample](239): test_tube, moss, the `sample_*`
+- ![](item:tardigrade_tube) [Tardigrades](240): tardigrade_tube
+- ![](item:tardigrade_tun) [Cryptobiosis](241): tardigrade_tun

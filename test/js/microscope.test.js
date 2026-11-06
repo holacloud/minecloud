@@ -54,7 +54,8 @@ function loadModules() {
     vm.runInContext(fs.readFileSync(path.join(JS, 'extensions.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'chunkStore.js'), 'utf8'), context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'blockShapes.js'), 'utf8'), context);
-    for (const file of ['furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope.js']) {
+    vm.runInContext(fs.readFileSync(path.join(JS, 'mobSpecies.js'), 'utf8'), context);
+    for (const file of ['bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_SAMPLES, MICRO_ITEMS, MICRO_MAGNIFICATIONS, MICRO_DRY_SECONDS, MICRO_REVIVE_SECONDS, MICRO_TUN_SECONDS, MICRO_SLIDE_RADIUS,
@@ -62,7 +63,7 @@ function loadModules() {
         microSpeciesOf, microSampleId, microSourceInTube, microPopulate, microScenery, microSlideStage, microUnfold, microFate, microBlur, microCanIdentify,
         microStep, tardigradeLegs, microDrawOrganism, microDrawPortrait, microDrawTardigrade, microDrawTardigradeMolt, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeOpenToSky, microscopeClampStage, microscopeStepPower, microscopeScale, microscopeScaleBar,
-        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeDrawField, Game });`, context);
+        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeDrawField, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
     return context;
 }
 
@@ -137,7 +138,7 @@ test('the catalogue has the 16 organisms of the plan, with what a card needs', (
     const ids = Object.keys(ctx.MICRO_SPECIES).sort();
     assert.deepEqual(ids, ['amoeba', 'animal_cell', 'cyanobacteria', 'diatom', 'euglena', 'lactobacillus', 'mushroom_spore', 'paramecium', 'plant_cell', 'rotifer', 'soil_bacteria', 'spirogyra', 'tardigrade', 'vorticella', 'water_flea', 'yeast']);
     for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
-        for (const field of ['name', 'latin', 'size', 'where', 'fact']) assert.ok(typeof def[field] === 'string' && def[field].length > 2, `${id}.${field}`);
+        for (const field of ['name', 'latin', 'size', 'where', 'fact', 'hint']) assert.ok(typeof def[field] === 'string' && def[field].length > 2, `${id}.${field}`);
         assert.ok(ctx.MICRO_MAGNIFICATIONS.includes(def.mag), `${id}.mag`);
         assert.ok(def.drawn > 0, `${id}.drawn`);
         assert.equal(typeof def.draw, 'function', `${id}.draw`);
@@ -509,17 +510,6 @@ test('a request takes its items first, and the answer settles them', () => {
     assert.deepEqual(plain(ctx.microscopeSettle(capture, { amount: 0 })), { test_tube: 1 });
 });
 
-test('the one call that says something was identified', () => {
-    const tones = [];
-    const game = Object.create(ctx.Game.prototype);
-    game.playTone = () => tones.push(1);
-    game.microscopeIdentified('tardigrade');
-    game.microscopeIdentified('tardigrade');
-    game.microscopeIdentified('no_such_thing');
-    assert.deepEqual([...game.microscopeKnown], ['tardigrade']);
-    assert.equal(tones.length, 1);
-});
-
 test('the commands: /microkit answers like an unknown command outside creative mode', () => {
     const said = [];
     const game = Object.create(ctx.Game.prototype);
@@ -742,6 +732,8 @@ function panelGame({ lamp = false } = {}) {
         playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}
     });
     ctx.window.devicePixelRatio = 1;
+    game.identified = [];
+    game.microscopeIdentified = (id) => game.identified.push(id);
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
     return game;
@@ -874,7 +866,8 @@ test('the panel: touch and mouse on the field', () => {
     down(1, radius, radius);
     up(1, radius, radius);
     assert.equal(game.microscopeSelected, org);
-    assert.ok(game.microscopeKnown.has('tardigrade'));
+    assert.equal(game.identified.length, 1);
+    assert.equal(game.identified[0], 'tardigrade');
     assert.ok(panel.querySelector('#micro-info').classes.has('visible'));
     assert.match(panel.querySelector('#micro-info').querySelector('.micro-capture').textContent, /Draw it off/);
 
@@ -1012,4 +1005,294 @@ test('a test tube: on water, on moss, on anything else', () => {
     handler.call(game, 'test_tube', {});
     assert.equal(game.network.sent.length, sent);
     assert.match(game.said[game.said.length - 1], /water or moss/);
+});
+
+// ---- One bestiary ----
+
+// A page element with what the bestiary's sheet uses of it.
+function sheetElement() {
+    const element = fakeElement();
+    let inner = '';
+    Object.defineProperty(element, 'innerHTML', { get: () => inner, set(value) { inner = value; element.children = []; } });
+    let text = '';
+    Object.defineProperty(element, 'textContent', { get: () => text, set(value) { text = value; if (value === '') element.children = []; } });
+    element.append = (...children) => element.children.push(...children);
+    element.appendChild = (child) => { element.children.push(child); child.parentNode = element; return child; };
+    element.removeChild = (child) => { element.children = element.children.filter((other) => other !== child); };
+    element.toDataURL = () => 'data:image/png;base64,drawn';
+    return element;
+}
+
+function allText(element) {
+    return [element.textContent, ...element.children.map(allText)].join(' ');
+}
+
+function bestiaryGame() {
+    const toasts = [];
+    const panel = sheetElement();
+    const found = new Map();
+    panel.querySelector = (selector) => {
+        if (!found.has(selector)) found.set(selector, sheetElement());
+        return found.get(selector);
+    };
+    ctx.document = {
+        createElement: () => sheetElement(), getElementById: () => null, querySelector: () => null,
+        head: sheetElement(), body: sheetElement(), addEventListener() {}
+    };
+    ctx.requestAnimationFrame = () => 1;
+    ctx.cancelAnimationFrame = () => {};
+    ctx.setTimeout = () => 0;
+    const game = Object.create(ctx.Game.prototype);
+    Object.assign(game, {
+        bestiaryInstalled: true, bestiaryOpen: true, bestiarySelected: null, bestiaryPortraits: new Map(), bestiaryPortraitQueue: [], bestiaryData: {},
+        bestiarySeenMobs: new WeakSet(), bestiaryPanel: panel, toasts, said: [],
+        bestiaryAnnounce(species) { toasts.push(species); },
+        bestiarySave() {}, playTone() {}, receiveSystemMessage(message) { this.said.push(message.text); }
+    });
+    return game;
+}
+
+test('the organisms are cards of the one bestiary, and not mobs', () => {
+    const game = bestiaryGame();
+    const list = game.bestiarySpeciesList();
+    const organisms = Object.keys(ctx.MICRO_SPECIES);
+    assert.equal(organisms.length, 16);
+    for (const id of organisms) {
+        assert.ok(list.includes(id), id);
+        assert.equal(ctx.MOB_SPECIES[id], undefined, `${id} must not be a mob`);
+        assert.equal(ctx.BESTIARY_ENTRIES[id], undefined, id);
+    }
+    for (const id of Object.keys(ctx.MOB_SPECIES)) assert.ok(list.includes(id), id);
+    assert.equal(new Set(list).size, list.length);
+    assert.equal(ctx.BESTIARY_STORAGE_KEY, 'minecloud-bestiary');
+});
+
+test('only the microscope discovers an organism, with a toast the first time', () => {
+    const game = bestiaryGame();
+    // The scan goes through the mobs of the world: there is no organism among them, whatever is near.
+    game.titleScreenOpen = false;
+    game.camera = { position: anyStub(), getWorldDirection() {} };
+    game.ambientMobs = [];
+    game.bestiaryScan();
+    assert.deepEqual(plain(game.bestiaryData), {});
+    assert.ok(!fs.readFileSync(path.join(JS, 'game', 'bestiary.js'), 'utf8').match(/MICRO_SPECIES[^\n]*ambientMobs/));
+
+    game.microscopeIdentified('tardigrade');
+    assert.deepEqual([...game.toasts], ['tardigrade']);
+    assert.equal(game.bestiaryData.tardigrade.encounters, 1);
+    game.microscopeIdentified('tardigrade');
+    assert.equal(game.toasts.length, 1);
+    assert.equal(game.bestiaryData.tardigrade.encounters, 2);
+    game.microscopeIdentified('sheep');
+    game.microscopeIdentified('no_such_thing');
+    assert.equal(game.bestiaryData.sheep, undefined);
+    assert.equal(game.bestiaryData.no_such_thing, undefined);
+    // Before the bestiary is there, it does nothing and breaks nothing.
+    game.bestiaryInstalled = false;
+    game.microscopeIdentified('rotifer');
+    assert.equal(game.bestiaryData.rotifer, undefined);
+});
+
+test('the first version\'s list of what was identified moves into the bestiary, once', () => {
+    const game = bestiaryGame();
+    const stored = new Map([['minecloud-microscope-known', JSON.stringify(['tardigrade', 'yeast', 'bogus'])]]);
+    const before = ctx.window.localStorage;
+    ctx.window.localStorage = { getItem: (key) => stored.get(key) ?? null, setItem() {}, removeItem: (key) => stored.delete(key) };
+    game.bestiaryData.yeast = { encounters: 5 };
+    game.microscopeMoveKnown();
+    ctx.window.localStorage = before;
+    assert.equal(game.bestiaryData.tardigrade.encounters, 1);
+    assert.equal(game.bestiaryData.yeast.encounters, 5);
+    assert.equal(game.bestiaryData.bogus, undefined);
+    assert.equal(stored.size, 0);
+});
+
+test('a hint does not give away the name, like any other card', () => {
+    const game = bestiaryGame();
+    for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
+        const entry = game.bestiaryEntry(id);
+        const word = def.name.split(' ')[0].toLowerCase();
+        assert.ok(!entry.hint.toLowerCase().includes(word), `${id}: ${entry.hint}`);
+        assert.match(entry.hint, /microscope/);
+    }
+});
+
+test('an unknown card is a silhouette with a hint; a known one, its drawing', () => {
+    const game = bestiaryGame();
+    game.bestiaryRender();
+    const grid = game.bestiaryPanel.querySelector('#bestiary-grid');
+    const card = grid.children.find((child) => child.dataset.species === 'tardigrade');
+    assert.ok(card.className.includes('unknown'));
+    assert.equal(card.children[1].textContent, '???');
+    assert.equal(card.children[0].children[0].src, 'data:image/png;base64,drawn');
+    // The silhouette is painted on nothing: the CSS of an unknown card turns it black.
+    assert.ok(game.bestiaryOrganismUrls.has('tardigrade:shape'));
+    assert.ok(!game.bestiaryOrganismUrls.has('tardigrade:colour'));
+
+    game.bestiarySelected = 'tardigrade';
+    game.bestiaryRenderDetail();
+    const detail = game.bestiaryPanel.querySelector('#bestiary-detail');
+    assert.match(allText(detail), /\?\?\?/);
+    assert.match(allText(detail), /Only a microscope shows it/);
+    assert.doesNotMatch(allText(detail), /Tardigrade/);
+
+    game.microscopeIdentified('tardigrade');
+    game.bestiaryRender();
+    const known = game.bestiaryPanel.querySelector('#bestiary-grid').children.find((child) => child.dataset.species === 'tardigrade');
+    assert.ok(!known.className.includes('unknown'));
+    assert.equal(known.children[1].textContent, 'Tardigrade');
+    assert.equal(known.children[2].textContent, 'Identified 1x');
+    assert.ok(game.bestiaryOrganismUrls.has('tardigrade:colour'));
+});
+
+test('the sheet of an organism: animated drawing and real size, nothing that does not apply', () => {
+    const game = bestiaryGame();
+    game.microscopeIdentified('rotifer');
+    game.bestiarySelected = 'rotifer';
+    game.bestiaryRenderDetail();
+    const detail = game.bestiaryPanel.querySelector('#bestiary-detail');
+    const text = allText(detail);
+    assert.match(text, /Real size/);
+    assert.match(text, /0\.1-0\.5 mm/);
+    assert.match(text, /Rotifera/);
+    assert.match(text, /Identified/);
+    for (const label of ['Defeated', 'Diet', 'Drops', 'Lured by', 'Encounters', 'Passive', 'Active:']) assert.ok(!text.includes(label), label);
+    const preview = detail.children.find((child) => child.className === 'bestiary-preview');
+    assert.equal(preview.children.length, 1);
+    assert.equal(preview.children[0], game.bestiaryOrganismCanvas);
+    assert.equal(game.bestiaryPreviewSpecies, 'rotifer');
+    // It is drawn, and goes on being drawn; the WebGL stage is never asked for.
+    assert.ok(game.bestiaryOrganismCanvas.context.calls.length > 20);
+    assert.equal(game.bestiaryStageState, undefined);
+    // Rendering again keeps the same canvas running, and leaving stops it.
+    const canvas = game.bestiaryOrganismCanvas;
+    game.bestiaryRenderDetail();
+    assert.equal(game.bestiaryOrganismCanvas, canvas);
+    game.bestiaryStopPreview();
+    assert.equal(game.bestiaryOrganismCanvas, null);
+    assert.equal(game.bestiaryPreviewSpecies, null);
+});
+
+test('a mob\'s sheet and the notebook of the mobs are as they were', () => {
+    const game = bestiaryGame();
+    const mobs = game.bestiaryMobList();
+    assert.ok(!mobs.includes('tardigrade'));
+    // All the organisms: no complete notebook, no message and no code.
+    for (const id of Object.keys(ctx.MICRO_SPECIES)) game.microscopeIdentified(id);
+    assert.equal(game.said.length, 0);
+    game.bestiaryRender();
+    assert.doesNotMatch(game.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, /B31X/);
+    // All the mobs and no organism: the code, as ever.
+    const other = bestiaryGame();
+    for (const id of mobs) other.bestiaryData[id] = { encounters: 1 };
+    other.bestiaryRender();
+    assert.match(other.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, /B31X/);
+    assert.match(other.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, new RegExp(`/ ${mobs.length + 16} discovered`));
+});
+
+test('portraits for the guide and the printed book need no game and no WebGL', () => {
+    const game = Object.create(ctx.Game.prototype);
+    ctx.document = { createElement: () => sheetElement() };
+    for (const id of Object.keys(ctx.MICRO_SPECIES)) {
+        assert.match(game.bestiaryRenderPortrait(id), /^data:image\/png/, id);
+    }
+    assert.equal(game.bestiaryStageState, undefined);
+    // Same drawing asked twice is drawn once.
+    assert.equal(game.bestiaryRenderPortrait('yeast'), game.bestiaryRenderPortrait('yeast'));
+});
+
+test('the book finds an organism\'s portrait through mob:', () => {
+    const context = vm.createContext({ Math, console, THREE: anyStub(), document: anyStub(), window: { localStorage: { getItem: () => null } }, performance: { now: () => 0 } });
+    vm.runInContext('class Game {}', context);
+    for (const file of ['extensions.js', 'mobSpecies.js', 'guideMarkdown.js']) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context);
+    for (const file of ['bestiary.js', 'microbes.js', 'guide.js']) vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context);
+    const game = vm.runInContext('Object.create(Game.prototype)', context);
+    game.bestiaryPortraits = new Map();
+    game.bestiaryRenderPortrait = (species) => `portrait of ${species}`;
+    assert.equal(game.guideAssetUrl('mob:tardigrade'), 'portrait of tardigrade');
+    assert.equal(game.guideAssetUrl('mob:sheep'), 'portrait of sheep');
+    assert.equal(game.guideAssetUrl('mob:unicorn'), '');
+    assert.match(game.guideMarkdown('![A water bear](mob:tardigrade)'), /<img src="portrait of tardigrade" alt="A water bear">/);
+});
+
+// ---- The guide ----
+
+const GUIDE = path.join(STATIC, 'guide');
+const guideNames = fs.readdirSync(GUIDE);
+const guidePage = (page, lang) => {
+    const name = guideNames.find((candidate) => candidate.startsWith(`${page}_${lang}_`));
+    assert.ok(name, `page ${page} ${lang}`);
+    return fs.readFileSync(path.join(GUIDE, name), 'utf8');
+};
+const SMALL_WORLD = [237, 238, 239, 240, 241, 242, 243, 244];
+
+test('the guide: 237 to 244 in both languages, with the plan\'s titles, in the printed book', () => {
+    const titles = {
+        ES: ['El mundo pequeño', 'El microscopio', 'Cómo tomar una muestra', 'Tardígrados', 'Criptobiosis', 'Células vegetales y animales', 'Protozoos y algas', 'Bacterias: casi todas son amigas'],
+        EN: ['The small world', 'The microscope', 'How to take a sample', 'Tardigrades', 'Cryptobiosis', 'Plant and animal cells', 'Protozoa and algae', 'Bacteria: nearly all are friends']
+    };
+    const print = require(path.join(JS, 'guidePrint.js'));
+    SMALL_WORLD.forEach((page, i) => {
+        for (const lang of ['ES', 'EN']) assert.equal(guidePage(page, lang).split('\n')[0], `# ${titles[lang][i]}`);
+        assert.ok(print.SECTIONS.some(([from, to]) => page >= from && page <= to), `section for ${page}`);
+    });
+    assert.ok(!guideNames.some((name) => name.startsWith('245_')));
+    assert.ok(!guideNames.some((name) => name.startsWith('221_')), '221 stays free');
+    // File names go through go:embed, which takes no colon.
+    assert.ok(!guideNames.some((name) => name.includes(':')));
+    const readme = fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8');
+    for (const page of SMALL_WORLD) assert.match(readme, new RegExp(`^\\| ${page} \\|`, 'm'));
+    const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
+    assert.match(guia, /^## Microscopio y tardígrados$/m);
+});
+
+test('the guide: every link, picture and id is real, and they are linked from the old pages', () => {
+    for (const lang of ['ES', 'EN']) {
+        for (const page of SMALL_WORLD) {
+            const text = guidePage(page, lang);
+            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) assert.ok(guideNames.some((name) => name.startsWith(`${target}_${lang}_`)), `${page} ${lang} links to ${target}`);
+            for (const [, species] of text.matchAll(/\(mob:([a-z0-9_]+)\)/g)) assert.ok(ctx.MICRO_SPECIES[species], `${page} ${lang}: mob:${species}`);
+        }
+        const contents = guidePage(0, lang);
+        for (const page of SMALL_WORLD) assert.match(contents, new RegExp(`\\(${page}\\)`), `contents ${lang}`);
+        const items = guidePage(48, lang);
+        for (const page of [238, 239, 240, 241]) assert.match(items, new RegExp(`\\(${page}\\)`), `items ${lang}`);
+        assert.match(guidePage(5, lang), /\(237\)/);
+        assert.match(guidePage(16, lang), /\(237\)/);
+        assert.match(guidePage(52, lang), /\(239\)/);
+        assert.match(guidePage(228, lang), /\(238\)/);
+        assert.match(guidePage(234, lang), /\(241\)/);
+        // Every organism has a picture on its page, and its page links back to where to start.
+        for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
+            assert.ok(SMALL_WORLD.includes(def.page), id);
+            assert.ok(guidePage(def.page, lang).includes(`(mob:${id})`), `${id} on page ${def.page} ${lang}`);
+            assert.ok(guidePage(237, lang).includes(`(mob:${id})`), `${id} in the overview ${lang}`);
+        }
+    }
+    assert.equal(ctx.MICROSCOPE_GUIDE_PAGE, 238);
+});
+
+test('the guide says what the game does', () => {
+    for (const lang of ['ES', 'EN']) {
+        const scope = guidePage(238, lang);
+        // The recipes.
+        assert.match(scope, /2 `glass` \+ 1 `copper_block` \+ 1 `iron_ore` \+ 1 `planks`/);
+        assert.match(scope, /1 `glass` \+ 1 `leather`/);
+        const sample = guidePage(239, lang);
+        // The shares of the plan, and never which letter.
+        assert.match(sample, lang === 'EN' ? /half/ : /mitad/);
+        assert.doesNotMatch(sample, /sample_[a-z_]+_[b-d]/);
+        const dry = guidePage(241, lang);
+        assert.match(dry, /240/);
+        assert.match(dry, /water_flask/);
+        assert.match(dry, /tardigrade_tun/);
+        // Science and game apart, on every page; and that real ones live almost everywhere.
+        for (const page of SMALL_WORLD) assert.match(guidePage(page, lang), lang === 'EN' ? /Simplified in the game/ : /Lo simplifica el juego/, `${page} ${lang}`);
+        assert.match(sample, lang === 'EN' ? /almost everywhere/ : /casi en todas partes/);
+        assert.match(guidePage(240, lang), lang === 'EN' ? /almost everywhere/ : /casi en todas partes/);
+        // Real water is not the game's water.
+        assert.match(sample, lang === 'EN' ? /never drink/ : /no la bebas nunca/);
+    }
+    // No secret page of its own, and no reward.
+    assert.ok(!guideNames.some((name) => /^[0-9A-Z]*[A-Z][0-9A-Z]*_(EN|ES)_.*(ardigrad|ardígrad|icro)/.test(name)));
 });

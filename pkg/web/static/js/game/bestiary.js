@@ -6,6 +6,11 @@
 // rendered from the species' voxel model and, when clicked, a slowly turning 3D preview,
 // a description, habitat, activity, temperament and, when the taming / resources / traps
 // mechanics define them, diet, drops and baits. Progress lives in localStorage.
+// The organisms of the microscope (MICRO_SPECIES, js/game/microbes.js) are cards like any other, but
+// they are not mobs: no proximity scan ever finds them, only microscopeIdentified does, and their
+// portrait is their own 2D drawing, animated on the sheet. A card says what applies to something that
+// has no temper and cannot be fought: its real size and the power it takes. They do not count for the
+// complete notebook of the mobs (page B31X): there is no reward for a tardigrade.
 // Mixed into Game.prototype; everything is wired from a registerGameContent hook.
 
 const BESTIARY_STORAGE_KEY = 'minecloud-bestiary';
@@ -207,7 +212,7 @@ const BESTIARY_CSS = `
 #bestiary-panel h3{font-size:16px;margin:0;flex:1}
 #bestiary-progress{color:#a9bdd5;font-size:12px}
 #bestiary-progress b{color:#9fe3b4}
-#bestiary-panel button.bestiary-close,#bestiary-panel button.bestiary-back{height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;font:700 12px/1 'Consolas',monospace;cursor:pointer}
+#bestiary-panel button.bestiary-close,#bestiary-panel button.bestiary-back,#bestiary-panel button.bestiary-book{height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;font:700 12px/1 'Consolas',monospace;cursor:pointer}
 #bestiary-panel .bestiary-body{display:flex;gap:14px;min-height:0;flex:1}
 #bestiary-grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:max-content;gap:10px;overflow:auto;min-height:0;padding-right:2px}
 .bestiary-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#fff;cursor:pointer;text-align:center;font:12px/1.2 'Consolas',monospace}
@@ -293,15 +298,33 @@ Object.assign(Game.prototype, {
         return record;
     },
 
-    // Species listed in the guide: known entries whose species exists, then any other species.
-    bestiarySpeciesList() {
+    // The mobs listed in the guide: known entries whose species exists, then any other species.
+    bestiaryMobList() {
         const species = typeof MOB_SPECIES === 'object' ? MOB_SPECIES : {};
         const list = Object.keys(BESTIARY_ENTRIES).filter((id) => species[id]);
         Object.keys(species).forEach((id) => { if (!BESTIARY_ENTRIES[id]) list.push(id); });
         return list;
     },
 
+    // Every card: the mobs, then the organisms of the microscope, which arrived last.
+    bestiarySpeciesList() {
+        const organisms = typeof MICRO_SPECIES === 'object' ? Object.keys(MICRO_SPECIES) : [];
+        return [...this.bestiaryMobList(), ...organisms];
+    },
+
+    // The catalogue's entry of an organism, or null for a mob.
+    bestiaryOrganism(species) {
+        return typeof MICRO_SPECIES === 'object' && MICRO_SPECIES[species] ? MICRO_SPECIES[species] : null;
+    },
+
     bestiaryEntry(species) {
+        const organism = this.bestiaryOrganism(species);
+        if (organism) {
+            return {
+                name: organism.name, habitat: organism.where, description: organism.fact,
+                hint: `Only a microscope shows it. ${organism.hint}`, organism
+            };
+        }
         const entry = BESTIARY_ENTRIES[species] || {};
         const info = (typeof getMobSpecies === 'function' && getMobSpecies(species)) || {};
         const pretty = species.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -351,8 +374,7 @@ Object.assign(Game.prototype, {
         this.bestiarySave();
         if (isNew) {
             this.bestiaryAnnounce(species);
-            const list = this.bestiarySpeciesList();
-            if (list.every((other) => this.bestiaryData[other])) {
+            if (!this.bestiaryOrganism(species) && this.bestiaryMobList().every((other) => this.bestiaryData[other])) {
                 setTimeout(() => this.receiveSystemMessage({ text: 'Your bestiary is complete! Something is written on its last page...' }), 3500);
             }
             if (this.bestiaryOpen) this.bestiaryRender();
@@ -481,8 +503,8 @@ Object.assign(Game.prototype, {
         const list = this.bestiarySpeciesList();
         const discovered = list.filter((species) => this.bestiaryData[species]).length;
         const progress = this.bestiaryPanel.querySelector('#bestiary-progress');
-        // A full notebook reveals a code for the guide's secret pages.
-        const complete = discovered === list.length ? ' &middot; on the last page, in faded ink: <b>B31X</b>' : '';
+        // A full notebook of mobs reveals a code for the guide's secret pages.
+        const complete = this.bestiaryMobList().every((species) => this.bestiaryData[species]) ? ' &middot; on the last page, in faded ink: <b>B31X</b>' : '';
         progress.innerHTML = `<b>${discovered}</b> / ${list.length} discovered${complete}`;
 
         const grid = this.bestiaryPanel.querySelector('#bestiary-grid');
@@ -500,7 +522,8 @@ Object.assign(Game.prototype, {
             name.textContent = known ? entry.name : '???';
             const meta = document.createElement('div');
             meta.className = 'bestiary-card-meta';
-            meta.textContent = known ? `Seen ${this.bestiaryData[species].encounters || 1}x` : entry.habitat;
+            const seen = entry.organism ? 'Identified' : 'Seen';
+            meta.textContent = known ? `${seen} ${this.bestiaryData[species].encounters || 1}x` : entry.habitat;
             card.append(portrait, name, meta);
             card.addEventListener('click', () => {
                 this.bestiarySelected = species;
@@ -514,6 +537,19 @@ Object.assign(Game.prototype, {
 
     // The cached portrait, or a placeholder that fills in once the portrait is rendered.
     bestiaryFillPortrait(element, species) {
+        if (this.bestiaryOrganism(species)) {
+            // A drawing is ready at once. An unknown one is painted on nothing, for the silhouette.
+            const drawn = this.bestiaryOrganismPortrait(species, !this.bestiaryData[species]);
+            if (!drawn) {
+                element.textContent = '?';
+                return;
+            }
+            const img = document.createElement('img');
+            img.src = drawn;
+            img.alt = '';
+            element.appendChild(img);
+            return;
+        }
         const url = this.bestiaryPortraits.get(species);
         if (url) {
             const img = document.createElement('img');
@@ -627,8 +663,28 @@ Object.assign(Game.prototype, {
         stage.species = null;
     },
 
-    // A PNG data URL of the species' model, or null if it has no model (yet).
+    // A PNG data URL of an organism's drawing, or null if there is no canvas to draw on. It uses nothing
+    // of a running game: the printed guide comes through here too.
+    bestiaryOrganismPortrait(species, silhouette = false) {
+        const key = `${species}:${silhouette ? 'shape' : 'colour'}`;
+        if (!this.bestiaryOrganismUrls) this.bestiaryOrganismUrls = new Map();
+        if (this.bestiaryOrganismUrls.has(key)) return this.bestiaryOrganismUrls.get(key);
+        let url = null;
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = BESTIARY_PORTRAIT_SIZE;
+            microDrawPortrait(canvas.getContext('2d'), species, BESTIARY_PORTRAIT_SIZE, BESTIARY_PORTRAIT_SIZE, 1.3, silhouette ? { ground: false } : {});
+            url = canvas.toDataURL('image/png');
+        } catch (error) {
+            console.warn('[bestiary] could not draw', species, error);
+        }
+        this.bestiaryOrganismUrls.set(key, url);
+        return url;
+    },
+
+    // A PNG data URL of the species' portrait, or null if it has none (yet).
     bestiaryRenderPortrait(species) {
+        if (this.bestiaryOrganism(species)) return this.bestiaryOrganismPortrait(species);
         if (!this.bestiaryStageModel(species)) return null;
         const stage = this.bestiaryStageState;
         stage.holder.rotation.y = -0.65;
@@ -640,8 +696,29 @@ Object.assign(Game.prototype, {
         }
     },
 
+    // An organism's sheet: its drawing, alive, instead of a model that turns.
+    bestiaryStartOrganismPreview(host, species) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = BESTIARY_PORTRAIT_SIZE * 2;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
+        host.textContent = '';
+        host.appendChild(canvas);
+        this.bestiaryOrganismCanvas = canvas;
+        this.bestiaryPreviewSpecies = species;
+        const size = canvas.width;
+        const frame = (now) => {
+            if (!this.bestiaryOpen || this.bestiaryPreviewSpecies !== species) return;
+            microDrawPortrait(ctx, species, size, size, now / 1000);
+            this.bestiaryPreviewFrame = requestAnimationFrame(frame);
+        };
+        frame(0);
+        return true;
+    },
+
     bestiaryStartPreview(host, species) {
         this.bestiaryStopPreview();
+        if (this.bestiaryOrganism(species)) return this.bestiaryStartOrganismPreview(host, species);
         if (!this.bestiaryStageModel(species)) return false;
         const stage = this.bestiaryStageState;
         host.textContent = '';
@@ -665,6 +742,10 @@ Object.assign(Game.prototype, {
         if (this.bestiaryPreviewFrame) cancelAnimationFrame(this.bestiaryPreviewFrame);
         this.bestiaryPreviewFrame = null;
         this.bestiaryPreviewSpecies = null;
+        if (this.bestiaryOrganismCanvas && this.bestiaryOrganismCanvas.parentNode) {
+            this.bestiaryOrganismCanvas.parentNode.removeChild(this.bestiaryOrganismCanvas);
+        }
+        this.bestiaryOrganismCanvas = null;
         const stage = this.bestiaryStageState;
         if (stage && stage.renderer && stage.renderer.domElement.parentNode) {
             stage.renderer.domElement.parentNode.removeChild(stage.renderer.domElement);
@@ -708,6 +789,12 @@ Object.assign(Game.prototype, {
             preview.textContent = '?';
             if (record) {
                 this.bestiaryStartPreview(preview, species);
+            } else if (entry.organism) {
+                preview.textContent = '';
+                const img = document.createElement('img');
+                img.src = this.bestiaryOrganismPortrait(species, true) || '';
+                img.alt = '';
+                preview.appendChild(img);
             } else if (this.bestiaryPortraits.get(species)) {
                 preview.textContent = '';
                 const img = document.createElement('img');
@@ -727,6 +814,11 @@ Object.assign(Game.prototype, {
             hint.className = 'bestiary-description';
             hint.textContent = `Not yet discovered. ${entry.hint} Habitat: ${entry.habitat}.`;
             detail.appendChild(hint);
+            return;
+        }
+
+        if (entry.organism) {
+            this.bestiaryRenderOrganism(detail, entry, record);
             return;
         }
 
@@ -767,6 +859,49 @@ Object.assign(Game.prototype, {
         addFact('Defeated', String(record.defeated || 0));
         addFact('First seen', this.bestiaryFormatDate(record.firstSeen));
         detail.appendChild(facts);
+    },
+
+    // The rest of an organism's sheet: no temper, no diet, no drops, and nobody defeats it.
+    bestiaryRenderOrganism(detail, entry, record) {
+        const organism = entry.organism;
+        const tags = document.createElement('div');
+        tags.className = 'bestiary-tags';
+        const seenAt = document.createElement('span');
+        seenAt.className = 'bestiary-tag';
+        seenAt.textContent = `Seen from ${organism.mag}×`;
+        tags.appendChild(seenAt);
+        detail.appendChild(tags);
+
+        const description = document.createElement('div');
+        description.className = 'bestiary-description';
+        description.textContent = entry.description;
+        detail.appendChild(description);
+
+        const facts = document.createElement('dl');
+        facts.className = 'bestiary-facts';
+        const rows = [['Real size', organism.size], ['Group', organism.latin], ['Lives in', organism.where],
+            ['Identified', String(record.encounters || 1)], ['First seen', this.bestiaryFormatDate(record.firstSeen)]];
+        for (const [label, value] of rows) {
+            if (!value) continue;
+            const dt = document.createElement('dt');
+            dt.textContent = label;
+            const dd = document.createElement('dd');
+            dd.textContent = value;
+            facts.append(dt, dd);
+        }
+        detail.appendChild(facts);
+
+        if (typeof this.guideShow === 'function') {
+            const book = document.createElement('button');
+            book.className = 'bestiary-book';
+            book.type = 'button';
+            book.textContent = '📖 In the guide';
+            book.addEventListener('click', () => {
+                this.bestiaryClose();
+                this.guideShow(String(organism.page));
+            });
+            detail.appendChild(book);
+        }
     },
 
     // Reads another mechanic's per-species table, whatever its shape. With `reverse`, also

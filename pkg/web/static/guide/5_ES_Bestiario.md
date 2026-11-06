@@ -28,3 +28,7 @@ Derrotar a una criatura que aún no conocías también la descubre.
 
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso
 se guarda en el navegador.
+
+## Bajo el microscopio
+
+Los 16 organismos de [el mundo pequeño](237) son tarjetas como las demás, pero no te los puedes cruzar. Solo entran en el bestiario cuando identificas uno en un [microscopio](238), con un clic. Su ficha enseña su dibujo, vivo, y su tamaño real; no tienen temperamento, ni dieta, ni objetos que suelten, y nadie los derrota. No cuentan para el cuaderno completo de las criaturas del mundo.

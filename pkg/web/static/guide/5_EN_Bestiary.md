@@ -28,3 +28,7 @@ a creature you had not met yet also discovers it.
 
 Only creatures defeated by the player count as defeated, not those hunted by other animals. Your progress is
 saved in the browser.
+
+## Under the microscope
+
+The 16 organisms of [the small world](237) are cards like the rest, but you cannot run into them. They only go in the bestiary when you identify one in a [microscope](238), with a click. Their sheet shows their drawing, alive, and their real size; they have no temperament, no diet and no drops, and nobody defeats them. They do not count for the complete notebook of the world's creatures.

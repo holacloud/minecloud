@@ -324,6 +324,10 @@ Derrotar a una criatura que aún no conocías también la descubre.
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso
 se guarda en el navegador.
 
+Los 16 organismos del [microscopio](#microscopio-y-tardígrados) son tarjetas más, pero solo se descubren
+identificándolos en su panel. Su ficha enseña su dibujo animado y su tamaño real, sin temperamento, dieta, objetos ni
+derrotas. No cuentan para el cuaderno completo.
+
 ## Cultivos
 
 1. **Semillas:** al romper `tall_grass` cae además `wheat_seeds` el 35 % de las veces.
@@ -365,3 +369,40 @@ despacio, sopla más en lo alto y antes y durante la lluvia, y casi nada bajo te
 - **Estación:** se monta encima de un bloque; la veleta y las cazoletas siguen al viento y el pluviómetro mide la
   lluvia del día. Al mirarla muestra todo; clic derecho, informe en el chat; Mayúsculas + clic derecho, se recoge.
   Se guarda en el navegador.
+
+## Microscopio y tardígrados
+
+Páginas 237 a 244 de la guía del juego.
+
+| Resultado | Ingredientes |
+|---|---|
+| `microscope` | 2 `glass` + 1 `copper_block` + 1 `iron_ore` + 1 `planks` |
+| 3 `test_tube` | 1 `glass` |
+| 4 `glass_slide` | 1 `glass` |
+| `micropipette` | 1 `glass` + 1 `leather` |
+| `tardigrade_tube` | 1 `tardigrade_tun` + 1 `water_flask` |
+
+- **Tomar una muestra:** `test_tube` con clic derecho sobre agua o musgo. El bloque se queda. Lo que lleva lo decide el
+  servidor y queda escrito en el tipo del objeto (`sample_<hábitat>_<a|b|c|d>`): el mismo sitio da siempre lo mismo.
+
+| Dónde | Muestra | Sitios con tardígrado |
+|---|---|---|
+| Agua que no es la del terreno de esa columna | `sample_still_water` | ninguno |
+| Lago con `Mountain ≥ 0,10` | `sample_mountain_lake_*` | 50 % |
+| Lago con `Forest ≥ 0,5` | `sample_forest_lake_*` | 35 % |
+| Lago con `Desert ≥ 0,5` | `sample_oasis_*` | ninguno |
+| Otro lago | `sample_plains_lake_*` | ninguno |
+| `moss` (orillas de lagos de bosque y montaña) | `sample_moss_*` | 60 % |
+
+- **Preparar:** clic derecho en el microscopio; un `glass_slide` más una muestra, un objeto (hojas, `wheat`, `milk`,
+  `cheese`, setas, flores, `dirt`, `honeycomb`, lana, `raw_fish`) o un frotis de mejilla. El tubo vacío se devuelve, y el
+  portaobjetos vuelve lavado al retirarlo.
+- **Luz:** sin luz, el campo se ve negro. Sirve el sol de día con el bloque al aire libre, o cualquier cosa que dé luz a
+  dos bloques o menos.
+- **Mirar:** arrastrar mueve la platina; botones o pellizco, 40×, 100× y 400×; barra o rueda, el enfoque. Clic en un
+  organismo: lo identifica y lo apunta en el bestiario.
+- **Capturar:** con `micropipette` y un `test_tube` vacío, un tardígrado seleccionado pasa a `tardigrade_tube`, o a
+  `tardigrade_tun` si el portaobjetos está seco.
+- **Criptobiosis:** un portaobjetos se seca en un día de juego (240 s). Lo demás muere o se enquista; el tardígrado queda
+  en barrilito, y una gota de `water_flask` lo revive en unos 20 s. El congelador también hace `tardigrade_tun`.
+- Sin premio, y ningún microbio hace daño al jugador. Nada cambia en el inventario.

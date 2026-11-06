@@ -50,4 +50,4 @@ there and get the empty bucket back.
 - Ice floats because water **expands** when it freezes, something very rare in nature.
 - In the game, water is a plain block that never spills: you can build a waterfall that hangs still in the air.
 
-See also: [Bucket](111), [Fishing](6), [Health, food and dangers](9).
+See also: [Bucket](111), [Fishing](6), [Health, food and dangers](9), and what lives in it: [How to take a sample](239).

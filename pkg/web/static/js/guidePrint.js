@@ -37,7 +37,7 @@
     const SKIP_SCRIPTS = /(^|\/)(game|websocket|voice|guideMarkdown|guidePrint)\.js$|(^|\/)game\/guide\.js$/;
     // If index.html cannot be read: what the icons and portraits need at the very least.
     const FALLBACK_SCRIPTS = ['js/extensions.js', 'js/camera.js', 'js/chunkStore.js', 'js/blockShapes.js', 'js/chunkMesher.js',
-        'js/models.js', 'js/mobSpecies.js', 'js/blockTextures.js', 'js/world.js', 'js/game/resources.js', 'js/game/bestiary.js'];
+        'js/models.js', 'js/mobSpecies.js', 'js/blockTextures.js', 'js/world.js', 'js/game/resources.js', 'js/game/bestiary.js', 'js/game/microbes.js'];
 
     const TEXT = {
         ES: {
@@ -144,7 +144,8 @@
         [215, 216, 'El golem de cobre', 'The copper golem'],
         [217, 220, 'Máquinas y energía', 'Machines and power'],
         [223, 234, 'Muebles', 'Furniture'],
-        [235, 236, 'El taller: fundición y horno de arco', 'The workshop: foundry and arc furnace']
+        [235, 236, 'El taller: fundición y horno de arco', 'The workshop: foundry and arc furnace'],
+        [237, 244, 'El mundo pequeño', 'The small world']
     ];
 
     // ---------------------------------------------------------------- pure helpers (tested)

@@ -383,14 +383,15 @@ Object.assign(Game.prototype, {
     },
 
     // Images live next to the pages (`img/foo.png` is guide/img/foo.png); `mob:sheep` is the
-    // bestiary portrait of a species and `item:torch` the inventory icon of an item.
+    // bestiary portrait of a species, or of an organism of the microscope, and `item:torch` the
+    // inventory icon of an item.
     guideAssetUrl(src) {
         const special = src.match(/^(mob|item):([a-z0-9_]+)$/);
         if (special && special[1] === 'item') {
             return this.world && this.world.blockTypes[special[2]] ? this.world.getInventoryIconUrl(special[2]) : '';
         }
         if (special) {
-            if (!this.bestiaryPortraits || !getMobSpecies(special[2])) return '';
+            if (!this.bestiaryPortraits || !(getMobSpecies(special[2]) || this.bestiaryOrganism(special[2]))) return '';
             if (!this.bestiaryPortraits.has(special[2])) this.bestiaryPortraits.set(special[2], this.bestiaryRenderPortrait(special[2]));
             return this.bestiaryPortraits.get(special[2]) || '';
         }

@@ -45,3 +45,5 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 | ![](mob:copper_golem) | [Golem de cobre](215) | un ayudante que construyes; funciona con carga y se vuelve verde con el tiempo | 2026-11-02 |
 
 Y para criar hormigas en casa: [Granja de hormigas](136).
+
+Y más pequeños que todos ellos, en [el mundo pequeño](237): ![](mob:tardigrade) [tardígrados](240), y otros quince que solo se conocen a través de un [microscopio](238).
