@@ -72,9 +72,9 @@ class NetworkClient {
     }
 
     emit(type, payload) {
-        const handler = this.messageHandlers.get(type);
-        if (handler) {
-            handler(payload);
+        const handlers = this.messageHandlers.get(type);
+        if (handlers) {
+            handlers.forEach((handler) => handler(payload));
         }
     }
     
@@ -192,8 +192,12 @@ class NetworkClient {
         this.emit('blockPlace', payload);
     }
     
+    // Several mechanics can listen to one message (chests and microscopes both read storageContents);
+    // a later listener never replaces an earlier one.
     on(type, handler) {
-        this.messageHandlers.set(type, handler);
+        const handlers = this.messageHandlers.get(type);
+        if (handlers) handlers.push(handler);
+        else this.messageHandlers.set(type, [handler]);
     }
 
     setUsername(username) {
