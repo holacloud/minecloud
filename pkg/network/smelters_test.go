@@ -69,6 +69,12 @@ func TestSmelterTablesAreConsistent(t *testing.T) {
 	if stone := foundryRecipes["cobblestone"]; float64(stone.yield())/float64(stone.In) <= 2 {
 		t.Errorf("1 cobblestone gives 2 stone in the menu: %+v", stone)
 	}
+	// By hand, 1 ore and 1 coal give 1 metal (js/game/smelters.js).
+	for _, ore := range []string{"copper_ore", "tin_ore", "zinc_ore", "lead_ore", "silver_ore"} {
+		if r := foundryRecipes[ore]; float64(r.yield())/float64(r.In) <= 1 {
+			t.Errorf("1 %s gives 1 metal in the menu: %+v", ore, r)
+		}
+	}
 	if si := arcRecipes["sand"]; float64(si.yield())/float64(si.Coal) <= 1 || si.Coal != 2 || si.In != 1 {
 		t.Errorf("1 coal gives 1 silicon in the menu, and silica takes 2 carbons: %+v", si)
 	}
@@ -127,6 +133,11 @@ func TestFoundryRecipes(t *testing.T) {
 		{"limestone", "quicklime", 1, 15, 2},
 		{"iron_ore", "iron_block", 1, 20, 1},
 		{"gold_ore", "gold_block", 1, 15, 1},
+		{"copper_ore", "copper_block", 1, 15, 2},
+		{"tin_ore", "element_sn", 1, 10, 2},
+		{"zinc_ore", "element_zn", 1, 18, 2},
+		{"lead_ore", "element_pb", 1, 10, 2},
+		{"silver_ore", "element_ag", 1, 15, 2},
 	}
 	for _, c := range cases {
 		book, _ := newArcBook(nil)

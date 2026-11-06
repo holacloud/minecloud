@@ -113,13 +113,20 @@ var ovenFuels = map[string]float64{
 }
 
 // What the foundry smelts. Glass and stone beat the C menu's yields for the same material: there, 3
-// sand give 2 glass, and 1 cobblestone and 1 coal give 2 stone.
+// sand give 2 glass, and 1 cobblestone and 1 coal give 2 stone. So do the ores of the other metals:
+// there, 1 ore and 1 coal give 1 metal (js/game/smelters.js). Tin and lead melt soonest of all; zinc,
+// which boils away from the fire instead of pooling, takes longest.
 var foundryRecipes = map[string]ovenRecipe{
 	"sand":        {Out: "glass", In: 3, Yield: 4, Seconds: 12},
 	"cobblestone": {Out: "stone", In: 1, Yield: 3, Seconds: 10},
 	"limestone":   {Out: "quicklime", In: 1, Yield: 2, Seconds: 15},
 	"iron_ore":    {Out: "iron_block", In: 1, Yield: 1, Seconds: 20},
 	"gold_ore":    {Out: "gold_block", In: 1, Yield: 1, Seconds: 15},
+	"copper_ore":  {Out: "copper_block", In: 1, Yield: 2, Seconds: 15},
+	"tin_ore":     {Out: "element_sn", In: 1, Yield: 2, Seconds: 10},
+	"zinc_ore":    {Out: "element_zn", In: 1, Yield: 2, Seconds: 18},
+	"lead_ore":    {Out: "element_pb", In: 1, Yield: 2, Seconds: 10},
+	"silver_ore":  {Out: "element_ag", In: 1, Yield: 2, Seconds: 15},
 }
 
 // Only coal burns hot enough to melt sand.

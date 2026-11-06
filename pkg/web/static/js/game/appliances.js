@@ -37,7 +37,12 @@ const APPLIANCE_FOUNDRY = {
     cobblestone: { out: 'stone', in: 1, yield: 3, seconds: 10 },
     limestone: { out: 'quicklime', in: 1, yield: 2, seconds: 15 },
     iron_ore: { out: 'iron_block', in: 1, yield: 1, seconds: 20 },
-    gold_ore: { out: 'gold_block', in: 1, yield: 1, seconds: 15 }
+    gold_ore: { out: 'gold_block', in: 1, yield: 1, seconds: 15 },
+    copper_ore: { out: 'copper_block', in: 1, yield: 2, seconds: 15 },
+    tin_ore: { out: 'element_sn', in: 1, yield: 2, seconds: 10 },
+    zinc_ore: { out: 'element_zn', in: 1, yield: 2, seconds: 18 },
+    lead_ore: { out: 'element_pb', in: 1, yield: 2, seconds: 10 },
+    silver_ore: { out: 'element_ag', in: 1, yield: 2, seconds: 15 }
 };
 const APPLIANCE_FOUNDRY_FUELS = { coal_ore: 80 };
 const APPLIANCE_ARC = {

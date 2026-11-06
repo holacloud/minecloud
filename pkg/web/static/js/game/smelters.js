@@ -144,9 +144,22 @@ furnBlock('arc_furnace', {
     lit: { lightEmission: 14, faces: { top: { pattern: 'arc_furnace_top_on', glow: 1 }, side: 'arc_furnace_side', bottom: 'arc_furnace_side', front: { pattern: 'arc_furnace_front_on', glow: 1 } } }
 });
 
+const ORE_HAND_SMELTING = [
+    ['copper_ore', 'copper_block', 'Copper Ore'],
+    ['tin_ore', 'element_sn', 'Tin Ore'],
+    ['zinc_ore', 'element_zn', 'Zinc Ore'],
+    ['lead_ore', 'element_pb', 'Lead Ore'],
+    ['silver_ore', 'element_ag', 'Silver Ore']
+];
+
 registerGameContent(({ addItem, addRecipe }) => {
     ['foundry', 'arc_furnace'].forEach(addItem);
     addRecipe('foundry', 'Build Foundry', 'foundry', 1, [{ type: 'brick', amount: 8 }, { type: 'cobblestone', amount: 4 }, { type: 'iron_ore', amount: 2 }, { type: 'coal_ore', amount: 1 }]);
     // Later in the game: it takes a motor's worth of electrical work first.
     addRecipe('arc_furnace', 'Build Electric Arc Furnace', 'arc_furnace', 1, [{ type: 'iron_block', amount: 4 }, { type: 'electric_motor', amount: 1 }, { type: 'copper_wire', amount: 8 }, { type: 'coal_ore', amount: 3 }, { type: 'brick', amount: 4 }]);
+    // Smelting by hand, so nobody is stuck before the first foundry: it gives half what the foundry
+    // gives (APPLIANCE_FOUNDRY), and it burns a whole coal for each ore.
+    for (const [ore, metal, name] of ORE_HAND_SMELTING) {
+        addRecipe(`smelt_${ore}`, `Smelt ${name}`, metal, 1, [{ type: ore, amount: 1 }, { type: 'coal_ore', amount: 1 }]);
+    }
 });
