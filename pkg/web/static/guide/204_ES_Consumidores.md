@@ -8,6 +8,7 @@ mientras funciona.
 | | Bloque | Id | Potencia | Qué hace |
 |---|---|---|---|---|
 | ![](item:electric_lamp) | Lámpara eléctrica | `electric_lamp` | **10 W** | ilumina como una antorcha |
+| ![](item:light_bulb) | Light Bulb | `light_bulb` | **5 W** | una luz amarilla tenue |
 | ![](item:grow_lamp) | Lámpara de cultivo | `grow_lamp` | **30 W** | hace que el trigo crezca el doble de rápido |
 | ![](item:electric_motor) | Motor eléctrico | `electric_motor` | **50 W** | gira, abre puertas de hierro |
 | ![](item:fridge) | Nevera | `fridge` | **30 W** | [enfría y congela](234) (sus dos celdas son una nevera) |
@@ -24,8 +25,8 @@ mientras funciona.
 | **1** `electric_motor` | 2 `iron_ore` + 1 `copper_block` + 2 `copper_wire` |
 
 La [bombilla](187), la [lámpara de neón](125) y la [lámpara de argón](126) se fabrican en la
-[mesa de laboratorio](117): sus páginas explican cómo. No son imprescindibles: cada consumidor tiene también una
-receta con materiales corrientes.
+[mesa de laboratorio](117): sus páginas explican cómo. Para las lámparas no son imprescindibles: cada una tiene también
+una receta con materiales corrientes. La bombilla en sí solo sale del laboratorio.
 
 ## Lámpara eléctrica
 
@@ -34,6 +35,10 @@ antorcha**. Sin corriente es un globo apagado.
 
 Está encendida siempre que su red tiene corriente, **de día o de noche**: de día gasta energía para nada. Para que se
 encienda solo de noche, ponle un [sensor de luz diurna](208) en modo noche, o un [interruptor](207).
+
+## Bombilla
+
+La [bombilla](187) funciona igual que la lámpara, con la mitad de corriente y la mitad de luz: **nivel 7**, donde la lámpara da 14. Sin corriente es un vidrio apagado con una espiral oscura. Basta para leer, y para iluminar un [microscopio](238) que tenga al lado.
 
 ## Lámpara de cultivo
 

@@ -30,6 +30,8 @@ const MICROSCOPE_FRAME = 1 / 30;
 // How far a lamp can stand and still light the mirror, and how far a window can be.
 const MICROSCOPE_LAMP_REACH = 2;
 const MICROSCOPE_SKY_REACH = 2;
+// What can light the mirror, once it has power. Off, its name has no ":on".
+const MICROSCOPE_ELECTRIC_LIGHTS = ['light_bulb', 'electric_lamp'];
 // The sun is too low to use below this much daylight.
 const MICROSCOPE_MIN_DAYLIGHT = 0.3;
 
@@ -110,6 +112,17 @@ function microscopeOpenToSky(blocks, top, x, y, z) {
         }
     }
     return false;
+}
+
+// What the panel says of a black field: `unlit` is the name of a lamp within reach that is off, if any.
+function microscopeDarkLine(unlit) {
+    if (unlit) return `The ${String(unlit).toLowerCase()} beside it has no power: it needs a generator or a battery touching it, or a wire to one.`;
+    return 'Too dark to see anything. A microscope needs light: put it in the sun by day, or set a lamp, a candle or a lantern right beside it.';
+}
+
+// Whether this block name is an electric light that is off now.
+function microscopeIsUnlitLamp(type) {
+    return MICROSCOPE_ELECTRIC_LIGHTS.includes(type);
 }
 
 // Moving the stage: it stays on the slide.
@@ -759,10 +772,12 @@ Object.assign(Game.prototype, {
         if (!at) return;
         const world = this.world;
         let lamp = null;
+        let unlit = null;
         for (let dy = -MICROSCOPE_LAMP_REACH; dy <= MICROSCOPE_LAMP_REACH; dy++) {
             for (let dz = -MICROSCOPE_LAMP_REACH; dz <= MICROSCOPE_LAMP_REACH; dz++) {
                 for (let dx = -MICROSCOPE_LAMP_REACH; dx <= MICROSCOPE_LAMP_REACH; dx++) {
                     const type = world.getBlockTypeAt(at.x + dx, at.y + dy, at.z + dz);
+                    if (microscopeIsUnlitLamp(type) && !unlit) unlit = this.getBlockDisplayName(type);
                     if (!type || !world.isLightEmitterType(type)) continue;
                     const level = world.registry.lightLevel[world.registry.id(type)];
                     if (!lamp || level > lamp.level) {
@@ -779,8 +794,9 @@ Object.assign(Game.prototype, {
         };
         const open = microscopeOpenToSky(blocks, Math.min(WORLD_MAX_Y, at.y + 96), at.x, at.y, at.z);
         const light = microscopeLightFrom(this.daylight ?? 1, open, lamp);
-        const changed = !this.microscopeLight || this.microscopeLight.source !== light.source || this.microscopeLight.name !== light.name;
+        const changed = !this.microscopeLight || this.microscopeLight.source !== light.source || this.microscopeLight.name !== light.name || this.microscopeUnlit !== unlit;
         this.microscopeLight = light;
+        this.microscopeUnlit = unlit;
         if (changed) this.microscopeRenderControls();
     },
 
@@ -1142,7 +1158,7 @@ Object.assign(Game.prototype, {
         const line = panel.querySelector('#micro-light');
         const dark = !light || light.level <= 0;
         line.classList.toggle('off', dark);
-        if (dark) line.textContent = 'Too dark to see anything. A microscope needs light: put it in the sun by day, or set a lamp, a candle or a lantern right beside it.';
+        if (dark) line.textContent = microscopeDarkLine(this.microscopeUnlit);
         else if (light.source === 'sun') line.textContent = 'The mirror is catching the daylight.';
         else line.textContent = `The mirror is catching the light of the ${light.name}.`;
         const prep = this.microscopePrep;

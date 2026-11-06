@@ -425,3 +425,94 @@ func TestPowerRadioisotopeGenerator(t *testing.T) {
 		t.Fatalf("unexpected report %+v", report)
 	}
 }
+
+func TestLightBulbIsASwitchedConsumer(t *testing.T) {
+	kind := powerKinds["light_bulb"]
+	if kind.Role != powerConsumer || kind.Watts != 5 || !kind.Switch {
+		t.Fatalf("kind: %+v", kind)
+	}
+	if powerKindOf("light_bulb:on") != "light_bulb" {
+		t.Fatal("light_bulb:on is not a light_bulb")
+	}
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "rtg", {1, 0, 0}: "copper_wire", {2, 0, 0}: "light_bulb"})
+	updates, _ := g.tick(w, powerMidnight, time.Now(), 1)
+	if len(updates) != 1 || updates[0].BlockType != "light_bulb:on" || w[[3]int{2, 0, 0}] != "light_bulb:on" {
+		t.Fatalf("with power: %+v, %q", updates, w[[3]int{2, 0, 0}])
+	}
+	// Once on, no more updates; with the generator gone, it goes off.
+	if updates, _ := g.tick(w, powerMidnight, time.Now(), 1); len(updates) != 0 {
+		t.Fatalf("a second tick changed: %+v", updates)
+	}
+	g.track(0, 0, 0, "")
+	delete(w, [3]int{0, 0, 0})
+	updates, _ = g.tick(w, powerMidnight, time.Now(), 1)
+	if len(updates) != 1 || updates[0].BlockType != "light_bulb" || w[[3]int{2, 0, 0}] != "light_bulb" {
+		t.Fatalf("without power: %+v, %q", updates, w[[3]int{2, 0, 0}])
+	}
+}
+
+// A bulb conducts, so what lies behind it is on the same network.
+func TestLightBulbConducts(t *testing.T) {
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "rtg", {1, 0, 0}: "light_bulb", {2, 0, 0}: "electric_lamp"})
+	g.tick(w, powerMidnight, time.Now(), 1)
+	if w[[3]int{1, 0, 0}] != "light_bulb:on" || w[[3]int{2, 0, 0}] != "electric_lamp:on" {
+		t.Fatalf("got %q and %q", w[[3]int{1, 0, 0}], w[[3]int{2, 0, 0}])
+	}
+}
+
+// A lit name from a blueprint does not light it: the server decides.
+func TestLightBulbPlacedLitWithoutPower(t *testing.T) {
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "light_bulb:on"})
+	g.tick(w, powerMidnight, time.Now(), 1)
+	if w[[3]int{0, 0, 0}] != "light_bulb" {
+		t.Fatalf("got %q", w[[3]int{0, 0, 0}])
+	}
+}
+
+// Bulbs placed when they were plain blocks are in the chunks but not in world.json.
+func TestOldBulbsAreAdopted(t *testing.T) {
+	w := fakeCropWorld{{1, 0, 0}: "light_bulb"}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "rtg"})
+	g.tick(w, powerMidnight, time.Now(), 1)
+	if w[[3]int{1, 0, 0}] != "light_bulb" {
+		t.Fatal("an unknown block changed")
+	}
+	found := [][3]int{{1, 0, 0}, {7, 0, 0}} // the second has gone by the time it is looked at
+	powerAdoptOldBulbs(g, w, found)
+	if g.blocks[powerPos{1, 0, 0}] == nil || g.blocks[powerPos{7, 0, 0}] != nil {
+		t.Fatalf("blocks: %v", g.blocks)
+	}
+	updates, _ := g.tick(w, powerMidnight, time.Now(), 1)
+	if len(updates) != 1 || w[[3]int{1, 0, 0}] != "light_bulb:on" {
+		t.Fatalf("not lit: %+v", updates)
+	}
+	// Known ones are left as they are.
+	before := g.blocks[powerPos{1, 0, 0}]
+	powerAdoptOldBulbs(g, w, found)
+	if g.blocks[powerPos{1, 0, 0}] != before {
+		t.Fatal("re-registered")
+	}
+}
+
+func TestBulbsAreSaved(t *testing.T) {
+	powerMu.Lock()
+	saved := grid
+	grid = newPowerGrid()
+	grid.track(1, 2, 3, "light_bulb:on")
+	powerMu.Unlock()
+	defer func() {
+		powerMu.Lock()
+		grid = saved
+		powerMu.Unlock()
+	}()
+	snapshot := snapshotPower()
+	loadPower(snapshot)
+	powerMu.Lock()
+	defer powerMu.Unlock()
+	if b := grid.blocks[powerPos{1, 2, 3}]; b == nil || b.Kind != "light_bulb" {
+		t.Fatalf("lost: %+v", grid.blocks)
+	}
+}

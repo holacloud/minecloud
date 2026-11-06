@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -225,6 +226,38 @@ func (s *Store) Encoded(chunkX, chunkZ int) ([]byte, error) {
 		}
 	}
 	return e.encoded, nil
+}
+
+// FindBlocks lists where a chunk holds a block of this kind (the name before any ':'), in world
+// coordinates. A chunk with none costs only a look at its palette.
+func (s *Store) FindBlocks(chunkX, chunkZ int, base string) [][3]int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, err := s.load(chunkX, chunkZ)
+	if err != nil {
+		return nil
+	}
+	wanted := make(map[uint16]bool)
+	for id, name := range e.chunk.Palette {
+		if name == base || strings.HasPrefix(name, base+":") {
+			wanted[uint16(id)] = true
+		}
+	}
+	if len(wanted) == 0 {
+		return nil
+	}
+	var found [][3]int
+	for index, id := range e.chunk.Blocks {
+		if wanted[id] {
+			layer := terrain.ChunkSize * terrain.ChunkSize
+			found = append(found, [3]int{
+				chunkX*terrain.ChunkSize + index%terrain.ChunkSize,
+				index/layer + terrain.WorldMinY,
+				chunkZ*terrain.ChunkSize + (index/terrain.ChunkSize)%terrain.ChunkSize,
+			})
+		}
+	}
+	return found
 }
 
 // Block returns the block at a world position ("air" when empty).

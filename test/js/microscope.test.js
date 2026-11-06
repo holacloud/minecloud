@@ -63,7 +63,7 @@ function loadModules() {
         microSpeciesOf, microSampleId, microSourceInTube, microPopulate, microScenery, microSlideStage, microUnfold, microFate, microBlur, microCanIdentify,
         microStep, tardigradeLegs, microDrawOrganism, microDrawPortrait, microDrawTardigrade, microDrawTardigradeMolt, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeOpenToSky, microscopeClampStage, microscopeStepPower, microscopeScale, microscopeScaleBar,
-        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeDrawField, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
+        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeDrawField, microscopeDarkLine, microscopeIsUnlitLamp, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
     return context;
 }
 
@@ -1295,4 +1295,61 @@ test('the guide says what the game does', () => {
     }
     // No secret page of its own, and no reward.
     assert.ok(!guideNames.some((name) => /^[0-9A-Z]*[A-Z][0-9A-Z]*_(EN|ES)_.*(ardigrad|ardígrad|icro)/.test(name)));
+});
+
+// ---- Lit by a bulb ----
+
+test('a bulb shows the slide, dimmer than a lamp or the sun', () => {
+    const level = (lamp) => ctx.microscopeLightFrom(0, false, lamp).level;
+    const bulb = level({ level: 7, name: 'Light Bulb' });
+    const lamp = level({ level: 14, name: 'Electric Lamp' });
+    assert.ok(bulb >= 0.6, `usable at ${bulb}`);
+    assert.ok(lamp - bulb >= 0.2, `visibly dimmer: ${bulb} and ${lamp}`);
+    assert.ok(ctx.microscopeLightFrom(1, true, null).level - bulb >= 0.25);
+    assert.equal(ctx.microscopeLightFrom(0, false, { level: 7, name: 'Light Bulb' }).source, 'lamp');
+});
+
+test('a dark field says when a lamp beside it has no power', () => {
+    assert.match(ctx.microscopeDarkLine(null), /needs light/);
+    assert.match(ctx.microscopeDarkLine('Light Bulb'), /^The light bulb beside it has no power: it needs a generator or a battery/);
+    assert.equal(ctx.microscopeIsUnlitLamp('light_bulb'), true);
+    assert.equal(ctx.microscopeIsUnlitLamp('electric_lamp'), true);
+    assert.equal(ctx.microscopeIsUnlitLamp('light_bulb:on'), false);
+    assert.equal(ctx.microscopeIsUnlitLamp('candle'), false);
+    assert.equal(ctx.microscopeIsUnlitLamp(null), false);
+
+    const game = panelGame();
+    game.world.getBlockId = () => 1; // A roof over everything.
+    game.world.blockTypes.light_bulb = {};
+    const at = game.world.getBlockTypeAt;
+    game.world.getBlockTypeAt = (x, y, z) => (x === 1 && y === 1 && z === 0 ? 'light_bulb' : at(x, y, z));
+    const panel = openPanel(game);
+    assert.equal(game.microscopeLight.level, 0);
+    const line = panel.querySelector('#micro-light');
+    assert.match(line.textContent, /light_bulb beside it has no power/);
+    assert.ok(line.classes.has('off'));
+
+    // It gets power: lit, and the message goes.
+    game.world.getBlockTypeAt = (x, y, z) => (x === 1 && y === 1 && z === 0 ? 'light_bulb:on' : at(x, y, z));
+    game.world.isLightEmitterType = (type) => type === 'light_bulb:on';
+    game.world.blockTypes['light_bulb:on'] = { variantOf: 'light_bulb' };
+    game.microscopeLightTimer = 0;
+    game.microscopeUpdate(0.05);
+    assert.equal(game.microscopeLight.source, 'lamp');
+    assert.match(line.textContent, /catching the light of the light_bulb/);
+    assert.equal(game.microscopeUnlit, null);
+});
+
+test('the guide tells how the bulb works, in both languages', () => {
+    for (const lang of ['ES', 'EN']) {
+        const bulb = guidePage(187, lang);
+        assert.match(bulb, /5 W/);
+        assert.match(bulb, /\(204\)/);
+        assert.match(bulb, /\(238\)/);
+        assert.match(bulb, /3422/);
+        assert.doesNotMatch(bulb, /by itself|por sí misma/);
+        assert.match(guidePage(204, lang), /`light_bulb` \| \*\*5 W\*\*/);
+        assert.match(guidePage(238, lang), /\(187\)/);
+    }
+    assert.doesNotMatch(fs.readFileSync(path.join(JS, 'game', 'chemistry.js'), 'utf8'), /registerBlockType\('light_bulb'/);
 });

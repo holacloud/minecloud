@@ -137,3 +137,26 @@ func TestBlockStateNamesPersist(t *testing.T) {
 		}
 	}
 }
+
+func TestFindBlocks(t *testing.T) {
+	store, err := Open(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := store.FindBlocks(-1, 2, "light_bulb"); got != nil {
+		t.Fatalf("a chunk with none: %v", got)
+	}
+	// In a chunk of negative coordinates, and with and without a state.
+	for _, cell := range []struct {
+		x, y, z int
+		name    string
+	}{{-3, 40, 35, "light_bulb"}, {-16, 41, 32, "light_bulb:on"}, {-1, 42, 47, "light_bulbs_of_nothing"}} {
+		if err := store.SetBlock(cell.x, cell.y, cell.z, cell.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := store.FindBlocks(-1, 2, "light_bulb")
+	if len(got) != 2 || got[0] != [3]int{-3, 40, 35} || got[1] != [3]int{-16, 41, 32} {
+		t.Fatalf("found %v", got)
+	}
+}

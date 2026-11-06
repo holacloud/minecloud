@@ -81,7 +81,7 @@ test('every electric block and state is a world block', () => {
     const world = makeWorld();
     const names = ['copper_wire', 'wire_post', 'solar_panel', 'wind_turbine', 'water_wheel', 'water_wheel:z', 'hand_crank',
         'battery_block', 'battery_block:1', 'battery_block:4', 'electric_lamp', 'electric_lamp:on', 'grow_lamp:on', 'electric_motor:on',
-        'rtg'];
+        'rtg', 'light_bulb', 'light_bulb:on'];
     for (const name of names) {
         assert.ok(world.registry.id(name) > 0, name);
         assert.equal(ctx.electricKindOf(name), name.split(':')[0]);
@@ -117,6 +117,27 @@ test('lit lamps give light, unlit ones do not', () => {
     const light = new ctx.LightField(world, 0, 0);
     assert.equal(light.get(3, 2, 3), 13);
     assert.ok(world.hasLightEmitterNear(5, 1, 5));
+});
+
+test('a bulb: dull and dark without power, a dim light with it, and still the same item', () => {
+    const world = makeWorld();
+    assert.deepEqual({ ...ctx.ELECTRIC_KINDS.light_bulb }, { role: 'consumer', watts: 5, switch: true });
+    const off = world.blockTypes.light_bulb;
+    const on = world.blockTypes['light_bulb:on'];
+    assert.ok(!off.glow && !off.lightEmission && !off.variantOf);
+    assert.ok(on.glow > 0);
+    assert.equal(on.variantOf, 'light_bulb');
+    assert.equal(on.dropType, 'light_bulb');
+    assert.ok(!world.isLightEmitterType('light_bulb'));
+    assert.ok(world.isLightEmitterType('light_bulb:on'));
+    const level = (type) => world.registry.lightLevel[world.registry.id(type)];
+    assert.equal(level('light_bulb:on'), 7);
+    assert.equal(level('electric_lamp:on'), 14);
+
+    world.setEditedBlock(3, 1, 3, 'light_bulb');
+    assert.equal(new ctx.LightField(world, 0, 0).get(3, 2, 3), 0);
+    world.setEditedBlock(3, 1, 3, 'light_bulb:on');
+    assert.equal(new ctx.LightField(world, 0, 0).get(3, 2, 3), 6);
 });
 
 test('wires join electric neighbours only', () => {

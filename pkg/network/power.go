@@ -84,6 +84,7 @@ var powerKinds = map[string]powerKind{
 	"hand_crank":     {Role: powerGenerator, Source: "crank", Watts: 100},
 	"battery_block":  {Role: powerStorage, Capacity: 3000, Rate: 200, Levels: 4},
 	"electric_lamp":  {Role: powerConsumer, Watts: 10, Switch: true},
+	"light_bulb":     {Role: powerConsumer, Watts: 5, Switch: true},
 	"grow_lamp":      {Role: powerConsumer, Watts: 30, Switch: true},
 	"electric_motor": {Role: powerConsumer, Watts: 50, Switch: true},
 	// --- Living generators (task #14, js/game/eel.js) ---
@@ -1028,6 +1029,48 @@ func handlePowerCrank(raw json.RawMessage) {
 	powerMu.Lock()
 	grid.crankTurn(target.X, target.Y, target.Z, time.Now())
 	powerMu.Unlock()
+}
+
+// A light bulb used to be a plain block, so the bulbs of a saved world are in its chunks and not in
+// world.json. The server learns of them when a chunk holding one goes out to a player, which is the
+// first moment anyone could care (see chunkStream.run). The rest of the electric blocks were always
+// registered as they were placed. Nothing is scanned: a chunk with no bulb costs a look at its palette.
+const powerOldPlainBlock = "light_bulb"
+
+type powerBlockFinder interface {
+	FindBlocks(chunkX, chunkZ int, base string) [][3]int
+}
+
+// powerAdoptOldBulbs registers the bulbs of a chunk the grid does not know. Holding powerMu, what a
+// cell holds cannot change between reading it and registering it (setBlockTracked also holds it).
+func powerAdoptOldBulbs(g *powerGrid, w cropWorld, found [][3]int) {
+	for _, at := range found {
+		if g.blocks[powerPos(at)] != nil {
+			continue
+		}
+		name, err := w.Block(at[0], at[1], at[2])
+		if err != nil {
+			log.Printf("power: %v", err)
+			continue
+		}
+		if powerKindOf(name) == powerOldPlainBlock {
+			g.track(at[0], at[1], at[2], name)
+		}
+	}
+}
+
+// powerAdoptChunk does that for one chunk of the real world.
+func powerAdoptChunk(store interface {
+	powerBlockFinder
+	cropWorld
+}, chunkX, chunkZ int) {
+	found := store.FindBlocks(chunkX, chunkZ, powerOldPlainBlock)
+	if len(found) == 0 {
+		return
+	}
+	powerMu.Lock()
+	defer powerMu.Unlock()
+	powerAdoptOldBulbs(grid, store, found)
 }
 
 // loadPower installs the electric blocks read from world.json.

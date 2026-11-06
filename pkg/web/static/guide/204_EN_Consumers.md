@@ -7,6 +7,7 @@ Consumers are the blocks that **use** electricity to do something. Each one need
 | | Block | Id | Power | What it does |
 |---|---|---|---|---|
 | ![](item:electric_lamp) | Electric Lamp | `electric_lamp` | **10 W** | lights up like a torch |
+| ![](item:light_bulb) | Light Bulb | `light_bulb` | **5 W** | a dim yellow light |
 | ![](item:grow_lamp) | Grow Lamp | `grow_lamp` | **30 W** | makes wheat grow twice as fast |
 | ![](item:electric_motor) | Electric Motor | `electric_motor` | **50 W** | spins, opens iron doors |
 | ![](item:fridge) | Fridge | `fridge` | **30 W** | [chills and freezes](234) (its two cells are one fridge) |
@@ -23,7 +24,7 @@ Consumers are the blocks that **use** electricity to do something. Each one need
 | **1** `electric_motor` | 2 `iron_ore` + 1 `copper_block` + 2 `copper_wire` |
 
 The [light bulb](187), the [neon lamp](125) and the [argon lamp](126) are made at the [lab bench](117): their pages
-say how. You do not need them: every consumer also has a recipe with ordinary materials.
+say how. For the lamps you do not need them: each also has a recipe with ordinary materials. The bulb itself only comes from the lab.
 
 ## Electric lamp
 
@@ -32,6 +33,10 @@ power it is a dark globe.
 
 It stays lit whenever its network has power, **day or night**: in the daytime it spends energy for nothing. To light it only at night, give it a
 [daylight sensor](208) in night mode, or a [switch](207).
+
+## Light bulb
+
+The [light bulb](187) works just like the lamp, on half the power and with half the light: **level 7** where the lamp gives 14. Without power it is dull glass with a dark coil. Enough to read by, and to light a [microscope](238) beside it.
 
 ## Grow lamp
 

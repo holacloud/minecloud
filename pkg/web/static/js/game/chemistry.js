@@ -180,7 +180,7 @@ const CHEMISTRY_REACTIONS = [
     },
     {
         id: 'light_bulb', name: 'Light bulb', formula: 'W + Ar', kind: 'device', atoms: { w: 1, ar: 1 }, color: '#ffd27a', page: 187,
-        note: 'A tungsten filament glows white-hot inside a bulb of argon, which keeps it from burning.',
+        note: 'With current through it, a thin tungsten filament glows white-hot. The argon around it slows its wearing away.',
         outputs: [{ needs: { glass: 1 }, type: 'light_bulb', amount: 4 }]
     },
     {
@@ -297,24 +297,6 @@ function chemistryPaintLamp(f, s, tube, seed) {
 registerTexturePattern('neon_lamp', (f, s, tint, seed) => chemistryPaintLamp(f, s, 0xff5a2a, seed));
 registerTexturePattern('argon_lamp', (f, s, tint, seed) => chemistryPaintLamp(f, s, 0x4f7dff, seed));
 
-// A frosted bulb glowing warm white, brightest around the coiled filament in the middle.
-registerTexturePattern('light_bulb', (f, s, tint, seed) => {
-    const warm = f.rgb(0xffd27a);
-    const hot = f.rgb(0xfff6dc);
-    const base = f.rgb(0x8a6a3a);
-    f.each(s, (x, y, u, v) => {
-        const r = Math.hypot(u - 0.5, v - 0.5);
-        const coil = Math.abs(v - 0.5) < 0.05 && u > 0.3 && u < 0.7 && Math.sin(u * 60) > 0;
-        const frost = (f.hash(x, y, seed) - 0.5) * 0.08;
-        if (u < 0.06 || u > 0.94 || v < 0.06 || v > 0.94) {
-            f.put(s, x, y, f.tone(s, base, frost), 0.7);
-            return;
-        }
-        const c = coil ? hot : f.mix(hot, warm, Math.min(1, r * 1.8));
-        f.put(s, x, y, f.tone(s, c, frost), coil ? 0.8 : 0.5);
-    });
-});
-
 // Silvered glass in a dark frame, with a soft diagonal sheen.
 registerTexturePattern('mirror', (f, s, tint, seed) => {
     const silver = f.rgb(0xc9d3dc);
@@ -355,10 +337,7 @@ registerBlockType('argon_lamp', {
     color: 0x4f7dff, name: 'Argon Lamp', breakDuration: 0.3, glow: 1.8,
     faces: { top: 'argon_lamp', side: 'argon_lamp' }
 });
-registerBlockType('light_bulb', {
-    color: 0xffd27a, name: 'Light Bulb', breakDuration: 0.2, glow: 1.6,
-    faces: { top: 'light_bulb', side: 'light_bulb' }
-});
+// The light bulb is an electric consumer: it lives in js/game/electricity.js.
 registerBlockType('mirror', {
     color: 0xc9d3dc, name: 'Silver Mirror', breakDuration: 0.25, mirrorSurface: 'cube', // js/game/mirrors.js
     faces: { top: 'mirror', side: 'mirror' }

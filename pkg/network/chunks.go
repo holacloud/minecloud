@@ -241,6 +241,7 @@ func (s *chunkStream) run() {
 				log.Printf("chunk %d,%d: %v", c[0], c[1], err)
 				continue
 			}
+			powerAdoptChunk(chunkStore, c[0], c[1])
 			// Blocks until the writer catches up, so slow clients only slow their own stream.
 			select {
 			case s.client.chunks <- data:

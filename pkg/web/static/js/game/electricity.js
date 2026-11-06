@@ -33,6 +33,8 @@ const ELECTRIC_KINDS = {
     hand_crank: { role: 'generator', source: 'crank', watts: 100 },
     battery_block: { role: 'storage', capacity: 3000, rate: 200, levels: 4 },
     electric_lamp: { role: 'consumer', watts: 10, switch: true },
+    // The bulb of the lab bench: dimmer and cheaper than a lamp.
+    light_bulb: { role: 'consumer', watts: 5, switch: true },
     grow_lamp: { role: 'consumer', watts: 30, switch: true },
     electric_motor: { role: 'consumer', watts: 50, switch: true },
     // --- Living generators (task #14, js/game/eel.js) ---
@@ -161,6 +163,30 @@ function electricPaintLamp(f, s, on, seed) {
         f.put(s, x, y, f.tone(s, glass, k), 0.4);
     });
 }
+// A bulb, a whole block of it: a metal frame round frosted glass and a coiled filament in the middle.
+// Without power, dull glass and a dark coil; with it, yellow and brightest round the coil.
+function electricPaintBulb(f, s, on, seed) {
+    const warm = f.rgb(0xffd65a);
+    const hot = f.rgb(0xfff6dc);
+    const dull = f.rgb(0xb4b09c);
+    const frame = f.rgb(on ? 0x8a6a3a : 0x5e5138);
+    f.each(s, (x, y, u, v) => {
+        const r = Math.hypot(u - 0.5, v - 0.5);
+        const coil = Math.abs(v - 0.5) < 0.05 && u > 0.3 && u < 0.7 && Math.sin(u * 60) > 0;
+        const frost = (f.hash(x, y, seed) - 0.5) * 0.08;
+        if (u < 0.06 || u > 0.94 || v < 0.06 || v > 0.94) {
+            f.put(s, x, y, f.tone(s, frame, frost), 0.7);
+        } else if (coil) {
+            f.put(s, x, y, on ? hot : f.rgb(0x2e2a26), 0.9);
+        } else if (on) {
+            f.put(s, x, y, f.tone(s, warm, 0.25 - r * 0.7 + frost), 0.5);
+        } else {
+            f.put(s, x, y, f.tone(s, dull, -r * 0.35 + frost), 0.5);
+        }
+    });
+}
+registerTexturePattern('light_bulb_off', (f, s, tint, seed) => electricPaintBulb(f, s, false, seed));
+registerTexturePattern('light_bulb_on', (f, s, tint, seed) => electricPaintBulb(f, s, true, seed));
 registerTexturePattern('electric_lamp_off', (f, s, tint, seed) => electricPaintLamp(f, s, false, seed));
 registerTexturePattern('electric_lamp_on', (f, s, tint, seed) => electricPaintLamp(f, s, true, seed));
 
@@ -454,21 +480,23 @@ for (let level = 1; level <= 4; level++) {
         variantOf: 'battery_block', dropType: 'battery_block', batteryLevel: level
     });
 }
-// Consumers: an "off" block (the item) and an ":on" variant set by the server.
+// Consumers: an "off" block (the item) and an ":on" variant set by the server. `light` is how much
+// light it gives while on (true: as a torch), and a bulb gives about half of what a lamp does.
 [
     ['electric_lamp', 'Electric Lamp', 0xD8D2B8, 'electric_lamp_off', 'electric_lamp_on', 'electric_lamp_off', 'electric_lamp_on', 1.4],
+    ['light_bulb', 'Light Bulb', 0xB4B09C, 'light_bulb_off', 'light_bulb_on', 'light_bulb_off', 'light_bulb_on', 1.2, 7, 0.2],
     ['grow_lamp', 'Grow Lamp', 0x7A3A8A, 'grow_lamp_off', 'grow_lamp_on', 'grow_lamp_off', 'grow_lamp_on', 1.1],
     ['electric_motor', 'Electric Motor', 0x8D969E, 'electric_motor_off', 'electric_motor_on', 'electric_motor_top', 'electric_motor_top', 0]
-].forEach(([id, name, color, offSide, onSide, offTop, onTop, glow]) => {
+].forEach(([id, name, color, offSide, onSide, offTop, onTop, glow, light = true, breakDuration = 0.4]) => {
     registerBlockType(id, {
-        color, name, breakDuration: 0.4, category: 'electric', electric: true,
+        color, name, breakDuration, category: 'electric', electric: true,
         faces: { top: offTop, side: offSide, bottom: offTop }
     });
     registerBlockType(`${id}:on`, {
-        color, name, breakDuration: 0.4, category: 'electric', electric: true,
+        color, name, breakDuration, category: 'electric', electric: true,
         faces: { top: onTop, side: onSide, bottom: onTop },
         variantOf: id, dropType: id, powered: true,
-        ...(glow ? { glow, lightEmission: true } : {})
+        ...(glow ? { glow, lightEmission: light } : {})
     });
 });
 
