@@ -95,9 +95,10 @@ registerTexturePattern('glow_block', (f, s, tint, seed) => {
     const color = f.rgb(tint ?? GLOW_KELVINS[GLOW_DEFAULT_KELVIN]);
     f.each(s, (x, y, u, v) => {
         const r = Math.hypot(u - 0.5, v - 0.5);
-        const edge = u < 0.06 || u > 0.94 || v < 0.06 || v > 0.94;
-        const frost = (f.hash(x, y, seed) - 0.5) * 0.05;
-        f.put(s, x, y, f.tone(s, color, (edge ? -0.22 : 0.08 - r * 0.25) + frost), 0.5);
+        const edge = u < 0.07 || u > 0.93 || v < 0.07 || v > 0.93;
+        // Only darker, by multiplying, so that a pure red stays red: f.tone would tint it.
+        const m = edge ? 0.72 : 1 - r * 0.2 - f.hash(x, y, seed) * 0.03;
+        f.put(s, x, y, color.map((channel) => channel * m), 0.5);
     });
 }, { maxSize: 32, rtx: { roughness: 0.4, metalness: 0, normalScale: 0.1 } });
 
