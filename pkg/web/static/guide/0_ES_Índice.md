@@ -48,6 +48,7 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 - [Muebles](223): [sillas](224), [mesas](225), [cofres que guardan de verdad](226), [cocina y baño](227),
   [luces](228), [vidrieras](229), [alfombras y cortinas](230), [cuadros y un reloj](231), [espejos](232),
   un [horno que cocina](233), y una [nevera y un congelador](234) que van con electricidad.
+- [Cómo encontrar metales](248) y [cómo se funden](249).
 - Un taller para los materiales: la [fundición](235) de carbón, y el [horno de arco eléctrico](236) que hace silicio.
 - [El mundo pequeño](237): el [microscopio](238), las [muestras](239), los [tardígrados](240) y la [criptobiosis](241), las [células](242), [protozoos y algas](243) y [bacterias](244), con [tinciones](246), [filtros y campo oscuro](247).
 

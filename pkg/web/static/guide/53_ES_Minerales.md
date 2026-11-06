@@ -2,26 +2,25 @@
 
 ![Mineral de hierro](item:iron_ore)
 
-Vetas escondidas dentro de la piedra: **carbón**, **hierro** y **oro**. Son la llave de las antorchas, las
-herramientas buenas y muchos inventos.
+Vetas dentro de la piedra y manchas al aire libre. Con **carbón**, **hierro** y **oro** se hacen antorchas, herramientas
+buenas y muchos inventos. El **cobre**, el **estaño**, el **zinc**, el **plomo** y la **plata** se funden para sacarles el metal: ver [Cómo se funden los metales](249).
 
 | | Nombre en el juego | Id | Rotura (a mano) |
 |---|---|---|---|
 | ![](item:coal_ore) | Coal Ore | `coal_ore` | 1,05 s |
 | ![](item:iron_ore) | Iron Ore | `iron_ore` | 1,1 s |
 | ![](item:gold_ore) | Gold Ore | `gold_ore` | 1,15 s |
+| ![](item:copper_ore) | Copper Ore | `copper_ore` | 1,1 s |
+| ![](item:tin_ore) | Tin Ore | `tin_ore` | 1,1 s |
+| ![](item:zinc_ore) | Zinc Ore | `zinc_ore` | 1,1 s |
+| ![](item:lead_ore) | Lead Ore | `lead_ore` | 1,1 s |
+| ![](item:silver_ore) | Silver Ore | `silver_ore` | 1,15 s |
 
 ## Dónde se encuentran
 
-Solo dentro de la **piedra**, por debajo de la capa de tierra. Cuanto más hondo, más variedad:
+En **vetas** dentro de la piedra, y en **afloramientos** al aire libre, en la roca de las montañas y en las cuestas más empinadas. Cada metal tiene sus tierras y su profundidad: todo eso está en [Cómo encontrar metales](248).
 
-| Mineral | Profundidad | Frecuencia |
-|---|---|---|
-| Carbón | a cualquier altura de la piedra | ~1,8 % de los bloques |
-| Hierro | solo por debajo de **y = 4** | ~0,6 % |
-| Oro | solo por debajo de **y = 1** | ~0,2 % |
-
-Cada mineral suelta **su propio bloque**. No hace falta fundirlo: se usa tal cual en las recetas.
+Cada mineral suelta **su propio bloque**. El carbón, el hierro y el oro se usan tal cual en las recetas; los demás se [funden](249).
 
 El ![Golem de tormenta](mob:storm_golem) [golem de tormenta](43) también suelta **1–2 `iron_ore`** al derrotarlo.
 
@@ -58,7 +57,7 @@ El carbón es también el fuego de la [fundición](235), y un ingrediente del [h
 
 - Un [pico](68) acelera mucho la minería: uno de piedra ya rompe el hierro en 0,58 s.
 - Las herramientas de **oro** son las más rápidas del juego, y aquí no se desgastan.
-- Baja por debajo de y = 1 para tener opciones de las tres vetas a la vez.
+- Baja por debajo de y = 0, sobre todo en las montañas, para tener opciones de oro.
 - Lleva [antorchas](62) a las minas: alumbran y espantan a las sombras.
 
 ## Curiosidades
@@ -67,4 +66,4 @@ El carbón es también el fuego de la [fundición](235), y un ingrediente del [h
 - El núcleo de la Tierra es, sobre todo, **hierro** y níquel.
 - Todo el oro extraído en la historia cabría en un cubo de unos **22 metros** de lado.
 
-Ver también: [Piedra y roca madre](50), [Fabricar](11).
+Ver también: [Cómo encontrar metales](248), [Cómo se funden los metales](249), [Piedra y roca madre](50), [Fabricar](11).

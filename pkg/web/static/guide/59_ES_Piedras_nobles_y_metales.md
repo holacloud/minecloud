@@ -18,7 +18,7 @@ misteriosa **obsidiana**.
 | ![](item:gold_block) | Bloque de oro | Gold Block | `gold_block` | metal dorado |
 | ![](item:obsidian) | Obsidiana | Obsidian | `obsidian` | violeta oscuro con brillos |
 
-Ninguno aparece en el mundo: todos se fabrican.
+Ninguno de estos bloques aparece en el mundo: se fabrican. Pero el cobre, el hierro y el oro **sí tienen mineral**, que se encuentra en el mundo y se funde: ver [Cómo encontrar metales](248) y [Cómo se funden](249).
 
 ## Recetas (tecla C)
 
@@ -29,7 +29,7 @@ Ninguno aparece en el mundo: todos se fabrican.
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
 
-La [fundición](235) también funde 1 `iron_ore` en 1 `iron_block`, y 1 `gold_ore` en 1 `gold_block`.
+La [fundición](235) también funde 1 `iron_ore` en 1 `iron_block`, 1 `gold_ore` en 1 `gold_block`, y 1 `copper_ore` en **2** `copper_block`. A mano, 1 `copper_ore` + 1 `coal_ore` dan 1 `copper_block`.
 
 Las piedras pulidas salen de adoquín, que abunda. Los metales y la obsidiana piden **piedra lisa** (`stone`):
 picar piedra solo da adoquín, así que fúndelo primero, 1 `cobblestone` + 1 `coal_ore` → 2 `stone` (ver

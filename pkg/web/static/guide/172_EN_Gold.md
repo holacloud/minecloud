@@ -24,6 +24,8 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize AU
 
 Each block is **one atom** at the [lab bench](117).
 
+The ore, `gold_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `gold_block`, not into this block.
+
 ## In the lab
 
 It takes part in **1** reaction you have to discover by mixing in the flask. Hints:

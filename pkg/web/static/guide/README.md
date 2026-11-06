@@ -115,7 +115,7 @@ Page 48 is the items index. One page per item, or per family when the items are 
 | 50 | Piedra y roca madre | Stone and bedrock | stone, cobblestone, bedrock |
 | 51 | Arena, cactus y vidrio | Sand, cactus and glass | sand, cactus, glass |
 | 52 | Agua | Water | water |
-| 53 | Minerales | Ores | coal_ore, iron_ore, gold_ore |
+| 53 | Minerales | Ores | coal_ore, iron_ore, gold_ore, and the blocks of copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore |
 | 54 | Madera y hojas | Wood and leaves | wood, leaves, planks and the 8 wood kinds (spruce, birch, jungle, acacia, dark_oak, cherry, maple, willow): `*_wood`, `*_planks`, `*_leaves` |
 | 55 | Brotes | Saplings | `*_sapling` |
 | 56 | Losas | Slabs | `*_slab` |
@@ -311,6 +311,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 245 | Bloque luminoso | Glow block | glow_block and its 220 colour states (`:k<kelvin>`, `:rgb<r><g><b>`): decoration that shines and lights nothing, js/game/glow_block.js, pkg/network/glow_block.go (items index 48) |
 | 246 | Tinciones | Stains | iodine_tincture and methylene_blue on a slide (pkg/network/microscope.go, `stains` in js/game/microbes.js): what each shows, organism by organism; the price; vital stains (microscope 238, items index 48, contents 0) |
 | 247 | Filtros y campo oscuro | Filters and dark-field | cobalt_glass and the stained glass as filters, darkfield_stop: the viewer's own, not spent, not saved; why dark-field needs strong light (microscope 238, items index 48, contents 0) |
+| 248 | Cómo encontrar metales | How to find metals | veins and outcrops (pkg/terrain/ores.go): what each ore looks like, in which biome and at what depth (items index 48, contents 0, 53, 59, 115, 235) |
+| 249 | Cómo se funden los metales | How metals are smelted | copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore in the foundry and the C menu; heat, zinc's distillation, silver from lead (next to 248) |
 
 ### Secret pages
 

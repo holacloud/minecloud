@@ -34,6 +34,8 @@ The reactions known from the start:
 | `Si + 2 O → SiO₂ (glass)` | compound | 4 `glass` |
 | `Fe + C → steel` | alloy | 2 `steel_ingot` |
 
+Tin, zinc, silver and lead can also be got from their [ore](248), by [smelting it](249).
+
 And the rest? Every element page (from [Hydrogen](139) to [Lead](174)) gives **hints** about the reactions it
 takes part in. A few ideas to start: noble gases shine alone, metals rust, and gems are oxides with a pinch of
 another metal.

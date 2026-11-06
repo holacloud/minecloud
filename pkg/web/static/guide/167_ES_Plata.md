@@ -22,6 +22,8 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 |---|---|
 | 1 `element_ag` | 1 `stone` + 1 `coal_ore` |
 
+También sale de su mineral, `silver_ore`, [que se encuentra en el mundo](248). En la [fundición](235), 1 `silver_ore` da **2** `element_ag`; a mano, 1 `silver_ore` + 1 `coal_ore` dan 1. Ver [Cómo se funden los metales](249).
+
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
 ## En el laboratorio

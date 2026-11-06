@@ -445,6 +445,27 @@ Páginas 246 y 247 de la guía del juego.
 | 0,77 | `candle` | 0,53: flojo |
 | 0,88 o más | lámpara de mesa, `lantern`, `electric_lamp`, sol pleno | 0,87 a 1: bueno |
 
+## Metales
+
+Páginas 248 y 249 de la guía del juego. Lo decide `pkg/terrain/ores.go`, y `js/terrainGen.js` hace lo mismo.
+
+Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los chunks) y **afloramientos** al aire libre: en la roca de las montañas y, muy de vez en cuando, en una cuesta de 45 grados o más de cualquier otro bioma. No sustituyen al agua, a la arena de playa, al musgo ni a la tierra donde crece algo.
+
+| Mineral | Sobre todo en | Profundidad | En la fundición | A mano (C) |
+|---|---|---|---|---|
+| `coal_ore` | llanura, bosque, montaña | sobre todo de y = 0 a y = 3; en la montaña, cualquiera | combustible | se usa tal cual |
+| `iron_ore` | montaña, y todas las demás | y < 4; en la montaña, cualquiera | 1 `iron_block` | se usa tal cual |
+| `copper_ore` | desierto y montaña | y < 4; en la montaña, cualquiera | **2** `copper_block` | 1 `copper_ore` + 1 `coal_ore` → 1 |
+| `tin_ore` | solo montaña | cualquiera | **2** `element_sn` | 1 `tin_ore` + 1 `coal_ore` → 1 |
+| `zinc_ore` | llanura y bosque, y en bolsas dentro del plomo | y < 4; en la montaña, cualquiera | **2** `element_zn` | 1 `zinc_ore` + 1 `coal_ore` → 1 |
+| `lead_ore` | montaña; llanura y bosque | y < 4; en la montaña, cualquiera | **2** `element_pb` | 1 `lead_ore` + 1 `coal_ore` → 1 |
+| `silver_ore` | montaña, y en bolsas dentro del plomo | y < 4; en la montaña, cualquiera | **2** `element_ag` | 1 `silver_ore` + 1 `coal_ore` → 1 |
+| `gold_ore` | montaña; muy poco en otros sitios | y < 0; en la montaña, más por debajo de y = 0 | 1 `gold_block` | se usa tal cual |
+
+Las recetas antiguas (*Refine* para los bloques de metal y *Synthesize* para los elementos) siguen todas.
+
+Un mundo guardado conserva sus chunks: las vetas nuevas solo salen en los que aún no se habían generado.
+
 ## Bloque luminoso
 
 Un cubo decorativo que brilla solo (página 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un

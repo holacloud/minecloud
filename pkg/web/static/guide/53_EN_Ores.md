@@ -2,26 +2,25 @@
 
 ![Iron ore](item:iron_ore)
 
-Veins hidden inside the stone: **coal**, **iron** and **gold**. They are the key to torches, good tools and many
-inventions.
+Veins inside the stone, and patches in the open air. **Coal**, **iron** and **gold** make torches, good tools and many
+inventions. **Copper**, **tin**, **zinc**, **lead** and **silver** are smelted for their metal: see [How metals are smelted](249).
 
 | | In-game name | Id | Break (bare hand) |
 |---|---|---|---|
 | ![](item:coal_ore) | Coal Ore | `coal_ore` | 1.05 s |
 | ![](item:iron_ore) | Iron Ore | `iron_ore` | 1.1 s |
 | ![](item:gold_ore) | Gold Ore | `gold_ore` | 1.15 s |
+| ![](item:copper_ore) | Copper Ore | `copper_ore` | 1.1 s |
+| ![](item:tin_ore) | Tin Ore | `tin_ore` | 1.1 s |
+| ![](item:zinc_ore) | Zinc Ore | `zinc_ore` | 1.1 s |
+| ![](item:lead_ore) | Lead Ore | `lead_ore` | 1.1 s |
+| ![](item:silver_ore) | Silver Ore | `silver_ore` | 1.15 s |
 
 ## Where to find them
 
-Only inside **stone**, below the layer of dirt. The deeper you go, the more variety:
+In **veins** inside the stone, and in **outcrops** in the open air, on mountain rock and the steepest slopes. Each metal has its own lands and depth: it is all in [How to find metals](248).
 
-| Ore | Depth | How common |
-|---|---|---|
-| Coal | at any height in the stone | ~1.8 % of blocks |
-| Iron | only below **y = 4** | ~0.6 % |
-| Gold | only below **y = 1** | ~0.2 % |
-
-Each ore drops **itself**. No smelting needed: it goes into recipes as it is.
+Each ore drops **itself**. Coal, iron and gold go into recipes as they are; the others are [smelted](249).
 
 The ![Storm golem](mob:storm_golem) [storm golem](43) also drops **1–2 `iron_ore`** when defeated.
 
@@ -58,7 +57,7 @@ Coal is also the fire of the [foundry](235), and an ingredient in the [electric 
 
 - A [pickaxe](68) speeds mining up a lot: even a stone one breaks iron ore in 0.58 s.
 - **Gold** tools are the fastest in the game, and here they never wear out.
-- Go below y = 1 to have a chance at all three veins at once.
+- Go below y = 0, above all in the mountains, to have a chance at gold.
 - Take [torches](62) into mines: they light the way and drive shadows off.
 
 ## Trivia
@@ -67,4 +66,4 @@ Coal is also the fire of the [foundry](235), and an ingredient in the [electric 
 - The Earth's core is mostly **iron** and nickel.
 - All the gold ever mined would fit in a cube about **22 metres** on each side.
 
-See also: [Stone and bedrock](50), [Crafting](11).
+See also: [How to find metals](248), [How metals are smelted](249), [Stone and bedrock](50), [Crafting](11).

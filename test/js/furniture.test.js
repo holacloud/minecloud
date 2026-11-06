@@ -1204,6 +1204,15 @@ test('smelters: every item in the tables exists, the machines beat the C menu, a
     const { sand, cobblestone } = ctx.APPLIANCE_FOUNDRY;
     assert.ok(cobblestone.yield / cobblestone.in > smeltStone.amount);
     assert.ok(sand.yield / sand.in > 2 / 3, '3 sand give 2 glass in the menu');
+    // By hand, an ore and a coal give one metal; the same ore in the foundry gives more.
+    for (const ore of ['copper_ore', 'tin_ore', 'zinc_ore', 'lead_ore', 'silver_ore']) {
+        const byHand = recipes.get(`smelt_${ore}`);
+        const inFoundry = ctx.APPLIANCE_FOUNDRY[ore];
+        assert.equal(byHand.output, inFoundry.out, ore);
+        assert.deepEqual(byHand.inputs.map(({ type, amount }) => [type, amount]), [[ore, 1], ['coal_ore', 1]], ore);
+        assert.equal(byHand.amount, 1, ore);
+        assert.ok(inFoundry.yield / inFoundry.in > byHand.amount, ore);
+    }
     const si = ctx.APPLIANCE_ARC.sand;
     assert.ok(si.yield / si.coal > 1, '1 coal gives 1 silicon in the menu');
     assert.deepEqual([si.in, si.coal], [1, 2], 'SiO2 + 2 C');

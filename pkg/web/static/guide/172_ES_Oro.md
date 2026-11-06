@@ -24,6 +24,8 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
+El mineral, `gold_ore`, [se encuentra en el mundo](248), y es otro objeto: la [fundición](235) lo convierte en `gold_block`, no en este bloque.
+
 ## En el laboratorio
 
 Participa en **1** reacción que hay que descubrir mezclando en el matraz. Pistas:

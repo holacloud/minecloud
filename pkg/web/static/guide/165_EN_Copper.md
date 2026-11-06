@@ -24,6 +24,8 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize CU
 
 Each block is **one atom** at the [lab bench](117).
 
+Copper also has an ore, `copper_ore`, [found in the world](248). But **its metal is another item**: in the [foundry](235), 1 `copper_ore` gives **2** `copper_block`, and by hand 1 `copper_ore` + 1 `coal_ore` give 1. That is copper for building and for wires, and the lab does not take it: here you need `element_cu`. See [How metals are smelted](249).
+
 ## In the lab
 
 It takes part in **3** reactions you have to discover by mixing in the flask. Hints:

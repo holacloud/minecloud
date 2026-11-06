@@ -21,6 +21,11 @@ It lights **by itself** when it has something to smelt and coal, and goes out by
 | ![](item:limestone) 1 `limestone` | ![](item:quicklime) **2** `quicklime` | 15 s | only at the [lab bench](117) |
 | ![](item:iron_ore) 1 `iron_ore` | ![](item:iron_block) 1 `iron_block` | 20 s | from `stone` and `sand` |
 | ![](item:gold_ore) 1 `gold_ore` | ![](item:gold_block) 1 `gold_block` | 15 s | from `stone` and `sand` |
+| ![](item:copper_ore) 1 `copper_ore` | ![](item:copper_block) **2** `copper_block` | 15 s | 1 `copper_ore` + 1 `coal_ore` give 1 |
+| ![](item:tin_ore) 1 `tin_ore` | ![](item:element_sn) **2** `element_sn` | 10 s | 1 `tin_ore` + 1 `coal_ore` give 1 |
+| ![](item:zinc_ore) 1 `zinc_ore` | ![](item:element_zn) **2** `element_zn` | 18 s | 1 `zinc_ore` + 1 `coal_ore` give 1 |
+| ![](item:lead_ore) 1 `lead_ore` | ![](item:element_pb) **2** `element_pb` | 10 s | 1 `lead_ore` + 1 `coal_ore` give 1 |
+| ![](item:silver_ore) 1 `silver_ore` | ![](item:element_ag) **2** `element_ag` | 15 s | 1 `silver_ore` + 1 `coal_ore` give 1 |
 
 One piece of coal burns for **80 s**: that is 24 glass, or 24 stone. In the C menu those 24 stone would cost 12 coal.
 
@@ -46,4 +51,4 @@ Glassmakers add a little soda to melt the sand at a much lower heat. People have
 
 Coal is mostly carbon, packed tight, so a piece holds far more heat than a log. With air blown through it, a coal fire gets past 1000 °C. Bricks and clay survive that: they are already fired, which is why furnaces are made of them.
 
-See also: the [electric arc furnace](236), for what no fire can do; [sand and glass](51); [stone](50); [quicklime](183).
+See also: [how metals are smelted](249) and [how to find them](248); the [electric arc furnace](236), for what no fire can do; [sand and glass](51); [stone](50); [quicklime](183).

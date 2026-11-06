@@ -18,7 +18,7 @@
 | ![](item:gold_block) | Gold Block | `gold_block` | golden metal |
 | ![](item:obsidian) | Obsidian | `obsidian` | dark violet with glints |
 
-None of them appear in the world: they are all crafted.
+None of these blocks appears in the world: they are crafted. But copper, iron and gold **do have ores**, which are found in the world and smelted: see [How to find metals](248) and [How they are smelted](249).
 
 ## Recipes (C key)
 
@@ -29,7 +29,7 @@ None of them appear in the world: they are all crafted.
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
 
-The [foundry](235) also smelts 1 `iron_ore` into 1 `iron_block`, and 1 `gold_ore` into 1 `gold_block`.
+The [foundry](235) also smelts 1 `iron_ore` into 1 `iron_block`, 1 `gold_ore` into 1 `gold_block`, and 1 `copper_ore` into **2** `copper_block`. By hand, 1 `copper_ore` + 1 `coal_ore` give 1 `copper_block`.
 
 Polished stones come from cobblestone, which is plentiful. Metals and obsidian need **smooth stone** (`stone`):
 mining stone only gives cobblestone, so smelt it first, 1 `cobblestone` + 1 `coal_ore` → 2 `stone` (see

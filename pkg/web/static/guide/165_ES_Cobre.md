@@ -24,6 +24,8 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
+El cobre también tiene mineral, `copper_ore`, [que se encuentra en el mundo](248). Pero **su metal es otro objeto**: en la [fundición](235), 1 `copper_ore` da **2** `copper_block`, y a mano 1 `copper_ore` + 1 `coal_ore` dan 1. Es el cobre de construir y de los cables, y el laboratorio no lo acepta: aquí hace falta `element_cu`. Ver [Cómo se funden los metales](249).
+
 ## En el laboratorio
 
 Participa en **3** reacciones que hay que descubrir mezclando en el matraz. Pistas:

@@ -21,6 +21,11 @@ Se enciende **sola** cuando tiene algo que fundir y carbón, y se apaga sola. Mi
 | ![](item:limestone) 1 `limestone` | ![](item:quicklime) **2** `quicklime` | 15 s | solo en la [mesa de laboratorio](117) |
 | ![](item:iron_ore) 1 `iron_ore` | ![](item:iron_block) 1 `iron_block` | 20 s | con `stone` y `sand` |
 | ![](item:gold_ore) 1 `gold_ore` | ![](item:gold_block) 1 `gold_block` | 15 s | con `stone` y `sand` |
+| ![](item:copper_ore) 1 `copper_ore` | ![](item:copper_block) **2** `copper_block` | 15 s | 1 `copper_ore` + 1 `coal_ore` dan 1 |
+| ![](item:tin_ore) 1 `tin_ore` | ![](item:element_sn) **2** `element_sn` | 10 s | 1 `tin_ore` + 1 `coal_ore` dan 1 |
+| ![](item:zinc_ore) 1 `zinc_ore` | ![](item:element_zn) **2** `element_zn` | 18 s | 1 `zinc_ore` + 1 `coal_ore` dan 1 |
+| ![](item:lead_ore) 1 `lead_ore` | ![](item:element_pb) **2** `element_pb` | 10 s | 1 `lead_ore` + 1 `coal_ore` dan 1 |
+| ![](item:silver_ore) 1 `silver_ore` | ![](item:element_ag) **2** `element_ag` | 15 s | 1 `silver_ore` + 1 `coal_ore` dan 1 |
 
 Un trozo de carbón arde **80 s**: dan para 24 de vidrio, o 24 de piedra. En el menú C esas 24 piedras costarían 12 de carbón.
 
@@ -46,4 +51,4 @@ Los vidrieros añaden un poco de sosa para fundir la arena con mucho menos calor
 
 El carbón es sobre todo carbono, muy apretado, así que un trozo guarda mucho más calor que un tronco. Soplándole aire, un fuego de carbón pasa de los 1000 °C. El ladrillo y el barro lo aguantan: ya están cocidos, y por eso los hornos se hacen con ellos.
 
-Ver también: el [horno de arco eléctrico](236), para lo que ningún fuego puede hacer; [arena y vidrio](51); [piedra](50); [cal viva](183).
+Ver también: [cómo se funden los metales](249) y [cómo encontrarlos](248); el [horno de arco eléctrico](236), para lo que ningún fuego puede hacer; [arena y vidrio](51); [piedra](50); [cal viva](183).

@@ -22,6 +22,8 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize SN
 |---|---|
 | 1 `element_sn` | 1 `stone` + 1 `coal_ore` |
 
+It also comes from its ore, `tin_ore`, [found in the world](248). In the [foundry](235), 1 `tin_ore` gives **2** `element_sn`; by hand, 1 `tin_ore` + 1 `coal_ore` give 1. See [How metals are smelted](249).
+
 Each block is **one atom** at the [lab bench](117).
 
 ## In the lab

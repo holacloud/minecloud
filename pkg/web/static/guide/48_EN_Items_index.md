@@ -11,6 +11,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:sand) [Sand, cactus and glass](51)
 - ![](item:water) [Water](52)
 - ![](item:coal_ore) [Ores](53)
+- ![](item:copper_ore) [How to find metals](248): copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore, and [how they are smelted](249)
 
 ## Trees and plants
 

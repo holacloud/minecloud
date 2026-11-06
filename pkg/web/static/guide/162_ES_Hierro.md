@@ -24,6 +24,8 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
+El mineral, `iron_ore`, [se encuentra en el mundo](248), y es otro objeto: la [fundición](235) lo convierte en `iron_block`, no en este bloque.
+
 ## En el laboratorio
 
 Reacciones que el laboratorio conoce desde el principio:

@@ -35,6 +35,8 @@ Las reacciones conocidas desde el principio:
 | `Si + 2 O → SiO₂ (vidrio)` | compuesto | 4 `glass` |
 | `Fe + C → acero` | aleación | 2 `steel_ingot` |
 
+El estaño, el zinc, la plata y el plomo también se pueden sacar de su [mineral](248), [fundiéndolo](249).
+
 ¿Y las demás? Cada página de elemento (desde [Hidrógeno](139) hasta [Plomo](174)) da **pistas** de las reacciones en
 las que participa. Algunas ideas para empezar: los gases nobles brillan solos, los metales se oxidan, y las gemas son
 óxidos con una pizca de otro metal.

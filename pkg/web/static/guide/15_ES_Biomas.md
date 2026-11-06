@@ -52,8 +52,8 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 ## Bajo tierra
 
 - Bajo unos pocos bloques de tierra (o uno solo en la roca) empieza la **piedra**.
-- En la piedra hay **carbón** a cualquier profundidad; **hierro** y **oro** solo muy abajo, el oro aún más
-  hondo. Ver [Minerales](53).
+- En la piedra hay vetas de metal, y cada bioma tiene las suyas: el estaño en las montañas, el cobre en el desierto
+  y las montañas. Ver [Cómo encontrar metales](248).
 - Al fondo de todo está la **roca madre**, que no se puede romper.
 
 Las fichas del [Bestiario](5) dicen el hábitat de cada especie, y el [índice de mobs](16) te lleva a la

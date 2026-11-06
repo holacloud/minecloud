@@ -24,6 +24,8 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize FE
 
 Each block is **one atom** at the [lab bench](117).
 
+The ore, `iron_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `iron_block`, not into this block.
+
 ## In the lab
 
 Reactions the lab knows from the start:

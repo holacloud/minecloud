@@ -22,6 +22,8 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize ZN
 |---|---|
 | 1 `element_zn` | 1 `stone` + 1 `coal_ore` |
 
+It also comes from its ore, `zinc_ore`, [found in the world](248). In the [foundry](235), 1 `zinc_ore` gives **2** `element_zn`; by hand, 1 `zinc_ore` + 1 `coal_ore` give 1. See [How metals are smelted](249).
+
 Each block is **one atom** at the [lab bench](117).
 
 ## In the lab

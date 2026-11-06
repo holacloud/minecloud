@@ -11,6 +11,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:sand) [Arena, cactus y vidrio](51)
 - ![](item:water) [Agua](52)
 - ![](item:coal_ore) [Minerales](53)
+- ![](item:copper_ore) [Cómo encontrar metales](248): copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore, y [cómo se funden](249)
 
 ## Árboles y plantas
 

@@ -52,7 +52,8 @@ The borders between them are smooth: the land blends little by little.
 ## Underground
 
 - Below a few blocks of soil (just one in the rocks) the **stone** begins.
-- Stone holds **coal** at any depth; **iron** and **gold** only deep down, gold even deeper. See [Ores](53).
+- Stone holds veins of metal, and each biome has its own: tin in the mountains, copper in the desert and the
+  mountains. See [How to find metals](248).
 - At the very bottom lies **bedrock**, which cannot be broken.
 
 The cards in the [Bestiary](5) give each species' habitat, and the [mobs index](16) takes you to each one's
