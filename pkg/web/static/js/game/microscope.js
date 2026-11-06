@@ -689,7 +689,9 @@ const MICROSCOPE_CSS = `
 #microscope-panel .micro-close{min-width:40px;min-height:32px}
 #micro-light{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.1);white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
 #micro-light.off{background:rgba(255,160,60,.25);color:#ffc27a}
-.micro-stage{position:relative;flex:1 1 0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+.micro-body{flex:1 1 0;min-height:0;container-type:size;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:5px}
+.micro-stage{grid-area:1/1;position:relative;min-width:0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+#micro-readout{grid-area:1/1;position:relative;min-width:0;min-height:0;pointer-events:none}
 #micro-field{display:block;width:min(100%,60vh);aspect-ratio:1;width:calc(min(100cqw,100cqh) - 14px);height:calc(min(100cqw,100cqh) - 14px);border-radius:50%;background:#000;box-shadow:0 0 0 5px #17191d,0 0 0 7px rgba(255,255,255,.14);touch-action:none;cursor:grab}
 #micro-field:active{cursor:grabbing}
 #micro-lines{position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;pointer-events:none;font-size:12px;line-height:1.25}
@@ -700,15 +702,17 @@ const MICROSCOPE_CSS = `
 #micro-center>div{padding:6px 10px;border-radius:9px;background:rgba(8,12,20,.8)}
 #micro-center>div:empty{display:none}
 #micro-center #micro-dark-note{color:#ffc27a}
-#micro-info{position:absolute;left:0;right:0;bottom:0;display:none;gap:8px;padding:6px 8px;border-radius:9px;background:rgba(8,12,20,.86);line-height:1.28;font-size:12px;max-height:46%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#micro-hint{display:none}
+#micro-info{position:absolute;left:0;right:0;bottom:0;display:none;gap:8px;padding:6px 8px;border-radius:9px;background:rgba(8,12,20,.86);line-height:1.28;font-size:12px;max-height:46%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;pointer-events:auto}
 #micro-info.visible{display:flex}
 #micro-portrait{flex:0 0 52px;width:52px;height:52px;border-radius:7px}
+.micro-info-text{flex:1;min-width:0}
 #micro-info .micro-name{font-weight:700;font-size:13px}
 #micro-info .micro-latin{font-style:italic;opacity:.7;font-weight:400}
 #micro-info .micro-meta{opacity:.8;font-size:11px}
 #micro-info .micro-fact{margin-top:2px}
 #microscope-panel .micro-read{flex:0 0 auto;align-self:flex-start;min-width:36px;min-height:32px}
-.micro-bottom{position:relative;flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px}
+.micro-bottom{grid-area:2/1;position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px}
 .micro-optics{flex:1 1 220px;display:flex;flex-direction:column;gap:3px;min-width:0}
 #micro-powers{display:flex;gap:3px}
 #microscope-panel #micro-powers button{flex:1 1 0;min-width:0;min-height:30px;padding:0 2px}
@@ -729,9 +733,39 @@ const MICROSCOPE_CSS = `
 .micro-choice .micro-ico{flex:0 0 26px}
 #micro-filters,#micro-stain-choices{display:flex;flex-direction:column;gap:4px}
 #micro-stain-warn{color:#ffe9a8}
+/* Wide screens: the field is as tall as the room below the title, on the left; all the rest is a column on the right,
+   the description above and the controls at its foot. The column never gets narrower than 340px or 45% of the panel. */
 @media (min-aspect-ratio:5/4){
-#micro-lines{right:auto;width:max(170px,calc(50cqw - 50cqh - 6px))}
-#micro-info{left:auto;right:0;top:0;bottom:auto;width:max(170px,calc(50cqw - 50cqh - 6px));max-height:100%;box-sizing:border-box;flex-wrap:wrap}
+#microscope-panel{max-width:1320px}
+.micro-body{grid-template-columns:auto minmax(0,1fr);column-gap:10px}
+.micro-stage{grid-area:1/1/3/2;width:min(100cqh,calc(100cqw - min(340px,45cqw) - 10px))}
+#micro-readout{grid-area:1/2;display:flex;flex-direction:column;gap:6px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;pointer-events:auto}
+#micro-lines{position:static;flex:0 0 auto}
+#micro-lines>div{background:rgba(255,255,255,.06)}
+#micro-hint.visible{display:flex;flex-direction:column;gap:6px;margin:auto 0;padding:0 12px;text-align:center;font-size:13px;line-height:1.4}
+#micro-hint-light{opacity:.65;font-size:12px}
+#micro-hint-light:empty{display:none}
+#micro-info{position:static;flex:0 0 auto;max-height:none;overflow:visible}
+#micro-info.visible{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:start}
+.micro-info-text{display:contents}
+#micro-portrait{grid-area:1/1/3/2}
+#micro-info .micro-name{grid-area:1/2}
+#micro-info .micro-meta{grid-area:2/2}
+#microscope-panel .micro-read{grid-area:1/3/3/4}
+#micro-info .micro-fact{grid-column:1/-1}
+.micro-bottom{grid-area:2/2;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:5px}
+.micro-optics,#micro-bar{flex:0 0 auto}
+#microscope-panel .micro-tool{max-width:84px}
+.micro-pop{max-height:min(62vh,360px,calc(100cqh - 116px))}
+}
+/* With height to spare (not a phone on its side) the description can be read from further away. */
+@media (min-aspect-ratio:5/4) and (min-height:560px){
+#micro-info{font-size:14px;line-height:1.42}
+#micro-lines{font-size:13px}
+#micro-portrait{flex-basis:96px;width:96px;height:96px}
+#micro-info .micro-name{font-size:17px}
+#micro-info .micro-meta{font-size:12.5px}
+#micro-info .micro-fact{margin-top:6px}
 }
 `;
 
@@ -1230,6 +1264,7 @@ Object.assign(Game.prototype, {
         panel.querySelector('.micro-focus-wrap').title = microscopeSay('focusTip');
         panel.querySelectorAll('[data-power]').forEach((button) => { button.title = microscopeSay('powerTip', button.dataset.power); });
         panel.querySelector('.micro-read').title = microscopeSay('speciesGuideTip');
+        panel.querySelector('#micro-hint-text').textContent = microscopeSay('fieldHint');
         panel.querySelector('.micro-tools-read').textContent = microscopeSay('toolsGuide');
         panel.querySelector('.micro-stain-read').textContent = microscopeSay('stainGuide');
         panel.querySelector('.micro-stain-no').textContent = microscopeSay('notThisSlide');
@@ -1253,52 +1288,60 @@ Object.assign(Game.prototype, {
                 <div id="micro-light"></div>
                 <button class="micro-close" type="button">✕</button>
             </div>
-            <div class="micro-stage">
-                <canvas id="micro-field" width="520" height="520"></canvas>
-                <div id="micro-center">
-                    <div id="micro-dark-note"></div>
-                </div>
-                <div id="micro-lines">
-                    <div id="micro-slide-line"></div>
-                    <div id="micro-tool-line"></div>
-                    <div id="micro-note"></div>
-                </div>
-                <div id="micro-info">
-                    <canvas id="micro-portrait" width="168" height="168"></canvas>
-                    <div style="flex:1;min-width:0">
-                        <div class="micro-name"></div>
-                        <div class="micro-meta"></div>
-                        <div class="micro-fact"></div>
-                        <div class="micro-state micro-fact"></div>
+            <div class="micro-body">
+                <div class="micro-stage">
+                    <canvas id="micro-field" width="520" height="520"></canvas>
+                    <div id="micro-center">
+                        <div id="micro-dark-note"></div>
                     </div>
-                    <button type="button" class="micro-read">📖</button>
                 </div>
-            </div>
-            <div class="micro-bottom">
-                <div id="micro-pop-stain" class="micro-pop">
-                    <div id="micro-stain-title"></div>
-                    <div id="micro-stain-choices">
-                        ${Object.keys(MICRO_STAINS).map((stain) => `<button type="button" class="micro-choice micro-stain-${stain}"><span class="micro-ico"></span><span class="micro-choice-name"></span></button>`).join('')}
+                <div id="micro-readout">
+                    <div id="micro-lines">
+                        <div id="micro-slide-line"></div>
+                        <div id="micro-tool-line"></div>
+                        <div id="micro-note"></div>
                     </div>
-                    <div id="micro-stain-warn"></div>
-                    <div class="micro-row" id="micro-stain-confirm">
-                        <button type="button" class="micro-stain-yes"></button>
-                        <button type="button" class="micro-stain-no"></button>
+                    <div id="micro-hint">
+                        <div id="micro-hint-text"></div>
+                        <div id="micro-hint-light"></div>
                     </div>
-                    <button type="button" class="micro-stain-read" style="min-height:32px"></button>
-                </div>
-                <div id="micro-pop-filter" class="micro-pop">
-                    <div id="micro-filters"></div>
-                    <button type="button" class="micro-tools-read" style="min-height:32px"></button>
-                </div>
-                <div class="micro-optics">
-                    <div id="micro-powers">
-                        ${MICRO_MAGNIFICATIONS.map((power) => `<button type="button" data-power="${power}">${power}×</button>`).join('')}
+                    <div id="micro-info">
+                        <canvas id="micro-portrait" width="168" height="168"></canvas>
+                        <div class="micro-info-text">
+                            <div class="micro-name"></div>
+                            <div class="micro-meta"></div>
+                            <div class="micro-fact"></div>
+                            <div class="micro-state micro-fact"></div>
+                        </div>
+                        <button type="button" class="micro-read">📖</button>
                     </div>
-                    <label class="micro-focus-wrap"><span class="micro-focus-label"></span><input id="micro-focus" type="range" min="0" max="100" step="1"></label>
                 </div>
-                <div id="micro-bar">
-                    ${tool('clear')}${tool('drop')}${tool('capture')}${tool('stain')}${tool('filter')}${tool('dark')}${tool('guide', '📖')}
+                <div class="micro-bottom">
+                    <div id="micro-pop-stain" class="micro-pop">
+                        <div id="micro-stain-title"></div>
+                        <div id="micro-stain-choices">
+                            ${Object.keys(MICRO_STAINS).map((stain) => `<button type="button" class="micro-choice micro-stain-${stain}"><span class="micro-ico"></span><span class="micro-choice-name"></span></button>`).join('')}
+                        </div>
+                        <div id="micro-stain-warn"></div>
+                        <div class="micro-row" id="micro-stain-confirm">
+                            <button type="button" class="micro-stain-yes"></button>
+                            <button type="button" class="micro-stain-no"></button>
+                        </div>
+                        <button type="button" class="micro-stain-read" style="min-height:32px"></button>
+                    </div>
+                    <div id="micro-pop-filter" class="micro-pop">
+                        <div id="micro-filters"></div>
+                        <button type="button" class="micro-tools-read" style="min-height:32px"></button>
+                    </div>
+                    <div class="micro-optics">
+                        <div id="micro-powers">
+                            ${MICRO_MAGNIFICATIONS.map((power) => `<button type="button" data-power="${power}">${power}×</button>`).join('')}
+                        </div>
+                        <label class="micro-focus-wrap"><span class="micro-focus-label"></span><input id="micro-focus" type="range" min="0" max="100" step="1"></label>
+                    </div>
+                    <div id="micro-bar">
+                        ${tool('clear')}${tool('drop')}${tool('capture')}${tool('stain')}${tool('filter')}${tool('dark')}${tool('guide', '📖')}
+                    </div>
                 </div>
             </div>`;
         document.body.appendChild(panel);
@@ -1436,7 +1479,7 @@ Object.assign(Game.prototype, {
         const canvas = this.microscopeCanvas;
         const box = canvas.getBoundingClientRect();
         const ratio = Math.min(window.devicePixelRatio || 1, 2);
-        const size = Math.max(240, Math.min(760, Math.round((box.width || 480) * ratio)));
+        const size = Math.max(240, Math.min(800, Math.round((box.width || 480) * ratio)));
         if (canvas.width !== size) {
             canvas.width = size;
             canvas.height = size;
@@ -1696,6 +1739,8 @@ Object.assign(Game.prototype, {
             indicator.textContent = `🕯 ${this.microscopeLightName()}`;
             indicator.title = microscopeSay('lightLamp', this.microscopeLightName());
         }
+        // With nothing selected the column says what is catching the light; in the dark, the field already does.
+        panel.querySelector('#micro-hint-light').textContent = dark ? '' : indicator.title;
         // How to light it is a lesson: it stays in the middle of the black field, in full.
         panel.querySelector('#micro-dark-note').textContent = darkLine;
         const prep = this.microscopePrep;
@@ -1724,6 +1769,7 @@ Object.assign(Game.prototype, {
         const info = panel.querySelector('#micro-info');
         const org = this.microscopeSelected;
         info.classList.toggle('visible', Boolean(org));
+        panel.querySelector('#micro-hint').classList.toggle('visible', !org);
         if (!org) {
             this.microscopeShownSpecies = null;
             return;

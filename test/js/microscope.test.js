@@ -849,6 +849,11 @@ test('the panel: black and saying why with no light, lit by a candle beside it',
     assert.match(litPanel.querySelector('#micro-light').textContent, /candle/);
     assert.equal(litPanel.querySelector('#micro-dark-note').textContent, '');
     assert.ok(!litPanel.querySelector('#micro-light').classes.has('off'));
+    // With nothing selected, the column has something to say: what to do, and what is lighting it.
+    assert.ok(litPanel.querySelector('#micro-hint').classes.has('visible'));
+    assert.match(litPanel.querySelector('#micro-hint-text').textContent, /click/);
+    assert.match(litPanel.querySelector('#micro-hint-light').textContent, /candle/);
+    assert.equal(panel.querySelector('#micro-hint-light').textContent, '', 'in the dark the field itself says it');
 
     const sunny = panelGame();
     openPanel(sunny);
@@ -1371,7 +1376,8 @@ test('the panel fits a phone: it fills the window and nothing in it scrolls but 
     const rule = (selector) => css.slice(css.indexOf(`${selector}{`), css.indexOf('}', css.indexOf(`${selector}{`)));
     assert.match(rule('#microscope-panel'), /overflow:hidden/);
     assert.match(rule('#microscope-panel'), /position:fixed;inset:/);
-    assert.match(rule('.micro-stage'), /flex:1 1 0;min-height:0;container-type:size/);
+    assert.match(rule('.micro-body'), /flex:1 1 0;min-height:0;container-type:size/);
+    assert.match(rule('.micro-stage'), /min-height:0;container-type:size/);
     assert.match(rule('#micro-field'), /min\(100cqw,100cqh\)/, 'the field is as big as the stage allows, either way up');
     assert.match(rule('#micro-info'), /position:absolute/, 'the card lies over the stage and takes no room from it');
     assert.match(rule('#micro-lines'), /position:absolute/);

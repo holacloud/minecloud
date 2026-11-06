@@ -402,6 +402,10 @@ Páginas 237 a 244 de la guía del juego.
   otra cosa y el microscopio libre no se abre nada, y un mensaje dice qué hacer. El tubo vacío se devuelve.
 - **Retirar y cerrar:** el panel solo existe con un portaobjetos. Retirarlo lo devuelve lavado y cierra el panel. Escape
   o ✕ cierran y lo dejan puesto: sigue secándose y lo ve quien mire después.
+- **Disposición:** en pantalla ancha (de 5:4 en adelante) el campo, tan alto como cabe, va a la izquierda, y a la derecha
+  queda una columna de al menos 340 px (o el 45 % del panel, en pantallas pequeñas): arriba el estado del portaobjetos y
+  la descripción de lo seleccionado, o sin selección una pista y la luz; al pie, los aumentos, el enfoque y la barra de
+  iconos. En pantalla estrecha va todo en una columna: el campo, la ficha sobre él y los controles debajo.
 - **Panel:** el campo ocupa casi todo. Todo lo demás son iconos en una barra abajo (aumento, retirar, gota, capturar,
   tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip, siempre los mismos. El que no se puede usar sale gris
   y al pulsarlo dice por qué: la gota, mientras el portaobjetos sigue mojado; capturar, sin un tardígrado seleccionado. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes

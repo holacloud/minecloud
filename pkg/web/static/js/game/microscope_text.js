@@ -28,6 +28,7 @@ const MICROSCOPE_TEXT = {
     speciesGuideTip: { ES: 'Este organismo, en la guía', EN: 'This organism, in the guide' },
     toolsGuide: { ES: '📖 Filtros y campo oscuro', EN: '📖 Filters and dark-field' },
     stainGuide: { ES: '📖 Tinciones', EN: '📖 Stains' },
+    fieldHint: { ES: 'Toca o haz clic en lo que veas para saber qué es.', EN: 'Tap or click on what you see to find out what it is.' },
     lightShortSun: { ES: 'Luz del día', EN: 'Daylight' },
     lightShortOff: { ES: 'Sin luz', EN: 'No light' },
     askHow: {
