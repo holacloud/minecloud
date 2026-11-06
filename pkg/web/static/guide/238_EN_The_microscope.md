@@ -9,6 +9,7 @@ A foot, an arm, a stage for the slide, a mirror under it and a brass tube with i
 | Recipe (C key) | Ingredients | What it is for |
 |---|---|---|
 | ![](item:microscope) 1 `microscope` | 2 `glass` + 1 `copper_block` + 1 `iron_ore` + 1 `planks` | to look |
+| ![](item:microscope) 1 `microscope` (iron) | 2 `glass` + 2 `iron_ore` + 1 `planks` | the same, with no copper |
 | ![](item:glass_slide) 4 `glass_slide` | 1 `glass` | what you put on the stage |
 | ![](item:test_tube) 3 `test_tube` | 1 `glass` | to [take samples](239) |
 | ![](item:micropipette) 1 `micropipette` | 1 `glass` + 1 `leather` | to keep a tardigrade |

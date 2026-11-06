@@ -635,6 +635,7 @@ registerGameContent(({ addItem, addRecipe }) => {
         for (const { letter } of variants) addItem(microSampleId(habitat, letter));
     }
     addRecipe('microscope', 'Build Microscope', 'microscope', 1, [{ type: 'glass', amount: 2 }, { type: 'copper_block', amount: 1 }, { type: 'iron_ore', amount: 1 }, { type: 'planks', amount: 1 }]);
+    addRecipe('microscope_iron', 'Build Microscope (Iron)', 'microscope', 1, [{ type: 'glass', amount: 2 }, { type: 'iron_ore', amount: 2 }, { type: 'planks', amount: 1 }]);
     addRecipe('test_tube', 'Blow Test Tubes', 'test_tube', 3, [{ type: 'glass', amount: 1 }]);
     addRecipe('glass_slide', 'Cut Glass Slides', 'glass_slide', 4, [{ type: 'glass', amount: 1 }]);
     addRecipe('micropipette', 'Make Micropipette', 'micropipette', 1, [{ type: 'glass', amount: 1 }, { type: 'leather', amount: 1 }]);

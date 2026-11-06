@@ -377,6 +377,7 @@ Páginas 237 a 244 de la guía del juego.
 | Resultado | Ingredientes |
 |---|---|
 | `microscope` | 2 `glass` + 1 `copper_block` + 1 `iron_ore` + 1 `planks` |
+| `microscope` (hierro) | 2 `glass` + 2 `iron_ore` + 1 `planks` |
 | 3 `test_tube` | 1 `glass` |
 | 4 `glass_slide` | 1 `glass` |
 | `micropipette` | 1 `glass` + 1 `leather` |

@@ -9,6 +9,7 @@ Un pie, un brazo, una platina para el portaobjetos, un espejo debajo y un tubo d
 | Receta (tecla C) | Ingredientes | Para qué sirve |
 |---|---|---|
 | ![](item:microscope) 1 `microscope` | 2 `glass` + 1 `copper_block` + 1 `iron_ore` + 1 `planks` | para mirar |
+| ![](item:microscope) 1 `microscope` (hierro) | 2 `glass` + 2 `iron_ore` + 1 `planks` | lo mismo, sin cobre |
 | ![](item:glass_slide) 4 `glass_slide` | 1 `glass` | lo que pones en la platina |
 | ![](item:test_tube) 3 `test_tube` | 1 `glass` | para [tomar muestras](239) |
 | ![](item:micropipette) 1 `micropipette` | 1 `glass` + 1 `leather` | para quedarte con un tardígrado |

@@ -196,6 +196,7 @@ test('recipes are the plan\'s, and everything is in the inventory', () => {
         });
     }
     assert.deepEqual(plain(recipes.microscope), { output: 'microscope', amount: 1, inputs: { glass: 2, copper_block: 1, iron_ore: 1, planks: 1 } });
+    assert.deepEqual(plain(recipes.microscope_iron), { output: 'microscope', amount: 1, inputs: { glass: 2, iron_ore: 2, planks: 1 } });
     assert.deepEqual(plain(recipes.test_tube), { output: 'test_tube', amount: 3, inputs: { glass: 1 } });
     assert.deepEqual(plain(recipes.glass_slide), { output: 'glass_slide', amount: 4, inputs: { glass: 1 } });
     assert.deepEqual(plain(recipes.micropipette), { output: 'micropipette', amount: 1, inputs: { glass: 1, leather: 1 } });
@@ -1277,6 +1278,7 @@ test('the guide says what the game does', () => {
         const scope = guidePage(238, lang);
         // The recipes.
         assert.match(scope, /2 `glass` \+ 1 `copper_block` \+ 1 `iron_ore` \+ 1 `planks`/);
+        assert.match(scope, /2 `glass` \+ 2 `iron_ore` \+ 1 `planks`/);
         assert.match(scope, /1 `glass` \+ 1 `leather`/);
         const sample = guidePage(239, lang);
         // The shares of the plan, and never which letter.
