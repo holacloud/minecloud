@@ -129,7 +129,7 @@ const MICROSCOPE_TEXT = {
         EN: (name) => `${name}: only its own colour of light gets through. Other colours look darker.`
     },
     filterDarker: {
-        ES: (name, dye) => `${name}: ${dye} se ve más oscuro. Este color absorbe lo que deja pasar el filtro, así que destaca más.`,
+        ES: (name, dye) => `${name}: ${dye} se oscurece. Este color absorbe lo que deja pasar el filtro, así que destaca más.`,
         EN: (name, dye) => `${name}: the ${dye} looks darker. This colour absorbs what the filter lets through, so it stands out more.`
     },
     filterFades: {

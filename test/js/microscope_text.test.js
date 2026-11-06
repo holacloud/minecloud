@@ -389,7 +389,7 @@ test('the lines put together read right in Spanish', () => {
         assert.match(ctx.microscopeDarkLine(null), /necesita luz/);
         assert.match(ctx.microscopeDarkLine('Bombilla'), /^La bombilla de al lado no tiene corriente/);
         assert.match(ctx.microscopeStainWarning('methylene_blue'), /núcleos.*fija el portaobjetos para siempre.*no volverá con una gota/);
-        assert.match(ctx.microscopeSlideLine({ stain: 'iodine_tincture' }, 30), /^Teñido con Tintura de yodo y fijado/);
+        assert.match(ctx.microscopeSlideLine({ stain: 'iodine_tincture' }, 30), /^Teñido con la tintura de yodo y fijado/);
         assert.match(ctx.microscopeSlideLine({}, 10), /^Recién hecho/);
         assert.match(ctx.microscopeSlideLine({ revived: true }, 10), /^Mojado otra vez/);
         assert.match(ctx.microscopeSlideLine({}, 300), /se ha secado/);
@@ -399,7 +399,7 @@ test('the lines put together read right in Spanish', () => {
         assert.match(ctx.microscopeDarkfieldLine({ source: 'sun', level: 1, name: 'daylight' }), /luz del día/);
         assert.match(ctx.microscopeDarkfieldLine(null), /sin luz/);
         const orange = [0xff, 0xa3, 0x4a];
-        assert.match(ctx.microscopeFilterLine('Vidriera naranja', orange, 'methylene_blue'), /^Vidriera naranja: el azul de metileno se ve más oscuro/);
+        assert.match(ctx.microscopeFilterLine('Vidriera naranja', orange, 'methylene_blue'), /^Vidriera naranja: el azul de metileno se oscurece/);
         assert.match(ctx.microscopeFilterLine('Vidriera azul', [0x52, 0x72, 0xff], 'methylene_blue'), /se apaga/);
         assert.match(ctx.microscopeFilterLine('Vidriera azul', [0x52, 0x72, 0xff], ''), /solo deja pasar la luz de su color/);
         assert.match(ctx.microscopeStainNote('animal_cell', 'methylene_blue'), /núcleo azul oscuro/);

@@ -288,7 +288,7 @@ function microscopePick(organisms, view, px, py) {
 // A line about how a slide is doing.
 function microscopeSlideLine(prep, age, woke = -1) {
     if (!prep) return '';
-    if (prep.stain) return microscopeSay('slideStained', MICRO_STAINS[prep.stain] ? microscopeStainText(prep.stain).name : prep.stain);
+    if (prep.stain) return microscopeSay('slideStained', MICRO_STAINS[prep.stain] ? microscopeStainText(prep.stain).the : prep.stain);
     const stage = microSlideStage(age, woke);
     if (stage === 'dry') return microscopeSay('slideDry');
     if (stage === 'reviving') return microscopeSay('slideReviving', Math.ceil(MICRO_REVIVE_SECONDS - woke));
@@ -1405,7 +1405,7 @@ Object.assign(Game.prototype, {
     microscopeAskStain(stain) {
         if (!this.microscopeAt || !this.microscopePrep || this.microscopeStain() || !MICRO_STAINS[stain]) return;
         if (this.getInventoryCount(stain) <= 0) {
-            this.microscopeNote = microscopeSay('stainNoBottle', microscopeStainText(stain).name, microscopeStainText(stain).gets);
+            this.microscopeNote = microscopeSay('stainNoBottle', microscopeStainText(stain).the, microscopeStainText(stain).gets);
             this.microscopeRenderLines();
             return;
         }
@@ -1600,7 +1600,7 @@ Object.assign(Game.prototype, {
         }
         panel.querySelector('#micro-stain-warn').textContent = asked ? microscopeStainWarning(asked) : '';
         panel.querySelector('#micro-stain-confirm').style.display = asked ? '' : 'none';
-        if (asked) panel.querySelector('.micro-stain-yes').textContent = microscopeSay('stainIt', microscopeStainText(asked).name);
+        if (asked) panel.querySelector('.micro-stain-yes').textContent = microscopeSay('stainIt', microscopeStainText(asked).the);
         this.microscopePlacePop(pop, 'stain');
     },
 
