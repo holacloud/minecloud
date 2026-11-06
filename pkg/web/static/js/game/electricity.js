@@ -146,23 +146,59 @@ registerTexturePattern('battery_top', (f, s, tint, seed) => {
     });
 });
 
-// A lamp: a glass globe on a copper base; lit, it glows warm white.
+// A lamp: a glass globe on a copper base, with the filament on two wires in the middle. A box shows the
+// part of the texture it would cut from a whole block (js/game/furniture.js), so this paints by height,
+// the same on every side: below 3.5 sixteenths copper, above it glass. On a side face u runs across the
+// globe and v from top to bottom.
+const ELECTRIC_LAMP_COPPER_V = 1 - 3.5 / 16;
+const ELECTRIC_LAMP_FILAMENT_V = 1 - 8.5 / 16;
+// Off, pale clear glass with a soft highlight. On, warm yellow, brightest round the filament: it also
+// lights itself up, so it must leave room to show the filament whiter still.
+function electricLampGlass(f, on, u, v) {
+    const d = Math.hypot(u - 0.5, v - ELECTRIC_LAMP_FILAMENT_V);
+    const m = on ? 1 - d * 0.4 : 0.92 - d * 0.14 + Math.max(0, 0.14 - Math.hypot(u - 0.36, v - 0.3)) * 0.8;
+    return f.rgb(on ? 0xffd070 : 0xe2ecea).map((channel) => Math.min(255, channel * m));
+}
+// At any size, one row of pixels at least, so that 16 pixels show a line and no stray dots.
+function electricLampFilament(s, u, v, y0) {
+    return Math.abs(u - 0.5) < 0.09 && Math.abs(v - y0) < Math.max(0.018, 0.5 / s.size);
+}
 function electricPaintLamp(f, s, on, seed) {
-    const glass = f.rgb(on ? 0xfff0b8 : 0xb9b7a8);
-    const base = f.rgb(0xb06a32);
+    const copper = f.rgb(0xb06a32);
     f.each(s, (x, y, u, v) => {
-        if (v > 0.8) {
-            const ring = Math.floor((v - 0.8) * 25) % 2 === 0;
-            f.put(s, x, y, f.tone(s, base, ring ? 0.12 : -0.12), 0.7);
+        if (v > ELECTRIC_LAMP_COPPER_V) {
+            // The screw thread of the holder.
+            const ring = Math.floor((v - ELECTRIC_LAMP_COPPER_V) * 16) % 2 === 0;
+            f.put(s, x, y, copper.map((channel) => channel * (ring ? 1.08 : 0.82)), 0.7);
             return;
         }
-        const d = Math.hypot(u - 0.5, (v - 0.42) * 1.1);
-        let k = on ? 0.3 - d * 0.6 : -d * 0.4 + (f.hash(x, y, seed) - 0.5) * 0.06;
-        // The filament: a little zigzag in the middle.
-        if (Math.abs(u - 0.5) < 0.16 && Math.abs(v - 0.42) < 0.05 && ((u * 16) % 2 < 1)) k = on ? 0.6 : -0.35;
-        f.put(s, x, y, f.tone(s, glass, k), 0.4);
+        // The two wires holding the filament up.
+        const wire = Math.abs(Math.abs(u - 0.5) - 0.09) < Math.max(0.012, 0.5 / s.size) && v > ELECTRIC_LAMP_FILAMENT_V;
+        let c = electricLampGlass(f, on, u, v);
+        if (electricLampFilament(s, u, v, ELECTRIC_LAMP_FILAMENT_V)) c = on ? f.rgb(0xffffff) : f.rgb(0x6a5e50);
+        else if (wire) c = f.rgb(on ? 0xe0ac58 : 0xb4b8ac);
+        f.put(s, x, y, c, 0.4 + (f.hash(x, y, seed) - 0.5) * 0.02);
     });
 }
+// From above: the globe, and the filament across it.
+function electricPaintLampTop(f, s, on, seed) {
+    f.each(s, (x, y, u, v) => {
+        const c = electricLampFilament(s, u, v, 0.5) ? f.rgb(on ? 0xffffff : 0x6a5e50) : electricLampGlass(f, on, u, v * 0.6 + 0.2);
+        f.put(s, x, y, c, 0.4 + (f.hash(x, y, seed) - 0.5) * 0.02);
+    });
+}
+// From below: the copper of the holder, and the glass round it.
+function electricPaintLampBottom(f, s, on, seed) {
+    const copper = f.rgb(0x8a5228);
+    f.each(s, (x, y, u, v) => {
+        const r = Math.hypot(u - 0.5, v - 0.5);
+        f.put(s, x, y, r < 0.24 ? copper : electricLampGlass(f, on, u, v), 0.45 + (f.hash(x, y, seed) - 0.5) * 0.02);
+    });
+}
+registerTexturePattern('electric_lamp_top_off', (f, s, tint, seed) => electricPaintLampTop(f, s, false, seed));
+registerTexturePattern('electric_lamp_top_on', (f, s, tint, seed) => electricPaintLampTop(f, s, true, seed));
+registerTexturePattern('electric_lamp_bottom_off', (f, s, tint, seed) => electricPaintLampBottom(f, s, false, seed));
+registerTexturePattern('electric_lamp_bottom_on', (f, s, tint, seed) => electricPaintLampBottom(f, s, true, seed));
 // A bulb, a whole block of it: a metal frame round frosted glass and a coiled filament in the middle.
 // Without power, dull glass and a dark coil; with it, yellow and brightest round the coil.
 function electricPaintBulb(f, s, on, seed) {
@@ -480,10 +516,38 @@ for (let level = 1; level <= 4; level++) {
         variantOf: 'battery_block', dropType: 'battery_block', batteryLevel: level
     });
 }
+// A lamp you can tell at a glance: a copper holder and neck, and a globe rounded in steps, wider than
+// its neck, with cut corners. In sixteenths. Its `power` state makes `electric_lamp:on`, as the server
+// names it, and everything electric about it goes by that name, whatever its shape.
+const ELECTRIC_LAMP_BOXES = [
+    [5, 0, 5, 11, 1.5, 11], [6.5, 1.5, 6.5, 9.5, 3.5, 9.5],
+    [5, 3.5, 5, 11, 5, 11],
+    [4.5, 5, 4.5, 11.5, 6.5, 11.5], [3.5, 5, 6, 12.5, 6.5, 10], [6, 5, 3.5, 10, 6.5, 12.5],
+    [4, 6.5, 4, 12, 10.5, 12], [3, 6.5, 5.5, 13, 10.5, 10.5], [5.5, 6.5, 3, 10.5, 10.5, 13],
+    [4.5, 10.5, 4.5, 11.5, 12, 11.5], [3.5, 10.5, 6, 12.5, 12, 10], [6, 10.5, 3.5, 10, 12, 12.5],
+    [5, 12, 5, 11, 13.5, 11], [6.5, 13.5, 6.5, 9.5, 14.5, 9.5]
+].map((box) => box.map((value) => value / 16));
+registerBlockShape('electric_lamp', {
+    states: [['power', ['off', 'on']]],
+    boxes: () => ELECTRIC_LAMP_BOXES,
+    collision: () => [[3 / 16, 0, 3 / 16, 13 / 16, 14.5 / 16, 13 / 16]],
+    variant: (state, def) => (state.power === 'on' ? def.lit : {}),
+    materialKey: (state) => state.power,
+    iconState: { power: 'off' },
+    iconFit: true
+});
+registerBlockType('electric_lamp', {
+    color: 0xD8D2B8, name: 'Electric Lamp', breakDuration: 0.4, category: 'electric', electric: true, shape: 'electric_lamp', lightPasses: true,
+    faces: { top: 'electric_lamp_top_off', side: 'electric_lamp_off', bottom: 'electric_lamp_bottom_off' },
+    lit: {
+        powered: true, glow: 1.4, lightEmission: true,
+        faces: { top: 'electric_lamp_top_on', side: 'electric_lamp_on', bottom: 'electric_lamp_bottom_on' }
+    }
+});
+
 // Consumers: an "off" block (the item) and an ":on" variant set by the server. `light` is how much
 // light it gives while on (true: as a torch), and a bulb gives about half of what a lamp does.
 [
-    ['electric_lamp', 'Electric Lamp', 0xD8D2B8, 'electric_lamp_off', 'electric_lamp_on', 'electric_lamp_off', 'electric_lamp_on', 1.4],
     ['light_bulb', 'Light Bulb', 0xB4B09C, 'light_bulb_off', 'light_bulb_on', 'light_bulb_off', 'light_bulb_on', 1.2, 7, 0.2],
     ['grow_lamp', 'Grow Lamp', 0x7A3A8A, 'grow_lamp_off', 'grow_lamp_on', 'grow_lamp_off', 'grow_lamp_on', 1.1],
     ['electric_motor', 'Electric Motor', 0x8D969E, 'electric_motor_off', 'electric_motor_on', 'electric_motor_top', 'electric_motor_top', 0]

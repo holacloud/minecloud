@@ -33,7 +33,7 @@ function loadGame() {
     for (const file of files) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     vm.runInContext(fs.readFileSync(path.join(JS, 'game', 'electricity.js'), 'utf8'), context, { filename: 'electricity.js' });
-    vm.runInContext('this.WorldRenderer = WorldRenderer; this.ChunkColumn = ChunkColumn; this.LightField = LightField; this.ELECTRIC_KINDS = ELECTRIC_KINDS; this.electricKindOf = electricKindOf; this.Game = Game;', context);
+    vm.runInContext('this.WorldRenderer = WorldRenderer; this.ChunkColumn = ChunkColumn; this.LightField = LightField; this.ChunkMesher = ChunkMesher; this.ELECTRIC_KINDS = ELECTRIC_KINDS; this.electricKindOf = electricKindOf; this.Game = Game;', context);
     return context;
 }
 
@@ -138,6 +138,63 @@ test('a bulb: dull and dark without power, a dim light with it, and still the sa
     assert.equal(new ctx.LightField(world, 0, 0).get(3, 2, 3), 0);
     world.setEditedBlock(3, 1, 3, 'light_bulb:on');
     assert.equal(new ctx.LightField(world, 0, 0).get(3, 2, 3), 6);
+});
+
+test('the electric lamp is a lamp, not a cube: copper, a neck, a globe; the same names and light', () => {
+    const world = makeWorld();
+    const off = world.registry.id('electric_lamp');
+    const on = world.registry.id('electric_lamp:on');
+    assert.ok(off > 0 && on > 0);
+    assert.equal(world.blockTypes.electric_lamp.shape, 'electric_lamp');
+    assert.equal(world.blockTypes['electric_lamp:on'].variantOf, 'electric_lamp');
+    assert.equal(world.blockTypes['electric_lamp:on'].dropType, 'electric_lamp');
+    assert.deepEqual({ ...world.blockTypes['electric_lamp:on'].state }, { power: 'on' });
+    assert.equal(world.registry.fullCube[off], 0, 'it hides nothing behind it');
+    assert.equal(world.registry.transparent[off], 1, 'light passes it');
+    assert.equal(world.registry.solid[on], 1);
+    assert.equal(world.registry.lightLevel[on], 14);
+    assert.equal(world.registry.lightEmitter[off], 0);
+    assert.ok(world.blockTypes['electric_lamp:on'].glow > 0);
+    assert.ok(!world.blockTypes.electric_lamp.glow);
+    assert.deepEqual({ ...world.getFaceTextureSpecs('electric_lamp').side }.pattern, 'electric_lamp_off');
+    assert.deepEqual({ ...world.getFaceTextureSpecs('electric_lamp:on').side }.pattern, 'electric_lamp_on');
+
+    // The shape: wider above than at its foot, with a neck, and all of it inside the cell.
+    const boxes = world.shapes.boxes(off, 0);
+    assert.ok(boxes.length >= 8);
+    for (const box of boxes) {
+        for (const value of box) assert.ok(value >= 0 && value <= 1);
+        assert.ok(box[0] < box[3] && box[1] < box[4] && box[2] < box[5]);
+    }
+    const widthAt = (y) => Math.max(...boxes.filter((box) => box[1] <= y && box[4] > y).map((box) => box[3] - box[0]));
+    assert.ok(widthAt(2 / 16) < widthAt(1 / 16), 'a neck above the holder');
+    assert.ok(widthAt(8 / 16) > widthAt(1 / 16) && widthAt(8 / 16) > widthAt(2 / 16), 'a globe wider than its holder');
+    assert.ok(widthAt(13 / 16) < widthAt(8 / 16), 'and rounded on top');
+    // It has an inside, and no face that should show is taken for buried: round the middle, every
+    // box of the widest band shows its long faces.
+    const { faceBuried } = ctx.ChunkMesher;
+    const band = boxes.find((box) => box[0] === 3 / 16);
+    assert.equal(faceBuried(boxes, band, 0, false), false);
+    assert.equal(faceBuried(boxes, band, 0, true), false);
+    const top = boxes.at(-1);
+    assert.equal(faceBuried(boxes, top, 1, true), false);
+    // A collision a little lower than a block, and a player can stand on it.
+    const hit = world.shapes.collision(off, 0);
+    assert.equal(hit.length, 1);
+    assert.ok(hit[0][4] > 0.8 && hit[0][4] < 1);
+    assert.ok(world.registry.height[off] > 0.8 && world.registry.height[off] < 1);
+    // Placing it gives the plain name; the server lights it.
+    const placed = world.getPlacementBlocks('electric_lamp', 1, 2, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 0, y: 0, z: 0 }, look: { x: 0, y: 0, z: 1 } });
+    assert.deepEqual([...placed.map((part) => part.blockType)], ['electric_lamp']);
+    // Wires join it, lit or not, from every side.
+    world.setEditedBlock(2, 1, 2, 'copper_wire');
+    world.setEditedBlock(1, 1, 2, 'electric_lamp');
+    world.setEditedBlock(3, 1, 2, 'electric_lamp:on');
+    const wire = world.registry.id('copper_wire');
+    assert.equal(world.getShapeMask(wire, 2, 1, 2), 2 | 8);
+    // A cell next to it gets the block's light through it.
+    world.setEditedBlock(5, 1, 5, 'electric_lamp:on');
+    assert.ok(new ctx.LightField(world, 0, 0).get(5, 1, 6) >= 12);
 });
 
 test('wires join electric neighbours only', () => {
