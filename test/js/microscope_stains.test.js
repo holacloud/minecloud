@@ -590,13 +590,15 @@ function panelGame(carried = {}) {
         getBlockDisplayName: (type) => type,
         receiveSystemMessage: (message) => game.said.push(message.text),
         updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
-        playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}
+        playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {},
+        isGameplayActive: () => true
     });
     ctx.window.devicePixelRatio = 1;
     game.microscopeIdentified = () => {};
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
     ctx.ITEM_USE_HANDLERS[0].call(game, null, {});
+    slide(game, { source: 'cheek' });
     return game;
 }
 
@@ -671,13 +673,9 @@ test('the panel: a refused stain gives the bottle back and says why; none carrie
     assert.equal(game.microscopeStainAsked, null);
 });
 
-test('the panel: with no slide, or one already stained, there is no staining', () => {
+test('the panel: on a slide already stained, there is no staining', () => {
     const game = panelGame();
     const panel = game.microscopePanel;
-    game.microscopeRenderControls();
-    assert.equal(panel.querySelector('.micro-stain').style.display, 'none');
-    game.microscopeAskStain(IODINE);
-    assert.equal(game.microscopeStainAsked, null);
     slide(game, { source: 'cheek', stain: BLUE });
     assert.ok(panel.querySelector('.micro-stain').classes.has('off'));
     assert.match(panel.querySelector('.micro-stain').title, /one to a slide/);
@@ -732,7 +730,6 @@ test('the panel: a stained slide, for anyone looking, cannot be drawn from or re
     assert.equal(game.microscopeView({ age: 40, revived: false, stain: IODINE }).stain, IODINE);
 
     // A slide off and a new one on: clean again.
-    slide(game, null);
     slide(game, { source: 'sample_moss_a', seed: 77 });
     assert.equal(game.microscopeStain(), '');
     assert.ok(!panel.querySelector('.micro-stain').classes.has('off'));

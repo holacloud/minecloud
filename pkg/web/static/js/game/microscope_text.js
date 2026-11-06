@@ -7,12 +7,12 @@
 // microscopeSay(key, ...args) reads this. A function takes the same arguments in both languages.
 const MICROSCOPE_TEXT = {
     title: { ES: 'Microscopio', EN: 'Microscope' },
-    close: { ES: 'Cerrar', EN: 'Close' },
+    close: { ES: 'Cerrar: el portaobjetos se queda puesto', EN: 'Close: the slide stays on' },
     guideTip: { ES: 'El microscopio, en la guía', EN: 'The microscope, in the guide' },
     focus: { ES: 'Enfoque', EN: 'Focus' },
-    takeOff: { ES: 'Retirar el portaobjetos', EN: 'Take the slide off' },
+    takeOff: { ES: 'Retirar el portaobjetos: vuelve lavado y se cierra el panel', EN: 'Take the slide off: it comes back washed and the panel closes' },
     notThisSlide: { ES: 'En este portaobjetos no', EN: 'Not this slide' },
-    cheek: { ES: 'Frotis de tu mejilla: solo gasta el portaobjetos', EN: 'Smear of your cheek: it costs only the slide' },
+    cheek: { ES: 'frotis de tu mejilla', EN: 'smear of your cheek' },
     // The icons: a caption small enough for a phone's bar, and what the tooltip adds.
     capPower: { ES: 'Aumento', EN: 'Zoom' },
     capClear: { ES: 'Retirar', EN: 'Take off' },
@@ -22,7 +22,6 @@ const MICROSCOPE_TEXT = {
     capFilter: { ES: 'Filtro', EN: 'Filter' },
     capDark: { ES: 'Oscuro', EN: 'Dark' },
     capGuide: { ES: 'Guía', EN: 'Guide' },
-    capCheek: { ES: 'Mejilla', EN: 'Cheek' },
     powerTip: { ES: 'Aumento: púlsalo para cambiar entre 40×, 100× y 400×. También con + y -, o pellizcando', EN: 'Magnification: press it to go through 40×, 100× and 400×. Also + and -, or a pinch' },
     focusTip: { ES: 'Enfoque: esta barra, o la rueda del ratón sobre el campo', EN: 'Focus: this slider, or the mouse wheel over the field' },
     stainTip: { ES: 'Teñir este portaobjetos', EN: 'Stain this slide' },
@@ -32,14 +31,20 @@ const MICROSCOPE_TEXT = {
     stainGuide: { ES: '📖 Tinciones', EN: '📖 Stains' },
     lightShortSun: { ES: 'Luz del día', EN: 'Daylight' },
     lightShortOff: { ES: 'Sin luz', EN: 'No light' },
-    emptyHow: {
-        ES: 'Selecciona en tu inventario lo que quieras observar y haz clic derecho en el microscopio.',
-        EN: 'Select what you want to look at in your inventory, then right click the microscope.'
+    askHow: {
+        ES: 'Selecciona en tu inventario lo que quieras observar y haz clic derecho en el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla.',
+        EN: 'Select what you want to look at in your inventory, then right click the microscope. With a glass slide selected, it will be a smear of your cheek.'
     },
-    emptyHowTouch: {
-        ES: 'Selecciona en tu inventario lo que quieras observar y toca el microscopio.',
-        EN: 'Select what you want to look at in your inventory, then tap the microscope.'
+    askHowTouch: {
+        ES: 'Selecciona en tu inventario lo que quieras observar y toca el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla.',
+        EN: 'Select what you want to look at in your inventory, then tap the microscope. With a glass slide selected, it will be a smear of your cheek.'
     },
+    askTimeout: { ES: 'El microscopio no responde. Prueba otra vez.', EN: 'The microscope does not answer. Try again.' },
+    slideKept: {
+        ES: 'El portaobjetos se queda en el microscopio y se sigue secando. Vuelve a usar el microscopio para verlo.',
+        EN: 'The slide stays on the microscope and goes on drying. Use the microscope again to see it.'
+    },
+    slideTakenOff: { ES: 'Alguien ha retirado el portaobjetos de este microscopio.', EN: 'Someone took the slide off this microscope.' },
     slideAlreadyOn: {
         ES: 'Ya hay un portaobjetos puesto, y es de todos los que miran. Retíralo primero para poner el tuyo.',
         EN: 'There is already a slide on it, shared with whoever is looking. Take it off first to put on yours.'

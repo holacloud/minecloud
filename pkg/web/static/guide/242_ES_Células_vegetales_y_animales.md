@@ -9,7 +9,7 @@ Todo ser vivo está hecho de **células**, y muchos son solo una. Tú, una oveja
 | Qué poner en el portaobjetos | A | Lo que ves |
 |---|---|---|
 | ![](item:leaves) cualquier hoja, ![](item:wheat) `wheat` | **100×** | filas de células vegetales, pared con pared |
-| El botón de **frotis de mejilla**, ![](item:raw_fish) `raw_fish` | **400×** | células animales planas y sueltas |
+| Un **frotis de mejilla** (clic derecho con un `glass_slide` seleccionado), ![](item:raw_fish) `raw_fish` | **400×** | células animales planas y sueltas |
 
 Las muestras de musgo también suelen tener células vegetales. Un [tardígrado](240) que pase cerca puede pararse a comer.
 

@@ -3,11 +3,12 @@
 // (pkg/network/microscope.go), which also keeps the slide, shared by everyone looking at that block.
 // - A test tube used on water or moss takes a sample and leaves the block where it is. The server says
 //   what it became: the place fixes what it holds, so the same spot always gives the same.
-// - A right click on a microscope (a tap, on a touch screen; crouch to build against it) opens its panel.
-//   Holding something a slide takes, on a free microscope, it first uses a slide and prepares it
-//   (microscopeAutoPrepare); the empty tube comes back, and the slide comes back washed when it is taken
-//   off. A slide already there is someone's: it is shown, never replaced. With no slide there is also a
-//   smear of your cheek.
+// - The panel only exists with a slide on it. A right click on a microscope (a tap, on a touch screen; crouch
+//   to build against it) opens it if there is one: it is someone's, and is shown, never replaced. On a free
+//   microscope, something a slide takes in the hand uses a slide and goes on it (the empty tube comes back),
+//   a glass slide in the hand smears your own cheek, and anything else opens nothing and says what to do.
+//   Taking the slide off gives it back washed and closes the panel. Closing it any other way leaves the
+//   slide there, drying, for whoever looks next.
 // - The field gets the room: every tool is an icon in the bar along the bottom (microscopeRenderTools), and
 //   what is said about the field lies over it or beside it. An icon that cannot be used now is greyed and
 //   says why when pressed; one that makes no sense now is hidden. Stains and filters open a small popover
@@ -37,6 +38,8 @@ const MICROSCOPE_PENDING_KEY = 'minecloud-microscope-pending';
 const MICROSCOPE_KNOWN_KEY = 'minecloud-microscope-known';
 // Blocks away at which an open panel closes (the server allows 9).
 const MICROSCOPE_CLOSE_DISTANCE = 7;
+// How long the server has to say what is on a microscope (milliseconds).
+const MICROSCOPE_ASK_MS = 6000;
 // How long a note stays over the field (milliseconds).
 const MICROSCOPE_NOTE_MS = 8000;
 // How often the light is looked at, and how often at the most the field is redrawn (seconds).
@@ -89,7 +92,7 @@ function microscopeSettle(pending, outcome) {
 
 // The caption of each icon, in MICROSCOPE_TEXT.
 const MICROSCOPE_CAPTIONS = {
-    power: 'capPower', clear: 'capClear', drop: 'capDrop', capture: 'capCapture', stain: 'capStain', filter: 'capFilter', dark: 'capDark', guide: 'capGuide', cheek: 'capCheek'
+    power: 'capPower', clear: 'capClear', drop: 'capDrop', capture: 'capCapture', stain: 'capStain', filter: 'capFilter', dark: 'capDark', guide: 'capGuide'
 };
 
 // What each reason of the server is called in MICROSCOPE_TEXT.
@@ -168,6 +171,12 @@ function microscopeDarkLine(unlit) {
 // Whether the player holding this has something a slide takes. The smear of a cheek is no item.
 function microscopeObservable(type) {
     return Boolean(type) && type !== 'cheek' && Boolean(microSpeciesOf(type));
+}
+
+// What goes on a slide if this is in the hand on a free microscope, or null. A slide alone is a smear.
+function microscopeSourceHeld(type) {
+    if (type === 'glass_slide') return 'cheek';
+    return microscopeObservable(type) ? type : null;
 }
 
 // The next power on the one icon of the nosepiece, round and round.
@@ -695,7 +704,6 @@ const MICROSCOPE_CSS = `
 #micro-center>div{padding:6px 10px;border-radius:9px;background:rgba(8,12,20,.8)}
 #micro-center>div:empty{display:none}
 #micro-center #micro-dark-note{color:#ffc27a}
-#micro-empty{display:flex;flex-direction:column;align-items:center;gap:8px}
 #micro-info{position:absolute;left:0;right:0;bottom:0;display:none;gap:8px;padding:6px 8px;border-radius:9px;background:rgba(8,12,20,.86);line-height:1.28;font-size:12px;max-height:46%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 #micro-info.visible{display:flex}
 #micro-portrait{flex:0 0 52px;width:52px;height:52px;border-radius:7px}
@@ -713,7 +721,6 @@ const MICROSCOPE_CSS = `
 .micro-ico{display:block;width:26px;height:26px;background:center/contain no-repeat;image-rendering:pixelated;font:700 13px/26px 'Consolas',monospace;text-align:center;white-space:nowrap}
 .micro-glyph{font-size:20px}
 .micro-cap{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:400 10px/1.1 system-ui,sans-serif}
-#microscope-panel .micro-cheek{pointer-events:auto;flex:0 0 auto;width:64px}
 .micro-pop{position:absolute;bottom:calc(100% + 5px);left:0;width:min(320px,100%);max-height:min(62vh,360px);box-sizing:border-box;display:none;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(16,22,34,.98);font-size:12px;line-height:1.32;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;z-index:2}
 .micro-pop.visible{display:flex}
 .micro-pop .micro-row{display:flex;flex-wrap:wrap;gap:5px}
@@ -817,15 +824,23 @@ Object.assign(Game.prototype, {
         if (outcome.amount > 0) {
             this.playPickupSound();
             if (pending.op === 'prepare') {
-                this.microscopeNote = microscopeSay('slideReady', outcome.type === 'cheek' ? microscopeSay('cheek') : this.microscopeName(outcome.type));
+                const ready = microscopeSay('slideReady', outcome.type === 'cheek' ? microscopeSay('cheek') : this.microscopeName(outcome.type));
+                // The panel may be waiting for the news of the slide, which can come after this.
+                if (this.microscopeAsking) this.microscopeAsking.note = ready;
+                this.microscopeNote = ready;
                 this.microscopeRenderLines();
             }
             if (pending.op === 'sample') this.receiveSystemMessage({ text: microscopeSay('tookSample', this.microscopeName(outcome.type)) });
         } else if (pending.op === 'sample') {
             this.receiveSystemMessage({ text: microscopeSay(outcome.reason === 'too far' ? 'sampleTooFar' : 'sampleNeeds') });
-        } else {
+        } else if (this.microscopeAt) {
             this.microscopeNote = microscopeRefusalLine(pending.op, outcome.reason);
             this.microscopeRenderLines();
+        } else if (this.microscopeAsking && this.microscopeAsking.preparing) {
+            this.microscopeStopAsking(microscopeRefusalLine(pending.op, outcome.reason));
+        } else if (microscopeRefusalLine(pending.op, outcome.reason)) {
+            // Nothing open to say it on (a slide that could not be taken off, say).
+            this.receiveSystemMessage({ text: microscopeRefusalLine(pending.op, outcome.reason) });
         }
     },
 
@@ -854,7 +869,9 @@ Object.assign(Game.prototype, {
 
     // ---- Opening and closing ----
 
-    // `held`: the item in the hand, which goes on a slide if it can (microscopeAutoPrepare).
+    // A right click. The panel only exists with a slide on it, and only the server knows whether there is
+    // one, so this asks, and the game goes on until the answer (microscopeOnContents). `held`: the item in
+    // the hand, which decides what happens if the stage is free (microscopeOnFree).
     microscopeTryOpen(position, held = null) {
         const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
         if (!type || storageBaseName(type) !== 'microscope') return false;
@@ -862,20 +879,51 @@ Object.assign(Game.prototype, {
             this.receiveSystemMessage({ text: microscopeSay('notConnected') });
             return true;
         }
+        if (this.microscopeAsking) return true;
+        const at = { x: position.x, y: position.y, z: position.z };
+        this.microscopeAsking = { ...at, held, preparing: false, note: '', at: performance.now() };
+        this.network.send('storageOpen', at);
+        return true;
+    },
+
+    // The stage is free: what is in the hand goes on a slide, a slide alone smears a cheek, and with anything
+    // else there is no panel to open, only what to do.
+    microscopeOnFree(asking) {
+        const source = microscopeSourceHeld(asking.held);
+        if (this.getInventoryCount('glass_slide') <= 0) {
+            this.microscopeStopAsking(microscopeSay('needSlide'));
+            return;
+        }
+        if (!source) {
+            this.microscopeStopAsking(microscopeSay(this.touchControlsEnabled ? 'askHowTouch' : 'askHow'));
+            return;
+        }
+        asking.preparing = true;
+        if (!this.microscopeRequest('microscopePrepare', 'prepare', { x: asking.x, y: asking.y, z: asking.z, source }, source)) this.microscopeStopAsking('');
+    },
+
+    // No panel after all. Whatever opened since has its own conversation with the server.
+    microscopeStopAsking(line) {
+        this.microscopeAsking = null;
+        if (this.network && this.network.connected && !this.storageAt) this.network.send('storageClose', {});
+        if (line) this.receiveSystemMessage({ text: line });
+    },
+
+    microscopeShowPanel(asking) {
         this.microscopeBuildPanel();
-        this.microscopeAt = { x: position.x, y: position.y, z: position.z };
+        this.microscopeAt = { x: asking.x, y: asking.y, z: asking.z };
         this.microscopeContents = null;
         this.microscopeRev = -1;
         this.microscopePrep = null;
         this.microscopeOrganisms = [];
         this.microscopeScenery = [];
         this.microscopeSelected = null;
-        this.microscopeNote = '';
+        // Someone's slide is there already: it is shown, never replaced.
+        this.microscopeNote = asking.note || (!asking.preparing && microscopeSourceHeld(asking.held) ? microscopeSay('slideAlreadyOn') : '');
         this.microscopePower = this.microscopePower || 40;
         this.microscopeFocus = this.microscopeFocus ?? 0.5;
         this.microscopeStainAsked = null;
         this.microscopePop = null;
-        this.microscopeWanted = microscopeObservable(held) ? held : null;
         this.microscopeStage = [0, 0];
         this.microscopeLightTimer = 0;
         this.microscopeOpenedAt = performance.now();
@@ -885,18 +933,26 @@ Object.assign(Game.prototype, {
         if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
         this.microscopePanel.classList.add('visible');
         this.microscopeResizeField();
-        this.network.send('storageOpen', { ...this.microscopeAt });
         this.microscopeReadLight();
-        this.microscopeRenderControls();
         this.updatePointerLockHint();
-        return true;
+    },
+
+    // Taking the slide off is the end of looking: it comes back washed, and back to the game.
+    microscopeTakeOff() {
+        if (!this.microscopeAt || !this.microscopeRequest('microscopeClear', 'clear', { ...this.microscopeAt })) return;
+        this.microscopePrep = null;
+        this.microscopeClose();
     },
 
     microscopeClose() {
         if (!this.microscopeAt) return;
+        // Once, the first time: what stays on a microscope goes on drying, for anyone.
+        if (this.microscopePrep && !this.microscopeToldKept) {
+            this.microscopeToldKept = true;
+            this.receiveSystemMessage({ text: microscopeSay('slideKept') });
+        }
         this.microscopeAt = null;
         this.microscopeContents = null;
-        this.microscopeWanted = null;
         this.microscopeClosePop();
         this.microscopePanel.classList.remove('visible');
         if (this.network && this.network.connected) this.network.send('storageClose', {});
@@ -908,6 +964,16 @@ Object.assign(Game.prototype, {
     // ---- Messages from the server ----
 
     microscopeOnContents(contents) {
+        const asking = this.microscopeAsking;
+        if (asking && contents && Array.isArray(contents.slots) && contents.x === asking.x && contents.y === asking.y && contents.z === asking.z) {
+            if (!contents.microscope) {
+                // Free, for the first time of asking; while preparing, its answer is on the way.
+                if (!asking.preparing) this.microscopeOnFree(asking);
+                return;
+            }
+            this.microscopeAsking = null;
+            this.microscopeShowPanel(asking);
+        }
         const at = this.microscopeAt;
         if (!at || !contents || !Array.isArray(contents.slots)) return;
         if (contents.x !== at.x || contents.y !== at.y || contents.z !== at.z) return;
@@ -915,20 +981,23 @@ Object.assign(Game.prototype, {
         this.microscopeRev = contents.rev;
         this.microscopeContents = contents;
         const prep = contents.microscope || null;
+        // Taken off by someone else: with no slide there is no panel.
+        if (!prep) {
+            this.microscopePrep = null;
+            this.microscopeClose();
+            this.receiveSystemMessage({ text: microscopeSay('slideTakenOff') });
+            return;
+        }
         const before = this.microscopePrep;
         // Someone else may have stained it, or taken it off, while this was being asked.
-        if (!prep || prep.stain) {
+        if (prep.stain) {
             this.microscopeStainAsked = null;
             if (this.microscopePop === 'stain') this.microscopePop = null;
         }
-        const same = prep && before && prep.source === before.source && prep.seed === before.seed;
+        const same = before && prep.source === before.source && prep.seed === before.seed;
         this.microscopePrep = prep;
         this.microscopeAgeAt = performance.now();
-        if (!prep) {
-            this.microscopeOrganisms = [];
-            this.microscopeScenery = [];
-            this.microscopeSelected = null;
-        } else if (!same) {
+        if (!same) {
             const left = Math.max(0, (prep.tardigrades || 0) - (prep.taken || 0));
             this.microscopeOrganisms = microPopulate(prep.source, prep.seed, left);
             this.microscopeScenery = microScenery(prep.source, prep.seed);
@@ -945,24 +1014,16 @@ Object.assign(Game.prototype, {
                 if (gone === this.microscopeSelected) this.microscopeSelected = null;
             }
         }
-        // The first thing known about this microscope: is it free for what was in the hand?
-        const wanted = this.microscopeWanted;
-        this.microscopeWanted = null;
-        if (wanted) this.microscopeAutoPrepare(wanted);
         this.microscopeRenderControls();
     },
 
-    // What the player had selected when opening goes on a slide, if the stage is free. A slide already
-    // there is shared with whoever else is looking: it is never replaced.
-    microscopeAutoPrepare(source) {
-        if (this.microscopePrep) {
-            this.microscopeNote = microscopeSay('slideAlreadyOn');
+    microscopeOnClosed(where) {
+        const asking = this.microscopeAsking;
+        if (asking && where && where.x === asking.x && where.y === asking.y && where.z === asking.z) {
+            this.microscopeAsking = null;
+            this.receiveSystemMessage({ text: microscopeSay('refusedTooFar') });
             return;
         }
-        if (this.getInventoryCount(source) > 0) this.microscopePrepareSlide(source);
-    },
-
-    microscopeOnClosed(where) {
         const at = this.microscopeAt;
         if (at && where && where.x === at.x && where.y === at.y && where.z === at.z) this.microscopeClose();
     },
@@ -1037,6 +1098,9 @@ Object.assign(Game.prototype, {
                 this.network.send('storageSync', { reqIds: late.slice(0, STORAGE_SYNC_MAX) });
             }
         }
+        const asking = this.microscopeAsking;
+        if (asking && !this.isGameplayActive()) this.microscopeStopAsking('');
+        else if (asking && now - asking.at > MICROSCOPE_ASK_MS) this.microscopeStopAsking(microscopeSay('askTimeout'));
         const at = this.microscopeAt;
         if (!at) return;
         const block = this.world.getBlockTypeAt(at.x, at.y, at.z);
@@ -1190,11 +1254,6 @@ Object.assign(Game.prototype, {
                 <canvas id="micro-field" width="520" height="520"></canvas>
                 <div id="micro-center">
                     <div id="micro-dark-note"></div>
-                    <div id="micro-empty">
-                        <span id="micro-empty-how"></span>
-                        <span id="micro-empty-slides"></span>
-                        ${tool('cheek', '👄')}
-                    </div>
                 </div>
                 <div id="micro-lines">
                     <div id="micro-slide-line"></div>
@@ -1253,10 +1312,9 @@ Object.assign(Game.prototype, {
         });
         panel.querySelector('#micro-focus').addEventListener('input', (event) => this.microscopeSetFocus(Number(event.target.value) / 100));
         this.microscopeBindTool('power', () => this.microscopeSetPower(microscopeCyclePower(this.microscopePower)));
-        this.microscopeBindTool('clear', () => this.microscopeSend('microscopeClear', 'clear'));
+        this.microscopeBindTool('clear', () => this.microscopeTakeOff());
         this.microscopeBindTool('drop', () => this.microscopeSend('microscopeDrop', 'drop'));
         this.microscopeBindTool('capture', () => this.microscopeSend('microscopeCapture', 'capture'));
-        this.microscopeBindTool('cheek', () => this.microscopePrepareSlide('cheek'));
         this.microscopeBindTool('dark', () => this.microscopeToggleDark());
         this.microscopeBindTool('stain', () => this.microscopeTogglePop('stain'));
         this.microscopeBindTool('filter', () => this.microscopeTogglePop('filter'));
@@ -1604,29 +1662,11 @@ Object.assign(Game.prototype, {
         this.microscopePlacePop(pop, 'stain');
     },
 
-    microscopePrepareSlide(source) {
-        if (!this.microscopeAt) return;
-        if (this.getInventoryCount('glass_slide') <= 0) {
-            this.microscopeNote = microscopeSay('needSlide');
-            this.microscopeRenderLines();
-            return;
-        }
-        this.microscopeRequest('microscopePrepare', 'prepare', { ...this.microscopeAt, source }, source);
-    },
-
-    // What changes rarely: which icons, what is said with no slide, who is in the ring.
+    // What changes rarely: which icons, who is in the ring.
     microscopeRenderControls() {
         const panel = this.microscopePanel;
         if (!panel || !this.microscopeAt) return;
         panel.querySelector('#micro-focus').value = Math.round(this.microscopeFocus * 100);
-        const empty = !this.microscopePrep;
-        panel.querySelector('#micro-empty').style.display = empty ? '' : 'none';
-        if (empty) {
-            const slides = this.getInventoryCount('glass_slide');
-            panel.querySelector('#micro-empty-how').textContent = microscopeSay(this.touchControlsEnabled ? 'emptyHowTouch' : 'emptyHow');
-            panel.querySelector('#micro-empty-slides').textContent = slides > 0 ? '' : microscopeSay('needSlide');
-            this.microscopeSetTool('cheek', { tip: microscopeSay('cheek'), reason: slides > 0 ? '' : microscopeSay('needSlide') });
-        }
         this.microscopeRenderTools();
         this.microscopeRenderLines();
         this.microscopeRenderInfo();

@@ -398,8 +398,10 @@ Páginas 237 a 244 de la guía del juego.
 - **Preparar:** con algo observable seleccionado (una muestra, hojas, `wheat`, `milk`, `cheese`, setas, flores, `dirt`,
   `honeycomb`, lana, `raw_fish`) y el microscopio libre, clic derecho (en táctil, tocar): gasta un `glass_slide`, prepara
   y abre el panel. Sin portaobjetos, lo dice y cómo se hacen. Con uno ya puesto, solo lo enseña y avisa de que hay que
-  retirarlo: nunca lo cambia. Sin nada observable, abre el panel, con un icono para el frotis de mejilla. El tubo vacío
-  se devuelve, y el portaobjetos vuelve lavado al retirarlo.
+  retirarlo: nunca lo cambia. Con un `glass_slide` seleccionado y el microscopio libre: frotis de la propia mejilla. Con
+  otra cosa y el microscopio libre no se abre nada, y un mensaje dice qué hacer. El tubo vacío se devuelve.
+- **Retirar y cerrar:** el panel solo existe con un portaobjetos. Retirarlo lo devuelve lavado y cierra el panel. Escape
+  o ✕ cierran y lo dejan puesto: sigue secándose y lo ve quien mire después.
 - **Panel:** el campo ocupa casi todo. Todo lo demás son iconos en una barra abajo (aumento, retirar, gota, capturar,
   tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip. El que no se puede usar sale gris y al pulsarlo dice
   por qué; el que no tiene sentido no sale. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes

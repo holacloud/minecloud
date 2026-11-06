@@ -733,7 +733,8 @@ function panelGame({ lamp = false } = {}) {
         getBlockDisplayName: (type) => type,
         receiveSystemMessage: (message) => said.push(message.text),
         updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
-        playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}
+        playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {},
+        isGameplayActive: () => true
     });
     ctx.window.devicePixelRatio = 1;
     game.identified = [];
@@ -743,9 +744,15 @@ function panelGame({ lamp = false } = {}) {
     return game;
 }
 
-function openPanel(game, held = null) {
+// A right click, and the server's answer of a slide on the microscope (null: nothing on it).
+function rightClick(game, held = null) {
     assert.equal(ctx.ITEM_USE_HANDLERS[0].call(game, held, {}), true);
     assert.deepEqual(game.network.last(), ['storageOpen', { x: 0, y: 1, z: 0 }]);
+}
+
+function openPanel(game, held = null, prep = { source: 'cheek' }) {
+    rightClick(game, held);
+    slide(game, prep);
     return game.microscopePanel;
 }
 
@@ -759,7 +766,7 @@ function slide(game, prep) {
 test('the panel: black and saying why with no light, lit by a candle beside it', () => {
     const dark = panelGame();
     dark.world.getBlockId = () => 1; // A roof over everything.
-    const panel = openPanel(dark);
+    const panel = openPanel(dark, null, { source: 'tardigrade_tube' });
     assert.ok(panel.classes.has('visible'));
     assert.equal(dark.microscopeLight.level, 0);
     const line = panel.querySelector('#micro-light');
@@ -794,9 +801,8 @@ test('the panel: black and saying why with no light, lit by a candle beside it',
 
 test('the panel: preparing a slide, and the answers settling the inventory', () => {
     const game = panelGame();
-    const panel = openPanel(game, 'sample_moss_a');
+    rightClick(game, 'sample_moss_a');
     const counts = game.inventoryCounts;
-    assert.ok(game.microscopeSoft.canvas.width > 0 && game.microscopeSoft.canvas.width === Math.ceil(game.microscopeCanvas.width / 3), 'the blur buffers have the right size');
     assert.equal(counts.glass_slide, 2, 'nothing is spent before knowing it is free');
     slide(game, null);
     const [type, payload] = game.network.last();
@@ -809,8 +815,9 @@ test('the panel: preparing a slide, and the answers settling the inventory', () 
     assert.equal(game.microscopePending.size, 0);
 
     slide(game, { source: 'sample_moss_a', tardigrades: 2 });
+    const panel = game.microscopePanel;
+    assert.ok(game.microscopeSoft.canvas.width > 0 && game.microscopeSoft.canvas.width === Math.ceil(game.microscopeCanvas.width / 3), 'the blur buffers have the right size');
     assert.ok(game.microscopeOrganisms.some((org) => org.species === 'tardigrade'));
-    assert.equal(panel.querySelector('#micro-empty').style.display, 'none');
 
     // A drop swaps the flask for its bottle.
     panel.querySelector('.micro-drop').fire('click');
@@ -820,23 +827,27 @@ test('the panel: preparing a slide, and the answers settling the inventory', () 
     game.network.deliver('storageResult', { reqId: drop[1].reqId, type: 'water_flask', amount: 1 });
     assert.equal(counts.glass, 1);
 
-    // Taken off, the slide comes back washed.
+    // Taken off, the slide comes back washed, the panel closes and the pointer comes back.
+    let recaptured = 0;
+    game.recapturePointerLock = () => { recaptured++; };
     panel.querySelector('.micro-clear').fire('click');
-    const clear = game.network.last();
+    assert.equal(game.microscopeAt, null);
+    assert.ok(!panel.classes.has('visible'));
+    assert.equal(recaptured, 1);
+    const close = game.network.last();
+    assert.deepEqual(close, ['storageClose', {}]);
+    const clear = game.network.sent[game.network.sent.length - 2];
     assert.equal(clear[0], 'microscopeClear');
     game.network.deliver('storageResult', { reqId: clear[1].reqId, type: 'glass_slide', amount: 1 });
     assert.equal(counts.glass_slide, 2);
-    slide(game, null);
-    assert.equal(game.microscopeOrganisms.length, 0);
     assert.equal(game.microscopePrep, null);
 });
 
 test('the panel: a refused or lost request gives everything back, also after a reload', () => {
     const game = panelGame();
-    const panel = openPanel(game);
     const counts = game.inventoryCounts;
+    rightClick(game, 'glass_slide');
     slide(game, null);
-    panel.querySelector('.micro-cheek').fire('click');
     const { reqId } = game.network.last()[1];
     assert.equal(counts.glass_slide, 1);
     // Late: it asks, and the server's log (or its "lost") settles it.
@@ -844,10 +855,12 @@ test('the panel: a refused or lost request gives everything back, also after a r
     ctx.performance.now = () => 100000;
     game.microscopeUpdate(0.016);
     ctx.performance.now = now;
-    assert.deepEqual(game.network.last(), ['storageSync', { reqIds: [reqId] }]);
+    assert.ok(game.network.sent.some(([type, payload]) => type === 'storageSync' && payload.reqIds[0] === reqId));
     game.network.deliver('storageResult', { reqId, amount: 0, reason: 'occupied' });
     assert.equal(counts.glass_slide, 2);
-    assert.match(panel.querySelector('#micro-note').textContent, /already a slide/);
+    assert.match(game.said[game.said.length - 1], /already a slide/);
+    assert.deepEqual(game.network.last(), ['storageClose', {}]);
+    assert.equal(game.microscopePanel, undefined, 'no panel');
     // An answer that is not ours, a chest's, changes nothing.
     game.network.deliver('storageResult', { reqId: 'someone-elses', type: 'dirt', amount: 3 });
     assert.equal(counts.dirt, 5);
@@ -855,9 +868,8 @@ test('the panel: a refused or lost request gives everything back, also after a r
 
 test('the panel: touch and mouse on the field', () => {
     const game = panelGame();
-    const panel = openPanel(game);
+    const panel = openPanel(game, null, { source: 'tardigrade_tube' });
     const field = panel.querySelector('#micro-field');
-    slide(game, { source: 'tardigrade_tube' });
     const org = game.microscopeOrganisms[0];
     Object.assign(org, { x: 0, y: 0, depth: 0.5, moltAt: null });
     game.microscopeFocus = 0.5;
@@ -970,6 +982,7 @@ test('the panel: dry, wet again, and closing', () => {
     assert.equal(game.microscopeAt, null);
     assert.deepEqual(game.network.last(), ['storageClose', {}]);
     assert.ok(!panel.classes.has('visible'));
+    assert.ok(game.microscopePrep, 'it is on the microscope still');
     game.cameraController.camera.position.x = 1;
     openPanel(game);
     game.network.deliver('storageClosed', { x: 0, y: 1, z: 0 });
@@ -1024,75 +1037,172 @@ test('a test tube: on water, on moss, on anything else', () => {
 // ---- What is selected, on opening ----
 
 test('with something observable selected and a free microscope, it prepares and opens', () => {
-    for (const held of ['sample_moss_a', 'dirt']) {
+    for (const [held, source] of [['sample_moss_a', 'sample_moss_a'], ['dirt', 'dirt'], ['glass_slide', 'cheek']]) {
         const game = panelGame();
-        const panel = openPanel(game, held);
-        assert.ok(panel.classes.has('visible'));
-        const before = game.getInventoryCount(held);
+        rightClick(game, held);
+        assert.equal(game.microscopePanel, undefined, 'nothing yet: the server knows what is on it');
+        assert.ok(game.microscopeAsking);
         slide(game, null);
+        assert.equal(game.microscopePanel, undefined);
         const [type, payload] = game.network.last();
         assert.equal(type, 'microscopePrepare');
-        assert.equal(payload.source, held);
+        assert.equal(payload.source, source);
         assert.equal(game.getInventoryCount('glass_slide'), 1);
-        assert.equal(game.getInventoryCount(held), before - 1);
-        game.network.deliver('storageResult', { reqId: payload.reqId, type: held, amount: 1 });
-        assert.match(panel.querySelector('#micro-note').textContent, new RegExp(`Slide ready: ${held}`));
-        // Only once: later news of the same microscope prepares nothing more.
-        const sent = game.network.sent.length;
-        slide(game, null);
-        assert.equal(game.network.sent.length, sent);
+        // The news of the slide and its answer may come either way round.
+        game.network.deliver('storageResult', { reqId: payload.reqId, type: source, amount: 1 });
+        assert.equal(game.microscopePanel, undefined);
+        slide(game, { source });
+        const panel = game.microscopePanel;
+        assert.ok(panel.classes.has('visible'));
+        assert.equal(game.microscopeAsking, null);
+        assert.match(panel.querySelector('#micro-note').textContent, /Slide ready/);
+        assert.equal(game.network.sent.filter(([sent]) => sent === 'microscopePrepare').length, 1, 'only once');
+        // The other way round.
+        const other = panelGame();
+        rightClick(other, held);
+        slide(other, null);
+        const { reqId } = other.network.last()[1];
+        slide(other, { source });
+        assert.ok(other.microscopePanel.classes.has('visible'));
+        other.network.deliver('storageResult', { reqId, type: source, amount: 1 });
+        assert.match(other.microscopePanel.querySelector('#micro-note').textContent, /Slide ready/);
     }
+});
+
+test('a glass slide in the hand only smears on a free microscope: the slide is the only thing spent', () => {
+    const game = panelGame();
+    const before = { ...game.inventoryCounts };
+    rightClick(game, 'glass_slide');
+    slide(game, null);
+    const { reqId, source } = game.network.last()[1];
+    assert.equal(source, 'cheek');
+    game.network.deliver('storageResult', { reqId, type: 'cheek', amount: 1 });
+    assert.deepEqual({ ...game.inventoryCounts }, { ...before, glass_slide: before.glass_slide - 1 });
+    // It is no source of its own in any table, on either side, so no other path takes it for one.
+    assert.equal(ctx.microSpeciesOf('glass_slide'), null);
+    assert.doesNotMatch(goTable('microscopeItems'), /glass_slide|glassSlide/);
+    // With a slide on the microscope, it is not spent.
+    const busy = panelGame();
+    const panel = openPanel(busy, 'glass_slide');
+    assert.equal(busy.getInventoryCount('glass_slide'), 2);
+    assert.match(panel.querySelector('#micro-note').textContent, /already a slide/);
 });
 
 test('with a slide already on it, it shows that one, never replaces it, and says so', () => {
     const game = panelGame();
-    const panel = openPanel(game, 'sample_moss_a');
-    slide(game, { source: 'cheek' });
+    const panel = openPanel(game, 'sample_moss_a', { source: 'cheek' });
+    assert.ok(panel.classes.has('visible'));
     assert.equal(game.microscopePrep.source, 'cheek');
     assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'));
     assert.equal(game.getInventoryCount('glass_slide'), 2);
     assert.equal(game.getInventoryCount('sample_moss_a'), 1);
     assert.match(panel.querySelector('#micro-note').textContent, /already a slide.*Take it off first/);
+    // With nothing to put on, it just shows it.
+    const plainly = panelGame();
+    assert.equal(openPanel(plainly).querySelector('#micro-note').textContent, '');
 });
 
-test('with no slide to use, it opens and says how to get them; if another got there first, it says that too', () => {
-    const game = panelGame();
-    game.inventoryCounts.glass_slide = 0;
-    const panel = openPanel(game, 'dirt');
-    slide(game, null);
-    assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'));
-    assert.equal(game.getInventoryCount('dirt'), 5);
-    assert.match(panel.querySelector('#micro-note').textContent, /no Glass Slide.*C menu: 1 glass makes 4/);
-    assert.match(panel.querySelector('#micro-empty-slides').textContent, /C menu/);
-    assert.ok(panel.querySelector('.micro-cheek').classes.has('off'));
+test('no slide on it and nothing to put on: no panel, only what to do, and the server is told', () => {
+    for (const held of [null, 'test_tube', 'stone']) {
+        const game = panelGame();
+        rightClick(game, held);
+        slide(game, null);
+        assert.equal(game.microscopePanel, undefined, String(held));
+        assert.equal(game.microscopeAsking, null);
+        assert.deepEqual(game.network.last(), ['storageClose', {}]);
+        assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'));
+        assert.match(game.said[game.said.length - 1], /inventory.*right click the microscope.*glass slide selected.*smear of your cheek/);
+    }
+    const touch = panelGame();
+    touch.touchControlsEnabled = true;
+    rightClick(touch);
+    slide(touch, null);
+    assert.match(touch.said[touch.said.length - 1], /tap the microscope/);
+});
 
+test('no slides to use: no panel, and it says how to get them', () => {
+    for (const held of [null, 'dirt', 'sample_moss_a']) {
+        const game = panelGame();
+        game.inventoryCounts.glass_slide = 0;
+        rightClick(game, held);
+        slide(game, null);
+        assert.equal(game.microscopePanel, undefined);
+        assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'));
+        assert.equal(game.getInventoryCount('dirt'), 5);
+        assert.match(game.said[game.said.length - 1], /no Glass Slide.*C menu: 1 glass makes 4/);
+    }
+});
+
+test('asking: refused, too far, slow, or a menu opened meanwhile: no panel appears later', () => {
     const late = panelGame();
-    const latePanel = openPanel(late, 'dirt');
+    rightClick(late, 'dirt');
     slide(late, null);
     late.network.deliver('storageResult', { reqId: late.network.last()[1].reqId, amount: 0, reason: 'occupied' });
     assert.equal(late.getInventoryCount('dirt'), 5, 'all comes back');
     assert.equal(late.getInventoryCount('glass_slide'), 2);
-    assert.match(latePanel.querySelector('#micro-note').textContent, /already a slide/);
+    assert.equal(late.microscopeAsking, null);
+
+    const far = panelGame();
+    rightClick(far);
+    far.network.deliver('storageClosed', { x: 0, y: 1, z: 0 });
+    assert.equal(far.microscopeAsking, null);
+    assert.match(far.said[far.said.length - 1], /too far/);
+
+    const slow = panelGame();
+    rightClick(slow);
+    const now = ctx.performance.now;
+    ctx.performance.now = () => 100000;
+    slow.microscopeUpdate(0.016);
+    ctx.performance.now = now;
+    assert.equal(slow.microscopeAsking, null);
+    assert.match(slow.said[slow.said.length - 1], /does not answer/);
+
+    const busy = panelGame();
+    rightClick(busy);
+    busy.isGameplayActive = () => false;
+    busy.storageAt = { x: 9, y: 9, z: 9 };
+    const sent = busy.network.sent.length;
+    busy.microscopeUpdate(0.016);
+    assert.equal(busy.microscopeAsking, null);
+    assert.equal(busy.network.sent.length, sent, 'a chest opened meanwhile keeps its conversation');
+    slide(busy, { source: 'cheek' });
+    assert.equal(busy.microscopePanel, undefined);
+
+    // A second click while asking asks nothing more.
+    const twice = panelGame();
+    rightClick(twice);
+    const count = twice.network.sent.length;
+    ctx.ITEM_USE_HANDLERS[0].call(twice, null, {});
+    assert.equal(twice.network.sent.length, count);
 });
 
-test('with nothing observable selected it just opens: an instruction, and the cheek as one icon', () => {
-    for (const held of [null, 'test_tube', 'glass_slide', 'stone']) {
-        const game = panelGame();
-        const panel = openPanel(game, held);
-        slide(game, null);
-        assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'), String(held));
-        assert.equal(panel.querySelector('#micro-empty').style.display, '');
-        assert.match(panel.querySelector('#micro-empty-how').textContent, /right click the microscope/);
-        panel.querySelector('.micro-cheek').fire('click');
-        const [type, payload] = game.network.last();
-        assert.equal(type, 'microscopePrepare');
-        assert.equal(payload.source, 'cheek');
-    }
-    const touch = panelGame();
-    touch.touchControlsEnabled = true;
-    const panel = openPanel(touch);
-    slide(touch, null);
-    assert.match(panel.querySelector('#micro-empty-how').textContent, /tap the microscope/);
+test('closing leaves the slide on, said once; reopening shows it; someone else taking it off closes the panel', () => {
+    const game = panelGame();
+    const panel = openPanel(game, null, { source: 'sample_moss_a', seed: 5 });
+    const organisms = game.microscopeOrganisms.length;
+    panel.querySelector('.micro-close').fire('click');
+    assert.equal(game.microscopeAt, null);
+    assert.ok(!game.network.sent.some(([type]) => type === 'microscopeClear'), 'nothing is taken off');
+    assert.equal(game.getInventoryCount('glass_slide'), 2);
+    assert.match(game.said[game.said.length - 1], /stays on the microscope and goes on drying/);
+    const said = game.said.length;
+    openPanel(game, null, { source: 'sample_moss_a', seed: 5 });
+    assert.equal(game.microscopeOrganisms.length, organisms, 'the same slide');
+    game.microscopeClose();
+    assert.equal(game.said.length, said, 'said once');
+    // Open, and another player takes it off.
+    openPanel(game, null, { source: 'sample_moss_a', seed: 5 });
+    slide(game, null);
+    assert.equal(game.microscopeAt, null);
+    assert.ok(!panel.classes.has('visible'));
+    assert.match(game.said[game.said.length - 1], /Someone took the slide off/);
+    // A slide that could not be taken off says so, with no panel to say it on.
+    const stuck = panelGame();
+    const stuckPanel = openPanel(stuck);
+    stuckPanel.querySelector('.micro-clear').fire('click');
+    const clear = stuck.network.sent.find(([type]) => type === 'microscopeClear');
+    stuck.network.deliver('storageResult', { reqId: clear[1].reqId, amount: 0, reason: 'too far' });
+    assert.match(stuck.said[stuck.said.length - 1], /too far/);
 });
 
 test('a tap on a touch screen is the same right click, with what is selected', () => {
@@ -1109,17 +1219,15 @@ test('a tap on a touch screen is the same right click, with what is selected', (
     assert.equal(game.microscopeAt, undefined);
 });
 
-test('the list of the inventory is gone from the panel, and so are the stacked buttons', () => {
+test('the list of the inventory is gone from the panel, and so are the stacked buttons and the empty state', () => {
     const code = fs.readFileSync(path.join(JS, 'game', 'microscope.js'), 'utf8');
-    for (const gone of ['micro-sources', 'micro-prepare', 'micro-side', 'data-power', 'micro-stage-actions', 'micro-tools"']) assert.ok(!code.includes(gone), gone);
+    for (const gone of ['micro-sources', 'micro-prepare', 'micro-side', 'data-power', 'micro-stage-actions', 'micro-tools"', 'micro-empty', 'micro-cheek']) assert.ok(!code.includes(gone), gone);
 });
 
 test('the bar: every tool an icon, with a caption and a tooltip, shown only when it makes sense', () => {
     const game = panelGame();
     const panel = openPanel(game);
     const shown = () => ['power', 'clear', 'drop', 'capture', 'stain', 'filter', 'dark', 'guide'].filter((name) => panel.querySelector(`.micro-${name}`).style.display !== 'none');
-    slide(game, null);
-    assert.deepEqual(shown(), ['power', 'filter', 'dark', 'guide'], 'no slide: nothing to do to it');
     slide(game, { source: 'sample_moss_a', tardigrades: 2 });
     assert.deepEqual(shown(), ['power', 'clear', 'drop', 'stain', 'filter', 'dark', 'guide'], 'the capture does not give away what is there');
     game.microscopeSelected = game.microscopeOrganisms.find((org) => org.species === 'tardigrade');
@@ -1148,7 +1256,6 @@ test('the bar: every tool an icon, with a caption and a tooltip, shown only when
 test('a note says its piece and goes, so that the field is left clear', () => {
     const game = panelGame();
     const panel = openPanel(game);
-    slide(game, null);
     game.microscopeNote = 'something';
     game.microscopeRenderLines();
     assert.equal(panel.querySelector('#micro-note').textContent, 'something');
@@ -1173,7 +1280,7 @@ test('the panel fits a phone: it fills the window and nothing in it scrolls but 
     assert.match(rule('#micro-lines'), /pointer-events:none/, 'and does not stop a drag');
     assert.match(rule('#microscope-panel .micro-tool'), /min-width:0;max-width:64px;min-height:44px/, 'eight of them in 344 px, tall enough for a finger');
     // The captions are short enough for an icon of a phone's bar, in both languages.
-    for (const key of ['capPower', 'capClear', 'capDrop', 'capCapture', 'capStain', 'capFilter', 'capDark', 'capGuide', 'capCheek']) {
+    for (const key of ['capPower', 'capClear', 'capDrop', 'capCapture', 'capStain', 'capFilter', 'capDark', 'capGuide']) {
         const { ES, EN } = vm.runInContext(`MICROSCOPE_TEXT.${key}`, ctx);
         assert.ok(ES.length <= 8 && EN.length <= 8, key);
     }

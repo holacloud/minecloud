@@ -7,7 +7,7 @@
 ## El experimento, en el portaobjetos
 
 1. Selecciona una muestra con tardígrados (o un `tardigrade_tube`) y haz clic derecho en un [microscopio](238).
-2. **Espera.** El portaobjetos se seca en un día de juego, 240 segundos. El panel te dice cuánto falta.
+2. **Espera.** El portaobjetos se seca en un día de juego, 240 segundos. El panel te dice cuánto falta. Puedes cerrarlo con Escape: el portaobjetos sigue puesto y secándose, y otro clic derecho te lo vuelve a enseñar.
 3. Cerca del final, los tardígrados encogen las patas y se arrugan hasta quedar en **barrilitos** (*tun*, en inglés). Lo demás se para.
 4. Ya seco, mira alrededor. Los paramecios y otros están muertos. Los rotíferos, las amebas y las euglenas se han encerrado en **quistes**. En este juego, solo el barrilito puede volver.
 5. Pulsa el icono **Gota** (gasta un `water_flask`, y te quedas con la botella).

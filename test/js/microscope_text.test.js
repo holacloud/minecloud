@@ -205,26 +205,28 @@ function scopeGame(carried, all) {
         getInventoryCount: (type) => counts[type] || 0, addInventory() {},
         getBlockDisplayName(type) { return (this.world.blockTypes[type] || {}).name || type; },
         receiveSystemMessage() {}, updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
-        playTone() {}, playPickupSound() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}, microscopeIdentified() {}
+        playTone() {}, playPickupSound() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}, microscopeIdentified() {}, isGameplayActive: () => true
     });
     ctx.window.devicePixelRatio = 1;
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
     ctx.ITEM_USE_HANDLERS[0].call(game, null, {});
+    scopeSlide(game, { source: 'cheek' });
     return game;
 }
 
-const scopeSlide = (game, prep) => game.network.deliver('storageContents', {
-    x: 0, y: 1, z: 0, capacity: 1, slots: [{}], rev: (game.microscopeRev || 0) + 1, ...(prep ? { microscope: { seed: 42, age: 1, woke: -1, tardigrades: 1, ...prep } } : {})
-});
+function scopeSlide(game, prep) {
+    game.network.deliver('storageContents', {
+        x: 0, y: 1, z: 0, capacity: 1, slots: [{}], rev: (game.microscopeRev || 0) + 1, ...(prep ? { microscope: { seed: 42, age: 1, woke: -1, tardigrades: 1, ...prep } } : {})
+    });
+}
 
 // Goes through what a player can bring up on the panel, handing over what it reads at each step.
 function walkPanel(look) {
     const all = [];
     const game = scopeGame({}, all);
     const panel = game.microscopePanel;
-    scopeSlide(game, null);
-    look(readable(all), 'empty');
+    look(readable(all), 'just open');
     scopeSlide(game, { source: 'tardigrade_tube' });
     game.microscopeSelected = game.microscopeOrganisms[0];
     game.microscopeRenderControls();

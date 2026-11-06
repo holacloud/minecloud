@@ -9,7 +9,7 @@ Every living thing is made of **cells**, and many are only one. You, a sheep and
 | What to put on a slide | At | What you see |
 |---|---|---|
 | ![](item:leaves) any leaves, ![](item:wheat) `wheat` | **100×** | rows of plant cells, wall to wall |
-| The **cheek smear** button, ![](item:raw_fish) `raw_fish` | **400×** | loose, flat animal cells |
+| A **cheek smear** (right click with a `glass_slide` selected), ![](item:raw_fish) `raw_fish` | **400×** | loose, flat animal cells |
 
 Moss samples often have plant cells too. A [tardigrade](240) next to them may stop to eat.
 

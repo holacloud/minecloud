@@ -27,7 +27,7 @@ If the sun sets while you are looking, the field goes dark. A candle next to it 
 
 ## Preparing a slide
 
-**Select what you want to look at in your inventory or hotbar, then right click the microscope** (on a phone, tap it). If it is free, that uses one `glass_slide`, prepares the slide and opens the panel. With no slides it says so, and how to make them.
+**Select what you want to look at in your inventory or hotbar, then right click the microscope** (on a phone, tap it). If it is free, that uses one `glass_slide`, prepares the slide and opens the panel. With no slides it says so, and how to make them. With anything else in your hand nothing opens: it tells you what to do.
 
 What works:
 
@@ -44,9 +44,12 @@ What works:
 | ![](item:mushroom_red) either mushroom | [spores](244) |
 | ![](item:white_wool) any wool | scaly fibres, and a few bacteria |
 
-- A **smear of your cheek**: you need to carry nothing. Open the microscope with nothing to look at selected and press the **Cheek** icon. It costs only the slide, and shows [your own cells](242).
+- A **smear of your cheek**: select a `glass_slide` and right click the free microscope. It costs only that slide, and shows [your own cells](242).
 
-**Take the slide off** with the **Take off** icon and it comes back washed. What was on it is gone.
+The panel only exists with a slide on:
+
+- **Taking it off** (the **Take off** icon) gives it back washed and closes the panel. What was on it is gone.
+- **Closing the panel** (Escape or ✕) leaves it on. It goes on drying, and whoever looks next sees it: you with another right click, or another player. That is how the [cryptobiosis](241) experiment works.
 
 If there is already a slide on it, a right click only shows that one and never replaces it, even with a sample in your hand: it belongs to everyone looking. Take it off first. And beware: with a block that works in your hand, such as `dirt` or leaves, the click uses one up. To build against the microscope, crouch.
 

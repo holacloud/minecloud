@@ -27,7 +27,7 @@ Si se pone el sol mientras miras, el campo se oscurece. Una vela al lado lo arre
 
 ## Preparar un portaobjetos
 
-**Selecciona en tu inventario o en tu barra lo que quieras observar y haz clic derecho en el microscopio** (en un móvil, tócalo). Si está libre, gasta un `glass_slide`, prepara el portaobjetos y se abre el panel. Si no tienes portaobjetos, te lo dice y te recuerda cómo se hacen.
+**Selecciona en tu inventario o en tu barra lo que quieras observar y haz clic derecho en el microscopio** (en un móvil, tócalo). Si está libre, gasta un `glass_slide`, prepara el portaobjetos y se abre el panel. Si no tienes portaobjetos, te lo dice y te recuerda cómo se hacen. Con cualquier otra cosa en la mano no se abre nada: te dice qué hacer.
 
 Sirve:
 
@@ -44,9 +44,12 @@ Sirve:
 | ![](item:mushroom_red) cualquier seta | [esporas](244) |
 | ![](item:white_wool) cualquier lana | fibras con escamas, y unas pocas bacterias |
 
-- Un **frotis de tu mejilla**: no hace falta llevar nada. Abre el microscopio sin nada que observar y pulsa el icono **Mejilla**. Solo gasta el portaobjetos y enseña [tus propias células](242).
+- Un **frotis de tu mejilla**: selecciona un `glass_slide` y haz clic derecho en el microscopio libre. Solo gasta ese portaobjetos y enseña [tus propias células](242).
 
-Al **retirar el portaobjetos** (el icono **Retirar**) vuelve lavado. Lo que tenía encima se pierde.
+El panel solo existe con un portaobjetos puesto:
+
+- **Retirarlo** (el icono **Retirar**) te lo devuelve lavado y cierra el panel. Lo que tenía encima se pierde.
+- **Cerrar el panel** (Escape o ✕) lo deja puesto. Sigue secándose, y lo ve quien mire después: tú mismo con otro clic derecho, u otro jugador. Así funciona el experimento de la [criptobiosis](241).
 
 Si ya hay un portaobjetos puesto, el clic derecho solo lo enseña y nunca lo cambia, aunque lleves una muestra en la mano: es de todos los que miran. Retíralo primero. Y cuidado: con un bloque que sirva en la mano, como `dirt` u hojas, el clic gasta uno. Para construir contra el microscopio, agáchate.
 
