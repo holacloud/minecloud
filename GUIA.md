@@ -408,6 +408,35 @@ Páginas 237 a 244 de la guía del juego.
   en barrilito, y una gota de `water_flask` lo revive en unos 20 s. El congelador también hace `tardigrade_tun`.
 - Sin premio, y ningún microbio hace daño al jugador. Nada cambia en el inventario.
 
+### Tinciones, filtros y campo oscuro
+
+Páginas 246 y 247 de la guía del juego.
+
+| Resultado | Ingredientes |
+|---|---|
+| `methylene_blue` | 1 `coal_ore` + 1 `element_s` + 1 `water_flask` |
+| `darkfield_stop` | 1 `glass_slide` + 1 `coal_ore` |
+
+`iodine_tincture` sigue saliendo de la mesa de laboratorio (2 I + 1 `glass`).
+
+- **Tinción:** con un portaobjetos puesto, el panel pregunta primero y avisa del precio. La aplica el servidor (`microscopeStain`), se guarda en la preparación y la ven todos los que miren. Una por portaobjetos; el frasco se gasta y devuelve su `glass`; al retirar el portaobjetos se va.
+- **Lo que cuesta:** un portaobjetos teñido queda fijado. Nada se mueve ni se seca, y el servidor rechaza capturar y echar una gota: un tardígrado teñido no revive. Es una regla del juego: en la realidad hay tinciones vitales, en dosis muy bajas.
+- **Lo que enseña, por organismo** (`stains` en `microbes.js`):
+
+| Tinte | Almidón (células vegetales, pirenoides de espirogira, granos de `wheat`) | Resto |
+|---|---|---|
+| `iodine_tincture` | azul negro | amarillo pardo; glucógeno pardo rojizo en levadura, cianobacterias y células animales; la euglena guarda paramilón y sus granos quedan pálidos |
+| `methylene_blue` | no cambia | núcleos azul oscuro; bacterias y levadura azules enteras; las esporas de bacteria quedan como huecos claros |
+
+- **Filtros:** en el panel, de lo que lleves: `cobalt_glass`, `<color>_stained_glass` y `<color>_stained_glass_pane`. Multiplican el color de la luz junto con el de la lámpara. No se gastan; son de cada jugador y no se guardan.
+- **Campo oscuro:** con `darkfield_stop` encima, se activa en el panel. No se gasta; es de cada jugador y no se guarda. Fondo negro, bordes brillantes, y un brillo que depende de la luz del campo:
+
+| Nivel de luz del campo | Fuente | Brillo |
+|---|---|---|
+| 0,70 | `light_bulb` | 0,31: muy tenue |
+| 0,77 | `candle` | 0,53: flojo |
+| 0,88 o más | lámpara de mesa, `lantern`, `electric_lamp`, sol pleno | 0,87 a 1: bueno |
+
 ## Bloque luminoso
 
 Un cubo decorativo que brilla solo (página 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un

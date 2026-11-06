@@ -146,7 +146,8 @@
         [223, 234, 'Muebles', 'Furniture'],
         [235, 236, 'El taller: fundición y horno de arco', 'The workshop: foundry and arc furnace'],
         [237, 244, 'El mundo pequeño', 'The small world'],
-        [245, 245, 'Bloque luminoso', 'Glow block']
+        [245, 245, 'Bloque luminoso', 'Glow block'],
+        [246, 247, 'Tinciones y filtros', 'Stains and filters']
     ];
 
     // ---------------------------------------------------------------- pure helpers (tested)

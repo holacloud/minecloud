@@ -35,4 +35,4 @@ Si prefieres descubrirla tú, no sigas leyendo.
 |---|---|---|
 | `2 I → I₂ (tintura de yodo)` | compuesto | 1 `iodine_tincture` (gasta 1 `glass`) |
 
-Ver también: [Química](115), [Yodo](169), [Salud, comida y peligros](9).
+Ver también: [Química](115), [Yodo](169), [Salud, comida y peligros](9), [Tinciones](246).

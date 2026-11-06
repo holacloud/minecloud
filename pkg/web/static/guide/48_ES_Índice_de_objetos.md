@@ -190,3 +190,5 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:test_tube) [Cómo tomar una muestra](239): test_tube, moss, las `sample_*`
 - ![](item:tardigrade_tube) [Tardígrados](240): tardigrade_tube
 - ![](item:tardigrade_tun) [Criptobiosis](241): tardigrade_tun
+- ![](item:methylene_blue) [Tinciones](246): methylene_blue, iodine_tincture
+- ![](item:darkfield_stop) [Filtros y campo oscuro](247): darkfield_stop, cobalt_glass, las vidrieras

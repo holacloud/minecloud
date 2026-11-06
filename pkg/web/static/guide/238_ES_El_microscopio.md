@@ -60,6 +60,11 @@ Todos los que miren el mismo microscopio ven lo mismo: los mismos organismos en 
 - **Enfoque.** Cada cosa está a su propia profundidad en la gota, y lo que está a otra se ve borroso. A más aumento, más fina la parte nítida, así que a 400× hay que ir ajustando.
 - **Identificar.** Haz clic en lo que ves. Si es demasiado pequeño para ese aumento o está desenfocado, el panel te dice qué hacer. Si no, se abre su ficha y entra en tu [bestiario](5).
 
+## Ver más
+
+- **[Tinciones](246):** yodo o azul de metileno en el portaobjetos. Enseñan el almidón y los núcleos, y matan lo que enseñan.
+- **[Filtros y campo oscuro](247):** vidrio de color en la luz, o un campo negro donde todo brilla por los bordes. Ninguno se gasta.
+
 ## Ciencia y juego
 
 **Es verdad:**
@@ -77,4 +82,4 @@ Todos los que miren el mismo microscopio ven lo mismo: los mismos organismos en 
 
 > **Pruébalo de verdad:** un microscopio escolar barato, o incluso una lente de pinza para el móvil, enseña muy bien el agua de charca y la piel de cebolla.
 
-Ver también: [El mundo pequeño](237), [Cómo tomar una muestra](239), [Luces sin electricidad](228).
+Ver también: [El mundo pequeño](237), [Cómo tomar una muestra](239), [Tinciones](246), [Filtros y campo oscuro](247), [Luces sin electricidad](228).

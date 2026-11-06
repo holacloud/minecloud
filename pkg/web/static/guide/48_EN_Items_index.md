@@ -190,3 +190,5 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:test_tube) [How to take a sample](239): test_tube, moss, the `sample_*`
 - ![](item:tardigrade_tube) [Tardigrades](240): tardigrade_tube
 - ![](item:tardigrade_tun) [Cryptobiosis](241): tardigrade_tun
+- ![](item:methylene_blue) [Stains](246): methylene_blue, iodine_tincture
+- ![](item:darkfield_stop) [Filters and dark-field](247): darkfield_stop, cobalt_glass, the stained glass

@@ -60,6 +60,11 @@ Everybody looking at the same microscope sees the same slide: the same organisms
 - **Focus.** Everything lies at its own depth in the drop, and what is at another depth looks blurred. The more power, the thinner the part that is sharp, so at 400× you have to keep turning.
 - **Identify.** Click what you see. If it is too small for this power or out of focus, the panel says what to do. Otherwise its sheet opens and it goes in your [bestiary](5).
 
+## Seeing more
+
+- **[Stains](246):** iodine or methylene blue on the slide. They show starch and nuclei, and they kill what they show.
+- **[Filters and dark-field](247):** coloured glass in the light, or a black field where everything shines at its edges. Neither is used up.
+
 ## Science and game
 
 **True:**
@@ -77,4 +82,4 @@ Everybody looking at the same microscope sees the same slide: the same organisms
 
 > **Try it for real:** a cheap school microscope, or even a clip-on lens for a phone, shows pond water and onion skin very well.
 
-See also: [The small world](237), [How to take a sample](239), [Lights without electricity](228).
+See also: [The small world](237), [How to take a sample](239), [Stains](246), [Filters and dark-field](247), [Lights without electricity](228).

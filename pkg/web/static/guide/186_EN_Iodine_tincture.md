@@ -35,4 +35,4 @@ If you would rather discover it yourself, stop reading here.
 |---|---|---|
 | `2 I → I₂ (iodine tincture)` | compound | 1 `iodine_tincture` (uses 1 `glass`) |
 
-See also: [Chemistry](115), [Iodine](169), [Health, food and dangers](9).
+See also: [Chemistry](115), [Iodine](169), [Health, food and dangers](9), [Stains](246).

@@ -309,6 +309,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 243 | Protozoos y algas | Protozoa and algae | `paramecium`, `amoeba`, `vorticella`, `euglena`, `diatom`, `spirogyra` |
 | 244 | Bacterias, casi todas son amigas | Bacteria, nearly all are friends | `soil_bacteria`, `lactobacillus`, `cyanobacteria`; `yeast` and `mushroom_spore`, which are fungi |
 | 245 | Bloque luminoso | Glow block | glow_block and its 220 colour states (`:k<kelvin>`, `:rgb<r><g><b>`): decoration that shines and lights nothing, js/game/glow_block.js, pkg/network/glow_block.go (items index 48) |
+| 246 | Tinciones | Stains | iodine_tincture and methylene_blue on a slide (pkg/network/microscope.go, `stains` in js/game/microbes.js): what each shows, organism by organism; the price; vital stains (microscope 238, items index 48, contents 0) |
+| 247 | Filtros y campo oscuro | Filters and dark-field | cobalt_glass and the stained glass as filters, darkfield_stop: the viewer's own, not spent, not saved; why dark-field needs strong light (microscope 238, items index 48, contents 0) |
 
 ### Secret pages
 
