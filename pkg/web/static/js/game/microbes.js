@@ -9,8 +9,12 @@
 //   its front towards +x. microDrawOrganism places one on a field, microDrawPortrait fills a canvas.
 // - Sizes: `size` is the real one, in words. `drawn` is its length on the slide in micrometres, truer
 //   for the larger animals and a little generous for the smallest, which would be single pixels.
-// MICRO_SAMPLES and MICRO_ITEMS mirror sampleVariants and microscopeItems in pkg/network/microscope.go
-// (test/js/microscope.test.js checks them).
+// - A stain (MICRO_STAINS) goes on the whole slide. What it does is written species by species in the
+//   catalogue (`stains`): the colour it takes and which parts stand out (`marks`, which the draw functions
+//   know where to paint). Dark-field and stains recolour every drawing through one small stand-in for the
+//   canvas (MicroLens), with no change to how each species is drawn and no offscreen compositing.
+// MICRO_SAMPLES, MICRO_ITEMS and MICRO_STAINS mirror sampleVariants, microscopeItems and microscopeStains
+// in pkg/network/microscope.go (test/js/microscope.test.js checks them).
 
 const MICRO_MAGNIFICATIONS = [40, 100, 400];
 // Screen pixels per micrometre at each magnification, for a field 300 pixels in radius.
@@ -95,6 +99,19 @@ const MICRO_WOOL_SPECIES = ['soil_bacteria'];
 
 // What lies on the slide with them and is not alive: only scenery.
 const MICRO_MATERIALS = { dirt: 'grains', honeycomb: 'pollen', milk: 'fat', cheese: 'fat', wheat: 'starch' };
+
+// What can be run onto a slide. dye: its colour, for telling which filters make it stand out. shows: what
+// it is for, in the panel. gets: where the bottle comes from.
+const MICRO_STAINS = {
+    iodine_tincture: {
+        name: 'Iodine Tincture', dye: [122, 58, 26],
+        shows: 'Starch turns blue-black; the rest of a cell, yellow-brown.', gets: 'a reaction at the lab bench'
+    },
+    methylene_blue: {
+        name: 'Methylene Blue', dye: [36, 74, 176],
+        shows: 'Nuclei turn dark blue; bacteria and yeast, blue all over.', gets: 'the C menu'
+    }
+};
 
 // A sample's item id for a habitat and letter.
 function microSampleId(habitat, letter) {
@@ -190,6 +207,195 @@ function microGranules(ctx, seed, count, rx, ry, color, size) {
         ctx.beginPath();
         ctx.ellipse(Math.cos(angle) * r * rx, Math.sin(angle) * r * ry, dot, dot, 0, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// The lens: a stain and dark-field, on any drawing
+
+// [r, g, b, a] of a colour as the drawings write it, or null.
+function microParseColor(color) {
+    const text = String(color).trim();
+    if (text[0] === '#') {
+        const hex = text.length === 4 ? [...text.slice(1)].map((c) => c + c).join('') : text.slice(1);
+        const value = parseInt(hex, 16);
+        return Number.isNaN(value) ? null : [(value >> 16) & 255, (value >> 8) & 255, value & 255, 1];
+    }
+    const match = /^rgba?\(([^)]+)\)$/.exec(text);
+    if (!match) return null;
+    const parts = match[1].split(',').map(Number);
+    return [parts[0], parts[1], parts[2], parts.length > 3 ? parts[3] : 1];
+}
+
+function microWriteColor([r, g, b, a]) {
+    return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${Math.round(Math.min(1, a) * 1000) / 1000})`;
+}
+
+// What a dye does to a colour: it keeps how dark the thing was, takes on the tint as far as `amount`, and
+// absorbs a little more than it did.
+function microStainedColor([r, g, b, a], tint, amount) {
+    const shade = 0.45 + 0.55 * ((0.3 * r + 0.59 * g + 0.11 * b) / 255);
+    return [
+        microLerp(r, tint[0] * shade, amount), microLerp(g, tint[1] * shade, amount), microLerp(b, tint[2] * shade, amount),
+        Math.min(1, a * (1 + amount * 0.3))
+    ];
+}
+
+// A colour on a black field. Dark-field has only what the thing scatters, so what was a dark line on a
+// bright field (an edge) is now the bright part, keeping a hint of its hue; what was a clear fill glows
+// faintly, and more if it is strongly coloured, as pigment is.
+function microDarkColor([r, g, b, a], stroke) {
+    const top = Math.max(r, g, b, 1);
+    const chroma = (top - Math.min(r, g, b)) / top;
+    const up = 255 / top;
+    const white = stroke ? 0.55 : 0.25;
+    const bright = (value) => microLerp(value * up, 255, white);
+    return [bright(r), bright(g), bright(b), stroke ? Math.min(1, a * 1.3) : a * (0.1 + 0.45 * chroma)];
+}
+
+// What the bits too small to draw are on a black field: points of light, which is what they really look like.
+const MICRO_DARK_DOT = 'rgba(232,238,250,0.92)';
+
+// A stand-in for a 2D canvas context: it passes everything on and recolours what is painted with. Its
+// colours are worked out once and remembered, so that it costs next to nothing per frame. `marking` paints
+// a stained part with its own colour, not tinted again (microMarkFill, microMarkStroke). `thin` is the
+// thinnest line dark-field keeps, in the units of the drawing: an edge has to be seen.
+class MicroLens {
+    constructor() {
+        this.ctx = null;
+        this.entry = null;
+        this.dark = false;
+        this.thin = 0;
+        this.marking = false;
+        this.books = new Map();
+    }
+
+    aim(ctx, entry, dark, thin) {
+        this.ctx = ctx;
+        this.entry = entry;
+        this.dark = Boolean(dark);
+        this.thin = thin || 0;
+        this.marking = false;
+        return this;
+    }
+
+    // Each way of recolouring (stain or none, dark or not, fill or line) has its own memory.
+    paint(color, stroke) {
+        if (typeof color !== 'string') return color && color.real ? color.real : color;
+        const entry = this.marking ? null : this.entry;
+        if (!entry && !this.dark) return color;
+        const key = entry || MicroLens;
+        let book = this.books.get(key);
+        if (!book) this.books.set(key, book = [new Map(), new Map(), new Map(), new Map()]);
+        const known = book[(this.dark ? 2 : 0) + (stroke ? 1 : 0)];
+        let out = known.get(color);
+        if (out === undefined) {
+            let parts = microParseColor(color);
+            if (parts) {
+                if (entry) parts = microStainedColor(parts, entry.tint, entry.amount);
+                if (this.dark) parts = microDarkColor(parts, stroke);
+                out = microWriteColor(parts);
+            } else {
+                out = color;
+            }
+            // Only the gut of a tardigrade makes many, as it fills: the limit is for that.
+            if (known.size > 600) known.clear();
+            known.set(color, out);
+        }
+        return out;
+    }
+
+    gradient(real) {
+        return { real, addColorStop: (at, color) => real.addColorStop(at, this.paint(color, false)) };
+    }
+
+    set fillStyle(color) { this.ctx.fillStyle = this.paint(color, false); }
+
+    get fillStyle() { return this.ctx.fillStyle; }
+
+    set strokeStyle(color) { this.ctx.strokeStyle = this.paint(color, true); }
+
+    get strokeStyle() { return this.ctx.strokeStyle; }
+
+    set lineWidth(width) { this.ctx.lineWidth = this.dark ? Math.max(width, this.thin) : width; }
+
+    get lineWidth() { return this.ctx.lineWidth; }
+
+    set lineCap(cap) { this.ctx.lineCap = cap; }
+
+    get lineCap() { return this.ctx.lineCap; }
+
+    set globalAlpha(alpha) { this.ctx.globalAlpha = alpha; }
+
+    get globalAlpha() { return this.ctx.globalAlpha; }
+
+    createLinearGradient(x0, y0, x1, y1) { return this.gradient(this.ctx.createLinearGradient(x0, y0, x1, y1)); }
+
+    createRadialGradient(x0, y0, r0, x1, y1, r1) { return this.gradient(this.ctx.createRadialGradient(x0, y0, r0, x1, y1, r1)); }
+
+    save() { this.ctx.save(); }
+
+    restore() { this.ctx.restore(); }
+
+    translate(x, y) { this.ctx.translate(x, y); }
+
+    rotate(angle) { this.ctx.rotate(angle); }
+
+    scale(x, y) { this.ctx.scale(x, y); }
+
+    beginPath() { this.ctx.beginPath(); }
+
+    closePath() { this.ctx.closePath(); }
+
+    moveTo(x, y) { this.ctx.moveTo(x, y); }
+
+    lineTo(x, y) { this.ctx.lineTo(x, y); }
+
+    quadraticCurveTo(cx, cy, x, y) { this.ctx.quadraticCurveTo(cx, cy, x, y); }
+
+    arc(x, y, r, from, to, back) { this.ctx.arc(x, y, r, from, to, back); }
+
+    ellipse(x, y, rx, ry, rotation, from, to) { this.ctx.ellipse(x, y, rx, ry, rotation, from, to); }
+
+    rect(x, y, w, h) { this.ctx.rect(x, y, w, h); }
+
+    fill() { this.ctx.fill(); }
+
+    stroke() { this.ctx.stroke(); }
+
+    clip() { this.ctx.clip(); }
+
+    fillRect(x, y, w, h) { this.ctx.fillRect(x, y, w, h); }
+}
+
+const MICRO_LENS = new MicroLens();
+
+// The lens over a context, for a stain's entry (or null) and dark-field.
+function microLens(ctx, entry, dark, thin) {
+    return MICRO_LENS.aim(ctx, entry, dark, thin);
+}
+
+// A stained part: only reached through the lens.
+function microMarkFill(ctx, color) {
+    ctx.marking = true;
+    microFill(ctx, color);
+    ctx.marking = false;
+}
+
+function microMarkStroke(ctx, color, width) {
+    ctx.marking = true;
+    microStroke(ctx, color, width);
+    ctx.marking = false;
+}
+
+// A nucleus the stain shows, with its nucleolus.
+function microMarkNucleus(ctx, marks, x, y, rx, ry, rotation = 0) {
+    if (!marks || !marks.nucleus) return;
+    microOval(ctx, x, y, rx, ry, rotation);
+    microMarkFill(ctx, marks.nucleus);
+    if (marks.nucleolus) {
+        microOval(ctx, x + rx * 0.2, y - ry * 0.15, rx * 0.3, ry * 0.3);
+        microMarkFill(ctx, marks.nucleolus);
     }
 }
 
@@ -375,6 +581,10 @@ function microDrawTardigrade(ctx, t, st = {}) {
         microOval(ctx, (x + drift) * shrink, (y + drift * 0.6) * widen, r, r);
         microFill(ctx, 'rgba(250,240,208,0.55)');
         microStroke(ctx, 'rgba(120,96,60,0.4)', 0.35);
+        if (st.marks && st.marks.nucleus) {
+            microOval(ctx, (x + drift) * shrink, (y + drift * 0.6) * widen, r * 0.45, r * 0.45);
+            microMarkFill(ctx, st.marks.nucleus);
+        }
     }
     ctx.restore();
 
@@ -477,6 +687,13 @@ function microDrawRotifer(ctx, t, st = {}) {
     microFill(ctx, 'rgba(146,158,84,0.62)');
     microOval(ctx, -20, 0, 6.5, 3.8);
     microFill(ctx, 'rgba(164,142,84,0.5)');
+    // The nuclei of its tissues, which only a stain shows.
+    if (st.marks && st.marks.nucleus) {
+        for (const [x, y] of [[-24, -2], [-19, 2], [-12, 6], [-9, -6], [0, 7], [3, -7], [9, 6], [24, -5], [24, 5], [-33, 1]]) {
+            microOval(ctx, x, y, 1.5, 1.3);
+            microMarkFill(ctx, st.marks.nucleus);
+        }
+    }
     // The jaws (mastax), two teeth that chew all the time.
     const chew = st.still ? 0.4 : (Math.sin(t * 9) + 1) / 2;
     microOval(ctx, 14, 0, 5.4, 5);
@@ -656,7 +873,10 @@ function microDrawParamecium(ctx, t, st = {}) {
         const length = Math.hypot(cos / rx, sin / ry) || 1;
         outline.push([x, y, (cos / rx) / length, (sin / ry) / length]);
     }
-    microCilia(ctx, outline, t, 'rgba(70,74,60,0.62)', 4.2, st.still);
+    const cilia = st.marks && st.marks.cilia;
+    if (cilia) ctx.marking = true;
+    microCilia(ctx, outline, t, cilia || 'rgba(70,74,60,0.62)', 4.2, st.still);
+    if (cilia) ctx.marking = false;
     microSmooth(ctx, points);
     const fill = ctx.createRadialGradient(0, 0, 3, 0, 0, 52);
     fill.addColorStop(0, 'rgba(226,226,190,0.52)');
@@ -682,6 +902,11 @@ function microDrawParamecium(ctx, t, st = {}) {
     microStroke(ctx, 'rgba(82,78,56,0.55)', 0.5);
     microOval(ctx, 7, -8, 2.4, 2);
     microFill(ctx, 'rgba(108,102,80,0.8)');
+    microMarkNucleus(ctx, st.marks, -2, -3, 11, 7.6, 0.2);
+    if (st.marks && st.marks.nucleus) {
+        microOval(ctx, 7, -8, 2.4, 2);
+        microMarkFill(ctx, st.marks.nucleus);
+    }
     // Food vacuoles.
     const random = microRng(st.seed ?? 11);
     for (let i = 0; i < 7; i++) {
@@ -737,6 +962,7 @@ function microDrawAmoeba(ctx, t, st = {}) {
     microOval(ctx, -5 + drift, 3, 8.2, 7.2);
     microFill(ctx, 'rgba(126,120,92,0.72)');
     microStroke(ctx, 'rgba(70,66,46,0.6)', 0.5);
+    microMarkNucleus(ctx, st.marks, -5 + drift, 3, 8.2, 7.2);
     microOval(ctx, 9 - drift, -7, 5, 5);
     microFill(ctx, 'rgba(136,152,76,0.64)');
     microStroke(ctx, 'rgba(70,84,40,0.5)', 0.35);
@@ -783,6 +1009,10 @@ function microDrawVorticella(ctx, t, st = {}) {
     // The curved nucleus and a few vacuoles.
     microCurve(ctx, [[-1, -8 * open], [8, -10 * open], [11, 0], [8, 10 * open], [-1, 8 * open]]);
     microStroke(ctx, 'rgba(124,118,86,0.76)', 2.4);
+    if (st.marks && st.marks.nucleus) {
+        microCurve(ctx, [[-1, -8 * open], [8, -10 * open], [11, 0], [8, 10 * open], [-1, 8 * open]]);
+        microMarkStroke(ctx, st.marks.nucleus, 2.8);
+    }
     const random = microRng((st.seed ?? 1) + 2);
     for (let i = 0; i < 5; i++) {
         const r = 1 + random() * 1.4;
@@ -819,7 +1049,8 @@ function microDrawEuglena(ctx, t, st = {}) {
     }
     microCurve(ctx, whip);
     ctx.lineCap = 'round';
-    microStroke(ctx, 'rgba(82,98,50,0.8)', 0.8);
+    if (st.marks && st.marks.flagellum) microMarkStroke(ctx, st.marks.flagellum, 1.1);
+    else microStroke(ctx, 'rgba(82,98,50,0.8)', 0.8);
     const points = [[48, 0], [32, -11 - bend * 0.3], [8, -15 + bend * 0.4], [-20, -12 - bend * 0.4], [-44, -3], [-52, 0], [-44, 3], [-20, 12 + bend * 0.4], [8, 15 - bend * 0.4], [32, 11 + bend * 0.3]];
     microSmooth(ctx, points);
     microFill(ctx, 'rgba(158,204,102,0.58)');
@@ -849,10 +1080,20 @@ function microDrawEuglena(ctx, t, st = {}) {
     microOval(ctx, -7, 0, 7.5, 6.2);
     microFill(ctx, 'rgba(198,206,162,0.74)');
     microStroke(ctx, 'rgba(72,88,50,0.5)', 0.4);
+    microMarkNucleus(ctx, st.marks, -7, 0, 7.5, 6.2);
+    // Its store of food looks like starch and is not: iodine leaves these grains pale.
+    if (st.marks && st.marks.clear) {
+        for (const [x, y, rotation] of [[-30, -4, 0.3], [-24, 5, -0.4], [12, -7, 0.2], [18, 5, -0.2], [6, 7, 0.5], [24, -3, 0.1]]) {
+            microOval(ctx, x, y, 3.8, 1.9, rotation);
+            microMarkFill(ctx, st.marks.clear);
+            microMarkStroke(ctx, 'rgba(120,90,50,0.6)', 0.3);
+        }
+    }
     microOval(ctx, 36, 0, 4.2, 3.2);
     microFill(ctx, 'rgba(226,240,220,0.72)');
     microOval(ctx, 31, -4.2, 2.8, 1.9);
-    microFill(ctx, 'rgba(208,40,28,0.94)');
+    if (st.marks) microMarkFill(ctx, 'rgba(208,40,28,0.94)');
+    else microFill(ctx, 'rgba(208,40,28,0.94)');
 }
 
 // A diatom: a glass shell of two halves, ruled with lines as fine as anything in nature. Half of them
@@ -883,6 +1124,7 @@ function microDrawDiatom(ctx, t, st = {}) {
             microOval(ctx, Math.cos(angle) * r, Math.sin(angle) * r, 3.8, 2.8, random() * 3);
             microFill(ctx, 'rgba(146,104,30,0.72)');
         }
+        microMarkNucleus(ctx, st.marks, 0, 0, 6.5, 6.5);
         microOval(ctx, -13, -14, 12, 7, -0.7);
         microFill(ctx, 'rgba(255,255,244,0.3)');
         return;
@@ -918,13 +1160,15 @@ function microDrawDiatom(ctx, t, st = {}) {
     }
     microOval(ctx, 0, 0, 4.2, 4.2);
     microFill(ctx, 'rgba(214,208,170,0.8)');
+    microMarkNucleus(ctx, st.marks, 0, 0, 4.2, 4.2);
     microOval(ctx, -10, -7, 18, 2.2, -0.05);
     microFill(ctx, 'rgba(255,255,244,0.34)');
 }
 
 // Spirogyra: a thread of long cells, each with its emerald ribbon of chloroplast wound in a spiral,
 // studded with pyrenoids, and its nucleus hung in the middle.
-function microDrawSpirogyra(ctx, t) {
+function microDrawSpirogyra(ctx, t, st = {}) {
+    const marks = st.marks || {};
     const cells = 4;
     const cellLength = 100 / cells;
     const half = 7.5;
@@ -966,13 +1210,29 @@ function microDrawSpirogyra(ctx, t) {
         for (let k = 0.08; k < 1; k += 0.14) {
             const angle = k * Math.PI * 2 * 2.5 + i * 2.1 + 0.02 * t;
             if (Math.cos(angle) <= 0) continue;
-            microOval(ctx, x0 + k * cellLength, Math.sin(angle) * half * 0.94, 0.95, 0.95);
-            microFill(ctx, 'rgba(218,248,196,0.92)');
+            // With iodine, the starch around each one turns blue-black.
+            if (marks.starch) {
+                microOval(ctx, x0 + k * cellLength, Math.sin(angle) * half * 0.94, 1.45, 1.45);
+                microMarkFill(ctx, marks.starch);
+            } else {
+                microOval(ctx, x0 + k * cellLength, Math.sin(angle) * half * 0.94, 0.95, 0.95);
+                microFill(ctx, 'rgba(218,248,196,0.92)');
+            }
+        }
+        // The threads of cytoplasm the nucleus hangs from, which you hardly see until they are dyed.
+        if (marks.strands) {
+            for (const [dx, dy] of [[-8.5, -7.3], [8.5, -7.3], [-8.5, 7.3], [8.5, 7.3]]) {
+                ctx.beginPath();
+                ctx.moveTo(x0 + cellLength / 2, 0);
+                ctx.lineTo(x0 + cellLength / 2 + dx, dy);
+                microMarkStroke(ctx, marks.strands, 0.4);
+            }
         }
         // The nucleus.
         microOval(ctx, x0 + cellLength / 2, 0, 2.2, 1.9);
         microFill(ctx, 'rgba(190,190,150,0.72)');
         microStroke(ctx, 'rgba(90,96,60,0.6)', 0.3);
+        microMarkNucleus(ctx, marks, x0 + cellLength / 2, 0, 2.2, 1.9);
         ctx.restore();
     }
 }
@@ -994,6 +1254,10 @@ function microDrawCyanobacteria(ctx, t, st = {}) {
         microOval(ctx, x, y, r, r * 0.92);
         microFill(ctx, heterocyst ? 'rgba(200,216,160,0.8)' : 'rgba(58,142,132,0.86)');
         microStroke(ctx, heterocyst ? 'rgba(90,108,70,0.8)' : 'rgba(22,84,86,0.72)', 0.42);
+        if (st.marks && st.marks.granules && !heterocyst) {
+            microOval(ctx, x + (i % 2 ? 0.8 : -0.8), y + (i % 3 ? 0.6 : -0.6), 1.15, 1.05);
+            microMarkFill(ctx, st.marks.granules);
+        }
     }
 }
 
@@ -1002,13 +1266,21 @@ function microDrawCyanobacteria(ctx, t, st = {}) {
 
 // A rod-shaped soil bacterium with a whip at one end.
 function microDrawSoilBacteria(ctx, t, st = {}) {
-    microCurve(ctx, [[34, 0], [52, st.still ? 4 : Math.sin(t * 14) * 10], [72, st.still ? -4 : Math.sin(t * 14 + 2) * 12], [92, st.still ? 2 : Math.sin(t * 14 + 4) * 10]]);
-    microStroke(ctx, 'rgba(60,54,44,0.52)', 2);
+    // Its whip is too thin to take a simple stain: on a stained slide it is not seen.
+    if (!st.marks) {
+        microCurve(ctx, [[34, 0], [52, st.still ? 4 : Math.sin(t * 14) * 10], [72, st.still ? -4 : Math.sin(t * 14 + 2) * 12], [92, st.still ? 2 : Math.sin(t * 14 + 4) * 10]]);
+        microStroke(ctx, 'rgba(60,54,44,0.52)', 2);
+    }
     microRodPath(ctx, -40, 40, 15);
     microFill(ctx, 'rgba(142,122,92,0.78)');
     microStroke(ctx, 'rgba(58,46,32,0.88)', 3);
     microOval(ctx, -8, -3, 22, 5);
     microFill(ctx, 'rgba(86,72,52,0.46)');
+    // Some hold a spore, whose thick wall keeps the dye out: a clear gap in a blue rod.
+    if (st.marks && st.marks.spore && (st.variant ?? 0) % 3 === 0) {
+        microOval(ctx, 16, 0, 13, 10);
+        microMarkFill(ctx, st.marks.spore);
+    }
 }
 
 function microRodPath(ctx, x0, x1, r) {
@@ -1035,6 +1307,14 @@ function microDrawYeast(ctx, t, st = {}) {
     microStroke(ctx, 'rgba(120,100,62,0.5)', 1);
     microOval(ctx, 8, 10, 6.5, 6);
     microFill(ctx, 'rgba(130,104,60,0.6)');
+    microMarkNucleus(ctx, st.marks, -22, 10, 7, 6.5);
+    // Its store of food, glycogen: not starch, so red-brown and not blue-black.
+    if (st.marks && st.marks.granules) {
+        for (const [x, y] of [[-26, 8], [-18, 16], [-8, 18], [4, -8], [14, -2], [-30, -8], [20, 8]]) {
+            microOval(ctx, x, y, 3.4, 3);
+            microMarkFill(ctx, st.marks.granules);
+        }
+    }
 }
 
 // Lactobacillus: long thin rods joined in chains, the bacteria that turn milk into yoghurt and cheese.
@@ -1087,12 +1367,18 @@ function microDrawPlantCell(ctx, t, st = {}) {
         microOval(ctx, x * (1 - inset / 50), y * (1 - inset / 34), 4.6, 3, side % 2 ? 1.4 : 0.1);
         microFill(ctx, 'rgba(60,150,58,0.88)');
         microStroke(ctx, 'rgba(36,94,38,0.46)', 0.3);
+        // The starch a chloroplast has made from the day's sugar.
+        if (st.marks && st.marks.starch) {
+            microOval(ctx, x * (1 - inset / 50), y * (1 - inset / 34), 2.3, 1.7, side % 2 ? 1.4 : 0.1);
+            microMarkFill(ctx, st.marks.starch);
+        }
     }
     microOval(ctx, -28, 11, 7.2, 6.4);
     microFill(ctx, 'rgba(172,170,126,0.74)');
     microStroke(ctx, 'rgba(90,92,58,0.66)', 0.6);
     microOval(ctx, -27, 10, 2.2, 2.1);
     microFill(ctx, 'rgba(92,88,58,0.82)');
+    microMarkNucleus(ctx, st.marks, -28, 11, 7.2, 6.4);
 }
 
 // A cell of a cheek or a fish: thin, flat, irregular, no wall, a round nucleus in the middle.
@@ -1121,13 +1407,17 @@ function microDrawAnimalCell(ctx, t, st = {}) {
     ctx.save();
     microSmooth(ctx, points);
     ctx.clip();
-    microGranules(ctx, seed + 3, 70, 44, 38, 'rgba(120,96,112,0.38)', 0.55);
+    const specks = st.marks && st.marks.granules;
+    if (specks) ctx.marking = true;
+    microGranules(ctx, seed + 3, 70, 44, 38, specks || 'rgba(120,96,112,0.38)', 0.55);
+    if (specks) ctx.marking = false;
     ctx.restore();
     microOval(ctx, 2, -1, 11.5, 10.5);
     microFill(ctx, 'rgba(116,76,126,0.72)');
     microStroke(ctx, 'rgba(70,40,80,0.72)', 0.6);
     microOval(ctx, 4, 1, 3, 2.8);
     microFill(ctx, 'rgba(70,40,84,0.74)');
+    microMarkNucleus(ctx, st.marks, 2, -1, 11.5, 10.5);
 }
 
 // A mushroom's spore: dark, smooth and thick-walled, with the little scar where it left the gill.
@@ -1275,6 +1565,94 @@ const MICRO_SPECIES = {
         hint: 'Dark specks that fall from under a cap.', page: 244,
         dot: '#54402c', count: [40, 70], spread: 220, move: 'still', whenDry: 'dies', draw: microDrawSpore
     }
+};
+
+// What each stain does to each organism. tint and amount: the colour it takes and how far. note: what the
+// panel says about it, which is also what the guide says. The rest are the parts that stand out, in their
+// own colour, drawn only by the species that has them: nucleus (and nucleolus), starch, granules (glycogen,
+// not starch), clear (what stays pale), spore (a gap in the dye), cilia, flagellum, strands.
+const MICRO_IODINE_TINT = [204, 150, 58];
+const MICRO_BLUE_TINT = [98, 152, 218];
+const MICRO_STARCH_INK = 'rgba(26,20,60,0.96)';
+const MICRO_BROWN_INK = 'rgba(92,50,16,0.86)';
+const MICRO_GLYCOGEN_INK = 'rgba(126,50,22,0.86)';
+const MICRO_BLUE_INK = 'rgba(22,42,130,0.94)';
+const MICRO_BLUE_DEEP = 'rgba(10,20,84,0.96)';
+const MICRO_STAIN_TABLE = {
+    tardigrade: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.55, nucleus: MICRO_BROWN_INK, note: 'Yellow-brown, with no starch to show. It is dead now: no drop will bring this one back.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.3, nucleus: MICRO_BLUE_INK, note: 'Its tough skin lets in little dye, but the nuclei of the cells floating inside it show. It is dead now: no drop will bring this one back.' }
+    },
+    rotifer: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.6, note: 'Yellow-brown. The hard jaws stand out against the soft body.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.45, nucleus: MICRO_BLUE_INK, note: 'Small dark nuclei show along its body: it is an animal, however small.' }
+    },
+    water_flea: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.55, note: 'Yellow-brown all over. Too big and too armoured for a stain to tell you much: it was already see-through.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.25, note: 'Its shell lets in little dye. It was easier to see alive: its heart has stopped.' }
+    },
+    paramecium: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.6, nucleus: MICRO_BROWN_INK, cilia: 'rgba(82,46,14,0.9)', note: 'Yellow-brown, and now that they have stopped you can see its cilia and its nuclei.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.45, nucleus: MICRO_BLUE_INK, note: 'The great nucleus goes dark blue, with the small one beside it.' }
+    },
+    amoeba: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.6, nucleus: MICRO_BROWN_INK, note: 'Yellow-brown, with a darker nucleus. It keeps the last shape it had.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.45, nucleus: MICRO_BLUE_INK, note: 'The nucleus goes dark blue. It keeps the last shape it had.' }
+    },
+    vorticella: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.6, nucleus: MICRO_BROWN_INK, note: 'Yellow-brown, with its stalk coiled for the last time and its curved nucleus darker.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.45, nucleus: MICRO_BLUE_INK, note: 'The long curved nucleus, hard to make out alive, goes dark blue.' }
+    },
+    euglena: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.5, nucleus: MICRO_BROWN_INK, clear: 'rgba(244,238,206,0.92)', flagellum: 'rgba(82,46,14,0.92)', note: 'Yellow-brown, and its whip shows. Look at the pale grains: its food store, paramylon, is not starch, and iodine does not turn it black.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.3, nucleus: MICRO_BLUE_INK, note: 'The nucleus goes dark blue among the green discs. The red eye-spot stays red.' }
+    },
+    diatom: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.3, note: 'Hardly any change: no starch in here. Diatoms store their food in other forms.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.22, nucleus: MICRO_BLUE_INK, nucleolus: MICRO_BLUE_DEEP, note: 'The glass shell stays as it was, and the nucleus shows inside it.' }
+    },
+    spirogyra: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.5, starch: MICRO_STARCH_INK, nucleus: MICRO_BROWN_INK, note: 'Blue-black beads all along the ribbon: the starch round each pyrenoid, where the alga stores its sugar.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.3, nucleus: MICRO_BLUE_INK, strands: 'rgba(40,66,150,0.7)', note: 'The nucleus goes dark blue, hanging in the middle of the cell by fine threads you could hardly see before.' }
+    },
+    cyanobacteria: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.6, granules: MICRO_GLYCOGEN_INK, note: 'Red-brown specks: they store their food as glycogen, not as starch, so it does not go blue-black.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.75, note: 'Blue all over, with no nucleus to find: they are bacteria.' }
+    },
+    soil_bacteria: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.7, note: 'Yellow-brown rods. Their whips are too thin to take the stain.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.85, spore: 'rgba(238,242,236,0.9)', note: 'Blue rods, with no nucleus. The clear gaps in some are spores, whose thick wall keeps the dye out.' }
+    },
+    yeast: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.7, granules: MICRO_GLYCOGEN_INK, note: 'Yellow-brown, with red-brown patches of glycogen, the store of food of a fungus.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.8, nucleus: MICRO_BLUE_INK, note: 'Blue, because they are dead. Brewers use this: living yeast turns the dye colourless, and only the dead stay blue.' }
+    },
+    lactobacillus: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.72, note: 'Yellow-brown rods in chains. The drops of fat take no colour.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.88, note: 'Blue rods in chains, with no nucleus. The drops of fat take no colour.' }
+    },
+    plant_cell: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.42, starch: MICRO_STARCH_INK, nucleus: MICRO_BROWN_INK, note: 'A blue-black grain of starch inside the chloroplasts: the food this leaf made from light. The rest goes yellow-brown.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.25, nucleus: MICRO_BLUE_INK, nucleolus: MICRO_BLUE_DEEP, note: 'The nucleus goes dark blue, pushed against the wall by the great vacuole.' }
+    },
+    animal_cell: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.65, nucleus: MICRO_BROWN_INK, granules: MICRO_GLYCOGEN_INK, note: 'Yellow-brown and speckled, with a darker nucleus. No starch: animals store glycogen.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.5, nucleus: MICRO_BLUE_INK, nucleolus: MICRO_BLUE_DEEP, note: 'The classic: a dark blue nucleus in a pale blue cell. That is where its DNA is.' }
+    },
+    mushroom_spore: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.15, note: 'Hardly any change: the dark wall already hides what is inside.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.15, note: 'Hardly any change: the dark wall keeps the dye out and hides what is inside.' }
+    }
+};
+for (const [id, stains] of Object.entries(MICRO_STAIN_TABLE)) MICRO_SPECIES[id].stains = stains;
+
+// What a stain does to what lies about the slide and is not alive. Starch goes blue-black and only with
+// iodine; mineral grains and drops of fat take nothing.
+const MICRO_SCENERY_STAINS = {
+    speck: { iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.5 }, methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.4 } },
+    starch: { iodine_tincture: { tint: [34, 28, 84], amount: 0.96 }, methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.08 } },
+    pollen: { iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.45 }, methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.25 } },
+    fibre: { iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.35 }, methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.3 } }
 };
 
 // ---------------------------------------------------------------------------------------
@@ -1457,7 +1835,23 @@ function microStepTardigrade(org, dt, world) {
     microTurnBack(org, org.x, org.y);
 }
 
+// A stained slide is fixed: everything stays as the stain found it. A tardigrade keeps the state its slide
+// was in, and a vorticella has coiled its stalk.
+function microStepFixed(org, world) {
+    if (org.species === 'tardigrade') {
+        org.unfold = microUnfold(world.age, world.woke);
+        org.stylet = 0;
+        org.action = org.unfold <= 0 ? 'tun' : 'fixed';
+    } else if (MICRO_SPECIES[org.species].move === 'stalk') {
+        org.spring = 1;
+    }
+}
+
 function microStep(org, dt, world) {
+    if (world.stain) {
+        microStepFixed(org, world);
+        return;
+    }
     if (org.species === 'tardigrade') {
         microStepTardigrade(org, dt, world);
         return;
@@ -1535,13 +1929,19 @@ function microStep(org, dt, world) {
 // Drawing them
 
 // One organism, of `px` pixels long at (x, y), its front towards `rot`. Works on any canvas context.
-function microDrawOrganism(ctx, speciesId, x, y, px, rot, t, st = {}) {
+// st.stain: the slide's stain, if any, which also keeps it still. st.dark: on a black field.
+function microDrawOrganism(target, speciesId, x, y, px, rot, t, st = {}) {
     const def = MICRO_SPECIES[speciesId];
     if (!def) return;
+    const marks = st.stain && def.stains[st.stain] ? def.stains[st.stain] : null;
+    // Most of the time neither applies, and it draws straight on the canvas as it always did.
+    const ctx = marks || st.dark ? microLens(target, marks, st.dark, 70 / Math.max(px, 1)) : target;
+    if (marks) st = { ...st, marks, still: true };
     ctx.save();
     ctx.translate(x, y);
     if (px < 3) {
-        ctx.fillStyle = def.dot;
+        if (st.dark) target.fillStyle = MICRO_DARK_DOT;
+        else ctx.fillStyle = def.dot;
         ctx.fillRect(-0.6, -0.6, Math.max(1, px * 0.8), Math.max(1, px * 0.5));
         ctx.restore();
         return;
@@ -1553,7 +1953,8 @@ function microDrawOrganism(ctx, speciesId, x, y, px, rot, t, st = {}) {
         ctx.scale(Math.min(1, 0.45 + 14 / px), Math.min(1, 0.45 + 14 / px));
         microDrawCyst(ctx, t, st);
     } else if (st.fate === 'dead') {
-        ctx.globalAlpha *= 0.42;
+        // Pale, as a dead thing is, unless it has been dyed.
+        if (!marks) ctx.globalAlpha *= 0.42;
         def.draw(ctx, t, { ...st, still: true, dead: true });
     } else {
         def.draw(ctx, t, st);
@@ -1566,19 +1967,26 @@ function microDrawOrganism(ctx, speciesId, x, y, px, rot, t, st = {}) {
 function microDrawPortrait(ctx, speciesId, width, height, t = 0, st = {}) {
     ctx.save();
     // ground: false leaves it on nothing, for a silhouette.
-    if (st.ground !== false) {
+    if (st.ground !== false && st.dark) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+    } else if (st.ground !== false) {
         const ground = ctx.createRadialGradient(width / 2, height / 2, 2, width / 2, height / 2, Math.max(width, height) * 0.7);
         ground.addColorStop(0, '#f4f4e2');
         ground.addColorStop(1, '#cfd2b4');
         ctx.fillStyle = ground;
         ctx.fillRect(0, 0, width, height);
     }
+    if (st.dark) ctx.globalCompositeOperation = 'lighter';
     microDrawOrganism(ctx, speciesId, width / 2, height / 2, Math.min(width, height * 1.5) * 0.72, 0, t, { seed: 3, variant: 1, ...st });
     ctx.restore();
 }
 
-// What lies about the slide, drawn in screen units (`scale` pixels per micrometre).
-function microDrawSceneryItem(ctx, item, x, y, scale) {
+// What lies about the slide, drawn in screen units (`scale` pixels per micrometre). look: { stain, dark }.
+function microDrawSceneryItem(target, item, x, y, scale, look = {}) {
+    const stains = MICRO_SCENERY_STAINS[item.kind];
+    const entry = look.stain && stains ? stains[look.stain] || null : null;
+    const ctx = entry || look.dark ? microLens(target, entry, look.dark, 0.7 / scale) : target;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(item.rot);

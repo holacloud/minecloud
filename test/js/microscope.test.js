@@ -208,7 +208,7 @@ test('the kit holds only real things', () => {
     for (const [type, amount] of ctx.MICROSCOPE_KIT) {
         assert.ok(amount > 0);
         if (ctx.ITEM_TYPES[type] || ctx.BLOCK_TYPES[type]) continue;
-        assert.ok(['water_flask', 'dirt', 'milk', 'leaves', 'flower_red', 'mushroom_red', 'raw_fish', 'white_wool', 'honeycomb', 'lantern', 'candle'].includes(type), type);
+        assert.ok(['water_flask', 'dirt', 'milk', 'leaves', 'wheat', 'flower_red', 'mushroom_red', 'raw_fish', 'white_wool', 'honeycomb', 'lantern', 'candle', 'iodine_tincture', 'cobalt_glass', 'red_stained_glass', 'orange_stained_glass', 'green_stained_glass', 'light_blue_stained_glass'].includes(type), type);
     }
     const sampled = ctx.MICROSCOPE_KIT.map(([type]) => type).filter((type) => type.startsWith('sample_') && ctx.microSpeciesOf(type).includes('tardigrade'));
     assert.ok(sampled.length >= 2, 'the kit has samples with tardigrades');

@@ -16,6 +16,13 @@
 // - Left alone a slide dries in a game day. Only the tardigrades come through that, as tuns; a drop of
 //   water from a flask brings them back in about 20 s. The freezer turns a tube into a tun too
 //   (appliances.go), and a C recipe with a flask brings it back.
+// - A stain (MICRO_STAINS) goes through the server and stays with the slide, for everyone looking. It fixes
+//   the slide: what is on it stops, cannot be drawn off and does not come back with a drop, and the panel
+//   says so before you pay for it.
+// - A colour filter and the dark-field stop are this viewer's own and are not spent: picked from what the
+//   player carries, and forgotten when the page reloads. A filter multiplies the colour of the light
+//   (microscopeFieldTint). Dark-field paints the field black and keeps only what scatters light, so it
+//   asks for far more light than the plain field (microscopeDarkfieldGain).
 // - Items move in two steps, like a chest's (js/game/storage.js): out of the inventory first, and what
 //   the answer says comes back. `microscopePending` survives a reload, and storageSync settles it.
 // Mixed into Game.prototype; hooked through js/extensions.js.
@@ -34,17 +41,28 @@ const MICROSCOPE_SKY_REACH = 2;
 const MICROSCOPE_ELECTRIC_LIGHTS = ['light_bulb', 'electric_lamp'];
 // The sun is too low to use below this much daylight.
 const MICROSCOPE_MIN_DAYLIGHT = 0.3;
+// The colour of a flame's or lamp's light, as a filter multiplies it.
+const MICROSCOPE_LAMP_TINT = [255, 217, 160];
+// Dark-field throws away nearly all the light: below the first level there is hardly anything to see, and
+// from the second it is as good as it gets. A bulb is at 0.70, a candle at 0.77, a lamp and the sun above 0.85.
+const MICROSCOPE_DARKFIELD_DIM = 0.6;
+const MICROSCOPE_DARKFIELD_FULL = 0.92;
+const MICROSCOPE_DARKFIELD_LEAST = 0.1;
 
 // A kit for testing: /microkit, only in creative mode, like /give.
 const MICROSCOPE_KIT = [
     ['microscope', 1], ['test_tube', 12], ['glass_slide', 12], ['micropipette', 1], ['water_flask', 6], ['lantern', 2], ['candle', 4], ['moss', 8],
     ['sample_forest_lake_b', 2], ['sample_forest_lake_c', 2], ['sample_mountain_lake_d', 2], ['sample_plains_lake_a', 2], ['sample_plains_lake_b', 2], ['sample_oasis_a', 2],
     ['sample_moss_a', 2], ['sample_still_water', 2], ['tardigrade_tube', 2], ['tardigrade_tun', 2],
-    ['dirt', 4], ['flower_red', 4], ['milk', 2], ['leaves', 4], ['mushroom_red', 2], ['raw_fish', 2], ['white_wool', 2], ['honeycomb', 2]
+    ['dirt', 4], ['flower_red', 4], ['milk', 2], ['leaves', 4], ['wheat', 2], ['mushroom_red', 2], ['raw_fish', 2], ['white_wool', 2], ['honeycomb', 2],
+    ['iodine_tincture', 4], ['methylene_blue', 4], ['darkfield_stop', 1],
+    ['cobalt_glass', 1], ['red_stained_glass', 1], ['orange_stained_glass', 1], ['green_stained_glass', 1], ['light_blue_stained_glass', 1]
 ];
 
 // The page of the microscope in the guide; the organisms carry their own (MICRO_SPECIES.page).
 const MICROSCOPE_GUIDE_PAGE = 238;
+const MICROSCOPE_STAIN_PAGE = 246;
+const MICROSCOPE_LENS_PAGE = 247;
 
 // ---------------------------------------------------------------------------------------
 // Pure helpers (also used by test/js/microscope.test.js)
@@ -61,6 +79,16 @@ function microscopeSettle(pending, outcome) {
     return items;
 }
 
+// What the panel says when the server refuses.
+function microscopeRefusalLine(op, reason) {
+    if (reason === 'occupied') return 'There is already a slide on the stage';
+    if (reason === 'none left') return 'There is none left on this slide';
+    if (reason === 'stained') {
+        return op === 'stain' ? 'This slide already has its stain: one to a slide.' : 'This slide is stained: what is on it is dead, so nothing can be drawn off or revived.';
+    }
+    return '';
+}
+
 // What each request takes out of the inventory and gives on success.
 function microscopeRequestItems(op, source) {
     switch (op) {
@@ -75,6 +103,8 @@ function microscopeRequestItems(op, source) {
         case 'clear': return { took: {}, gives: { glass_slide: 1 } };
         case 'drop': return { took: { water_flask: 1 }, gives: { glass: 1 } };
         case 'capture': return { took: { test_tube: 1 }, gives: { result: 1 } };
+        // The bottle is used up and its glass comes back; refused, the whole bottle does.
+        case 'stain': return { took: { [source]: 1 }, gives: { glass: 1 } };
         default: return { took: {}, gives: {} };
     }
 }
@@ -123,6 +153,64 @@ function microscopeDarkLine(unlit) {
 // Whether this block name is an electric light that is off now.
 function microscopeIsUnlitLamp(type) {
     return MICROSCOPE_ELECTRIC_LIGHTS.includes(type);
+}
+
+// What a block's glass lets through, as [r, g, b], or null if it is not a colour filter. A pane is as good
+// as a block: stained glass says of itself that its colour is how much of what is behind it passes.
+function microscopeFilterColor(type, blockTypes) {
+    const def = blockTypes[type];
+    if (!def || !(type === 'cobalt_glass' || def.filterGlass) || typeof def.color !== 'number') return null;
+    return [(def.color >> 16) & 255, (def.color >> 8) & 255, def.color & 255];
+}
+
+// What the light in the field is in the end, as [r, g, b], or null if it stays white. The lamp's colour and
+// the filter's multiply, as the light goes through one after the other.
+function microscopeFieldTint(source, filter) {
+    const lamp = source === 'lamp' ? MICROSCOPE_LAMP_TINT : null;
+    if (!lamp && !filter) return null;
+    const base = lamp || [255, 255, 255];
+    const pass = filter || [255, 255, 255];
+    return [0, 1, 2].map((i) => Math.round((base[i] * pass[i]) / 255));
+}
+
+// How much of a dark-field image there is with the field's light at this level, from 0 to 1.
+function microscopeDarkfieldGain(level) {
+    if (!(level > 0)) return 0;
+    const gain = (level - MICROSCOPE_DARKFIELD_DIM) / (MICROSCOPE_DARKFIELD_FULL - MICROSCOPE_DARKFIELD_DIM);
+    return Math.max(MICROSCOPE_DARKFIELD_LEAST, Math.min(1, gain));
+}
+
+// What the panel says of dark-field with this light, as microscopeLightFrom gives it.
+function microscopeDarkfieldLine(light) {
+    if (!light || light.level <= 0) return 'Dark-field: no light, no image.';
+    const gain = microscopeDarkfieldGain(light.level);
+    const from = light.source === 'sun' ? 'this daylight' : `the ${String(light.name).toLowerCase()}`;
+    if (gain < 0.4) return `Dark-field: very dim. The stop blocks nearly all the light, and ${from} is too weak for it. Try a lamp, or the full sun.`;
+    if (gain < 0.8) return `Dark-field: faint with ${from}. A strong lamp or the full sun would do better.`;
+    return `Dark-field: bright edges on black, with light to spare from ${from}. Only what scatters light shows.`;
+}
+
+// How much a colour stands out on the bright field under a filter: 0 is not at all, 1 is black on white.
+function microscopeDyeContrast(dye, filter) {
+    const brightness = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b;
+    const ground = brightness(filter);
+    if (ground <= 0) return 0;
+    return 1 - brightness([0, 1, 2].map((i) => (dye[i] * filter[i]) / 255)) / ground;
+}
+
+// What the panel says of a filter, and of what it does to the stain on the slide if there is one.
+function microscopeFilterLine(name, filter, stain) {
+    const dye = stain && MICRO_STAINS[stain];
+    if (!dye) return `${name}: only its own colour of light gets through. Other colours look darker.`;
+    const change = microscopeDyeContrast(dye.dye, filter) - microscopeDyeContrast(dye.dye, [255, 255, 255]);
+    if (change > 0.03) return `${name}: the ${dye.name} looks darker. This colour absorbs what the filter lets through, so it stands out more.`;
+    if (change < -0.03) return `${name}: the ${dye.name} fades. The filter passes the dye's own colour, so it stands out less.`;
+    return `${name}: about the same contrast for the ${dye.name}.`;
+}
+
+// What a stain costs, said before it is paid.
+function microscopeStainWarning(stain) {
+    return `${MICRO_STAINS[stain].shows} But it fixes the slide for good: everything on it stops moving, nothing can be drawn off it, and a tardigrade on it will not come back with a drop. To see them alive, use another slide.`;
 }
 
 // Moving the stage: it stays on the slide.
@@ -174,6 +262,7 @@ function microscopePick(organisms, view, px, py) {
 // A line about how a slide is doing.
 function microscopeSlideLine(prep, age, woke = -1) {
     if (!prep) return '';
+    if (prep.stain) return `Stained with ${MICRO_STAINS[prep.stain] ? MICRO_STAINS[prep.stain].name : prep.stain}, and fixed: nothing here moves or dries now. Take it off to wash the slide.`;
     const stage = microSlideStage(age, woke);
     if (stage === 'dry') return 'The slide has dried out. Add a drop of water: see who comes back.';
     if (stage === 'reviving') return `A drop of water: the tun is opening up (${Math.ceil(MICRO_REVIVE_SECONDS - woke)} s).`;
@@ -196,9 +285,13 @@ function microscopeTardigradeLine(org) {
 // The field (a canvas context, and two smaller canvases for what is out of focus)
 
 // Draws what is on the slide. view: radius, power, scale, stageX, stageY, focus, light, t, age, revived,
-// selected. `soft` holds { ctx, canvas } at a third and `softer` at a sixth of the size.
+// selected, and if they apply stain (its id), tint (the [r, g, b] of microscopeFieldTint, or null) and dark
+// (microscopeDarkfieldGain; 0 is the plain bright field). `soft` holds { ctx, canvas } at a third and
+// `softer` at a sixth of the size.
 function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
-    const { radius, scale, stageX, stageY, focus, power, light, t } = view;
+    const { radius, scale, stageX, stageY, focus, power, light, t, stain } = view;
+    const dark = view.dark > 0;
+    const look = { stain, dark };
     const size = radius * 2;
     ctx.clearRect(0, 0, size, size);
     ctx.save();
@@ -211,12 +304,17 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         ctx.restore();
         return;
     }
-    // The bright, pale field of a lit microscope.
-    const ground = ctx.createRadialGradient(radius, radius, radius * 0.1, radius, radius, radius);
-    ground.addColorStop(0, '#f6f6e6');
-    ground.addColorStop(0.75, '#e6e8d0');
-    ground.addColorStop(1, '#bfc2a4');
-    ctx.fillStyle = ground;
+    if (dark) {
+        // No direct light gets in: only what the things on the slide scatter, added up.
+        ctx.fillStyle = '#000';
+    } else {
+        // The bright, pale field of a lit microscope.
+        const ground = ctx.createRadialGradient(radius, radius, radius * 0.1, radius, radius, radius);
+        ground.addColorStop(0, '#f6f6e6');
+        ground.addColorStop(0.75, '#e6e8d0');
+        ground.addColorStop(1, '#bfc2a4');
+        ctx.fillStyle = ground;
+    }
     ctx.fillRect(0, 0, size, size);
 
     // Sorted by how far out of focus: the blurred ones are painted small and stretched.
@@ -229,7 +327,7 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         const x = radius + (item.x - stageX) * scale;
         const y = radius + (item.y - stageY) * scale;
         if (Math.hypot(x - radius, y - radius) > radius + 700 * scale) continue;
-        place((c) => microDrawSceneryItem(c, item, x, y, scale), item.depth);
+        place((c) => microDrawSceneryItem(c, item, x, y, scale, look), item.depth);
     }
     for (const org of organisms) {
         const def = MICRO_SPECIES[org.species];
@@ -237,7 +335,8 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         for (const molt of org.molts || []) {
             const mx = radius + (molt.x - stageX) * scale;
             const my = radius + (molt.y - stageY) * scale;
-            place((c) => {
+            place((target) => {
+                const c = stain || dark ? microLens(target, def.stains[stain] || null, dark, 70 / Math.max(px, 1)) : target;
                 c.save();
                 c.translate(mx, my);
                 c.rotate(molt.rot);
@@ -250,13 +349,15 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         const y = radius + (org.y - stageY) * scale;
         if (Math.hypot(x - radius, y - radius) > radius + px) continue;
         const fate = microFate(org.species, view.age, view.revived);
-        const st = { seed: org.seed, variant: org.variant, fate, spring: org.spring, phase: org.phase };
+        const st = { seed: org.seed, variant: org.variant, fate, spring: org.spring, phase: org.phase, stain, dark };
         if (org.species === 'tardigrade') {
             Object.assign(st, { unfold: org.unfold ?? 1, gut: org.gut, stylet: org.stylet, still: (org.unfold ?? 1) < 0.1 });
         } else if (fate !== 'alive' || view.age >= MICRO_DRY_SECONDS) {
             st.still = true;
         }
-        place((c) => microDrawOrganism(c, org.species, x, y, px, org.rot, t + org.phase, st), org.depth);
+        // On a stained slide even the clock of each drawing stops.
+        const clock = stain ? org.phase : t + org.phase;
+        place((c) => microDrawOrganism(c, org.species, x, y, px, org.rot, clock, st), org.depth);
     }
     const paintSoft = (layer, buffer, factor, alpha) => {
         if (layer.length === 0 || !buffer) return;
@@ -269,9 +370,11 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         ctx.drawImage(buffer.canvas, 0, 0, size, size);
         ctx.globalAlpha = 1;
     };
+    if (dark) ctx.globalCompositeOperation = 'lighter';
     paintSoft(layers[0], softer, 6, 0.55);
     paintSoft(layers[1], soft, 3, 0.85);
     for (const draw of layers[2]) draw(ctx);
+    if (dark) ctx.globalCompositeOperation = 'source-over';
 
     const selected = view.selected;
     if (selected) {
@@ -280,21 +383,23 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         ctx.setLineDash([6, 5]);
         ctx.beginPath();
         ctx.arc(radius + (selected.x - stageX) * scale, radius + (selected.y - stageY) * scale, ring, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(30,90,170,0.85)';
+        ctx.strokeStyle = dark ? 'rgba(170,215,255,0.9)' : 'rgba(30,90,170,0.85)';
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.setLineDash([]);
     }
 
     // The colour and strength of the light, and the dark edge of the lens.
-    if (light.source === 'lamp') {
+    const tint = view.tint || microscopeFieldTint(light.source, null);
+    if (tint) {
         ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = '#ffd9a0';
+        ctx.fillStyle = `rgb(${tint[0]},${tint[1]},${tint[2]})`;
         ctx.fillRect(0, 0, size, size);
         ctx.globalCompositeOperation = 'source-over';
     }
-    if (light.level < 1) {
-        ctx.fillStyle = `rgba(0,0,0,${1 - light.level})`;
+    const strength = dark ? view.dark : light.level;
+    if (strength < 1) {
+        ctx.fillStyle = `rgba(0,0,0,${1 - strength})`;
         ctx.fillRect(0, 0, size, size);
     }
     const edge = ctx.createRadialGradient(radius, radius, radius * 0.78, radius, radius, radius);
@@ -306,7 +411,7 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
     const bar = microscopeScaleBar(scale, radius);
     const barX = radius - bar.pixels / 2;
     const barY = size - radius * 0.14;
-    ctx.fillStyle = 'rgba(16,18,14,0.82)';
+    ctx.fillStyle = dark ? 'rgba(226,230,236,0.8)' : 'rgba(16,18,14,0.82)';
     ctx.fillRect(barX, barY, bar.pixels, 3);
     ctx.font = `${Math.round(Math.max(11, radius * 0.045))}px Consolas, monospace`;
     ctx.textAlign = 'center';
@@ -387,6 +492,36 @@ const MICROSCOPE_PIPETTE = [
     '.g..........',
     '............'
 ];
+// A dropper bottle of dye.
+const MICROSCOPE_DROPPER = [
+    '.....rr.....',
+    '.....rr.....',
+    '....rrrr....',
+    '....gggg....',
+    '...g....g...',
+    '..gLLLLLLg..',
+    '..gHLLLLLg..',
+    '..gHLLLLLg..',
+    '..gLLLLLLg..',
+    '..gLLLLLLg..',
+    '...gggggg...',
+    '............'
+];
+// A clear disc with a black centre: the light can only get round its edge.
+const MICROSCOPE_STOP = [
+    '............',
+    '....GGGG....',
+    '..GGLLLLGG..',
+    '..GLKKKKLG..',
+    '.GLKKHKKKLG.',
+    '.GLKHKKKKLG.',
+    '.GLKKKKKKLG.',
+    '.GLKKKKKKLG.',
+    '..GLKKKKLG..',
+    '..GGLLLLGG..',
+    '....GGGG....',
+    '............'
+];
 const MICROSCOPE_TUBE_COLORS = { c: 0x8a6034, g: 0xcfe9f2 };
 const MICROSCOPE_LIQUIDS = {
     forest_lake: { L: 0x7a9a5a, H: 0xa8c488 },
@@ -406,6 +541,8 @@ microscopeItem('micropipette', 'Micropipette', MICROSCOPE_PIPETTE, { r: 0xb0483c
 microscopeItem('sample_still_water', 'Still Water Sample', MICROSCOPE_TUBE, { L: 0x8fbad8, H: 0xcfe6f2 }, 0x8fbad8);
 microscopeItem('tardigrade_tube', 'Tardigrade in a Tube', MICROSCOPE_TUBE_ANIMAL, { L: 0x9cc8d8, B: 0xc8a264, b: 0x7a5c30 }, 0xc8a264);
 microscopeItem('tardigrade_tun', 'Tardigrade Tun', MICROSCOPE_TUBE_TUN, { B: 0x9a7a44, b: 0x5e4620 }, 0x9a7a44);
+microscopeItem('methylene_blue', 'Methylene Blue', MICROSCOPE_DROPPER, { r: 0x3a3d44, g: 0xcfe9f2, L: 0x1f4fb4, H: 0x6f9fe8 }, 0x1f4fb4);
+microscopeItem('darkfield_stop', 'Dark-field Stop', MICROSCOPE_STOP, { G: 0x9fc6d4, L: 0xdff2f8, K: 0x16171a, H: 0x3a3c42 }, 0x16171a);
 
 // All the variants of a habitat look alike, and the letter says nothing about what is inside.
 for (const [habitat, variants] of Object.entries(MICRO_SAMPLES)) {
@@ -493,7 +630,7 @@ furnBlock('microscope', {
 });
 
 registerGameContent(({ addItem, addRecipe }) => {
-    ['moss', 'test_tube', 'glass_slide', 'micropipette', 'sample_still_water', 'tardigrade_tube', 'tardigrade_tun'].forEach(addItem);
+    ['moss', 'test_tube', 'glass_slide', 'micropipette', 'sample_still_water', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop'].forEach(addItem);
     for (const [habitat, variants] of Object.entries(MICRO_SAMPLES)) {
         for (const { letter } of variants) addItem(microSampleId(habitat, letter));
     }
@@ -502,6 +639,9 @@ registerGameContent(({ addItem, addRecipe }) => {
     addRecipe('glass_slide', 'Cut Glass Slides', 'glass_slide', 4, [{ type: 'glass', amount: 1 }]);
     addRecipe('micropipette', 'Make Micropipette', 'micropipette', 1, [{ type: 'glass', amount: 1 }, { type: 'leather', amount: 1 }]);
     addRecipe('tardigrade_revive', 'Revive Tardigrade Tun', 'tardigrade_tube', 1, [{ type: 'tardigrade_tun', amount: 1 }, { type: 'water_flask', amount: 1 }]);
+    // Not the real synthesis, which takes more than coal and sulfur (guide, page 246): only what stands for it.
+    addRecipe('methylene_blue', 'Mix Methylene Blue', 'methylene_blue', 1, [{ type: 'coal_ore', amount: 1 }, { type: 'element_s', amount: 1 }, { type: 'water_flask', amount: 1 }]);
+    addRecipe('darkfield_stop', 'Make Dark-field Stop', 'darkfield_stop', 1, [{ type: 'glass_slide', amount: 1 }, { type: 'coal_ore', amount: 1 }]);
 });
 
 // ---------------------------------------------------------------------------------------
@@ -536,7 +676,11 @@ const MICROSCOPE_CSS = `
 #micro-info .micro-fact{margin-top:4px;font-size:12px}
 #micro-info button{margin-top:6px;width:100%}
 #micro-note{font-size:12px;min-height:15px;color:#ffe9a8;line-height:1.3}
-#micro-sources{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:5px;max-height:26vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#micro-sources,#micro-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:5px;max-height:26vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#micro-tools,#micro-stain{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:9px;background:rgba(255,255,255,.045)}
+#micro-tool-line,#micro-stain-warn{font-size:12px;line-height:1.34;opacity:.9}
+#micro-stain-warn{color:#ffe9a8}
+.micro-cell.active{border-color:rgba(160,210,255,.95);box-shadow:inset 0 0 0 2px rgba(120,190,255,.6)}
 .micro-cell{position:relative;aspect-ratio:1;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05) center/72% no-repeat;cursor:pointer;touch-action:manipulation}
 .micro-cell:hover{border-color:rgba(255,255,255,.55)}
 .micro-cell span{position:absolute;right:3px;bottom:2px;font-size:11px;text-shadow:0 1px 2px #000}
@@ -634,7 +778,7 @@ Object.assign(Game.prototype, {
         } else if (pending.op === 'sample') {
             this.receiveSystemMessage({ text: outcome.reason === 'too far' ? 'That is too far away' : 'A sample needs water or moss' });
         } else {
-            this.microscopeNote = outcome.reason === 'occupied' ? 'There is already a slide on the stage' : outcome.reason === 'none left' ? 'There is none left on this slide' : '';
+            this.microscopeNote = microscopeRefusalLine(pending.op, outcome.reason);
             this.microscopeRenderLines();
         }
     },
@@ -682,6 +826,8 @@ Object.assign(Game.prototype, {
         this.microscopeNote = '';
         this.microscopePower = this.microscopePower || 40;
         this.microscopeFocus = this.microscopeFocus ?? 0.5;
+        this.microscopeStainAsked = null;
+        this.microscopeFiltersOpen = false;
         this.microscopeStage = [0, 0];
         this.microscopeLightTimer = 0;
         this.microscopeOpenedAt = performance.now();
@@ -720,6 +866,8 @@ Object.assign(Game.prototype, {
         this.microscopeContents = contents;
         const prep = contents.microscope || null;
         const before = this.microscopePrep;
+        // Someone else may have stained it, or taken it off, while this was being asked.
+        if (!prep || prep.stain) this.microscopeStainAsked = null;
         const same = prep && before && prep.source === before.source && prep.seed === before.seed;
         this.microscopePrep = prep;
         this.microscopeAgeAt = performance.now();
@@ -755,12 +903,14 @@ Object.assign(Game.prototype, {
     // Seconds since the slide was last wetted, by the server's reckoning.
     microscopeAge() {
         if (!this.microscopePrep) return 0;
+        if (this.microscopePrep.stain) return this.microscopePrep.age;
         return this.microscopePrep.age + (performance.now() - this.microscopeAgeAt) / 1000;
     },
 
     // Seconds since a drop last ended a drought, or negative if none has.
     microscopeWoke() {
         if (!this.microscopePrep || !(this.microscopePrep.woke >= 0)) return -1;
+        if (this.microscopePrep.stain) return this.microscopePrep.woke;
         return this.microscopePrep.woke + (performance.now() - this.microscopeAgeAt) / 1000;
     },
 
@@ -840,7 +990,7 @@ Object.assign(Game.prototype, {
         if (this.microscopeFrameLeft > 0) return;
         const step = Math.min(0.1, MICROSCOPE_FRAME - this.microscopeFrameLeft);
         this.microscopeFrameLeft = MICROSCOPE_FRAME;
-        const world = { age: this.microscopeAge(), woke: this.microscopeWoke(), revived: Boolean(this.microscopePrep && this.microscopePrep.revived), organisms: this.microscopeOrganisms };
+        const world = { age: this.microscopeAge(), woke: this.microscopeWoke(), revived: Boolean(this.microscopePrep && this.microscopePrep.revived), organisms: this.microscopeOrganisms, stain: this.microscopeStain() };
         for (const org of this.microscopeOrganisms) microStep(org, step, world);
         this.microscopeDraw(world);
         this.microscopeRenderSelected();
@@ -848,11 +998,20 @@ Object.assign(Game.prototype, {
 
     microscopeView(world) {
         const radius = this.microscopeCanvas.width / 2;
+        const light = this.microscopeLight;
         return {
             radius, power: this.microscopePower, scale: microscopeScale(this.microscopePower, radius),
             stageX: this.microscopeStage[0], stageY: this.microscopeStage[1], focus: this.microscopeFocus,
-            light: this.microscopeLight, t: this.microscopeClock || 0, age: world.age, revived: world.revived, selected: this.microscopeSelected
+            light, t: this.microscopeClock || 0, age: world.age, revived: world.revived, selected: this.microscopeSelected,
+            stain: world.stain,
+            tint: microscopeFieldTint(light && light.source, this.microscopeFilter ? this.microscopeFilter.rgb : null),
+            dark: this.microscopeDark && light ? microscopeDarkfieldGain(light.level) : 0
         };
+    },
+
+    // The stain on the slide, or an empty string.
+    microscopeStain() {
+        return (this.microscopePrep && this.microscopePrep.stain) || '';
     },
 
     microscopeDraw(world) {
@@ -953,6 +1112,26 @@ Object.assign(Game.prototype, {
                         <button type="button" class="micro-drop"></button>
                         <button type="button" class="micro-clear">Take the slide off</button>
                     </div>
+                    <div id="micro-tools">
+                        <div class="micro-row">
+                            <button type="button" class="micro-dark"></button>
+                            <button type="button" class="micro-filter"></button>
+                            <button type="button" class="micro-tools-read" title="Filters and dark-field, in the guide" style="flex:0 0 44px">📖</button>
+                        </div>
+                        <div id="micro-filters"></div>
+                        <div id="micro-tool-line"></div>
+                    </div>
+                    <div id="micro-stain">
+                        <div class="micro-row">
+                            ${Object.keys(MICRO_STAINS).map((stain) => `<button type="button" class="micro-stain-${stain}"></button>`).join('')}
+                            <button type="button" class="micro-stain-read" title="Stains, in the guide" style="flex:0 0 44px">📖</button>
+                        </div>
+                        <div id="micro-stain-warn"></div>
+                        <div class="micro-row" id="micro-stain-confirm">
+                            <button type="button" class="micro-stain-yes"></button>
+                            <button type="button" class="micro-stain-no">Not this slide</button>
+                        </div>
+                    </div>
                     <div id="micro-prepare">
                         <h4 id="micro-prepare-title"></h4>
                         <div class="micro-row" style="margin-bottom:6px"><button type="button" class="micro-cheek">Smear of your cheek</button></div>
@@ -983,6 +1162,21 @@ Object.assign(Game.prototype, {
         panel.querySelector('.micro-clear').addEventListener('click', () => this.microscopeSend('microscopeClear', 'clear'));
         panel.querySelector('.micro-capture').addEventListener('click', () => this.microscopeSend('microscopeCapture', 'capture'));
         panel.querySelector('.micro-cheek').addEventListener('click', () => this.microscopePrepareSlide('cheek'));
+        panel.querySelector('.micro-dark').addEventListener('click', () => this.microscopeToggleDark());
+        panel.querySelector('.micro-filter').addEventListener('click', () => {
+            this.microscopeFiltersOpen = !this.microscopeFiltersOpen;
+            this.microscopeRenderControls();
+        });
+        panel.querySelector('.micro-tools-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_LENS_PAGE));
+        panel.querySelector('.micro-stain-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_STAIN_PAGE));
+        for (const stain of Object.keys(MICRO_STAINS)) {
+            panel.querySelector(`.micro-stain-${stain}`).addEventListener('click', () => this.microscopeAskStain(stain));
+        }
+        panel.querySelector('.micro-stain-yes').addEventListener('click', () => this.microscopeApplyStain());
+        panel.querySelector('.micro-stain-no').addEventListener('click', () => {
+            this.microscopeStainAsked = null;
+            this.microscopeRenderControls();
+        });
         // Clicks inside the panel must not reach the game (which would try to grab the pointer).
         panel.addEventListener('mousedown', (event) => event.stopPropagation());
         panel.addEventListener('pointerdown', (event) => event.stopPropagation());
@@ -1098,7 +1292,116 @@ Object.assign(Game.prototype, {
 
     microscopeSend(message, op) {
         if (!this.microscopeAt) return;
+        // The server would refuse it too; there is no point in taking the items out for that.
+        if (this.microscopeStain() && (op === 'drop' || op === 'capture')) {
+            this.microscopeNote = microscopeRefusalLine(op, 'stained');
+            this.microscopeRenderLines();
+            return;
+        }
         this.microscopeRequest(message, op, { ...this.microscopeAt });
+    },
+
+    // ---- Stains ----
+
+    // The first press only asks: a stain cannot be undone.
+    microscopeAskStain(stain) {
+        if (!this.microscopeAt || !this.microscopePrep || this.microscopeStain() || !MICRO_STAINS[stain]) return;
+        if (this.getInventoryCount(stain) <= 0) {
+            this.microscopeNote = `You have no ${MICRO_STAINS[stain].name}: it comes from ${MICRO_STAINS[stain].gets}.`;
+            this.microscopeRenderLines();
+            return;
+        }
+        this.microscopeStainAsked = stain;
+        this.microscopeRenderControls();
+    },
+
+    microscopeApplyStain() {
+        const stain = this.microscopeStainAsked;
+        this.microscopeStainAsked = null;
+        if (stain && this.microscopeAt && this.microscopePrep && !this.microscopeStain()) {
+            this.microscopeRequest('microscopeStain', 'stain', { ...this.microscopeAt, source: stain }, stain);
+        }
+        this.microscopeRenderControls();
+    },
+
+    // ---- What this viewer puts in the light ----
+
+    microscopeToggleDark() {
+        if (!this.microscopeDark && this.getInventoryCount('darkfield_stop') <= 0) {
+            this.microscopeNote = 'Dark-field needs a Dark-field Stop (C: a glass slide and a piece of coal).';
+            this.microscopeRenderLines();
+            return;
+        }
+        this.microscopeDark = !this.microscopeDark;
+        this.playTone({ frequency: 240, duration: 0.05, type: 'square', volume: 0.012, release: 0.05 });
+        this.microscopeRenderControls();
+    },
+
+    // type: a filter the player carries, or null for none.
+    microscopeSetFilter(type) {
+        const rgb = type ? microscopeFilterColor(type, this.world.blockTypes) : null;
+        if (type && (!rgb || this.getInventoryCount(type) <= 0)) return;
+        this.microscopeFilter = type ? { type, rgb } : null;
+        this.microscopeFiltersOpen = false;
+        this.microscopeRenderControls();
+    },
+
+    // What the player carries that can be a filter.
+    microscopeFilterChoices() {
+        return this.inventory.filter((type) => this.getInventoryCount(type) > 0 && microscopeFilterColor(type, this.world.blockTypes));
+    },
+
+    microscopeRenderTools() {
+        const panel = this.microscopePanel;
+        // What is no longer in the inventory is no longer in the light.
+        if (this.microscopeDark && this.getInventoryCount('darkfield_stop') <= 0) this.microscopeDark = false;
+        if (this.microscopeFilter && this.getInventoryCount(this.microscopeFilter.type) <= 0) this.microscopeFilter = null;
+        const dark = panel.querySelector('.micro-dark');
+        dark.classList.toggle('active', Boolean(this.microscopeDark));
+        dark.textContent = this.microscopeDark ? 'Dark-field: on' : 'Dark-field: off';
+        const choices = this.microscopeFilterChoices();
+        const filter = panel.querySelector('.micro-filter');
+        filter.classList.toggle('active', Boolean(this.microscopeFilter));
+        filter.textContent = this.microscopeFilter ? `Filter: ${this.getBlockDisplayName(this.microscopeFilter.type)}` : 'Filter: none';
+        const list = panel.querySelector('#micro-filters');
+        list.style.display = this.microscopeFiltersOpen ? '' : 'none';
+        if (!this.microscopeFiltersOpen) return;
+        list.innerHTML = '';
+        const none = document.createElement('button');
+        none.type = 'button';
+        none.textContent = 'None';
+        none.addEventListener('click', () => this.microscopeSetFilter(null));
+        list.appendChild(none);
+        for (const type of choices) {
+            const cell = document.createElement('div');
+            cell.className = 'micro-cell';
+            cell.classList.toggle('active', Boolean(this.microscopeFilter) && this.microscopeFilter.type === type);
+            cell.title = this.getBlockDisplayName(type);
+            cell.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            cell.addEventListener('click', () => this.microscopeSetFilter(type));
+            list.appendChild(cell);
+        }
+    },
+
+    microscopeRenderStain() {
+        const panel = this.microscopePanel;
+        const prep = this.microscopePrep;
+        const box = panel.querySelector('#micro-stain');
+        // Only for a slide that has none yet.
+        box.style.display = prep && !prep.stain ? '' : 'none';
+        if (!prep || prep.stain) return;
+        for (const [stain, def] of Object.entries(MICRO_STAINS)) {
+            const count = this.getInventoryCount(stain);
+            const button = panel.querySelector(`.micro-stain-${stain}`);
+            button.textContent = count > 0 ? `${def.name} (${count})` : `${def.name}: none`;
+            button.classList.toggle('active', this.microscopeStainAsked === stain);
+        }
+        const asked = this.microscopeStainAsked;
+        panel.querySelector('#micro-stain-warn').textContent = asked
+            ? microscopeStainWarning(asked)
+            : 'A stain shows what you cannot see alive, and kills what it shows. One to a slide.';
+        panel.querySelector('#micro-stain-confirm').style.display = asked ? '' : 'none';
+        if (asked) panel.querySelector('.micro-stain-yes').textContent = `Stain it with ${MICRO_STAINS[asked].name}`;
     },
 
     microscopePrepareSlide(source) {
@@ -1124,8 +1427,8 @@ Object.assign(Game.prototype, {
         if (prep) {
             const drop = panel.querySelector('.micro-drop');
             const flasks = this.getInventoryCount('water_flask');
-            drop.disabled = flasks <= 0;
-            drop.textContent = flasks > 0 ? 'Add a drop of water' : 'A drop needs a Water Flask';
+            drop.disabled = flasks <= 0 || Boolean(prep.stain);
+            drop.textContent = prep.stain ? 'Stained: a drop brings nothing back' : flasks > 0 ? 'Add a drop of water' : 'A drop needs a Water Flask';
         } else {
             const slides = this.getInventoryCount('glass_slide');
             panel.querySelector('#micro-prepare-title').textContent = slides > 0
@@ -1146,6 +1449,8 @@ Object.assign(Game.prototype, {
                 list.appendChild(cell);
             });
         }
+        this.microscopeRenderTools();
+        this.microscopeRenderStain();
         this.microscopeRenderLines();
         this.microscopeRenderInfo();
     },
@@ -1164,6 +1469,11 @@ Object.assign(Game.prototype, {
         const prep = this.microscopePrep;
         panel.querySelector('#micro-slide-line').textContent = prep ? microscopeSlideLine(prep, this.microscopeAge(), this.microscopeWoke()) : 'There is no slide on the stage.';
         panel.querySelector('#micro-note').textContent = this.microscopeNote || '';
+        // Dark-field first: how well it works is what changes as the light does.
+        const tool = this.microscopeDark
+            ? microscopeDarkfieldLine(light)
+            : this.microscopeFilter ? microscopeFilterLine(this.getBlockDisplayName(this.microscopeFilter.type), this.microscopeFilter.rgb, this.microscopeStain()) : '';
+        panel.querySelector('#micro-tool-line').textContent = tool;
     },
 
     microscopeRenderInfo() {
@@ -1176,13 +1486,15 @@ Object.assign(Game.prototype, {
             return;
         }
         const def = MICRO_SPECIES[org.species];
-        if (this.microscopeShownSpecies !== org.species) {
-            this.microscopeShownSpecies = org.species;
+        const stain = this.microscopeStain();
+        const shown = `${org.species}|${stain}|${this.microscopeDark ? 1 : 0}`;
+        if (this.microscopeShownSpecies !== shown) {
+            this.microscopeShownSpecies = shown;
             info.querySelector('.micro-name').innerHTML = `${def.name} <span class="micro-latin">${def.latin}</span>`;
             info.querySelector('.micro-meta').textContent = `${def.size}. ${def.where}.`;
             info.querySelector('.micro-fact').textContent = def.fact;
             const portrait = panel.querySelector('#micro-portrait');
-            microDrawPortrait(portrait.getContext('2d'), org.species, portrait.width, portrait.height, 1.3);
+            microDrawPortrait(portrait.getContext('2d'), org.species, portrait.width, portrait.height, 1.3, { stain, dark: Boolean(this.microscopeDark) });
         }
         const capture = info.querySelector('.micro-capture');
         const tardigrade = org.species === 'tardigrade';
@@ -1190,8 +1502,8 @@ Object.assign(Game.prototype, {
         if (tardigrade) {
             const pipette = this.getInventoryCount('micropipette') > 0;
             const tube = this.getInventoryCount('test_tube') > 0;
-            capture.disabled = !pipette || !tube;
-            capture.textContent = pipette && tube ? 'Draw it off into a tube' : pipette ? 'To keep it you need an empty Test Tube' : 'To keep it you need a Micropipette';
+            capture.disabled = !pipette || !tube || Boolean(stain);
+            capture.textContent = stain ? 'Stained: it cannot be drawn off' : pipette && tube ? 'Draw it off into a tube' : pipette ? 'To keep it you need an empty Test Tube' : 'To keep it you need a Micropipette';
         }
         this.microscopeRenderSelected();
     },
@@ -1204,7 +1516,9 @@ Object.assign(Game.prototype, {
         const age = this.microscopeAge();
         const revived = Boolean(this.microscopePrep && this.microscopePrep.revived);
         let text = '';
-        if (org.species === 'tardigrade') text = microscopeTardigradeLine(org);
+        const stain = this.microscopeStain();
+        if (stain) text = MICRO_SPECIES[org.species].stains[stain].note;
+        else if (org.species === 'tardigrade') text = microscopeTardigradeLine(org);
         else if (microFate(org.species, age, revived) === 'cyst') text = 'It has shut itself in a cyst.';
         else if (microFate(org.species, age, revived) === 'dead') text = 'The drying has killed it.';
         if (box.textContent !== text) box.textContent = text;
@@ -1224,7 +1538,7 @@ Object.assign(Game.prototype, {
             return;
         }
         for (const [type, amount] of MICROSCOPE_KIT) this.addInventory(type, amount);
-        this.receiveSystemMessage({ text: 'Microscope kit: microscope, tubes, slides, pipette, a lantern and samples' });
+        this.receiveSystemMessage({ text: 'Microscope kit: microscope, tubes, slides, pipette, a lantern, samples, stains, filters and a dark-field stop' });
     }
 });
 
