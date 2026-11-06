@@ -24,13 +24,17 @@ import (
 //   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed.
 //   - microscopeDrop    {x, y, z, reqId}: a drop of water on the slide.
 //   - microscopeCapture {x, y, z, reqId}: draws a tardigrade off the slide into a tube.
+//   - microscopeStain   {x, y, z, source, reqId}: stains the slide with `source` (one of microscopeStains),
+//     once. A stained slide is fixed: its clock stops there, and a drop or a capture is refused, because
+//     what is on it is dead. The stain goes when the slide comes off.
 //
 // All answer storageResult (sampleTake, sampleResult) with Amount 1 when done and 0 with a reason when
 // refused, and the client gives back what it took out of the inventory first, as with a chest. Which
 // organisms are where on the slide is the client's: the species come from the source, and the seed
 // makes every viewer see the same counts and places. The movement is drawn by each client.
 //
-// sampleVariants and microscopeItems are mirrored by MICRO_SAMPLES and MICRO_ITEMS in js/game/microbes.js
+// sampleVariants, microscopeItems and microscopeStains are mirrored by MICRO_SAMPLES, MICRO_ITEMS and
+// MICRO_STAINS in js/game/microbes.js
 // (test/js/microscope.test.js checks them).
 
 const (
@@ -129,6 +133,9 @@ var microscopeItems = map[string][]string{
 
 var microscopeWool = []string{"soil_bacteria"}
 
+// What can be run onto a slide. The bottle's glass comes back on the client, as with milk.
+var microscopeStains = map[string]bool{"iodine_tincture": true, "methylene_blue": true}
+
 // MicroscopePrep is what lies on a microscope's slide.
 type MicroscopePrep struct {
 	Source string `json:"source"`
@@ -143,6 +150,9 @@ type MicroscopePrep struct {
 	// How many tardigrades it started with, and how many have been drawn off.
 	Tardigrades int `json:"tardigrades,omitempty"`
 	Taken       int `json:"taken,omitempty"`
+	// The stain it was given, if any, and when: what was on it stopped there.
+	Stain     string  `json:"stain,omitempty"`
+	StainedAt float64 `json:"stainedAt,omitempty"`
 }
 
 // microscopeView is a slide in a storageContents message: Age is the seconds since it was last wetted,
@@ -376,6 +386,9 @@ func (b *storageBook) dropWater(w cropWorld, eye *[3]float64, request microscope
 	if block == nil || block.Prep == nil {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "gone"}), false
 	}
+	if block.Prep.Stain != "" {
+		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "stained"}), false
+	}
 	now := b.clock()
 	if now-block.Prep.WetAt >= microscopeDrySeconds {
 		block.Prep.Revived = true
@@ -393,6 +406,9 @@ func (b *storageBook) capture(w cropWorld, eye *[3]float64, request microscopeRe
 	if done != nil {
 		return *done, false
 	}
+	if block != nil && block.Prep != nil && block.Prep.Stain != "" {
+		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "stained"}), false
+	}
 	if block == nil || block.Prep == nil || block.Prep.Taken >= block.Prep.Tardigrades {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "none left"}), false
 	}
@@ -404,12 +420,41 @@ func (b *storageBook) capture(w cropWorld, eye *[3]float64, request microscopeRe
 	return b.finishMicroscopeLocked(place, request.ReqID, item), true
 }
 
+// stainSlide runs a stain onto the slide. One to a slide, and there is no undoing it.
+func (b *storageBook) stainSlide(w cropWorld, eye *[3]float64, request microscopeRequest) (storageOutcome, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	place, block, done := b.beginMicroscopeLocked(w, eye, request)
+	if done != nil {
+		return *done, false
+	}
+	refuse := func(reason string) (storageOutcome, bool) {
+		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: reason}), false
+	}
+	if !microscopeStains[request.Source] {
+		return refuse("not a stain")
+	}
+	if block == nil || block.Prep == nil {
+		return refuse("gone")
+	}
+	if block.Prep.Stain != "" {
+		return refuse("stained")
+	}
+	block.Prep.Stain = request.Source
+	block.Prep.StainedAt = b.clock()
+	return b.finishMicroscopeLocked(place, request.ReqID, request.Source), true
+}
+
 // microscopeViewOf is what a panel is told of a slide (nil when the stage is empty).
 func (b *storageBook) microscopeViewOf(block *StorageBlock) *microscopeView {
 	if block == nil || block.Prep == nil {
 		return nil
 	}
 	now := b.clock()
+	// A stained slide stopped where it was: it reads the same however long it has been there.
+	if block.Prep.Stain != "" {
+		now = block.Prep.StainedAt
+	}
 	view := &microscopeView{MicroscopePrep: *block.Prep, Age: now - block.Prep.WetAt, Woke: -1}
 	if block.Prep.WokenAt > 0 {
 		view.Woke = now - block.Prep.WokenAt
@@ -429,6 +474,13 @@ func microscopeCleanLoaded(block *StorageBlock) {
 	prep := *block.Prep
 	prep.Tardigrades = microscopeTardigrades(prep.Source, prep.Seed)
 	prep.Taken = max(0, min(prep.Taken, prep.Tardigrades))
+	if !microscopeStains[prep.Stain] {
+		prep.Stain = ""
+		prep.StainedAt = 0
+	} else if prep.StainedAt < prep.WetAt {
+		// Whatever a saved slide claims, its clock cannot stop before it last got wet.
+		prep.StainedAt = prep.WetAt
+	}
 	block.Prep = &prep
 }
 
@@ -460,6 +512,8 @@ func handleMicroscopeMessage(client *Client, msg Message) {
 		apply = storage.dropWater
 	case "microscopeCapture":
 		apply = storage.capture
+	case "microscopeStain":
+		apply = storage.stainSlide
 	default:
 		return
 	}

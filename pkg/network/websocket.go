@@ -848,7 +848,7 @@ func handleMessage(client *Client, msg Message) {
 	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
 		handleStorageMessage(client, msg)
 
-	case "sampleTake", "microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture":
+	case "sampleTake", "microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture", "microscopeStain":
 		handleMicroscopeMessage(client, msg)
 
 	case "glowSet":
