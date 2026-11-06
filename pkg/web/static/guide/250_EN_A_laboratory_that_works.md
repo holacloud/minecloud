@@ -27,11 +27,11 @@ A network is **all or nothing**: if it cannot feed every consumer, all of them g
 3. **The darkroom**: a [microscope](238) in the dark, and a lever that lights the lamp beside it.
 4. **The main switch**, in the power hall: cuts the ground floor and leaves the batteries charging. The other lever isolates the RTGs: the [multimeter](205) then shows only sun, wind and batteries.
 5. **Night**: a [daylight sensor](208) in night mode lights the lobby, the terrace and the plaza by itself.
+6. **The weather**: on the terrace, in the open, stands a real [weather station](112). Look at it for the readings; when it rains, its gauge fills.
 
 ## What is only decoration
 
 - The telescope in the dome is a **model** made of blocks. A real [telescope](133) is an item you raise by hand: the dome has an open slit to use one through.
-- A [weather station](112) is an item you set down, not a block. There is a pad on the terrace for it.
 - The transformers in the power hall, the double helix in the atrium and the lecture hall's screen do nothing.
 
 ## Why the chests are empty

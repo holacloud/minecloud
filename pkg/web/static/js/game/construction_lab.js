@@ -30,10 +30,9 @@
 //   every consumer starts under its bare name: the server renames it `:on` when it has power.
 // - A build sends blocks and nothing else (constructionApply), so chests, barrels and fridges are EMPTY:
 //   nothing in the game lets a plan fill them. The signs say what to get with /microkit and /give.
-// - A telescope and a weather station are not blocks. The telescope is an item raised by hand (astronomy.js)
-//   and a weather station is an item that sets a model down (weather.js). So: an open slit in the dome and
-//   an open deck to use them from, a telescope of blocks that says it is a model, and a pad to put a
-//   station on. Nothing here pretends otherwise.
+// - A telescope is not a block: it is an item raised by hand (astronomy.js). So: an open slit in the dome
+//   and an open deck to use it from, and a telescope of blocks that says it is a model. A weather station
+//   is a block (weather.js), so a real one stands on the terrace, in the open.
 // - The lift moves a block outside the plan, so "/build undo" leaves a platform that is away from its plan
 //   cell behind: bring the lift down first. Wheat that has grown is also not what the plan placed.
 // Tests: test/js/construction_lab.test.js, and on the real grid pkg/network/construction_lab_test.go.
@@ -1383,7 +1382,7 @@ function labDrawGreenhouse(b, t) {
     t.lantern(12, R + 1, 27, 'floor');
 }
 
-// The terrace: solar field, wind turbines, night lights, stargazing deck, the weather station's pad.
+// The terrace: solar field, wind turbines, night lights, stargazing deck, the weather station.
 function labDrawTerrace(b, t) {
     const { sign, piece } = t;
     const R = LAB_ROOF_Y;
@@ -1420,11 +1419,13 @@ function labDrawTerrace(b, t) {
     for (let x = 30; x <= 35; x++) piece(x, y, 28, 'bench', 'bench', 'n');
     piece(31, y, 29, 'chest', 'chest', 'n');
     sign(29, y, 27, 'n', 'Mirador de estrellas', 'Cielo abierto en todas direcciones. El telescopio es un objeto de la mano: /give telescope.', 'A deck for the stars: open sky all round. The telescope is a hand item: /give telescope.');
-    // The weather station is an item that sets a model down: a pad for it, and it says so.
+    // A real weather station on its pad, under the open sky so that the gauge fills.
     b.box(38, R, 17, 39, R, 18, 'marble');
-    t.mark('pad', 38, R, 17);
-    sign(39, y, 19, 's', 'Sitio para la estación', 'La estación meteorológica es un objeto que colocas tú, no un bloque: /give weather_station, clic derecho en esta losa.',
-        'Pad for a weather station. It is an item you set down, not a block: /give weather_station, right click on this slab.');
+    b.shaped(39, y, 17, 'weather_station', 'weather_station', { half: 'lower' });
+    b.shaped(39, y + 1, 17, 'weather_station', 'weather_station', { half: 'upper' });
+    t.mark('station', 39, y, 17);
+    sign(39, y, 19, 's', 'Estación meteorológica', 'Estación de verdad: mírala para las lecturas, clic derecho para el informe. Se monta otra con /give weather_station.',
+        'A real weather station: look at it for the readings, right click for the report. Set up another with /give weather_station.');
     // The back terrace: a garden where nobody is working.
     b.box(2, R, 30, 18, R, 47, 'grass');
     b.box(15, R, 30, 18, R, 47, 'spruce_planks');

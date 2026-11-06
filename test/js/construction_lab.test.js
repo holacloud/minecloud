@@ -36,7 +36,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     }
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
-    for (const file of ['joinery.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'smelters.js', 'farming.js', 'glow_block.js', 'microbes.js', 'microscope.js', 'decor.js', 'mirrors.js', 'construction_lab.js']) {
+    for (const file of ['joinery.js', 'weather.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'smelters.js', 'farming.js', 'glow_block.js', 'microbes.js', 'microscope.js', 'decor.js', 'mirrors.js', 'construction_lab.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS, ConstructionBuilder, constructionPlan, constructionLayout, chunkIndex,
@@ -219,10 +219,31 @@ test('it has what was asked for', () => {
         if (!least) continue;
         assert.ok((count[type] || 0) >= least, `${type}: ${count[type]} of ${least}`);
     }
-    // No telescope or weather station as a block: they are not blocks, and nothing pretends.
-    assert.ok(!count.telescope && !count.weather_station);
+    // No telescope as a block: it is not one, and nothing pretends. A weather station is one: see below.
+    assert.ok(!count.telescope);
     for (const type of ['telescope', 'weather_station', 'multimeter', 'test_tube', 'glass_slide', 'micropipette', 'iodine_tincture', 'methylene_blue', 'darkfield_stop']) {
         assert.ok(PLAN.cells.some((cell) => cell.meta && cell.meta.t && cell.meta.t.includes(type)), `a sign says how to get ${type}`);
+    }
+});
+
+test('a real weather station on the terrace, in the open, with a sign that says so', () => {
+    const y = ctx.LAB_ROOF_Y + 1;
+    assert.equal(planAt(39, y, 17), 'weather_station');
+    assert.equal(planAt(39, y + 1, 17), 'weather_station:upper');
+    assert.equal(PLAN.cells.filter((cell) => cell.type === 'weather_station').length, 1);
+    assert.ok(defOf(planAt(39, y - 1, 17)) && blocks.registry.solid[blocks.registry.id(planAt(39, y - 1, 17))], 'on something solid');
+    for (const cell of PLAN.cells) {
+        if (cell.x === 39 && cell.z === 17) assert.ok(cell.y <= y + 1, `open sky: ${cell.type} at ${cell.y}`);
+    }
+    const signs = PLAN.cells.filter((cell) => cell.meta && cell.meta.t && cell.meta.t.includes('weather_station'));
+    assert.equal(signs.length, 1);
+    assert.match(signs[0].meta.t, /real weather station/i);
+    assert.ok(!/not a block|no un bloque/.test(signs[0].meta.t));
+    assert.ok(!PLAN.cells.some((cell) => cell.meta && cell.meta.t && /Sitio para la estaci|Pad for a weather/.test(cell.meta.t)));
+    for (const name of fs.readdirSync(path.join(JS, '..', 'guide')).filter((file) => file.startsWith('250_'))) {
+        const page = fs.readFileSync(path.join(JS, '..', 'guide', name), 'utf8');
+        assert.ok(!/objeto que colocas|item you set down/.test(page), name);
+        assert.match(page, /\]\(112\)/, name);
     }
 });
 

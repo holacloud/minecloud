@@ -27,11 +27,11 @@ Una red es **todo o nada**: si no puede alimentar a todos sus consumidores, se a
 3. **El cuarto oscuro**: un [microscopio](238) a oscuras, y una palanca que enciende la lámpara de al lado.
 4. **El interruptor general**, en la central: corta la planta baja y deja que las baterías sigan cargándose. La otra palanca aísla los RTG: el [multímetro](205) muestra entonces solo sol, viento y baterías.
 5. **La noche**: un [sensor de luz](208) en modo noche enciende solo el vestíbulo, la terraza y la plaza.
+6. **El tiempo**: en la terraza, al aire libre, hay una [estación meteorológica](112) de verdad. Mírala para las lecturas; cuando llueve, su pluviómetro se llena.
 
 ## Lo que es solo decoración
 
 - El telescopio de la cúpula es una **maqueta** de bloques. Un [telescopio](133) de verdad es un objeto que levantas con la mano: la cúpula tiene una rendija abierta para usarlo.
-- Una [estación meteorológica](112) es un objeto que colocas, no un bloque. En la terraza hay una losa para ella.
 - Los transformadores de la central, la doble hélice del atrio y la pantalla del aula no hacen nada.
 
 ## Por qué los cofres vienen vacíos
