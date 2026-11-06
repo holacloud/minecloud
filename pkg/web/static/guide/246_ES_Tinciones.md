@@ -75,7 +75,7 @@ Lo que hay alrededor también cuenta: en un portaobjetos de `wheat`, el yodo vue
 
 - Existen las **tinciones vitales**, en dosis muy bajas, sobre células vivas: rojo neutro y verde Jano B en protozoos, e incluso yodo muy diluido. Paul Ehrlich tiñó fibras nerviosas vivas con azul de metileno en 1887.
 - La levadura viva vuelve incoloro el azul de metileno, y solo las células muertas se quedan azules. Los cerveceros las cuentan así.
-- También se han teñido tardígrados vivos, con colorantes fluorescentes, comprobando que sobreviven.
+- También se han teñido tardígrados vivos, con colorantes fluorescentes, vigilando cómo lo aguantan los animales.
 - Aun así, casi todos los tintes acaban siendo un veneno, incluso los vitales. Es cuestión de dosis y de tiempo.
 
 **Lo simplifica el juego:**

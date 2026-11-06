@@ -75,7 +75,7 @@ What lies around them counts too: on a `wheat` slide, iodine turns the **loose g
 
 - There are **vital stains**, used in very low doses on living cells: neutral red and Janus green B on protozoa, and even a very dilute iodine. Paul Ehrlich stained living nerve fibres with methylene blue in 1887.
 - Living yeast turns methylene blue colourless, and only the dead cells stay blue. Brewers count them that way.
-- Researchers have also stained living tardigrades, with fluorescent dyes, and checked that they survive.
+- Researchers have also stained living tardigrades, with fluorescent dyes, watching how the animals stand it.
 - Still, nearly every stain is poison in the end, even the vital ones. It is a question of dose and time.
 
 **Simplified in the game:**
