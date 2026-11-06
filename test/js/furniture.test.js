@@ -1209,7 +1209,7 @@ test('smelters: every item in the tables exists, the machines beat the C menu, a
         const byHand = recipes.get(`smelt_${ore}`);
         const inFoundry = ctx.APPLIANCE_FOUNDRY[ore];
         assert.equal(byHand.output, inFoundry.out, ore);
-        assert.deepEqual(byHand.inputs.map(({ type, amount }) => [type, amount]), [[ore, 1], ['coal_ore', 1]], ore);
+        assert.deepEqual(JSON.parse(JSON.stringify(byHand.inputs)), [{ type: ore, amount: 1 }, { type: 'coal_ore', amount: 1 }], ore);
         assert.equal(byHand.amount, 1, ore);
         assert.ok(inFoundry.yield / inFoundry.in > byHand.amount, ore);
     }
