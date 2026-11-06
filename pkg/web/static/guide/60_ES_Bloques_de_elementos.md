@@ -13,7 +13,7 @@ Todos se «sintetizan» con la misma receta (tecla C); eliges el elemento en la 
 |---|---|
 | 1 bloque de elemento | 1 `stone` + 1 `coal_ore` |
 
-El silicio sale también del [horno de arco eléctrico](236), y la piedra lisa de la [fundición](235), en más cantidad. El estaño, el zinc, la plata y el plomo salen además de su [mineral](248), [fundido](249).
+El silicio sale también del [horno de arco eléctrico](236), y la piedra lisa de la [fundición](235), en más cantidad. El estaño, el zinc, la plata y el plomo salen además de su [mineral](248), [fundido](249). El cobre, el hierro y el oro salen de sus bloques de metal, uno por uno: 1 `copper_block` da 1 `element_cu`, 1 `iron_block` da 1 `element_fe` y 1 `gold_block` da 1 `element_au`.
 
 En la lista de recetas aparecen como *Synthesize H Block*, *Synthesize HE Block*… (con el símbolo en mayúsculas).
 

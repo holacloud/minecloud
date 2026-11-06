@@ -21,10 +21,11 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 | Resultado | Ingredientes |
 |---|---|
 | 1 `element_fe` | 1 `stone` + 1 `coal_ore` |
+| 1 `element_fe` (*Extract FE from Iron Block*) | 1 `iron_block` |
 
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
-El mineral, `iron_ore`, [se encuentra en el mundo](248), y es otro objeto: la [fundición](235) lo convierte en `iron_block`, no en este bloque.
+El mineral, `iron_ore`, [se encuentra en el mundo](248), y es otro objeto: la [fundición](235) lo convierte en `iron_block`, y con la tecla C cada `iron_block` da un `element_fe`. Al revés no se puede.
 
 ## En el laboratorio
 

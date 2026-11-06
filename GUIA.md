@@ -469,6 +469,14 @@ Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los 
 | `silver_ore` | montaña, y en bolsas dentro del plomo | y < 4; en la montaña, cualquiera | **2** `element_ag` | 1 `silver_ore` + 1 `coal_ore` → 1 |
 | `gold_ore` | montaña; muy poco en otros sitios | y < 0; en la montaña, más por debajo de y = 0 | 1 `gold_block` | se usa tal cual |
 
+Del metal de construir a la mesa de laboratorio (tecla C, y solo en este sentido):
+
+| Resultado | Ingredientes | Receta |
+|---|---|---|
+| 1 `element_cu` | 1 `copper_block` | *Extract CU from Copper Block* |
+| 1 `element_fe` | 1 `iron_block` | *Extract FE from Iron Block* |
+| 1 `element_au` | 1 `gold_block` | *Extract AU from Gold Block* |
+
 Las recetas antiguas (*Refine* para los bloques de metal y *Synthesize* para los elementos) siguen todas.
 
 Un mundo guardado conserva sus chunks: las vetas nuevas solo salen en los que aún no se habían generado.

@@ -29,7 +29,7 @@ None of these blocks appears in the world: they are crafted. But copper, iron an
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
 
-The [foundry](235) also smelts 1 `iron_ore` into 1 `iron_block`, 1 `gold_ore` into 1 `gold_block`, and 1 `copper_ore` into **2** `copper_block`. By hand, 1 `copper_ore` + 1 `coal_ore` give 1 `copper_block`.
+The [foundry](235) also smelts 1 `iron_ore` into 1 `iron_block`, 1 `gold_ore` into 1 `gold_block`, and 1 `copper_ore` into **2** `copper_block`. By hand, 1 `copper_ore` + 1 `coal_ore` give 1 `copper_block`. For the [lab bench](117), each of the three metals turns into its [element block](60).
 
 Polished stones come from cobblestone, which is plentiful. Metals and obsidian need **smooth stone** (`stone`):
 mining stone only gives cobblestone, so smelt it first, 1 `cobblestone` + 1 `coal_ore` → 2 `stone` (see

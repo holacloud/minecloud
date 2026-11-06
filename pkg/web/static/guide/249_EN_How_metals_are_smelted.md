@@ -23,7 +23,8 @@ The **other recipes are still there**: element blocks can be synthesised and met
 ## What each metal is for
 
 - `element_sn`, `element_zn`, `element_pb` and `element_ag` are the element blocks that [chemistry](115) works with. Each counts as **one atom** at the [lab bench](117).
-- `copper_block` is copper **for building**, the one that wires, generators and motors ask for. The lab does not take it: there you use `element_cu`, which is synthesised. See [Copper](165).
+- `copper_block` is copper **for building**, the one that wires, generators and motors ask for. See [Copper](165).
+- To take what you have smelted to the [lab bench](117), the C key turns 1 `copper_block` into 1 `element_cu`, 1 `iron_block` into 1 `element_fe` and 1 `gold_block` into 1 `element_au`. Only that way: an element block does not turn back into building metal.
 
 ## How much heat each one needs
 

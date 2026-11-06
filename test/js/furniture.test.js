@@ -1282,6 +1282,32 @@ test('smelters: the blocks: storage, electricity, light, collision, icons and re
     }
 });
 
+test('smelters: a metal block turns into its element for the lab, one for one, and never back', () => {
+    const world = makeWorld();
+    const recipes = new Map();
+    const game = new ctx.Game();
+    for (const hook of ctx.GAME_CONTENT_HOOKS) {
+        try { hook.call(game, { addItem() {}, addRecipe: (id, name, output, amount, inputs) => recipes.set(id, { name, output, amount, inputs }) }); } catch (_error) { /* hooks that need a whole game */ }
+    }
+    const metals = { copper_block: 'element_cu', iron_block: 'element_fe', gold_block: 'element_au' };
+    for (const [block, element] of Object.entries(metals)) {
+        const recipe = recipes.get(`${element}_from_block`);
+        assert.ok(recipe, element);
+        assert.equal(recipe.output, element);
+        assert.equal(recipe.amount, 1);
+        assert.equal(JSON.stringify(recipe.inputs), JSON.stringify([{ type: block, amount: 1 }]));
+        assert.ok(world.blockTypes[block] && world.blockTypes[element], element);
+        for (const other of recipes.values()) {
+            if (other.output === block) assert.ok(!other.inputs.some((input) => input.type === element), `${block} made from ${element}`);
+        }
+    }
+    // The old ways to the same things are still there.
+    const code = fs.readFileSync(path.join(ROOT, 'pkg', 'web', 'static', 'js', 'game.js'), 'utf8');
+    assert.ok(code.includes('addRecipe(`element_${symbol}`, `Synthesize'));
+    assert.ok(code.includes('addRecipe(type, `Refine'));
+    assert.ok(recipes.has('smelt_copper_ore'));
+});
+
 test('smelters: what the panel says and shows', () => {
     const foundry = ctx.APPLIANCE_MACHINES.foundry;
     assert.match(ctx.storageOvenStatus({ burn: 0 }, foundry), /No fire.*coal/);

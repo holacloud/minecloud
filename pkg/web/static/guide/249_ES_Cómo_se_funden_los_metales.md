@@ -23,7 +23,8 @@ Las **otras recetas siguen ahí**: los bloques de elemento se pueden sintetizar 
 ## Para qué es cada metal
 
 - `element_sn`, `element_zn`, `element_pb` y `element_ag` son los bloques de elemento con los que trabaja la [química](115). Cada uno cuenta como **un átomo** en la [mesa de laboratorio](117).
-- `copper_block` es el cobre **de construir**, el que piden los cables, los generadores y los motores. El laboratorio no lo acepta: allí se usa `element_cu`, que se sintetiza. Ver [Cobre](165).
+- `copper_block` es el cobre **de construir**, el que piden los cables, los generadores y los motores. Ver [Cobre](165).
+- Para llevar a la [mesa de laboratorio](117) lo que has fundido, la tecla C convierte 1 `copper_block` en 1 `element_cu`, 1 `iron_block` en 1 `element_fe` y 1 `gold_block` en 1 `element_au`. Solo en ese sentido: un bloque de elemento no vuelve a ser metal de construir.
 
 ## Cuánto calor pide cada uno
 

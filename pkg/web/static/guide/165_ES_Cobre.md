@@ -21,10 +21,11 @@ Como todos los [bloques de elementos](60), se sintetiza con la tecla C (*Synthes
 | Resultado | Ingredientes |
 |---|---|
 | 1 `element_cu` | 1 `stone` + 1 `coal_ore` |
+| 1 `element_cu` (*Extract CU from Copper Block*) | 1 `copper_block` |
 
 Cada bloque es **un átomo** en la [mesa de laboratorio](117).
 
-El cobre también tiene mineral, `copper_ore`, [que se encuentra en el mundo](248). Pero **su metal es otro objeto**: en la [fundición](235), 1 `copper_ore` da **2** `copper_block`, y a mano 1 `copper_ore` + 1 `coal_ore` dan 1. Es el cobre de construir y de los cables, y el laboratorio no lo acepta: aquí hace falta `element_cu`. Ver [Cómo se funden los metales](249).
+El cobre también tiene mineral, `copper_ore`, [que se encuentra en el mundo](248). Pero **su metal es otro objeto**: en la [fundición](235), 1 `copper_ore` da **2** `copper_block`, y a mano 1 `copper_ore` + 1 `coal_ore` dan 1. Es el cobre de construir y de los cables. El laboratorio trabaja con `element_cu`, pero con la tecla C cada `copper_block` da un `element_cu`, así que el cobre que sacas de la mina también le sirve. Al revés no se puede. Ver [Cómo se funden los metales](249).
 
 ## En el laboratorio
 

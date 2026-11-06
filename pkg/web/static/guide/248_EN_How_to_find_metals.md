@@ -65,6 +65,8 @@ A vein never starts right under the grass: it needs a few blocks of soil and sto
 4. **Tin, zinc and lead** take a while longer in the mountains.
 5. **Silver and gold** are truly rare. You can walk for many minutes without seeing any in the open, which is why every mountain is worth a look. Otherwise, dig deep inside them.
 
+The metals you find are good at the [lab bench](117) too, copper, iron and gold included: [How metals are smelted](249) explains how.
+
 A piece of the world you have already explored stays as it was, with its old ores. The new outcrops and veins only appear in land **nobody has visited yet**.
 
 ## Why there, in the real world

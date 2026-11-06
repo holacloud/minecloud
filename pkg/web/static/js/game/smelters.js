@@ -152,6 +152,13 @@ const ORE_HAND_SMELTING = [
     ['silver_ore', 'element_ag', 'Silver Ore']
 ];
 
+// So that what is mined can go to the lab bench, which only takes element blocks. There is no way back.
+const METAL_TO_ELEMENT = [
+    ['copper_block', 'element_cu', 'CU', 'Copper Block'],
+    ['iron_block', 'element_fe', 'FE', 'Iron Block'],
+    ['gold_block', 'element_au', 'AU', 'Gold Block']
+];
+
 registerGameContent(({ addItem, addRecipe }) => {
     ['foundry', 'arc_furnace'].forEach(addItem);
     addRecipe('foundry', 'Build Foundry', 'foundry', 1, [{ type: 'brick', amount: 8 }, { type: 'cobblestone', amount: 4 }, { type: 'iron_ore', amount: 2 }, { type: 'coal_ore', amount: 1 }]);
@@ -161,5 +168,8 @@ registerGameContent(({ addItem, addRecipe }) => {
     // gives (APPLIANCE_FOUNDRY), and it burns a whole coal for each ore.
     for (const [ore, metal, name] of ORE_HAND_SMELTING) {
         addRecipe(`smelt_${ore}`, `Smelt ${name}`, metal, 1, [{ type: ore, amount: 1 }, { type: 'coal_ore', amount: 1 }]);
+    }
+    for (const [block, element, symbol, name] of METAL_TO_ELEMENT) {
+        addRecipe(`${element}_from_block`, `Extract ${symbol} from ${name}`, element, 1, [{ type: block, amount: 1 }]);
     }
 });

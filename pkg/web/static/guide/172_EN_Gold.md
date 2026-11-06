@@ -21,10 +21,11 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize AU
 | Result | Ingredients |
 |---|---|
 | 1 `element_au` | 1 `stone` + 1 `coal_ore` |
+| 1 `element_au` (*Extract AU from Gold Block*) | 1 `gold_block` |
 
 Each block is **one atom** at the [lab bench](117).
 
-The ore, `gold_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `gold_block`, not into this block.
+The ore, `gold_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `gold_block`, and with the C key each `gold_block` gives one `element_au`. It does not go the other way.
 
 ## In the lab
 

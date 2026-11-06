@@ -192,6 +192,26 @@ test('the guide says what the generator and the foundry do', () => {
     assert.doesNotMatch(page(53, 'EN'), /~1\.8 %/);
 });
 
+test('the guide says mined copper, iron and gold serve the lab, and no longer that they do not', () => {
+    const conversions = { 165: ['copper_block', 'element_cu', 'CU from Copper Block'], 162: ['iron_block', 'element_fe', 'FE from Iron Block'], 172: ['gold_block', 'element_au', 'AU from Gold Block'] };
+    const guia = read(ROOT, 'GUIA.md');
+    for (const lang of ['ES', 'EN']) {
+        for (const [id, [block, element, recipe]] of Object.entries(conversions)) {
+            assert.ok(page(id, lang).includes(`| 1 \`${element}\` (*Extract ${recipe}*) | 1 \`${block}\` |`), `${id} ${lang}`);
+            assert.ok(page(249, lang).includes(`1 \`${block}\``) && page(249, lang).includes(`1 \`${element}\``), `249 ${lang} ${block}`);
+            assert.ok(page(60, lang).includes(`1 \`${block}\``), `60 ${lang} ${block}`);
+        }
+        assert.match(page(248, lang), /\(117\)/, `248 ${lang}`);
+        assert.match(page(59, lang), /\(117\)/, `59 ${lang}`);
+    }
+    for (const stale of [page(165, 'ES'), page(249, 'ES')]) assert.doesNotMatch(stale, /no lo acepta/);
+    for (const stale of [page(165, 'EN'), page(249, 'EN')]) assert.doesNotMatch(stale, /does not take it/);
+    for (const [id, lang, stale] of [[162, 'ES', /no en este bloque/], [172, 'ES', /no en este bloque/], [162, 'EN', /not into this block/], [172, 'EN', /not into this block/]]) {
+        assert.doesNotMatch(page(id, lang), stale, `${id} ${lang}`);
+    }
+    for (const [, [block, element]] of Object.entries(conversions)) assert.ok(guia.includes(`| 1 \`${element}\` | 1 \`${block}\` |`), block);
+});
+
 test('the page on finding metals warns that lead is poisonous', () => {
     assert.match(page(248, 'ES'), /plomo es tóxico/i);
     assert.match(page(248, 'EN'), /lead is toxic/i);

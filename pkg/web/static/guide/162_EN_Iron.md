@@ -21,10 +21,11 @@ Like every [element block](60), it is synthesised with the C key (*Synthesize FE
 | Result | Ingredients |
 |---|---|
 | 1 `element_fe` | 1 `stone` + 1 `coal_ore` |
+| 1 `element_fe` (*Extract FE from Iron Block*) | 1 `iron_block` |
 
 Each block is **one atom** at the [lab bench](117).
 
-The ore, `iron_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `iron_block`, not into this block.
+The ore, `iron_ore`, is [found in the world](248), and is another item: the [foundry](235) turns it into `iron_block`, and with the C key each `iron_block` gives one `element_fe`. It does not go the other way.
 
 ## In the lab
 

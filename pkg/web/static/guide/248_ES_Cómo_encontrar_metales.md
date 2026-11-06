@@ -65,6 +65,8 @@ Una veta nunca empieza justo bajo la hierba: necesita unos bloques de tierra y p
 4. **Estaño, zinc y plomo** piden recorrer las montañas un rato más.
 5. **Plata y oro** son raros de verdad. Puedes caminar muchos minutos sin ver ninguno al aire libre, y por eso merece la pena mirar cada montaña. Si no, cava hondo en ellas.
 
+Los metales que encuentres también sirven en la [mesa de laboratorio](117), el cobre, el hierro y el oro incluidos: [Cómo se funden los metales](249) explica cómo.
+
 Un trozo de mundo que ya exploraste antes se queda como estaba, con sus minerales de antes. Los afloramientos y las vetas nuevas solo salen en la tierra **que nadie ha visitado aún**.
 
 ## Por qué aquí, en el mundo real
