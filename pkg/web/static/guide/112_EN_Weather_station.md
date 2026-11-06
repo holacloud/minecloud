@@ -28,10 +28,11 @@ together and you get a weather station to set up by your house.
 
 | Action | Result |
 |---|---|
-| Right click the top of a block with the station in your hand | You **set it up** there. It is two blocks tall. |
+| Right click the top of a block with the station in your hand | You **set it up** there. It is a block two tall. |
 | **Look at it** (within reach) | The panel shows **all its readings**. |
 | Right click it | A full **report** in the chat. |
-| **Hit it** (left click), or **Shift** + right click it | You **pick it up** into your inventory. If the block under it is broken, it falls as an item. |
+| **Break it** (left click, like any block) | It drops as an item for whoever broke it. If the block under it is broken, it drops too. |
+| **Shift** + right click it | You place another block against it, as on any other block. |
 
 It has a wooden post with:
 
@@ -41,8 +42,11 @@ It has a wooden post with:
 - a **rain gauge**: a glass tube that fills with the day's rain. It reads **0 mm under a roof**: put it in the
   open.
 
-Placed stations are kept when the page reloads, but they only exist **in your browser**: other players do not
-see yours.
+The station is a block like the others: it is saved on the server and **every player sees it**. If someone breaks
+it, it is gone for everyone, and the item goes only to whoever broke it.
+
+Stations used to be kept in the browser. If you still have one kept there, it sets itself up in the world the first
+time you pass near where it was; if it no longer fits, it goes back to your inventory.
 
 ## How the forecast works
 

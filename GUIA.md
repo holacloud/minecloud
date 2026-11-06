@@ -366,9 +366,10 @@ despacio, sopla más en lo alto y antes y durante la lluvia, y casi nada bajo te
   today"); la presión baja en las tres horas previas al chaparrón, deprisa en la última. Avisa "Storm brewing"
   cuando puede nacer un golem de tormenta.
 - **Anemómetro:** velocidad (m/s, km/h, Beaufort) y de dónde viene el viento.
-- **Estación:** se monta encima de un bloque; la veleta y las cazoletas siguen al viento y el pluviómetro mide la
-  lluvia del día. Al mirarla muestra todo; clic derecho, informe en el chat; Mayúsculas + clic derecho, se recoge.
-  Se guarda en el navegador.
+- **Estación:** es un bloque de dos de alto que se monta encima de otro; la veleta y las cazoletas siguen al viento y
+  el pluviómetro mide la lluvia del día. Al mirarla muestra todo; clic derecho, informe en el chat; se rompe como
+  cualquier bloque, y también cae si se rompe el de debajo. Se guarda en el servidor y la ven todos. Las que quedaban
+  en el navegador de cada jugador pasan solas al mundo cuando este pasa cerca.
 
 ## Microscopio y tardígrados
 

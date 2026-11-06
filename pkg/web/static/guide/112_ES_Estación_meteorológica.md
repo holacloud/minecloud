@@ -28,10 +28,11 @@ tres tienes una estación meteorológica para montar junto a tu casa.
 
 | Acción | Resultado |
 |---|---|
-| Clic derecho encima de un bloque con la estación en la mano | La **montas** ahí. Mide dos bloques de alto. |
+| Clic derecho encima de un bloque con la estación en la mano | La **montas** ahí. Es un bloque de dos de alto. |
 | **Mirarla** (a tu alcance) | El panel muestra **todas sus lecturas**. |
 | Clic derecho sobre ella | Un **informe** completo en el chat. |
-| **Golpearla** (clic izquierdo), o **Mayúsculas** + clic derecho sobre ella | La **recoges** al inventario. Si se rompe el bloque de debajo, cae como objeto. |
+| **Romperla** (clic izquierdo, como cualquier bloque) | Cae como objeto para quien la rompe. Si se rompe el bloque de debajo, cae también. |
+| **Mayúsculas** + clic derecho sobre ella | Colocas otro bloque contra ella, como en cualquier otro bloque. |
 
 Es un poste de madera con:
 
@@ -41,8 +42,11 @@ Es un poste de madera con:
 - un **pluviómetro**: un tubo de vidrio que se llena con la lluvia del día. Bajo techo marca **0 mm**: ponla al
   aire libre.
 
-Las estaciones colocadas se guardan al recargar la página, pero solo existen **en tu navegador**: los demás
-jugadores no ven la tuya.
+La estación es un bloque como los demás: se guarda en el servidor y **la ven todos los jugadores**. Si alguien la
+rompe, desaparece para todos, y el objeto es solo para quien la rompió.
+
+Antes las estaciones se guardaban en el navegador. Si te quedaba alguna guardada ahí, se coloca sola en el mundo la
+primera vez que pases cerca de donde estaba; si ya no cabe, vuelve a tu inventario.
 
 ## Cómo funciona el pronóstico
 

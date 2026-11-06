@@ -281,6 +281,8 @@ Object.assign(Game.prototype, {
         const blocks = this.world.getInteractableObjects(ray.reachOrigin, maxDistance);
         // The block being mined is drawn outside its chunk mesh; keep it targetable.
         if (this.miningBlockVisual) blocks.push(this.miningBlockVisual.mesh);
+        // A weather station's post is thin: it has boxes to aim at (js/game/weather.js).
+        if (this.weatherTargets) blocks.push(...this.weatherTargets);
         if (blocks.length === 0) return null;
 
         const intersects = this.raycaster.intersectObjects(blocks, false);

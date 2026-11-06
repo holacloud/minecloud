@@ -38,7 +38,7 @@ const ROBOT_SPEEDS = { slow: 0.5, normal: 0.33, fast: 0.25 }; // seconds per act
 const ROBOT_CONTROL_TIME = 0.1; // seconds a repeat / if / while check takes
 // Facing 0..3, turning right each time: +z, -x, -z, +x.
 const ROBOT_DIRS = [[0, 1], [-1, 0], [0, -1], [1, 0]];
-const ROBOT_NOT_PLACEABLE = ['sign', 'bed', 'sound_block', 'ladder', 'spray_paint', 'water', 'air'];
+const ROBOT_NOT_PLACEABLE = ['sign', 'bed', 'sound_block', 'ladder', 'spray_paint', 'water', 'air', 'weather_station'];
 const ROBOT_REPLACEABLE = ['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'water'];
 
 const ROBOT_INSTRUCTIONS = {
