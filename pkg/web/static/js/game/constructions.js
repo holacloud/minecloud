@@ -1185,6 +1185,11 @@ function constructionShowroom(b) {
         'Microscope: it needs light. Sun by day, a candle at night. A test tube on water or moss takes a sample. /microkit in creative.');
     b.set(39, 1, 11, 'table');
     b.set(40, 1, 11, 'table');
+    // A row of glow blocks: the five temperatures, and a few colours.
+    sign(34, 12, 'n', 'Bloque luminoso. Clic derecho.', 'Brilla solo y eliges su color, pero no ilumina. Roto, vuelve sin color.',
+        'Glow block. Right click to pick its colour. It shines by itself and lights nothing around it. Broken, it loses the colour.');
+    ['glow_block:k2700', 'glow_block', 'glow_block:k4000', 'glow_block:k5000', 'glow_block:k6500', 'glow_block:rgb500', 'glow_block:rgb530', 'glow_block:rgb550',
+        'glow_block:rgb050', 'glow_block:rgb055', 'glow_block:rgb005', 'glow_block:rgb505'].forEach((type, i) => b.set(35 + i, 1, 13, type));
     piece(39, 2, 11, 'microscope', 'microscope', 'n');
     b.box(42, 1, 11, 43, 1, 12, 'water');
     b.box(45, 1, 11, 48, 1, 12, 'moss');

@@ -407,3 +407,17 @@ Páginas 237 a 244 de la guía del juego.
 - **Criptobiosis:** un portaobjetos se seca en un día de juego (240 s). Lo demás muere o se enquista; el tardígrado queda
   en barrilito, y una gota de `water_flask` lo revive en unos 20 s. El congelador también hace `tardigrade_tun`.
 - Sin premio, y ningún microbio hace daño al jugador. Nada cambia en el inventario.
+
+## Bloque luminoso
+
+Un cubo decorativo que brilla solo (página 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un
+microscopio: la luz del juego tiene nivel pero no color.
+
+| Resultado | Ingredientes |
+|---|---|
+| `glow_block` | 1 `glass` + 1 `torch` |
+
+- **Color:** clic derecho abre su panel. Hay 5 temperaturas (2700, 3000, 4000, 5000 y 6500 K) y un cubo RGB de 6 pasos por
+  canal, 221 estados en total, escritos en el nombre: `glow_block` (3000 K), `glow_block:k6500`, `glow_block:rgb503`.
+  Cambia para todos; el servidor comprueba el alcance y el nombre.
+- **Al romperlo** da un `glow_block` normal: el color no se guarda en el inventario. Los planos y `/build` sí lo guardan.

@@ -145,7 +145,8 @@
         [217, 220, 'Máquinas y energía', 'Machines and power'],
         [223, 234, 'Muebles', 'Furniture'],
         [235, 236, 'El taller: fundición y horno de arco', 'The workshop: foundry and arc furnace'],
-        [237, 244, 'El mundo pequeño', 'The small world']
+        [237, 244, 'El mundo pequeño', 'The small world'],
+        [245, 245, 'Bloque luminoso', 'Glow block']
     ];
 
     // ---------------------------------------------------------------- pure helpers (tested)

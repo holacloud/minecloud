@@ -636,6 +636,7 @@ func handleMessage(client *Client, msg Message) {
 		if payload.BlockType == "" {
 			return
 		}
+		payload.BlockType = glowSanitizeName(payload.BlockType)
 		// An oven burns when the server says so, whatever a plan or a client asks for.
 		payload.BlockType = storage.settleOvenName(payload.X, payload.Y, payload.Z, payload.BlockType)
 		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
@@ -849,6 +850,9 @@ func handleMessage(client *Client, msg Message) {
 
 	case "sampleTake", "microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture":
 		handleMicroscopeMessage(client, msg)
+
+	case "glowSet":
+		handleGlowSet(client, msg.Payload)
 
 	case "powerProbe":
 		handlePowerProbe(client, msg.Payload)

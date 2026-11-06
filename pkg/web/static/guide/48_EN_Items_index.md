@@ -48,6 +48,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 ## Furniture
 
 - ![](item:oak_chair) [Furniture index](223)
+- ![](item:glow_block) [Glow block](245): glow_block, in 221 colours
 - ![](item:oak_chair) [Chairs and sofas](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, and 16 colours of sofa (red_sofa...)
 - ![](item:table) [Tables](225): table, bedside_table, desk
 - ![](item:chest) [Chests and wardrobes](226): chest, barrel, wardrobe, bookshelf, wall_shelf

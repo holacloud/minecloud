@@ -1236,7 +1236,7 @@ test('the guide: 237 to 244 in both languages, with the plan\'s titles, in the p
         for (const lang of ['ES', 'EN']) assert.equal(guidePage(page, lang).split('\n')[0], `# ${titles[lang][i]}`);
         assert.ok(print.SECTIONS.some(([from, to]) => page >= from && page <= to), `section for ${page}`);
     });
-    assert.ok(!guideNames.some((name) => name.startsWith('245_')));
+    assert.ok(guideNames.some((name) => name.startsWith('245_')), 'the next page is the glow block');
     assert.ok(!guideNames.some((name) => name.startsWith('221_')), '221 stays free');
     // File names go through go:embed, which takes no colon.
     assert.ok(!guideNames.some((name) => name.includes(':')));

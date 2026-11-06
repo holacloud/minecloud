@@ -48,6 +48,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 ## Muebles
 
 - ![](item:oak_chair) [Índice de muebles](223)
+- ![](item:glow_block) [Bloque luminoso](245): glow_block, en 221 colores
 - ![](item:oak_chair) [Sillas y sofás](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, y sofás de 16 colores (red_sofa...)
 - ![](item:table) [Mesas](225): table, bedside_table, desk
 - ![](item:chest) [Cofres y armarios](226): chest, barrel, wardrobe, bookshelf, wall_shelf

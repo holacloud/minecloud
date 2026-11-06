@@ -785,7 +785,7 @@ class WorldRenderer {
             tint: faceSpec.tint,
             label: faceSpec.label,
             // Labels (element symbols) need a few more pixels to stay legible; so do `minSize` faces.
-            size: Math.max(faceSpec.label ? 32 : 0, faceSpec.minSize || 0, this.textureSize()),
+            size: Math.min((TEXTURE_PATTERNS[faceSpec.pattern] || {}).maxSize || Infinity, Math.max(faceSpec.label ? 32 : 0, faceSpec.minSize || 0, this.textureSize())),
             hd: this.rtxModeEnabled
         });
     }

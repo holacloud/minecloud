@@ -308,6 +308,7 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 242 | Células vegetales y animales | Plant and animal cells | `plant_cell`, `animal_cell`, the cheek smear |
 | 243 | Protozoos y algas | Protozoa and algae | `paramecium`, `amoeba`, `vorticella`, `euglena`, `diatom`, `spirogyra` |
 | 244 | Bacterias, casi todas son amigas | Bacteria, nearly all are friends | `soil_bacteria`, `lactobacillus`, `cyanobacteria`; `yeast` and `mushroom_spore`, which are fungi |
+| 245 | Bloque luminoso | Glow block | glow_block and its 220 colour states (`:k<kelvin>`, `:rgb<r><g><b>`): decoration that shines and lights nothing, js/game/glow_block.js, pkg/network/glow_block.go (items index 48) |
 
 ### Secret pages
 

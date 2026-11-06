@@ -112,7 +112,8 @@ function registerBlockType(id, definition) {
 // Procedural block textures: registerTexturePattern(name, paint, { sprite }), where
 // paint(factory, surface, tint, seed) fills the surface like the patterns of blockTextures.js.
 // sprite: true for cutout sprites (clamped instead of tiled); rtx: { roughness, metalness,
-// normalScale } for its PBR look in RTX and Ultra.
+// normalScale } for its PBR look in RTX and Ultra; maxSize: the most pixels it is worth, for a plain
+// pattern with many tints, as RTX and Ultra otherwise spend 128 and 256 on each.
 const TEXTURE_PATTERNS = {};
 function registerTexturePattern(name, paint, options = {}) {
     TEXTURE_PATTERNS[name] = { ...options, paint };
