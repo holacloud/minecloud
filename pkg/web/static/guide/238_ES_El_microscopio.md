@@ -57,7 +57,7 @@ Todos los que miren el mismo microscopio ven lo mismo: los mismos organismos en 
 
 ## Mirar
 
-Todas las herramientas son iconos en la barra de abajo, con su nombre debajo. Si uno está gris, púlsalo y te dirá por qué, y qué te falta. Los que no tienen sentido en ese momento no aparecen.
+Todas las herramientas son iconos en la barra de abajo, con su nombre debajo. Siempre están los mismos, sin aparecer ni desaparecer. Si uno está gris, púlsalo y te dirá por qué, y qué te falta. **Gota** solo sirve cuando el portaobjetos empieza a secarse, y **Capturar**, con un tardígrado seleccionado.
 
 | Para | Con ratón | En el móvil |
 |---|---|---|

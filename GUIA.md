@@ -403,8 +403,8 @@ Páginas 237 a 244 de la guía del juego.
 - **Retirar y cerrar:** el panel solo existe con un portaobjetos. Retirarlo lo devuelve lavado y cierra el panel. Escape
   o ✕ cierran y lo dejan puesto: sigue secándose y lo ve quien mire después.
 - **Panel:** el campo ocupa casi todo. Todo lo demás son iconos en una barra abajo (aumento, retirar, gota, capturar,
-  tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip. El que no se puede usar sale gris y al pulsarlo dice
-  por qué; el que no tiene sentido no sale. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes
+  tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip, siempre los mismos. El que no se puede usar sale gris
+  y al pulsarlo dice por qué: la gota, mientras el portaobjetos sigue mojado; capturar, sin un tardígrado seleccionado. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes
   que el panel. Está en el idioma del juego (`js/gameLang.js`, en la guía y en el menú de pausa); el bestiario, el
   inventario y las recetas siguen en inglés.
 - **Luz:** sin luz, el campo se ve negro. Sirve el sol de día con el bloque al aire libre, o cualquier cosa que dé luz a

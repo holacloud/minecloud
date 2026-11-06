@@ -57,7 +57,7 @@ Everybody looking at the same microscope sees the same slide: the same organisms
 
 ## Looking
 
-Every tool is an icon in the bar along the bottom, with its name under it. If one is grey, press it and it says why, and what you are missing. The ones that make no sense at that moment are not shown.
+Every tool is an icon in the bar along the bottom, with its name under it. They are always the same ones, with none coming and going. If one is grey, press it and it says why, and what you are missing. **Drop** only works once the slide starts to dry, and **Capture** with a tardigrade selected.
 
 | To do this | With a mouse | On a phone |
 |---|---|---|

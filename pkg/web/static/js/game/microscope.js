@@ -10,8 +10,8 @@
 //   Taking the slide off gives it back washed and closes the panel. Closing it any other way leaves the
 //   slide there, drying, for whoever looks next.
 // - The field gets the room: every tool is an icon in the bar along the bottom (microscopeRenderTools), and
-//   what is said about the field lies over it or beside it. An icon that cannot be used now is greyed and
-//   says why when pressed; one that makes no sense now is hidden. Stains and filters open a small popover
+//   what is said about the field lies over it or beside it. The icons are always there, and one that cannot
+//   be used now is greyed and says why when pressed. Stains and filters open a small popover
 //   above their icon (microscopePop), which Escape closes before the panel.
 // - The field is drawn on a 2D canvas: drag moves the stage, the power icon (or a pinch) changes the
 //   power, the slider (or the wheel) the focus. It needs light, as a real one does: the sun by day on a
@@ -1114,6 +1114,8 @@ Object.assign(Game.prototype, {
         if (this.microscopeLightTimer <= 0) {
             this.microscopeLightTimer = MICROSCOPE_LIGHT_EVERY;
             this.microscopeReadLight();
+            // The drop's icon follows the slide as it dries.
+            if (this.microscopePrep && microSlideStage(this.microscopeAge(), this.microscopeWoke()) !== this.microscopeSlideStageShown) this.microscopeRenderTools();
             if (this.microscopeNote && now - this.microscopeNoteAt > MICROSCOPE_NOTE_MS) this.microscopeNote = '';
             this.microscopeRenderLines();
         }
@@ -1552,10 +1554,9 @@ Object.assign(Game.prototype, {
         });
     },
 
-    // One icon of the bar. show: false hides it, reason greys it and says why. item: the game's own icon.
-    microscopeSetTool(name, { show = true, reason = '', tip = '', active = false, item = null }) {
+    // One icon of the bar. reason greys it and says why. item: the game's own icon.
+    microscopeSetTool(name, { reason = '', tip = '', active = false, item = null }) {
         const button = this.microscopePanel.querySelector(`.micro-${name}`);
-        button.style.display = show ? '' : 'none';
         button.classList.toggle('off', Boolean(reason));
         button.classList.toggle('active', active);
         button.dataset.reason = reason;
@@ -1573,23 +1574,26 @@ Object.assign(Game.prototype, {
 
         panel.querySelector('.micro-power').querySelector('.micro-ico').textContent = `${this.microscopePower}×`;
         this.microscopeSetTool('power', { tip: microscopeSay('powerTip') });
-        this.microscopeSetTool('clear', { show: Boolean(prep), tip: microscopeSay('takeOff'), item: 'glass_slide' });
+        this.microscopeSetTool('clear', { tip: microscopeSay('takeOff'), item: 'glass_slide' });
         const flasks = this.getInventoryCount('water_flask');
+        // A drop is for a slide that is drying or dry: on a wet one it would only spend the flask.
+        const stage = microSlideStage(this.microscopeAge(), this.microscopeWoke());
+        this.microscopeSlideStageShown = stage;
         this.microscopeSetTool('drop', {
-            show: Boolean(prep), tip: microscopeSay('dropReady'), item: 'water_flask',
-            reason: stained ? microscopeSay('dropStained') : flasks > 0 ? '' : microscopeSay('dropNeedsFlask')
+            tip: microscopeSay('dropReady'), item: 'water_flask',
+            reason: stained ? microscopeSay('dropStained') : stage === 'wet' || stage === 'reviving' ? microscopeSay('dropStillWet') : flasks > 0 ? '' : microscopeSay('dropNeedsFlask')
         });
-        // Only for the one in the ring: the icon does not give away what is on the slide.
+        // Its reason says nothing of what is on the slide: only the one in the ring can be drawn off.
         const tardigrade = Boolean(this.microscopeSelected) && this.microscopeSelected.species === 'tardigrade';
         const pipette = this.getInventoryCount('micropipette') > 0;
         const tube = this.getInventoryCount('test_tube') > 0;
         this.microscopeSetTool('capture', {
-            show: tardigrade, tip: microscopeSay('captureReady'), item: 'micropipette',
-            reason: stained ? microscopeSay('captureStained') : !pipette ? microscopeSay('captureNeedsPipette') : !tube ? microscopeSay('captureNeedsTube') : ''
+            tip: microscopeSay('captureReady'), item: 'micropipette',
+            reason: !tardigrade ? microscopeSay('captureSelect') : stained ? microscopeSay('captureStained') : !pipette ? microscopeSay('captureNeedsPipette') : !tube ? microscopeSay('captureNeedsTube') : ''
         });
         const bottles = Object.keys(MICRO_STAINS).filter((stain) => this.getInventoryCount(stain) > 0);
         this.microscopeSetTool('stain', {
-            show: Boolean(prep), tip: microscopeSay('stainTip'), active: this.microscopePop === 'stain' || Boolean(stained),
+            tip: microscopeSay('stainTip'), active: this.microscopePop === 'stain' || Boolean(stained),
             item: stained || this.microscopeStainAsked || bottles[0] || 'iodine_tincture',
             reason: stained ? microscopeSay('refusedStainTwice') : bottles.length ? '' : microscopeSay('stainNoneCarried')
         });

@@ -614,7 +614,7 @@ test('the panel: it asks first and says why, and only then spends the bottle', (
     const game = panelGame();
     const panel = game.microscopePanel;
     slide(game, { source: 'sample_moss_a' });
-    assert.equal(panel.querySelector('.micro-stain').style.display, '');
+    assert.notEqual(panel.querySelector('.micro-stain').style.display, 'none');
     assert.ok(!panel.querySelector('#micro-pop-stain').classes.has('visible'), 'closed until asked for');
     panel.querySelector('.micro-stain').fire('click');
     assert.ok(panel.querySelector('#micro-pop-stain').classes.has('visible'));
@@ -700,6 +700,8 @@ test('the panel: a stained slide, for anyone looking, cannot be drawn from or re
     game.microscopeSelected = game.microscopeOrganisms[0];
     game.microscopeRenderControls();
     assert.ok(!panel.querySelector('.micro-capture').classes.has('off'));
+    assert.notEqual(panel.querySelector('.micro-stain').style.display, 'none');
+    assert.notEqual(panel.querySelector('.micro-drop').style.display, 'none');
     const sent = () => game.network.sent.length;
 
     // Another player's stain arrives through the same contents.

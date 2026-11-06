@@ -84,9 +84,14 @@ const MICROSCOPE_TEXT = {
         ES: 'No tienes portaobjetos. Se hacen en el menú C: 1 vidrio da 4.',
         EN: 'You have no Glass Slide. Make them in the C menu: 1 glass makes 4.'
     },
+    dropStillWet: {
+        ES: 'El portaobjetos aún está mojado: la gota sirve cuando empiece a secarse.',
+        EN: 'The slide is still wet: a drop is for when it starts to dry.'
+    },
     dropStained: { ES: 'Teñido: una gota no devuelve nada', EN: 'Stained: a drop brings nothing back' },
     dropReady: { ES: 'Echar una gota de agua (gasta un frasco de agua)', EN: 'Add a drop of water (uses a Water Flask)' },
     dropNeedsFlask: { ES: 'Una gota necesita un frasco de agua', EN: 'A drop needs a Water Flask' },
+    captureSelect: { ES: 'Selecciona un animal que se pueda sacar.', EN: 'Select an animal you can draw off.' },
     captureStained: { ES: 'Teñido: no se puede sacar', EN: 'Stained: it cannot be drawn off' },
     captureReady: { ES: 'Sacarlo a un tubo con la micropipeta', EN: 'Draw it off into a tube' },
     captureNeedsTube: { ES: 'Para quedártelo necesitas un tubo de ensayo vacío', EN: 'To keep it you need an empty Test Tube' },

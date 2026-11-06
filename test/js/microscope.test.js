@@ -819,7 +819,8 @@ test('the panel: preparing a slide, and the answers settling the inventory', () 
     assert.ok(game.microscopeSoft.canvas.width > 0 && game.microscopeSoft.canvas.width === Math.ceil(game.microscopeCanvas.width / 3), 'the blur buffers have the right size');
     assert.ok(game.microscopeOrganisms.some((org) => org.species === 'tardigrade'));
 
-    // A drop swaps the flask for its bottle.
+    // A drop, once it is dry, swaps the flask for its bottle.
+    slide(game, { source: 'sample_moss_a', tardigrades: 2, age: 300 });
     panel.querySelector('.micro-drop').fire('click');
     const drop = game.network.last();
     assert.equal(drop[0], 'microscopeDrop');
@@ -886,7 +887,7 @@ test('the panel: touch and mouse on the field', () => {
     assert.equal(game.identified[0], 'tardigrade');
     assert.ok(panel.querySelector('#micro-info').classes.has('visible'));
     assert.match(panel.querySelector('.micro-capture').title, /Draw it off/);
-    assert.equal(panel.querySelector('.micro-capture').style.display, '');
+    assert.notEqual(panel.querySelector('.micro-capture').style.display, 'none');
 
     // A drag moves the stage and identifies nothing.
     const stage = [...game.microscopeStage];
@@ -1224,15 +1225,25 @@ test('the list of the inventory is gone from the panel, and so are the stacked b
     for (const gone of ['micro-sources', 'micro-prepare', 'micro-side', 'data-power', 'micro-stage-actions', 'micro-tools"', 'micro-empty', 'micro-cheek']) assert.ok(!code.includes(gone), gone);
 });
 
-test('the bar: every tool an icon, with a caption and a tooltip, shown only when it makes sense', () => {
+test('the bar: every tool an icon, with a caption and a tooltip, and always there', () => {
     const game = panelGame();
     const panel = openPanel(game);
     const shown = () => ['power', 'clear', 'drop', 'capture', 'stain', 'filter', 'dark', 'guide'].filter((name) => panel.querySelector(`.micro-${name}`).style.display !== 'none');
     slide(game, { source: 'sample_moss_a', tardigrades: 2 });
-    assert.deepEqual(shown(), ['power', 'clear', 'drop', 'stain', 'filter', 'dark', 'guide'], 'the capture does not give away what is there');
+    assert.equal(shown().length, 8, 'all of them, always');
+    const capture = panel.querySelector('.micro-capture');
+    const neutral = capture.title;
+    assert.ok(capture.classes.has('off'));
+    assert.match(neutral, /Select an animal you can draw off/);
+    // The same words on a slide with nothing to draw off: it gives nothing away.
+    const other = panelGame();
+    const otherPanel = openPanel(other, null, { source: 'dirt', tardigrades: 0 });
+    assert.equal(otherPanel.querySelector('.micro-capture').title, neutral);
+    assert.equal(panel.querySelector('.micro-capture').style.display, otherPanel.querySelector('.micro-capture').style.display);
     game.microscopeSelected = game.microscopeOrganisms.find((org) => org.species === 'tardigrade');
     game.microscopeRenderControls();
-    assert.ok(shown().includes('capture'));
+    assert.ok(!capture.classes.has('off'));
+    assert.match(capture.title, /Draw it off/);
     for (const name of shown()) {
         const tool = panel.querySelector(`.micro-${name}`);
         assert.ok(tool.title.length > 3, `${name} has a tooltip`);
@@ -1247,10 +1258,32 @@ test('the bar: every tool an icon, with a caption and a tooltip, shown only when
     assert.match(panel.querySelector('.micro-filter').title, /cobalt glass or any stained glass/);
     assert.ok(panel.querySelector('.micro-dark').classes.has('off'));
     assert.match(panel.querySelector('.micro-dark').title, /Dark-field Stop/);
+    // The drop is always there. Fresh and wet, it says so; drying, it can be used.
+    const drop = panel.querySelector('.micro-drop');
+    assert.notEqual(drop.style.display, 'none');
+    assert.ok(drop.classes.has('off'));
+    assert.match(drop.title, /still wet/);
+    const before = game.network.sent.length;
+    drop.fire('click');
+    assert.equal(game.network.sent.length, before, 'no flask is spent on a wet slide');
+    assert.match(panel.querySelector('#micro-note').textContent, /still wet/);
+    slide(game, { source: 'sample_moss_a', tardigrades: 2, age: 300 });
+    assert.ok(!drop.classes.has('off'), 'dry');
+    assert.match(drop.title, /drop of water/);
     game.inventoryCounts.water_flask = 0;
     game.microscopeRenderControls();
-    assert.ok(panel.querySelector('.micro-drop').classes.has('off'));
-    assert.match(panel.querySelector('.micro-drop').title, /Water Flask/);
+    assert.ok(drop.classes.has('off'));
+    assert.match(drop.title, /Water Flask/);
+    // As it dries by itself, with nobody pressing anything, the icon follows.
+    game.inventoryCounts.water_flask = 1;
+    slide(game, { source: 'sample_moss_a', tardigrades: 2, age: 204 });
+    assert.ok(drop.classes.has('off'));
+    const now = ctx.performance.now;
+    ctx.performance.now = () => 2000;
+    game.microscopeLightTimer = 0;
+    game.microscopeUpdate(0.05);
+    ctx.performance.now = now;
+    assert.ok(!drop.classes.has('off'), 'its last stretch');
 });
 
 test('a note says its piece and goes, so that the field is left clear', () => {
