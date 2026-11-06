@@ -62,12 +62,12 @@ Todas las herramientas son iconos en la barra de abajo, con su nombre debajo. Si
 | Para | Con ratón | En el móvil |
 |---|---|---|
 | Mover la platina | arrastrar | arrastrar con un dedo |
-| Cambiar el aumento | el icono **Aumento** (40×, 100×, 400×), o + y - | el icono, o pellizcar |
+| Cambiar el aumento | los botones 40×, 100×, 400× y 1000×, encima del enfoque | los botones, o pellizcar |
 | Enfocar | la barra, o la rueda | la barra |
 | Identificar | clic | tocarlo |
 
-- **Aumento.** A 40× ves un campo ancho y los animales grandes. A 400× ves las bacterias, pero solo un trocito del portaobjetos. Empieza bajo y ve subiendo. La línea de abajo del campo es una regla.
-- **Enfoque.** Cada cosa está a su propia profundidad en la gota, y lo que está a otra se ve borroso. A más aumento, más fina la parte nítida, así que a 400× hay que ir ajustando.
+- **Aumento.** A 40× ves un campo ancho y los animales grandes. A 400× ves las bacterias, pero solo un trocito del portaobjetos. A 1000× lo pequeño se ve de cerca (una bacteria, una levadura, el núcleo de una célula), los animales grandes no caben y el campo es diminuto: encuentra primero lo que quieres a menos aumento. Empieza bajo y ve subiendo. La línea de abajo del campo es una regla.
+- **Enfoque.** Cada cosa está a su propia profundidad en la gota, y lo que está a otra se ve borroso. A más aumento, más fina la parte nítida, así que a 400× hay que ir ajustando, y a 1000× aún más.
 - **Identificar.** Haz clic en lo que ves. Si es demasiado pequeño para ese aumento o está desenfocado, el panel te dice qué hacer. Si no, sale su nombre y su historia sobre el campo, y entra en tu [bestiario](5). La tarjeta del bestiario aún está en inglés: el nombre científico es el mismo en las dos.
 
 ## Ver más
@@ -81,15 +81,17 @@ El panel está en el idioma del juego: se elige en esta guía o en los ajustes d
 
 **Es verdad:**
 
-- Los microscopios de estudiante tienen justo estos aumentos: un ocular de 10× y objetivos de 4×, 10× y 40×.
+- Los microscopios de estudiante tienen justo estos aumentos: un ocular de 10× y objetivos de 4×, 10× y 40×. Muchos añaden uno de 100×, que da los 1000×.
+- **1000× pide aceite.** Ese objetivo de 100× se usa de verdad con una gota de **aceite de inmersión** entre la lente y el cubreobjetos: el aceite desvía la luz casi como el vidrio y deja entrar en la lente la que se perdería en el aire.
 - Con espejos se iluminaban los microscopios antes de las lámparas eléctricas, y algunos aún lo hacen. La luz sube **a través** del portaobjetos, y por eso lo que se mira tiene que ser fino.
 - A más aumento, de verdad es más fina la parte enfocada y más pequeño el campo.
-- Hay un límite: por buenas que sean las lentes, la luz no puede enseñar cosas mucho menores que un cuarto de micrómetro. Para ver un virus hace falta un microscopio electrónico.
+- Hay un límite: por buenas que sean las lentes, la luz no puede enseñar cosas mucho menores que un cuarto de micrómetro. 1000× ya está muy cerca: una imagen más grande sería solo más grande, sin más detalle. Para ver un virus hace falta un microscopio electrónico.
 
 **Lo simplifica el juego:**
 
 - Un microscopio real da la vuelta a la imagen, y la platina parece moverse al revés. Aquí sigue a tu dedo.
-- La luz del juego tiene una regla sencilla. Un microscopio real necesita mucha luz y muy cerca: una vela se quedaría corta a 400×.
+- Aquí 1000× no pide aceite ni cubreobjetos, y se pasa de un aumento a otro con un botón. En uno real, el aceite hay que ponerlo y limpiarlo.
+- La luz del juego tiene una regla sencilla, igual a todos los aumentos. Un microscopio real necesita mucha luz y muy cerca: una vela se quedaría corta a 400×, y a 1000× aún más.
 - Los portaobjetos reales suelen llevar encima un cristalito muy fino, y tintes para que se vean las células.
 
 > **Pruébalo de verdad:** un microscopio escolar barato, o incluso una lente de pinza para el móvil, enseña muy bien el agua de charca y la piel de cebolla.

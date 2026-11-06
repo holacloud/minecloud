@@ -418,7 +418,9 @@ test('at each power, the tardigrade is seen as the plan says', () => {
 
 test('the nosepiece, the stage and the scale bar', () => {
     assert.equal(ctx.microscopeStepPower(40, 1), 100);
-    assert.equal(ctx.microscopeStepPower(400, 1), 400);
+    assert.equal(ctx.microscopeStepPower(400, 1), 1000);
+    assert.equal(ctx.microscopeStepPower(1000, 1), 1000);
+    assert.equal(ctx.microscopeStepPower(1000, -1), 400);
     assert.equal(ctx.microscopeStepPower(40, -1), 40);
     assert.deepEqual(plain(ctx.microscopeClampStage(10, 20)), [10, 20]);
     const [x, y] = ctx.microscopeClampStage(99999, 0);
@@ -427,6 +429,65 @@ test('the nosepiece, the stage and the scale bar', () => {
     assert.ok(bar.pixels > 40 && bar.pixels < 300);
     assert.equal(ctx.microscopeScaleBar(0.15, 300).label, '1 mm');
     assert.equal(ctx.microscopeScaleBar(1.5, 300).label, '100 µm');
+});
+
+test('1000×: what is small is seen close up, what is big exceeds the field, and everything else holds', () => {
+    const radius = 300;
+    const scale = ctx.microscopeScale(1000, radius);
+    const field = (radius * 2) / scale;
+    assert.ok(field > 120 && field < 200, `a real 1000× field is under 0.2 mm: ${field} µm`);
+    const px = Object.fromEntries(Object.entries(ctx.MICRO_SPECIES).map(([id, def]) => [id, def.drawn * scale]));
+    for (const id of ['soil_bacteria', 'yeast', 'mushroom_spore']) assert.ok(px[id] >= 28 && px[id] < 80, `${id}: ${px[id]} px`);
+    for (const id of ['lactobacillus', 'animal_cell', 'diatom', 'euglena', 'cyanobacteria', 'plant_cell']) assert.ok(px[id] >= 100 && px[id] <= radius * 2, `${id}: ${px[id]} px fits`);
+    for (const id of ['tardigrade', 'water_flea', 'rotifer', 'spirogyra', 'amoeba', 'paramecium', 'vorticella']) assert.ok(px[id] > radius * 2, `${id}: ${px[id]} px goes past the field`);
+    // Nothing new is needed to tell anything apart: what shows at a lower power shows here.
+    for (const id of Object.keys(ctx.MICRO_SPECIES)) assert.equal(ctx.microCanIdentify(id, 1000, 0), 'ok', id);
+    // On every slide something of it is in reach: a field holds some of the small things about the middle.
+    for (const [source, species] of [['dirt', 'soil_bacteria'], ['flower_red', 'yeast'], ['milk', 'lactobacillus'], ['mushroom_red', 'mushroom_spore'], ['wheat', 'plant_cell'], ['cheek', 'animal_cell'], ['sample_oasis_c', 'cyanobacteria']]) {
+        let found = 0;
+        for (let seed = 1; seed <= 20; seed++) found += ctx.microPopulate(source, seed, 0).filter((org) => org.species === species && Math.hypot(org.x, org.y) < field * 0.75).length;
+        assert.ok(found / 20 >= 1, `${species} about the middle: ${found / 20}`);
+    }
+    // The ruler: a round number, on the field, whatever size the field is drawn.
+    for (const r of [110, 200, 300, 380]) {
+        const bar = ctx.microscopeScaleBar(ctx.microscopeScale(1000, r), r);
+        assert.equal(bar.label, '20 µm');
+        assert.ok(bar.pixels > r * 0.1 && bar.pixels < r, `${bar.pixels} of ${r}`);
+    }
+    // Focus: thinner again, and a turn of the wheel (0.04) or of the slider (0.01) does not jump over it.
+    assert.ok(ctx.microBlur(0.6, 0.5, 1000) > ctx.microBlur(0.6, 0.5, 400));
+    assert.ok(ctx.microBlur(0.54, 0.5, 1000) < 1);
+    assert.equal(ctx.microCanIdentify('yeast', 1000, ctx.microBlur(0.5, 0.5, 1000)), 'ok');
+    assert.equal(ctx.microCanIdentify('yeast', 1000, ctx.microBlur(0.75, 0.5, 1000)), 'blur');
+    // The stage: a drag moves by what is under the finger, and it stays on the slide.
+    assert.equal(ctx.microscopeClampStage(0, 9999)[1], ctx.MICRO_SLIDE_RADIUS);
+    // Pick: a yeast is hit, and something past the field's size still is under the finger.
+    const view = { radius, scale, stageX: 0, stageY: 0, focus: 0.5, power: 1000 };
+    const yeast = { species: 'yeast', x: 0, y: 0, scale: 1, depth: 0.5 };
+    assert.equal(ctx.microscopePick([yeast], view, radius + 10, radius), yeast);
+    const flea = { species: 'water_flea', x: 0, y: 0, scale: 1, depth: 0.5 };
+    assert.equal(ctx.microscopePick([flea], view, 30, radius), flea);
+});
+
+test('1000× draws every organism and slide, plain, stained and on dark-field', () => {
+    const buffer = () => ({ canvas: { width: 100, height: 100 }, ctx: recordingContext() });
+    const sources = ['sample_forest_lake_a', 'sample_forest_lake_b', 'sample_forest_lake_c', 'sample_mountain_lake_a', 'sample_plains_lake_a', 'sample_oasis_a', 'sample_moss_a', 'sample_still_water', 'dirt', 'flower_red', 'honeycomb', 'milk', 'mushroom_red', 'wheat', 'white_wool', 'cheek', 'raw_fish', 'tardigrade_tube'];
+    for (const source of sources) {
+        const organisms = plain(ctx.microPopulate(source, 5, 2));
+        const scenery = plain(ctx.microScenery(source, 5));
+        for (const look of [{}, { stain: 'iodine_tincture' }, { stain: 'methylene_blue' }, { dark: 1 }]) {
+            const canvas = recordingContext();
+            ctx.microscopeDrawField(canvas, buffer(), buffer(), { radius: 300, power: 1000, scale: ctx.microscopeScale(1000, 300), stageX: 0, stageY: 0, focus: 0.5, t: 1, age: 3, revived: false, selected: null, light: { source: 'sun', level: 1 }, ...look }, organisms, scenery);
+            balanced(canvas);
+            for (const [name, ...args] of canvas.calls) {
+                for (const arg of args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${source} ${name}`);
+            }
+        }
+    }
+    // Dark-field does not ask what power it is at: its gain and its lines take only the light.
+    const code = fs.readFileSync(path.join(JS, 'game', 'microscope.js'), 'utf8');
+    assert.match(code, /function microscopeDarkfieldGain\(level\)/);
+    assert.match(code, /function microscopeDarkfieldLine\(light\)/);
 });
 
 test('picking: the organism under the finger, the sharp one first', () => {
@@ -908,12 +969,14 @@ test('the panel: touch and mouse on the field', () => {
     assert.equal(game.microscopeSelected, org, 'a pinch is not a tap');
 
     // The buttons, and the wheel and the slider for the focus.
-    panel.querySelector('.micro-power').fire('click');
+    const powers = panel.querySelectorAll('[data-power]');
+    assert.deepEqual(plain(powers.map((button) => button.dataset.power)), ['40', '100', '400', '1000']);
+    powers[3].fire('click');
+    assert.equal(game.microscopePower, 1000);
+    assert.deepEqual(plain(powers.map((button) => button.classes.has('active'))), [false, false, false, true], 'it shows which one');
+    powers[2].fire('click');
     assert.equal(game.microscopePower, 400);
-    assert.match(panel.querySelector('.micro-power').querySelector('.micro-ico').textContent, /400×/);
-    panel.querySelector('.micro-power').fire('click');
-    assert.equal(game.microscopePower, 40, 'round and round');
-    game.microscopeSetPower(400);
+    assert.deepEqual(plain(powers.map((button) => button.classes.has('active'))), [false, false, true, false]);
     field.fire('wheel', { deltaY: 100 });
     assert.ok(game.microscopeFocus > 0.5 - 0.05 && game.microscopeFocus < 0.5);
     panel.querySelector('#micro-focus').fire('input', { target: { value: '80' } });
@@ -996,8 +1059,10 @@ test('the panel: dry, wet again, and closing', () => {
     key('KeyW', 'w');
     assert.ok(stopped >= 1);
     assert.ok(game.microscopeAt);
+    const power = game.microscopePower;
     key('Equal', '+');
-    assert.equal(game.microscopePower, 100);
+    key('Minus', '-');
+    assert.equal(game.microscopePower, power, 'the buttons took over from + and -');
     key('Escape', 'Escape');
     assert.equal(game.microscopeAt, null);
 });
@@ -1222,15 +1287,15 @@ test('a tap on a touch screen is the same right click, with what is selected', (
 
 test('the list of the inventory is gone from the panel, and so are the stacked buttons and the empty state', () => {
     const code = fs.readFileSync(path.join(JS, 'game', 'microscope.js'), 'utf8');
-    for (const gone of ['micro-sources', 'micro-prepare', 'micro-side', 'data-power', 'micro-stage-actions', 'micro-tools"', 'micro-empty', 'micro-cheek']) assert.ok(!code.includes(gone), gone);
+    for (const gone of ['micro-sources', 'micro-prepare', 'micro-side', 'micro-power"', '.micro-power', 'microscopeCyclePower', 'micro-stage-actions', 'micro-tools"', 'micro-empty', 'micro-cheek']) assert.ok(!code.includes(gone), gone);
 });
 
 test('the bar: every tool an icon, with a caption and a tooltip, and always there', () => {
     const game = panelGame();
     const panel = openPanel(game);
-    const shown = () => ['power', 'clear', 'drop', 'capture', 'stain', 'filter', 'dark', 'guide'].filter((name) => panel.querySelector(`.micro-${name}`).style.display !== 'none');
+    const shown = () => ['clear', 'drop', 'capture', 'stain', 'filter', 'dark', 'guide'].filter((name) => panel.querySelector(`.micro-${name}`).style.display !== 'none');
     slide(game, { source: 'sample_moss_a', tardigrades: 2 });
-    assert.equal(shown().length, 8, 'all of them, always');
+    assert.equal(shown().length, 7, 'all of them, always');
     const capture = panel.querySelector('.micro-capture');
     const neutral = capture.title;
     assert.ok(capture.classes.has('off'));
@@ -1311,9 +1376,11 @@ test('the panel fits a phone: it fills the window and nothing in it scrolls but 
     assert.match(rule('#micro-info'), /position:absolute/, 'the card lies over the stage and takes no room from it');
     assert.match(rule('#micro-lines'), /position:absolute/);
     assert.match(rule('#micro-lines'), /pointer-events:none/, 'and does not stop a drag');
-    assert.match(rule('#microscope-panel .micro-tool'), /min-width:0;max-width:64px;min-height:44px/, 'eight of them in 344 px, tall enough for a finger');
+    assert.match(rule('#microscope-panel .micro-tool'), /min-width:0;max-width:64px;min-height:44px/, 'seven of them in 344 px, tall enough for a finger');
+    // The powers are right above the focus, each its own button.
+    assert.ok(code.indexOf('<div class="micro-optics">') < code.indexOf('id="micro-powers"') && code.indexOf('id="micro-powers"') < code.indexOf('class="micro-focus-wrap"'));
     // The captions are short enough for an icon of a phone's bar, in both languages.
-    for (const key of ['capPower', 'capClear', 'capDrop', 'capCapture', 'capStain', 'capFilter', 'capDark', 'capGuide']) {
+    for (const key of ['capClear', 'capDrop', 'capCapture', 'capStain', 'capFilter', 'capDark', 'capGuide']) {
         const { ES, EN } = vm.runInContext(`MICROSCOPE_TEXT.${key}`, ctx);
         assert.ok(ES.length <= 8 && EN.length <= 8, key);
     }
@@ -1587,6 +1654,10 @@ test('the guide: every link, picture and id is real, and they are linked from th
 test('the guide says what the game does', () => {
     for (const lang of ['ES', 'EN']) {
         const scope = guidePage(238, lang);
+        assert.match(scope, /40×, 100×, 400× (y|and) 1000×/);
+        assert.match(scope, lang === 'EN' ? /immersion oil/ : /aceite de inmersión/);
+        assert.match(scope, lang === 'EN' ? /asks for no oil/ : /no pide aceite/);
+        assert.doesNotMatch(scope, /\+ (y|and) -/, 'the buttons took over');
         // The recipes.
         assert.match(scope, /2 `glass` \+ 1 `copper_block` \+ 1 `iron_ore` \+ 1 `planks`/);
         assert.match(scope, /2 `glass` \+ 2 `iron_ore` \+ 1 `planks`/);

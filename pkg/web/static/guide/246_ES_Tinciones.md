@@ -56,7 +56,7 @@ Lo que hay alrededor también cuenta: en un portaobjetos de `wheat`, el yodo vue
 ## Tres cosas que probar
 
 - **¿Es almidón?** Yodo en `wheat`, luego en una muestra con espirogira y luego en una con euglena. El alga verde y la nadadora verde hacen su comida con la luz. Solo una la guarda como almidón.
-- **Ahí dentro está tu ADN.** Un frotis de tu mejilla con azul de metileno, a 400×.
+- **Ahí dentro está tu ADN.** Un frotis de tu mejilla con azul de metileno, a 1000×: el núcleo se ve bien de cerca.
 - **El precio.** Un portaobjetos con tardígrado: tíñelo y luego intenta echarle una gota.
 
 ## Ciencia y juego

@@ -54,7 +54,7 @@ El panel te dice cuál tienes. Prueba también con lo más pequeño: a 100× no 
 **Lo simplifica el juego:**
 
 - Aquí un filtro multiplica solo tres números, rojo, verde y azul. Uno real actúa en cada longitud de onda, y dos vidrios que parecen iguales pueden portarse distinto.
-- Tu diafragma funciona a todos los aumentos, sin ajustarlo. Uno sencillo de verdad debe ir con su objetivo, y va bien hasta un objetivo de unos 40×; más allá hace falta un condensador especial con aceite.
+- Tu diafragma funciona a todos los aumentos, también a 1000×, sin ajustarlo. Uno sencillo de verdad debe ir con su objetivo, y va bien hasta un objetivo de unos 40×; más allá hace falta un condensador especial con aceite.
 - El vidrio de una vidriera no es un filtro de catálogo de óptica. Los de verdad se fabrican para dejar pasar un color conocido.
 - Aquí el brillo es un solo número que sigue a la luz que tiene al lado el microscopio. En uno real, además hay que alinear el condensador.
 - Se pueden usar a la vez un tinte y el campo oscuro, pero en la realidad no se gana nada: el campo oscuro es para lo que no está teñido.

@@ -2,7 +2,7 @@
 
 ![Bacterias del suelo](mob:soil_bacteria)
 
-Son lo más pequeño que puede enseñar tu microscopio, y hace falta toda su potencia: **400×**, y enfocar con cuidado. Una bacteria no tiene núcleo: es una célula pequeña con el ADN suelto dentro, y las bacterias ya estaban aquí miles de millones de años antes que todo lo demás.
+Son lo más pequeño que puede enseñar tu microscopio. Se distinguen desde **400×**, enfocando con cuidado, y a **1000×** se ven de cerca. Una bacteria no tiene núcleo: es una célula pequeña con el ADN suelto dentro, y las bacterias ya estaban aquí miles de millones de años antes que todo lo demás.
 
 Mucha gente piensa en ellas como en gérmenes. En realidad **solo una pequeña parte puede poner enfermo a alguien**, y sin las demás no habría vida en la Tierra tal como la conocemos.
 
@@ -38,7 +38,7 @@ A primera vista se parecen, pero son **hongos**, con núcleo, como tú. Están m
 
 ## Ciencia y juego
 
-**Es verdad:** sus formas (bastones, cadenas e hileras de cuentas), cómo gema la levadura, y que un buen microscopio a 400× llega justo a verlas.
+**Es verdad:** sus formas (bastones, cadenas e hileras de cuentas), cómo gema la levadura, y que un buen microscopio a 400× llega justo a verlas; para verlas bien se usa el objetivo de aceite, a 1000×.
 
 **Lo simplifica el juego:**
 

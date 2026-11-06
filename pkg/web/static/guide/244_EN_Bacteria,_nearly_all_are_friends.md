@@ -2,7 +2,7 @@
 
 ![Soil bacteria](mob:soil_bacteria)
 
-They are the smallest things your microscope can show, and you need all of its power: **400×**, with careful focus. A bacterium has no nucleus: it is one small cell with its DNA loose inside it, and bacteria were here billions of years before anything else.
+They are the smallest things your microscope can show. You can tell them apart from **400×**, with careful focus, and at **1000×** you see them close up. A bacterium has no nucleus: it is one small cell with its DNA loose inside it, and bacteria were here billions of years before anything else.
 
 Many people think of them as germs. In fact **only a small share of them can make anyone ill**, and without the rest there would be no life on Earth as we know it.
 
@@ -38,7 +38,7 @@ These look similar at a glance, but they are **fungi**, with a nucleus, like you
 
 ## Science and game
 
-**True:** their shapes (rods, chains and strings of beads), how yeast buds, and that a good microscope at 400× does just reach them.
+**True:** their shapes (rods, chains and strings of beads), how yeast buds, and that a good microscope at 400× does just reach them; to see them well, people use the oil objective, at 1000×.
 
 **Simplified in the game:**
 

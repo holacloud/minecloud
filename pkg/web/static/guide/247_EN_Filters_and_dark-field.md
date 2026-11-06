@@ -54,7 +54,7 @@ The panel says which one you have. Try the smallest things as well: at 100× you
 **Simplified in the game:**
 
 - Here a filter multiplies only three numbers, red, green and blue. A real one works on every wavelength, so two glasses that look alike can behave differently.
-- Your stop works at every power, without adjusting it. A real simple stop must suit the objective, and does well up to about a 40× objective; beyond that you need a special condenser with oil.
+- Your stop works at every power, 1000× too, without adjusting it. A real simple stop must suit the objective, and does well up to about a 40× objective; beyond that you need a special condenser with oil.
 - Stained glass from a window is not a filter from an optics catalogue. Real ones are made to pass a known colour.
 - Brightness here is one number that follows the light beside the microscope. In a real one, you also line up the condenser.
 - A stain and dark-field can be used together, but nobody really gains from that: real dark-field is for what has not been stained.

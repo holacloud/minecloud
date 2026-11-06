@@ -410,7 +410,8 @@ Páginas 237 a 244 de la guía del juego.
 - **Luz:** sin luz, el campo se ve negro. Sirve el sol de día con el bloque al aire libre, o cualquier cosa que dé luz a
   dos bloques o menos. `light_bulb` (5 W, luz de nivel 7, `light_bulb:on`) y `electric_lamp` (10 W, nivel 14) necesitan
   corriente; si hay una apagada al lado, el panel lo dice. La bombilla ilumina el campo más tenue que la lámpara o el sol.
-- **Mirar:** arrastrar mueve la platina; icono de aumento, + y - o pellizco, 40×, 100× y 400×; barra o rueda, el enfoque. Clic en un
+- **Mirar:** arrastrar mueve la platina; botones (encima del enfoque) o pellizco, 40×, 100×, 400× y 1000×; barra o rueda, el
+  enfoque. 1000× es un objetivo de aceite en la realidad; aquí no pide aceite. Lo que se identifica a 400× se ve de cerca. Clic en un
   organismo: lo identifica y lo apunta en el bestiario.
 - **Capturar:** con `micropipette` y un `test_tube` vacío, un tardígrado seleccionado pasa a `tardigrade_tube`, o a
   `tardigrade_tun` si el portaobjetos está seco.

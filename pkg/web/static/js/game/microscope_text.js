@@ -14,7 +14,6 @@ const MICROSCOPE_TEXT = {
     notThisSlide: { ES: 'En este portaobjetos no', EN: 'Not this slide' },
     cheek: { ES: 'frotis de tu mejilla', EN: 'smear of your cheek' },
     // The icons: a caption small enough for a phone's bar, and what the tooltip adds.
-    capPower: { ES: 'Aumento', EN: 'Zoom' },
     capClear: { ES: 'Retirar', EN: 'Take off' },
     capDrop: { ES: 'Gota', EN: 'Drop' },
     capCapture: { ES: 'Capturar', EN: 'Capture' },
@@ -22,7 +21,7 @@ const MICROSCOPE_TEXT = {
     capFilter: { ES: 'Filtro', EN: 'Filter' },
     capDark: { ES: 'Oscuro', EN: 'Dark' },
     capGuide: { ES: 'Guía', EN: 'Guide' },
-    powerTip: { ES: 'Aumento: púlsalo para cambiar entre 40×, 100× y 400×. También con + y -, o pellizcando', EN: 'Magnification: press it to go through 40×, 100× and 400×. Also + and -, or a pinch' },
+    powerTip: { ES: (power) => `Aumento de ${power}×. También se cambia pellizcando`, EN: (power) => `Magnification of ${power}×. A pinch changes it too` },
     focusTip: { ES: 'Enfoque: esta barra, o la rueda del ratón sobre el campo', EN: 'Focus: this slider, or the mouse wheel over the field' },
     stainTip: { ES: 'Teñir este portaobjetos', EN: 'Stain this slide' },
     filterTip: { ES: 'Poner un filtro de color en la luz', EN: 'Put a colour filter in the light' },

@@ -28,7 +28,7 @@ Plenty of life is a single cell, doing it all alone: moving, hunting or making f
 
 ![Diatom](mob:diatom)
 
-**Diatom.** One cell living in a box of **glass**, two halves fitting like a lid, ruled with lines so fine that they were used to test the best lenses. At **400×** you will see boats and round ones. They make about a **fifth of all the oxygen produced on Earth** each year, and when they die their shells sink and pile up. Some of this rock is mined, and goes into filters and toothpaste. *In mountain and forest lakes.*
+**Diatom.** One cell living in a box of **glass**, two halves fitting like a lid, ruled with lines so fine that they were used to test the best lenses. At **400×** you will see boats and round ones, and at **1000×**, close up, their lines. They make about a **fifth of all the oxygen produced on Earth** each year, and when they die their shells sink and pile up. Some of this rock is mined, and goes into filters and toothpaste. *In mountain and forest lakes.*
 
 ![Spirogyra](mob:spirogyra)
 

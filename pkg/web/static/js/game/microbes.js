@@ -16,11 +16,11 @@
 // MICRO_SAMPLES, MICRO_ITEMS and MICRO_STAINS mirror sampleVariants, microscopeItems and microscopeStains
 // in pkg/network/microscope.go (test/js/microscope.test.js checks them).
 
-const MICRO_MAGNIFICATIONS = [40, 100, 400];
+const MICRO_MAGNIFICATIONS = [40, 100, 400, 1000];
 // Screen pixels per micrometre at each magnification, for a field 300 pixels in radius.
-const MICRO_SCALE = { 40: 0.15, 100: 0.375, 400: 1.5 };
+const MICRO_SCALE = { 40: 0.15, 100: 0.375, 400: 1.5, 1000: 3.75 };
 // How far out of focus an organism still looks sharp: the depth of field shrinks as the power grows.
-const MICRO_DEPTH_OF_FIELD = { 40: 0.5, 100: 0.26, 400: 0.13 };
+const MICRO_DEPTH_OF_FIELD = { 40: 0.5, 100: 0.26, 400: 0.13, 1000: 0.07 };
 // How far the stage can be moved from the middle of the slide, in micrometres.
 const MICRO_SLIDE_RADIUS = 1300;
 
@@ -1506,7 +1506,7 @@ const MICRO_SPECIES = {
         name: 'Diatom', latin: 'Bacillariophyta', size: '2-200 µm', drawn: 72, mag: 400,
         where: 'Mountain and forest lakes',
         fact: 'A single alga in a shell of glass. Diatoms make about a fifth of all the oxygen produced on Earth, and their old shells pile up into rock.',
-        hint: 'A tiny jewel box, finely ruled. It takes your strongest lens.', page: 243,
+        hint: 'A tiny jewel box, finely ruled. It takes a strong lens.', page: 243,
         dot: '#a68c44', count: [12, 22], spread: 330, move: 'glide', speed: 5, whenDry: 'dies', draw: microDrawDiatom
     },
     spirogyra: {
@@ -1520,14 +1520,14 @@ const MICRO_SPECIES = {
         name: 'Cyanobacteria', latin: 'Cyanobacteria', size: 'cells 1-10 µm', drawn: 100, mag: 400,
         where: 'Plains lakes and oases',
         fact: 'Bacteria that make food from sunlight. Their ancestors filled the air with oxygen, and live on inside every plant cell as chloroplasts.',
-        hint: 'Blue-green beads on a string. It takes your strongest lens.', page: 244,
+        hint: 'Blue-green beads on a string. It takes a strong lens.', page: 244,
         dot: '#3c8a84', count: [14, 24], spread: 300, move: 'drift', speed: 2.5, whenDry: 'dies', algae: true, draw: microDrawCyanobacteria
     },
     soil_bacteria: {
         name: 'Soil Bacteria', latin: 'Bacillus', size: '1-5 µm', drawn: 8, mag: 400,
         where: 'Soil, and a little of any still water',
         fact: 'A teaspoon of good soil can hold as many of them as there are people on Earth. With the fungi, they rot what dies and give its food back to the plants.',
-        hint: 'Tiny rods, too small for all but your strongest lens.', page: 244,
+        hint: 'Tiny rods, too small for all but a strong lens.', page: 244,
         dot: '#6e5c44', count: [40, 70], spread: 230, move: 'wriggle', speed: 12, whenDry: 'dies', draw: microDrawSoilBacteria
     },
     yeast: {

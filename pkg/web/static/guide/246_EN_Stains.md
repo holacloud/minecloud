@@ -56,7 +56,7 @@ What lies around them counts too: on a `wheat` slide, iodine turns the **loose g
 ## Three things to try
 
 - **Is it starch?** Iodine on `wheat`, then on a sample with spirogyra, then on one with euglena. Green alga and green swimmer both make food from light. Only one of them stores it as starch.
-- **Your own DNA is in there.** A smear of your cheek with methylene blue, at 400×.
+- **Your own DNA is in there.** A smear of your cheek with methylene blue, at 1000×: the nucleus shows well close up.
 - **The cost.** A slide with a tardigrade: stain it, and then try to add a drop.
 
 ## Science and game

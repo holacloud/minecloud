@@ -28,7 +28,7 @@ Los **protozoos** son células solas que actúan como animalitos, porque tienen 
 
 ![Diatomea](mob:diatom)
 
-**Diatomea.** Una célula que vive en una caja de **vidrio**, dos mitades que encajan como una tapa, rayada con líneas tan finas que se usaban para probar las mejores lentes. A **400×** verás barquitas y redondas. Producen alrededor de **una quinta parte de todo el oxígeno que se genera en la Tierra** cada año, y al morir, sus caparazones se hunden y se amontonan. Parte de esa roca se extrae, y va a filtros y a pasta de dientes. *En lagos de montaña y de bosque.*
+**Diatomea.** Una célula que vive en una caja de **vidrio**, dos mitades que encajan como una tapa, rayada con líneas tan finas que se usaban para probar las mejores lentes. A **400×** verás barquitas y redondas, y a **1000×**, de cerca, sus rayas. Producen alrededor de **una quinta parte de todo el oxígeno que se genera en la Tierra** cada año, y al morir, sus caparazones se hunden y se amontonan. Parte de esa roca se extrae, y va a filtros y a pasta de dientes. *En lagos de montaña y de bosque.*
 
 ![Espirogira](mob:spirogyra)
 
