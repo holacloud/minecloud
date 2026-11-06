@@ -7,9 +7,13 @@ import (
 	"testing"
 )
 
-// jsFingerprint is the SHA-1 of the same chunks produced by the original JavaScript
-// generator (js/chunkWorker.js + js/terrainGen.js) with the id table below.
-const jsFingerprint = "12a83b901d6c228b4f499e062cf75acca4b320c4"
+// worldWithoutOresFingerprint is the SHA-1 of the chunks below with every ore taken back to the rock
+// or soil it replaces. The world's first fingerprint, 12a83b90..., came from the original JavaScript
+// generator (js/chunkWorker.js + js/terrainGen.js) and counted the ores, which were rolled block by
+// block; veins and outcrops rightly changed it. This one was computed on the generator as it stood
+// before them (commit 64b1b50), with its coal, iron and gold mapped to stone: that it still matches
+// says heights, biomes, soil, water, trees, plants and moss did not move by a single block.
+const worldWithoutOresFingerprint = "4ff0416f0b9bb99d0352bbf5b1a057fde98982b0"
 
 func jsBlockIDs() map[string]uint16 {
 	names := []string{"air", "grass", "dirt", "stone", "cobblestone", "sand", "water", "bedrock", "coal_ore", "iron_ore", "gold_ore", "cactus", "tall_grass", "flower_red", "flower_yellow", "mushroom_red", "mushroom_brown"}
@@ -27,7 +31,7 @@ func jsBlockIDs() map[string]uint16 {
 	return ids
 }
 
-func TestGeneratorMatchesJavaScript(t *testing.T) {
+func TestOnlyOresMoved(t *testing.T) {
 	ids := jsBlockIDs()
 	h := sha1.New()
 	buf := make([]byte, ChunkVolume*2)
@@ -46,6 +50,13 @@ func TestGeneratorMatchesJavaScript(t *testing.T) {
 					}
 					name = groundBlockAt(x, y, z, s, soilDepthAt(x, z, s))
 				}
+				// An ore replaces only what groundBlockAt says is there.
+				if IsNaturalOre(name) {
+					lx, y, lz := chunkCell(i)
+					x, z := c.X*ChunkSize+lx, c.Z*ChunkSize+lz
+					s := ColumnSurface(x, z)
+					name = groundBlockAt(x, y, z, s, soilDepthAt(x, z, s))
+				}
 				id, ok := ids[name]
 				if !ok {
 					t.Fatalf("unexpected block %q", name)
@@ -55,8 +66,8 @@ func TestGeneratorMatchesJavaScript(t *testing.T) {
 			h.Write(buf)
 		}
 	}
-	if got := hex.EncodeToString(h.Sum(nil)); got != jsFingerprint {
-		t.Fatalf("generator diverged from JavaScript: got %s, want %s", got, jsFingerprint)
+	if got := hex.EncodeToString(h.Sum(nil)); got != worldWithoutOresFingerprint {
+		t.Fatalf("something other than ores moved: got %s, want %s", got, worldWithoutOresFingerprint)
 	}
 }
 
@@ -82,6 +93,10 @@ func TestMossMatchesJavaScript(t *testing.T) {
 			name := blockAt(x, s.Height, z, s, soilDepthAt(x, z, s))
 			if name == "moss" {
 				moss++
+			}
+			// Ores came after this fingerprint, and leave the moss where it was.
+			if IsNaturalOre(name) {
+				name = groundBlockAt(x, s.Height, z, s, soilDepthAt(x, z, s))
 			}
 			h.Write([]byte(name + "\n"))
 		}

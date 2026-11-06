@@ -137,28 +137,28 @@ func soilDepthAt(worldX, worldZ int, s Surface) int {
 
 // blockAt is the block type of a terrain cell at or below the column surface.
 func blockAt(worldX, y, worldZ int, s Surface, soilDepth int) string {
+	return blockAtWith(worldX, y, worldZ, s, soilDepth, nil)
+}
+
+// blockAtWith is blockAt with the memo of the chunk being generated.
+func blockAtWith(worldX, y, worldZ int, s Surface, soilDepth int, veins *veinMemo) string {
 	if y == s.Height && !s.Beach && s.Biome != "desert" && mossAt(worldX, worldZ, s) {
 		return "moss"
+	}
+	if ore := oreAt(worldX, y, worldZ, s, soilDepth, veins); ore != "" {
+		return ore
 	}
 	return groundBlockAt(worldX, y, worldZ, s, soilDepth)
 }
 
-// groundBlockAt is what a terrain cell is made of where no moss grows.
+// groundBlockAt is what a terrain cell is made of where no moss and no ore (ores.go) is: the rock and
+// the soil, which nothing about ores ever changes.
 func groundBlockAt(worldX, y, worldZ int, s Surface, soilDepth int) string {
 	depth := s.Height - y
 	if y == BedrockY || (y == BedrockY+1 && hash3(worldX, y, worldZ, 5) < 0.5) {
 		return "bedrock"
 	}
 	if depth > soilDepth {
-		oreRand := hash3(worldX, y, worldZ, 100)
-		switch {
-		case oreRand < 0.018:
-			return "coal_ore"
-		case oreRand < 0.024 && y < 4:
-			return "iron_ore"
-		case oreRand < 0.026 && y < 1:
-			return "gold_ore"
-		}
 		return "stone"
 	}
 	if s.Biome == "desert" || s.Beach {

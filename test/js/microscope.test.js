@@ -614,8 +614,10 @@ test('moss: terrainGen.js gives exactly what terrain.Generate gives', () => {
     for (let x = x0; x < x1; x++) {
         for (let z = z0; z < z1; z++) {
             const surface = generator.columnSurface(x, z);
-            const name = generator.blockAt(x, surface.height, z, surface);
+            let name = generator.blockAt(x, surface.height, z, surface);
             if (name === 'moss') moss++;
+            // Ores came after this fingerprint, and leave the moss where it was.
+            if (name.endsWith('_ore')) name = generator.groundBlockAt(x, surface.height, z, surface, generator.soilDepthAt(x, z, surface));
             hash.update(`${name}\n`);
         }
     }

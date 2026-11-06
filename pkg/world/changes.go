@@ -249,6 +249,9 @@ func (ix *ChangeIndex) compactLocked() {
 	ix.log = kept
 }
 
+// oreHostGround is what terrain.Generate may put an ore in place of.
+var oreHostGround = map[string]bool{"stone": true, "cobblestone": true, "grass": true, "dirt": true, "sand": true}
+
 // diffSurface compares a chunk with the generated one. Blocks in the returned columns and
 // summaries are indices into stored.Palette.
 func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (changed bool, columns []SurfaceColumn, raised, lowered SurfaceSummary) {
@@ -263,11 +266,34 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 			same[i] = id
 		}
 	}
+	// A chunk saved before the generator changed its ores differs from today's in all of them, and
+	// nobody touched it. So ores, in either chunk, count as the ground they lie in. The columns below
+	// still say what is really on top of a chunk that has changed.
+	storedOre := make([]bool, len(stored.Palette))
+	storedGround := make([]bool, len(stored.Palette))
+	for i, name := range stored.Palette {
+		storedOre[i] = terrain.IsNaturalOre(name)
+		storedGround[i] = oreHostGround[name]
+	}
+	generatedOre := make([]bool, len(generated.Palette))
+	generatedStone := make([]bool, len(generated.Palette))
+	for i, name := range generated.Palette {
+		generatedOre[i] = terrain.IsNaturalOre(name)
+		generatedStone[i] = name == "stone"
+	}
 	for i, id := range stored.Blocks {
-		if same[id] != int32(generated.Blocks[i]) {
-			changed = true
-			break
+		gen := generated.Blocks[i]
+		if same[id] == int32(gen) {
+			continue
 		}
+		if generatedOre[gen] && (storedOre[id] || storedGround[id]) {
+			continue
+		}
+		if storedOre[id] && generatedStone[gen] {
+			continue
+		}
+		changed = true
+		break
 	}
 	if !changed {
 		return false, nil, raised, lowered
