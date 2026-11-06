@@ -128,7 +128,7 @@ Object.assign(Game.prototype, {
 
         const lp = audio.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(['sand', 'dirt', 'grass', 'leaves', 'cactus'].includes(blockType) ? 1200 : 1800, audio.currentTime);
+        lp.frequency.setValueAtTime(['sand', 'dirt', 'grass', 'moss', 'leaves', 'cactus'].includes(blockType) ? 1200 : 1800, audio.currentTime);
 
         const gain = audio.createGain();
         gain.gain.setValueAtTime(0.012 * proximity.volume * this.masterVolume, audio.currentTime);
@@ -158,7 +158,7 @@ Object.assign(Game.prototype, {
 
     playLocalFootstepSound(blockType) {
         const hardSurface = ['stone', 'cobblestone', 'stone_bricks', 'brick', 'glass'].includes(blockType);
-        const softSurface = ['sand', 'dirt', 'grass', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'leaves', 'cactus'].includes(blockType);
+        const softSurface = ['sand', 'dirt', 'grass', 'moss', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'leaves', 'cactus'].includes(blockType);
 
         this.playNoiseBurst({
             duration: hardSurface ? 0.065 : 0.05,

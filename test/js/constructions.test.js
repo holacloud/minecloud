@@ -38,7 +38,7 @@ function loadGame() {
     }
     // The furniture modules, as in index.html; what they add is what the showroom has to hold.
     context.FURNITURE_ITEMS = [];
-    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js']) {
+    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js', 'microbes.js', 'microscope.js']) {
         const before = new Set(vm.runInContext('Object.keys(BLOCK_TYPES)', context));
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
         for (const type of vm.runInContext('Object.keys(BLOCK_TYPES)', context)) {
@@ -786,12 +786,44 @@ test('/build: a bed the box cuts goes whole and comes back whole; stopping leave
     assert.equal(game.constructionJob, null);
 });
 
+test('the showroom: one microscope in the daylight, one by a candle, one in the dark', () => {
+    const plan = ctx.constructionPlan('showroom');
+    const { world, reached } = visit('showroom');
+    const scopes = plan.cells.filter((cell) => baseOf(cell.type) === 'microscope');
+    assert.equal(scopes.length, 3);
+    const openToSky = vm.runInContext('microscopeOpenToSky', ctx);
+    const stops = (x, y, z) => {
+        const id = world.getBlockId(x, y, z);
+        return id !== 0 && world.registry.solid[id] === 1 && world.registry.transparent[id] === 0;
+    };
+    const emitterNear = ({ x, y, z }) => {
+        for (let dy = -2; dy <= 2; dy++) {
+            for (let dz = -2; dz <= 2; dz++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    const type = world.getBlockTypeAt(x + dx, y + dy, z + dz);
+                    if (type && world.isLightEmitterType(type)) return baseOf(type);
+                }
+            }
+        }
+        return null;
+    };
+    const found = scopes.map((cell) => [openToSky(stops, 60, cell.x, cell.y, cell.z), emitterNear(cell)]);
+    assert.deepEqual(found, [[true, null], [false, 'candle'], [false, null]]);
+    for (const cell of scopes) {
+        const close = reached.some(([x, z]) => Math.hypot(x - cell.x, z - cell.z) < 3);
+        assert.ok(close, `no way to the microscope at ${cell.x},${cell.z}`);
+    }
+    // Water and moss to sample, a few steps from the first.
+    assert.ok(plan.cells.some((cell) => cell.type === 'water' && Math.abs(cell.x - scopes[0].x) < 8 && Math.abs(cell.z - scopes[0].z) < 8));
+    assert.ok(plan.cells.some((cell) => cell.type === 'moss' && Math.abs(cell.x - scopes[0].x) < 10 && Math.abs(cell.z - scopes[0].z) < 8));
+});
+
 test('the showroom: the signs reach the server, name their room and fit', () => {
     const plan = ctx.constructionPlan('showroom');
     const { world } = visit('showroom');
     const signs = plan.cells.filter((cell) => baseOf(cell.type) === 'sign');
     const texts = signs.map((cell) => cell.meta.t);
-    for (const name of ['SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES', 'TALLER']) {
+    for (const name of ['Microscopio', 'SALÓN', 'COMEDOR', 'COCINA', 'DORMITORIO', 'BAÑO', 'ESTUDIO', 'SALA DE LUZ', 'VIDRIERAS', 'MUESTRAS', 'ESPEJOS', 'ALMACÉN', 'UNIONES', 'TALLER']) {
         assert.ok(texts.some((text) => text.startsWith(name)), name);
     }
     // About what Arial Bold measures, letter by letter, in ems: on the wide side, not to fool anyone.
@@ -834,7 +866,7 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
         }
         const isSign = (type) => type === 'sign' || String(type).startsWith('sign:');
         const signs = sent.filter(({ payload }) => isSign(payload.blockType));
-        assert.equal(signs.length, 26);
+        assert.equal(signs.length, 27);
         assert.equal(signs.length, layout.cells.filter((cell) => isSign(cell.type)).length);
         for (const { payload } of signs) {
             assert.ok(payload.text);

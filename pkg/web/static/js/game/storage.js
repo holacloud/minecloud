@@ -20,7 +20,7 @@
 // (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; the panel is a modal panel (see registerModalPanel).
 
-const STORAGE_KINDS = { arc_furnace: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, oven: 3, wardrobe: 45 };
+const STORAGE_KINDS = { arc_furnace: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, microscope: 1, oven: 3, wardrobe: 45 };
 // Kinds with a second compartment, and how many slots it has.
 const STORAGE_FREEZERS = { fridge: 9 };
 const STORAGE_FREEZER_TAB = 'freezer';

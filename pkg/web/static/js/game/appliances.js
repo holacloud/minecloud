@@ -68,7 +68,7 @@ const APPLIANCE_MACHINES = {
 };
 
 const APPLIANCE_CHILL = { water_flask: 'cold_water', milk: 'cold_milk', soda_water: 'cold_soda' };
-const APPLIANCE_FREEZE = { water_flask: 'ice', cold_water: 'ice', raw_fish: 'frozen_fish', cooked_fish: 'frozen_cooked_fish', bread: 'frozen_bread' };
+const APPLIANCE_FREEZE = { water_flask: 'ice', cold_water: 'ice', raw_fish: 'frozen_fish', cooked_fish: 'frozen_cooked_fish', bread: 'frozen_bread', tardigrade_tube: 'tardigrade_tun' };
 const APPLIANCE_CHILL_SECONDS = 60;
 const APPLIANCE_FREEZE_SECONDS = 120;
 

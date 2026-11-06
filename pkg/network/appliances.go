@@ -168,6 +168,8 @@ var freezeChanges = map[string]string{
 	"raw_fish":    "frozen_fish",
 	"cooked_fish": "frozen_cooked_fish",
 	"bread":       "frozen_bread",
+	// Frozen slowly, a tardigrade curls into a tun and waits (js/game/microscope.js).
+	"tardigrade_tube": "tardigrade_tun",
 }
 
 // ovenStatus is a machine's fire and work in a storageContents message (seconds).

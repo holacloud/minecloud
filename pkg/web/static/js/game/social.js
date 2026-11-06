@@ -241,6 +241,9 @@ Object.assign(Game.prototype, {
             case 'give':
                 this.creativeGive(normalized, args);
                 break;
+            case 'microkit':
+                this.microscopeKit(normalized);
+                break;
             case 'build':
                 this.constructionCommand(normalized, args);
                 break;

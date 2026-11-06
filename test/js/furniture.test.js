@@ -1050,7 +1050,8 @@ test('appliances: every item in the tables exists; fuels burn in the right order
         assert.ok(world.blockTypes[from], from);
         assert.ok(world.blockTypes[to], to);
     }
-    for (const frozen of Object.values(ctx.APPLIANCE_FREEZE)) assert.ok(ctx.APPLIANCE_RECIPES[frozen], `no oven thaws ${frozen}`);
+    // A tardigrade's tun is the exception: water brings it back, and fire never would.
+    for (const frozen of Object.values(ctx.APPLIANCE_FREEZE)) assert.ok(ctx.APPLIANCE_RECIPES[frozen] || frozen === 'tardigrade_tun', `no oven thaws ${frozen}`);
     assert.ok(ctx.applianceOvenTakes('raw_fish') && ctx.applianceOvenTakes('birch_planks') && ctx.applianceOvenTakes('ice'));
     assert.ok(!ctx.applianceOvenTakes('stone') && !ctx.applianceOvenTakes('cold_water'));
 });

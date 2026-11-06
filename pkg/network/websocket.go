@@ -847,6 +847,9 @@ func handleMessage(client *Client, msg Message) {
 	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
 		handleStorageMessage(client, msg)
 
+	case "sampleTake", "microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture":
+		handleMicroscopeMessage(client, msg)
+
 	case "powerProbe":
 		handlePowerProbe(client, msg.Payload)
 

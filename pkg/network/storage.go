@@ -50,6 +50,7 @@ var storageKinds = map[string]int{
 	"chest_freezer": 36,
 	"foundry":       3,
 	"fridge":        18,
+	"microscope":    1,
 	"oven":          3,
 	"wardrobe":      45,
 }
@@ -108,6 +109,8 @@ type StorageBlock struct {
 	Burn    float64 `json:"burn,omitempty"`
 	BurnMax float64 `json:"burnMax,omitempty"`
 	Cook    float64 `json:"cook,omitempty"`
+	// A microscope (microscope.go): what lies on the slide in its one slot.
+	Prep *MicroscopePrep `json:"prep,omitempty"`
 }
 
 // storageOutcome answers one request: how many items moved (0 when refused).
@@ -146,6 +149,8 @@ type storageSnapshot struct {
 	Cold    bool          `json:"cold,omitempty"`
 	Powered bool          `json:"powered,omitempty"`
 	Oven    *ovenStatus   `json:"oven,omitempty"`
+	// A microscope: what lies on the slide.
+	Microscope *microscopeView `json:"microscope,omitempty"`
 }
 
 // storageBase is a block name without its states.
@@ -231,6 +236,9 @@ type storageBook struct {
 	powered   func(cell [3]int) bool
 	adopt     func(x, y, z int, name string)
 	wantPower func(cell [3]int, on bool)
+	// The clock slides dry by, and where their seeds come from (microscope.go; replaced by the tests).
+	now  func() time.Time
+	seed func() uint32
 }
 
 func newStorageBook() *storageBook {
@@ -246,6 +254,8 @@ func newStorageBook() *storageBook {
 		powered:    powerRunsAt,
 		adopt:      powerAdopt,
 		wantPower:  powerAsk,
+		now:        time.Now,
+		seed:       microscopeNewSeed,
 	}
 }
 
@@ -325,6 +335,9 @@ func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
 		snapshot.Oven = ovenStatusOf(m, block)
 		snapshot.Oven.Starting = m.electric() && snapshot.Oven.CookMax > 0 && b.asked[storageKeyOf(cell)] < 2
 	}
+	if place.kind == microscopeKind {
+		snapshot.Microscope = b.microscopeViewOf(block)
+	}
 	return snapshot
 }
 
@@ -381,6 +394,9 @@ func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storage
 			reason = "not a storage block"
 		} else if _, ok := place.slots(move.Compartment); !ok {
 			reason = "bad compartment"
+		} else if place.kind == microscopeKind {
+			// A slide and what lies on it only move together (microscope.go).
+			reason = "not for the microscope"
 		}
 	}
 	if reason != "" {
@@ -619,6 +635,7 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 		copied.Slots = storageCleanSlots(block.Slots)
 		copied.Freezer = storageCleanSlots(block.Freezer)
 		applianceCleanLoaded(&copied)
+		microscopeCleanLoaded(&copied)
 		if copied.holdsNothing() {
 			continue
 		}
@@ -661,6 +678,10 @@ func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 		copied := *block
 		copied.Slots = append([]StorageSlot(nil), block.Slots...)
 		copied.Freezer = append([]StorageSlot(nil), block.Freezer...)
+		if block.Prep != nil {
+			prep := *block.Prep
+			copied.Prep = &prep
+		}
 		blocks[key] = copied
 	}
 	outcomes := make([]storageOutcome, 0, len(b.logFIFO))

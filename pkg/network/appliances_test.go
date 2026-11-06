@@ -45,9 +45,10 @@ func TestApplianceTablesAreConsistent(t *testing.T) {
 	if !(ovenFuels["coal_ore"] > ovenFuels["planks"] && ovenFuels["planks"] > ovenFuels["wood"]) {
 		t.Errorf("fuels: %v", ovenFuels)
 	}
-	// Whatever a freezer makes, an oven can thaw: nothing gets stuck frozen for ever.
+	// Whatever a freezer makes, an oven can thaw: nothing gets stuck frozen for ever. A tun is the
+	// exception: water brings it back, on a slide or with a flask in the C menu, and fire never would.
 	for from, frozen := range freezeChanges {
-		if _, ok := ovenRecipes[frozen]; !ok {
+		if _, ok := ovenRecipes[frozen]; !ok && frozen != tardigradeTun {
 			t.Errorf("%s freezes to %s, which no oven thaws", from, frozen)
 		}
 	}

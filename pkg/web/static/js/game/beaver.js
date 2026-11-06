@@ -45,7 +45,7 @@ const BEAVER_MAX_SITES = 40;
 
 // Blocks the world generator makes. A tree or a site with anything else around it is next to
 // something a player built, and beavers leave it alone.
-const BEAVER_NATURAL_BLOCKS = new Set(['grass', 'dirt', 'stone', 'sand', 'water', 'bedrock', 'coal_ore', 'iron_ore', 'gold_ore',
+const BEAVER_NATURAL_BLOCKS = new Set(['grass', 'moss', 'dirt', 'stone', 'sand', 'water', 'bedrock', 'coal_ore', 'iron_ore', 'gold_ore',
     'cactus', 'tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'wood', 'leaves']);
 const BEAVER_HORIZONTAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 

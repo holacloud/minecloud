@@ -1179,6 +1179,18 @@ function constructionShowroom(b) {
     b.shaped(52, 1, 16, 'arc_furnace', 'arc_furnace', { facing: 'n', fire: 'off' });
     b.set(53, 1, 16, 'rtg');
 
+    // ---- 14. The microscope: one by the daylight strip, water and moss to sample, and two in the light
+    // room, one beside a candle and one in the bay with no light at all ----
+    sign(37, 10, 's', 'Microscopio. Pide luz.', 'De día, el sol; de noche, una vela al lado. Tubo en agua o musgo: muestra. /microkit en creativo.',
+        'Microscope: it needs light. Sun by day, a candle at night. A test tube on water or moss takes a sample. /microkit in creative.');
+    b.set(39, 1, 11, 'table');
+    b.set(40, 1, 11, 'table');
+    piece(39, 2, 11, 'microscope', 'microscope', 'n');
+    b.box(42, 1, 11, 43, 1, 12, 'water');
+    b.box(45, 1, 11, 48, 1, 12, 'moss');
+    piece(18, 1, 34, 'microscope', 'microscope', 'w');
+    piece(36, 1, 22, 'microscope', 'microscope', 'w');
+
     // ---- Night: lanterns from the ceiling, outside the light room. A hanging one lights the floor
     // well within 4 steps, and this lattice packs such diamonds with no gaps. ----
     const [w, , d] = b.size;
@@ -1268,6 +1280,7 @@ const CONSTRUCTION_DESIGNS = {
             { name: 'the hall of mirrors', at: [50, 1, 19] },
             { name: 'the storage corner', at: [48, 1, 15] },
             { name: 'the sample wall', at: [44, 1, 10] },
+            { name: 'the microscope', at: [41, 1, 10] },
             { name: 'the exit lobby', at: [31, 1, 5] }
         ],
         // Dark on purpose [x0, z0, x1, z1]: the light room and the lane into it.
