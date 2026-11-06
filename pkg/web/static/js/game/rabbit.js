@@ -217,6 +217,8 @@ Object.assign(Game.prototype, {
             const x = Math.floor(burrow.position.x);
             const z = Math.floor(burrow.position.z);
             const y = burrow.position.y;
+            // Not loaded: it reads as air, which says nothing about its ground.
+            if (!this.world.getColumnAt(x, z)) continue;
             if (!this.world.hasSolidBlock(x, y - 1, z) || this.world.hasSolidBlock(x, y, z)) this.removeRabbitBurrow(burrow, true);
         }
     },

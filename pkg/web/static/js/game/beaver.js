@@ -707,10 +707,12 @@ Object.assign(Game.prototype, {
         return true;
     },
 
-    // A leaf still held up by some other trunk nearby stays.
+    // A leaf still held up by some other trunk nearby stays; so does one that may be, next to a
+    // chunk that is not loaded (it reads as air, and a block broken here is broken for everyone).
     beaverLeafHeld(leaf) {
         for (let dx = -3; dx <= 3; dx++) {
             for (let dz = -3; dz <= 3; dz++) {
+                if (!this.world.getColumnAt(leaf.x + dx, leaf.z + dz)) return true;
                 for (let dy = -5; dy <= 1; dy++) {
                     if (beaverIsWood(this.world.getBlockTypeAt(leaf.x + dx, leaf.y + dy, leaf.z + dz))) return true;
                 }
@@ -742,10 +744,11 @@ Object.assign(Game.prototype, {
     },
 
     // The next block of the plan still to place, or null when it is finished. Cells whose
-    // spot no longer holds what the plan expects (someone built or dug there) are skipped.
+    // spot no longer holds what the plan expects (someone built or dug there) are skipped. A cell
+    // whose chunk is not loaded reads as air, which says nothing: it stays in the plan for later.
     beaverNextCell(site) {
         for (const cell of site.cells) {
-            if (cell.done) continue;
+            if (cell.done || !this.world.getColumnAt(cell.x, cell.z)) continue;
             if (this.world.getBlockTypeAt(cell.x, cell.y, cell.z) !== cell.expect) {
                 cell.done = true;
                 continue;

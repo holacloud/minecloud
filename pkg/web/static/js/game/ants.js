@@ -483,6 +483,9 @@ Object.assign(Game.prototype, {
         const distance = Math.hypot(player.x - mob.position.x, player.z - mob.position.z);
         if (data.modelRoot) data.modelRoot.rotation.y = data.antFacing;
         if (distance > 96) return;
+        // A chunk that is not loaded reads as air, which says nothing about its ground: the colony
+        // waits for it (walking back from far away, or while a reconnection brings the world again).
+        if (!this.world.getColumnAt(Math.floor(mob.position.x), Math.floor(mob.position.z))) return;
 
         // The mound goes when its block is dug out or built over.
         colony.groundCheck -= delta;
