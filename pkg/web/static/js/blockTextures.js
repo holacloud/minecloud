@@ -278,17 +278,63 @@ class BlockTextureFactory {
                 });
             },
 
+            // Lumps of ore in grey stone, big enough to read from a distance, each with a dark rim
+            // so that even a pale ore stands out from the rock around it.
             ore(s, tint, seed) {
                 f.patterns().stone(s, 0x7d7d7f, seed);
                 const ore = f.rgb(tint);
+                const rim = f.shade(ore, -0.55);
                 f.each(s, (x, y, u, v) => {
-                    const w = f.worley(u, v, 4, seed + 31);
-                    if (f.hash(w.id, 5, seed) < 0.35) return;
-                    const blob = 0.18 + f.fbm(u, v, 8, 2, seed + 4) * 0.12;
-                    if (w.d1 > blob) return;
+                    const w = f.worley(u, v, 3, seed + 31);
+                    if (f.hash(w.id, 5, seed) < 0.1) return;
+                    const blob = 0.28 + f.fbm(u, v, 8, 2, seed + 4) * 0.16;
+                    if (w.d1 > blob + 0.05) return;
+                    if (w.d1 > blob) {
+                        f.put(s, x, y, rim, 0.75);
+                        return;
+                    }
                     const t = 1 - w.d1 / blob;
-                    const k = -0.15 + t * 0.35 + (f.hash(x, y, seed + 7) - 0.5) * 0.15;
-                    f.put(s, x, y, f.tone(s, ore, k), 0.7 + t * 0.3);
+                    const k = -0.1 + t * 0.3 + (f.hash(x, y, seed + 7) - 0.5) * 0.12;
+                    f.put(s, x, y, f.tone(s, ore, k), 0.85 + t * 0.15);
+                });
+            },
+
+            // Galena breaks into little cubes: square lumps with a bright edge, not round ones.
+            ore_cubes(s, tint, seed) {
+                f.patterns().stone(s, 0x7d7d7f, seed);
+                const ore = f.rgb(tint);
+                const bright = f.shade(ore, 0.5);
+                f.each(s, (x, y, u, v) => {
+                    const cellU = u * 3;
+                    const cellV = v * 3;
+                    const ix = Math.floor(cellU);
+                    const iy = Math.floor(cellV);
+                    if (f.hash(ix, iy, seed + 11) < 0.2) return;
+                    const size = 0.34 + f.hash(ix, iy, seed + 13) * 0.12;
+                    const dx = Math.abs(cellU - ix - 0.5);
+                    const dy = Math.abs(cellV - iy - 0.5);
+                    const d = Math.max(dx, dy);
+                    if (d > size) return;
+                    const k = (f.hash(x, y, seed + 7) - 0.5) * 0.1;
+                    f.put(s, x, y, d > size - 0.09 && (cellU - ix < 0.5 || cellV - iy < 0.5) ? bright : f.tone(s, ore, k), 1);
+                });
+            },
+
+            // Cassiterite: dark crystals in a pale crust of quartz, as tin is often found.
+            ore_crystals(s, tint, seed) {
+                f.patterns().stone(s, 0x7d7d7f, seed);
+                const ore = f.rgb(tint);
+                const quartz = f.rgb(0xd8d4c8);
+                f.each(s, (x, y, u, v) => {
+                    const w = f.worley(u, v, 3, seed + 31);
+                    if (f.hash(w.id, 5, seed) < 0.1) return;
+                    const blob = 0.3 + f.fbm(u, v, 8, 2, seed + 4) * 0.14;
+                    if (w.d1 > blob + 0.03) return;
+                    if (w.d1 > blob) {
+                        f.put(s, x, y, f.tone(s, quartz, (f.hash(x, y, seed + 3) - 0.5) * 0.15), 0.9);
+                        return;
+                    }
+                    f.put(s, x, y, f.tone(s, ore, (f.hash(x, y, seed + 7) - 0.5) * 0.2), 1);
                 });
             },
 

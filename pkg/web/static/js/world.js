@@ -97,6 +97,11 @@ class WorldRenderer {
             coal_ore: { color: 0x808080, ore: 0x2D2D2D, name: 'Coal Ore', breakDuration: 1.05 },
             iron_ore: { color: 0x808080, ore: 0xB87E56, name: 'Iron Ore', breakDuration: 1.1 },
             gold_ore: { color: 0x808080, ore: 0xD4AF37, name: 'Gold Ore', breakDuration: 1.15 },
+            copper_ore: { color: 0x808080, ore: 0x2FB58A, name: 'Copper Ore', breakDuration: 1.1 },
+            tin_ore: { color: 0x808080, ore: 0x5E2F12, name: 'Tin Ore', breakDuration: 1.1 },
+            zinc_ore: { color: 0x808080, ore: 0xD0822A, name: 'Zinc Ore', breakDuration: 1.1 },
+            lead_ore: { color: 0x808080, ore: 0x3F4D66, name: 'Lead Ore', breakDuration: 1.1 },
+            silver_ore: { color: 0x808080, ore: 0xF4F7FA, name: 'Silver Ore', breakDuration: 1.15 },
             brick: { color: 0xA03020, name: 'Brick', breakDuration: 0.85 },
             planks: { color: 0xC8A675, name: 'Oak Planks', breakDuration: 0.6 },
             bed: {
@@ -748,6 +753,11 @@ class WorldRenderer {
             case 'coal_ore': return uniform(spec('ore', 0x2a2a2c));
             case 'iron_ore': return uniform(spec('ore', 0xd2a27c));
             case 'gold_ore': return uniform(spec('ore', 0xf2cc48));
+            case 'copper_ore': return uniform(spec('ore', 0x2fb58a));
+            case 'tin_ore': return uniform(spec('ore_crystals', 0x5e2f12));
+            case 'zinc_ore': return uniform(spec('ore', 0xd0822a));
+            case 'lead_ore': return uniform(spec('ore_cubes', 0x3f4d66));
+            case 'silver_ore': return uniform(spec('ore', 0xf4f7fa));
             case 'planks': return uniform(spec('planks', 0xb48a56));
             case 'leaves': return uniform(spec('leaves', 0x4a8a34));
             case 'brick': return uniform(spec('brick', 0x9c4a36));
@@ -833,7 +843,7 @@ class WorldRenderer {
             case 'grass_top': case 'grass_side': return { roughness: 0.9, metalness: 0, normalScale: 0.8 };
             case 'dirt': return { roughness: 0.96, metalness: 0, normalScale: 0.9 };
             case 'sand': return { roughness: 0.94, metalness: 0, normalScale: 0.5 };
-            case 'stone': case 'ore': return { roughness: 0.78, metalness: 0, normalScale: 1.0 };
+            case 'stone': case 'ore': case 'ore_cubes': case 'ore_crystals': return { roughness: 0.78, metalness: 0, normalScale: 1.0 };
             case 'cobblestone': case 'bedrock': return { roughness: 0.84, metalness: 0, normalScale: 1.6 };
             case 'stone_bricks': case 'brick': return { roughness: 0.82, metalness: 0, normalScale: 1.4 };
             case 'log_side': return { roughness: 0.86, metalness: 0, normalScale: 1.4 };
