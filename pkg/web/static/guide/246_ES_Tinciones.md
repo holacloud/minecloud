@@ -14,8 +14,8 @@ Casi todo lo que vive en un portaobjetos es tan transparente como el agua que lo
 ## Cómo se usa
 
 1. Pon un portaobjetos en [el microscopio](238).
-2. Pulsa el nombre de un tinte en el panel. Solo pregunta, y te dice lo que va a costar.
-3. Pulsa **Stain it** para seguir, o *Not this slide* si cambias de idea.
+2. Pulsa el icono **Tinción**. Se abre un recuadro con los frascos que llevas: elige uno. Solo pregunta, y te dice lo que va a costar.
+3. Pulsa **Teñir** para seguir, o *En este portaobjetos no* si cambias de idea. Escape cierra el recuadro sin gastar nada.
 
 El frasco se gasta y te devuelve su `glass`. El tinte se queda en el portaobjetos, y **lo ven todos los que miren ese microscopio**. Solo cabe **un tinte por portaobjetos**. Al retirarlo vuelve lavado y sin tinte.
 

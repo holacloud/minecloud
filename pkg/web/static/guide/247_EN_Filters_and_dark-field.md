@@ -6,7 +6,7 @@ Stains change the **slide**. These two change the **light**. Neither is used up,
 
 ## Colour filters
 
-Carry a coloured glass and it can go in the light path. Press **Filter** in [the panel](238) and pick from what you carry: ![](item:cobalt_glass) `cobalt_glass`, or any of the [16 stained glasses](229), block or pane.
+Carry a coloured glass and it can go in the light path. Press the **Filter** icon in [the panel](238) and pick from what you carry: ![](item:cobalt_glass) `cobalt_glass`, or any of the [16 stained glasses](229), block or pane.
 
 A filter lets its own colour through and holds back the rest, so the whole field takes that colour. It adds to what the light already has: a candle's light is orange, and through a blue filter it turns out darker and less blue than the sun through the same glass.
 
@@ -28,7 +28,7 @@ With a filter in place the panel tells you which way it went for the stain on yo
 
 A black disc on clear glass, under the slide. It blocks the light going straight up, and only what comes in at a slant gets past. That light misses the lens, unless something on the slide scatters it. So the background goes **black**, and whatever is on the slide **shines at its edges**, unstained and alive.
 
-Carry one and press **Dark-field** in the panel. It works with every organism and with anything else on the slide, which means every speck of dirt shines too.
+Carry one and press the **Dark** icon in the panel. It works with every organism and with anything else on the slide, which means every speck of dirt shines too.
 
 **It needs strong light.** Nearly all the light is thrown away, so what is enough for a normal view is not enough here:
 

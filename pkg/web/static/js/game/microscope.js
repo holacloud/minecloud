@@ -3,13 +3,19 @@
 // (pkg/network/microscope.go), which also keeps the slide, shared by everyone looking at that block.
 // - A test tube used on water or moss takes a sample and leaves the block where it is. The server says
 //   what it became: the place fixes what it holds, so the same spot always gives the same.
-// - A right click on a microscope opens its panel (crouch to build against it). A slide goes on the
-//   stage with a sample, one of several other items, or a smear of your cheek; the empty tube comes back
-//   and the slide comes back washed when it is taken off.
-// - The field is drawn on a 2D canvas: drag moves the stage, the nosepiece (or a pinch) changes the
+// - A right click on a microscope (a tap, on a touch screen; crouch to build against it) opens its panel.
+//   Holding something a slide takes, on a free microscope, it first uses a slide and prepares it
+//   (microscopeAutoPrepare); the empty tube comes back, and the slide comes back washed when it is taken
+//   off. A slide already there is someone's: it is shown, never replaced. With no slide there is also a
+//   smear of your cheek.
+// - The field gets the room: every tool is an icon in the bar along the bottom (microscopeRenderTools), and
+//   what is said about the field lies over it or beside it. An icon that cannot be used now is greyed and
+//   says why when pressed; one that makes no sense now is hidden. Stains and filters open a small popover
+//   above their icon (microscopePop), which Escape closes before the panel.
+// - The field is drawn on a 2D canvas: drag moves the stage, the power icon (or a pinch) changes the
 //   power, the slider (or the wheel) the focus. It needs light, as a real one does: the sun by day on a
 //   block in the open, or anything that gives light right beside it (microscopeReadLight). Without
-//   light the field is black and the panel says why.
+//   light the field is black and says why.
 // - A click on an organism identifies it (microscopeIdentified, the one call that says so, and the only
 //   way into its card in the bestiary). With a
 //   micropipette and an empty tube a tardigrade can be drawn off into the tube.
@@ -31,6 +37,8 @@ const MICROSCOPE_PENDING_KEY = 'minecloud-microscope-pending';
 const MICROSCOPE_KNOWN_KEY = 'minecloud-microscope-known';
 // Blocks away at which an open panel closes (the server allows 9).
 const MICROSCOPE_CLOSE_DISTANCE = 7;
+// How long a note stays over the field (milliseconds).
+const MICROSCOPE_NOTE_MS = 8000;
 // How often the light is looked at, and how often at the most the field is redrawn (seconds).
 const MICROSCOPE_LIGHT_EVERY = 0.5;
 const MICROSCOPE_FRAME = 1 / 30;
@@ -78,6 +86,11 @@ function microscopeSettle(pending, outcome) {
     }
     return items;
 }
+
+// The caption of each icon, in MICROSCOPE_TEXT.
+const MICROSCOPE_CAPTIONS = {
+    power: 'capPower', clear: 'capClear', drop: 'capDrop', capture: 'capCapture', stain: 'capStain', filter: 'capFilter', dark: 'capDark', guide: 'capGuide', cheek: 'capCheek'
+};
 
 // What each reason of the server is called in MICROSCOPE_TEXT.
 const MICROSCOPE_REFUSALS = {
@@ -150,6 +163,16 @@ function microscopeOpenToSky(blocks, top, x, y, z) {
 // What the panel says of a black field: `unlit` is the name of a lamp within reach that is off, if any.
 function microscopeDarkLine(unlit) {
     return unlit ? microscopeSay('darkUnlit', String(unlit).toLowerCase()) : microscopeSay('darkLine');
+}
+
+// Whether the player holding this has something a slide takes. The smear of a cheek is no item.
+function microscopeObservable(type) {
+    return Boolean(type) && type !== 'cheek' && Boolean(microSpeciesOf(type));
+}
+
+// The next power on the one icon of the nosepiece, round and round.
+function microscopeCyclePower(power) {
+    return MICRO_MAGNIFICATIONS[(MICRO_MAGNIFICATIONS.indexOf(power) + 1) % MICRO_MAGNIFICATIONS.length];
 }
 
 // Whether this block name is an electric light that is off now.
@@ -652,42 +675,53 @@ registerGameContent(({ addItem, addRecipe }) => {
 // The panel
 
 const MICROSCOPE_CSS = `
-#microscope-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(980px,calc(100vw - 16px));max-height:calc(100% - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:none;flex-direction:column;gap:10px;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(8,12,20,.95);color:#fff;font-family:'Consolas',monospace;z-index:275;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#microscope-panel{position:fixed;inset:max(6px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));margin:auto;max-width:1060px;max-height:860px;display:none;flex-direction:column;gap:5px;padding:7px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(8,12,20,.95);color:#fff;font-family:'Consolas',monospace;z-index:275;box-sizing:border-box;overflow:hidden;touch-action:none}
 #microscope-panel.visible{display:flex}
-#microscope-panel .micro-head{display:flex;align-items:center;gap:8px}
-#microscope-panel h3{font-size:16px;margin:0;flex:1}
-#microscope-panel h4{font-size:12px;margin:2px 0;opacity:.75;font-weight:400}
-#microscope-panel button{min-width:44px;min-height:40px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
+#microscope-panel button{padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
 #microscope-panel button.active{background:rgba(120,190,255,.4);border-color:rgba(160,210,255,.8)}
-#microscope-panel button:disabled{opacity:.4;cursor:default}
-.micro-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.micro-eye{flex:0 1 auto;width:min(520px,100%,calc(100vh - 130px));min-width:220px;margin:0 auto}
-#micro-field{display:block;width:100%;aspect-ratio:1;border-radius:50%;background:#000;box-shadow:0 0 0 6px #17191d,0 0 0 8px rgba(255,255,255,.14);touch-action:none;cursor:grab}
+#microscope-panel .micro-head{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+#microscope-panel h3{font-size:14px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#microscope-panel .micro-close{min-width:40px;min-height:32px}
+#micro-light{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.1);white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
+#micro-light.off{background:rgba(255,160,60,.25);color:#ffc27a}
+.micro-stage{position:relative;flex:1 1 0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+#micro-field{display:block;width:min(100%,60vh);aspect-ratio:1;width:calc(min(100cqw,100cqh) - 14px);height:calc(min(100cqw,100cqh) - 14px);border-radius:50%;background:#000;box-shadow:0 0 0 5px #17191d,0 0 0 7px rgba(255,255,255,.14);touch-action:none;cursor:grab}
 #micro-field:active{cursor:grabbing}
-.micro-side{flex:1 1 280px;min-width:240px;display:flex;flex-direction:column;gap:9px;font-size:13px}
-.micro-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.micro-row button{flex:1}
-#micro-focus{flex:1;min-width:120px;height:32px;accent-color:#8fd0f5}
-#micro-light{padding:7px 9px;border-radius:8px;background:rgba(255,255,255,.06);line-height:1.35}
-#micro-light.off{background:rgba(255,160,60,.16);color:#ffc27a}
-#micro-slide-line{line-height:1.35;opacity:.86;min-height:17px}
-#micro-info{display:none;gap:9px;padding:9px;border-radius:9px;background:rgba(255,255,255,.06);line-height:1.34}
+#micro-lines{position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;pointer-events:none;font-size:12px;line-height:1.25}
+#micro-lines>div{padding:3px 7px;border-radius:7px;background:rgba(8,12,20,.76)}
+#micro-lines>div:empty{display:none}
+#micro-note{color:#ffe9a8}
+#micro-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 max(8px,calc(50cqw - 44cqh));pointer-events:none;text-align:center;font-size:13px;line-height:1.35}
+#micro-center>div{padding:6px 10px;border-radius:9px;background:rgba(8,12,20,.8)}
+#micro-center>div:empty{display:none}
+#micro-center #micro-dark-note{color:#ffc27a}
+#micro-empty{display:flex;flex-direction:column;align-items:center;gap:8px}
+#micro-info{position:absolute;left:0;right:0;bottom:0;display:none;gap:8px;padding:6px 8px;border-radius:9px;background:rgba(8,12,20,.86);line-height:1.28;font-size:12px;max-height:46%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 #micro-info.visible{display:flex}
-#micro-portrait{flex:0 0 84px;width:84px;height:84px;border-radius:8px}
-#micro-info .micro-name{font-weight:700;font-size:14px}
+#micro-portrait{flex:0 0 52px;width:52px;height:52px;border-radius:7px}
+#micro-info .micro-name{font-weight:700;font-size:13px}
 #micro-info .micro-latin{font-style:italic;opacity:.7;font-weight:400}
-#micro-info .micro-meta{opacity:.8;font-size:12px}
-#micro-info .micro-fact{margin-top:4px;font-size:12px}
-#micro-info button{margin-top:6px;width:100%}
-#micro-note{font-size:12px;min-height:15px;color:#ffe9a8;line-height:1.3}
-#micro-sources,#micro-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:5px;max-height:26vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
-#micro-tools,#micro-stain{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:9px;background:rgba(255,255,255,.045)}
-#micro-tool-line,#micro-stain-warn{font-size:12px;line-height:1.34;opacity:.9}
+#micro-info .micro-meta{opacity:.8;font-size:11px}
+#micro-info .micro-fact{margin-top:2px}
+#microscope-panel .micro-read{flex:0 0 auto;align-self:flex-start;min-width:36px;min-height:32px}
+.micro-bottom{position:relative;flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px}
+.micro-focus-wrap{flex:1 1 170px;display:flex;align-items:center;gap:6px;font-size:11px;min-width:0}
+#micro-focus{flex:1;min-width:0;height:24px;margin:0;accent-color:#8fd0f5}
+#micro-bar{flex:1 1 340px;display:flex;justify-content:center;gap:3px;min-width:0}
+#microscope-panel .micro-tool{flex:1 1 0;min-width:0;max-width:64px;min-height:44px;padding:2px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+#microscope-panel .micro-tool.off{opacity:.38;cursor:help}
+.micro-ico{display:block;width:26px;height:26px;background:center/contain no-repeat;image-rendering:pixelated;font:700 13px/26px 'Consolas',monospace;text-align:center;white-space:nowrap}
+.micro-glyph{font-size:20px}
+.micro-cap{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:400 10px/1.1 system-ui,sans-serif}
+#microscope-panel .micro-cheek{pointer-events:auto;flex:0 0 auto;width:64px}
+.micro-pop{position:absolute;bottom:calc(100% + 5px);left:0;width:min(320px,100%);max-height:min(62vh,360px);box-sizing:border-box;display:none;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(16,22,34,.98);font-size:12px;line-height:1.32;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;z-index:2}
+.micro-pop.visible{display:flex}
+.micro-pop .micro-row{display:flex;flex-wrap:wrap;gap:5px}
+.micro-pop .micro-row button{flex:1 1 auto;min-height:40px}
+#microscope-panel .micro-choice{display:flex;align-items:center;gap:7px;width:100%;min-height:40px;text-align:left;font-weight:400;font-size:12px}
+.micro-choice .micro-ico{flex:0 0 26px}
+#micro-filters,#micro-stain-choices{display:flex;flex-direction:column;gap:4px}
 #micro-stain-warn{color:#ffe9a8}
-.micro-cell.active{border-color:rgba(160,210,255,.95);box-shadow:inset 0 0 0 2px rgba(120,190,255,.6)}
-.micro-cell{position:relative;aspect-ratio:1;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05) center/72% no-repeat;cursor:pointer;touch-action:manipulation}
-.micro-cell:hover{border-color:rgba(255,255,255,.55)}
-.micro-cell span{position:absolute;right:3px;bottom:2px;font-size:11px;text-shadow:0 1px 2px #000}
 `;
 
 Object.assign(Game.prototype, {
@@ -778,6 +812,10 @@ Object.assign(Game.prototype, {
         this.microscopeInventoryChanged();
         if (outcome.amount > 0) {
             this.playPickupSound();
+            if (pending.op === 'prepare') {
+                this.microscopeNote = microscopeSay('slideReady', outcome.type === 'cheek' ? microscopeSay('cheek') : this.microscopeName(outcome.type));
+                this.microscopeRenderLines();
+            }
             if (pending.op === 'sample') this.receiveSystemMessage({ text: microscopeSay('tookSample', this.microscopeName(outcome.type)) });
         } else if (pending.op === 'sample') {
             this.receiveSystemMessage({ text: microscopeSay(outcome.reason === 'too far' ? 'sampleTooFar' : 'sampleNeeds') });
@@ -812,7 +850,8 @@ Object.assign(Game.prototype, {
 
     // ---- Opening and closing ----
 
-    microscopeTryOpen(position) {
+    // `held`: the item in the hand, which goes on a slide if it can (microscopeAutoPrepare).
+    microscopeTryOpen(position, held = null) {
         const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
         if (!type || storageBaseName(type) !== 'microscope') return false;
         if (!this.network || !this.network.connected) {
@@ -831,7 +870,8 @@ Object.assign(Game.prototype, {
         this.microscopePower = this.microscopePower || 40;
         this.microscopeFocus = this.microscopeFocus ?? 0.5;
         this.microscopeStainAsked = null;
-        this.microscopeFiltersOpen = false;
+        this.microscopePop = null;
+        this.microscopeWanted = microscopeObservable(held) ? held : null;
         this.microscopeStage = [0, 0];
         this.microscopeLightTimer = 0;
         this.microscopeOpenedAt = performance.now();
@@ -852,6 +892,8 @@ Object.assign(Game.prototype, {
         if (!this.microscopeAt) return;
         this.microscopeAt = null;
         this.microscopeContents = null;
+        this.microscopeWanted = null;
+        this.microscopeClosePop();
         this.microscopePanel.classList.remove('visible');
         if (this.network && this.network.connected) this.network.send('storageClose', {});
         this.suppressPointerLockPauseUntil = performance.now() + 250;
@@ -871,7 +913,10 @@ Object.assign(Game.prototype, {
         const prep = contents.microscope || null;
         const before = this.microscopePrep;
         // Someone else may have stained it, or taken it off, while this was being asked.
-        if (!prep || prep.stain) this.microscopeStainAsked = null;
+        if (!prep || prep.stain) {
+            this.microscopeStainAsked = null;
+            if (this.microscopePop === 'stain') this.microscopePop = null;
+        }
         const same = prep && before && prep.source === before.source && prep.seed === before.seed;
         this.microscopePrep = prep;
         this.microscopeAgeAt = performance.now();
@@ -896,7 +941,21 @@ Object.assign(Game.prototype, {
                 if (gone === this.microscopeSelected) this.microscopeSelected = null;
             }
         }
+        // The first thing known about this microscope: is it free for what was in the hand?
+        const wanted = this.microscopeWanted;
+        this.microscopeWanted = null;
+        if (wanted) this.microscopeAutoPrepare(wanted);
         this.microscopeRenderControls();
+    },
+
+    // What the player had selected when opening goes on a slide, if the stage is free. A slide already
+    // there is shared with whoever else is looking: it is never replaced.
+    microscopeAutoPrepare(source) {
+        if (this.microscopePrep) {
+            this.microscopeNote = microscopeSay('slideAlreadyOn');
+            return;
+        }
+        if (this.getInventoryCount(source) > 0) this.microscopePrepareSlide(source);
     },
 
     microscopeOnClosed(where) {
@@ -987,6 +1046,7 @@ Object.assign(Game.prototype, {
         if (this.microscopeLightTimer <= 0) {
             this.microscopeLightTimer = MICROSCOPE_LIGHT_EVERY;
             this.microscopeReadLight();
+            if (this.microscopeNote && now - this.microscopeNoteAt > MICROSCOPE_NOTE_MS) this.microscopeNote = '';
             this.microscopeRenderLines();
         }
         this.microscopeClock = (this.microscopeClock || 0) + delta;
@@ -1095,15 +1155,17 @@ Object.assign(Game.prototype, {
     microscopeWriteLabels() {
         const panel = this.microscopePanel;
         panel.querySelector('h3').textContent = microscopeSay('title');
-        panel.querySelector('.micro-guide').title = microscopeSay('guideTip');
         panel.querySelector('.micro-close').title = microscopeSay('close');
         panel.querySelector('.micro-focus-label').textContent = microscopeSay('focus');
-        panel.querySelector('.micro-read').textContent = microscopeSay('inTheGuide');
-        panel.querySelector('.micro-clear').textContent = microscopeSay('takeOff');
-        panel.querySelector('.micro-tools-read').title = microscopeSay('toolsGuideTip');
-        panel.querySelector('.micro-stain-read').title = microscopeSay('stainGuideTip');
+        panel.querySelector('.micro-focus-wrap').title = microscopeSay('focusTip');
+        panel.querySelector('.micro-read').title = microscopeSay('speciesGuideTip');
+        panel.querySelector('.micro-tools-read').textContent = microscopeSay('toolsGuide');
+        panel.querySelector('.micro-stain-read').textContent = microscopeSay('stainGuide');
         panel.querySelector('.micro-stain-no').textContent = microscopeSay('notThisSlide');
-        panel.querySelector('.micro-cheek').textContent = microscopeSay('cheek');
+        panel.querySelector('#micro-stain-title').textContent = microscopeSay('stainAbout');
+        for (const [name, caption] of Object.entries(MICROSCOPE_CAPTIONS)) {
+            panel.querySelector(`.micro-${name}`).querySelector('.micro-cap').textContent = microscopeSay(caption);
+        }
     },
 
     microscopeBuildPanel() {
@@ -1113,62 +1175,59 @@ Object.assign(Game.prototype, {
         document.head.appendChild(style);
         const panel = document.createElement('div');
         panel.id = 'microscope-panel';
+        const tool = (name, glyph = '') => `<button type="button" class="micro-tool micro-${name}"><span class="micro-ico${glyph ? ' micro-glyph' : ''}">${glyph}</span><span class="micro-cap"></span></button>`;
         panel.innerHTML = `
             <div class="micro-head">
                 <h3></h3>
-                <button class="micro-guide" type="button">📖</button>
+                <div id="micro-light"></div>
                 <button class="micro-close" type="button">✕</button>
             </div>
-            <div class="micro-body">
-                <div class="micro-eye"><canvas id="micro-field" width="520" height="520"></canvas></div>
-                <div class="micro-side">
-                    <div id="micro-light"></div>
-                    <div class="micro-row" id="micro-powers">
-                        ${MICRO_MAGNIFICATIONS.map((power) => `<button type="button" data-power="${power}">${power}×</button>`).join('')}
+            <div class="micro-stage">
+                <canvas id="micro-field" width="520" height="520"></canvas>
+                <div id="micro-center">
+                    <div id="micro-dark-note"></div>
+                    <div id="micro-empty">
+                        <span id="micro-empty-how"></span>
+                        <span id="micro-empty-slides"></span>
+                        ${tool('cheek', '👄')}
                     </div>
-                    <div class="micro-row"><label class="micro-focus-label" for="micro-focus"></label><input id="micro-focus" type="range" min="0" max="100" step="1"></div>
+                </div>
+                <div id="micro-lines">
                     <div id="micro-slide-line"></div>
-                    <div id="micro-info">
-                        <canvas id="micro-portrait" width="168" height="168"></canvas>
-                        <div>
-                            <div class="micro-name"></div>
-                            <div class="micro-meta"></div>
-                            <div class="micro-fact"></div>
-                            <div class="micro-state micro-fact"></div>
-                            <button type="button" class="micro-capture"></button>
-                            <button type="button" class="micro-read"></button>
-                        </div>
-                    </div>
+                    <div id="micro-tool-line"></div>
                     <div id="micro-note"></div>
-                    <div id="micro-stage-actions" class="micro-row">
-                        <button type="button" class="micro-drop"></button>
-                        <button type="button" class="micro-clear"></button>
+                </div>
+                <div id="micro-info">
+                    <canvas id="micro-portrait" width="168" height="168"></canvas>
+                    <div style="flex:1;min-width:0">
+                        <div class="micro-name"></div>
+                        <div class="micro-meta"></div>
+                        <div class="micro-fact"></div>
+                        <div class="micro-state micro-fact"></div>
                     </div>
-                    <div id="micro-tools">
-                        <div class="micro-row">
-                            <button type="button" class="micro-dark"></button>
-                            <button type="button" class="micro-filter"></button>
-                            <button type="button" class="micro-tools-read" style="flex:0 0 44px">📖</button>
-                        </div>
-                        <div id="micro-filters"></div>
-                        <div id="micro-tool-line"></div>
+                    <button type="button" class="micro-read">📖</button>
+                </div>
+            </div>
+            <div class="micro-bottom">
+                <div id="micro-pop-stain" class="micro-pop">
+                    <div id="micro-stain-title"></div>
+                    <div id="micro-stain-choices">
+                        ${Object.keys(MICRO_STAINS).map((stain) => `<button type="button" class="micro-choice micro-stain-${stain}"><span class="micro-ico"></span><span class="micro-choice-name"></span></button>`).join('')}
                     </div>
-                    <div id="micro-stain">
-                        <div class="micro-row">
-                            ${Object.keys(MICRO_STAINS).map((stain) => `<button type="button" class="micro-stain-${stain}"></button>`).join('')}
-                            <button type="button" class="micro-stain-read" style="flex:0 0 44px">📖</button>
-                        </div>
-                        <div id="micro-stain-warn"></div>
-                        <div class="micro-row" id="micro-stain-confirm">
-                            <button type="button" class="micro-stain-yes"></button>
-                            <button type="button" class="micro-stain-no"></button>
-                        </div>
+                    <div id="micro-stain-warn"></div>
+                    <div class="micro-row" id="micro-stain-confirm">
+                        <button type="button" class="micro-stain-yes"></button>
+                        <button type="button" class="micro-stain-no"></button>
                     </div>
-                    <div id="micro-prepare">
-                        <h4 id="micro-prepare-title"></h4>
-                        <div class="micro-row" style="margin-bottom:6px"><button type="button" class="micro-cheek"></button></div>
-                        <div id="micro-sources"></div>
-                    </div>
+                    <button type="button" class="micro-stain-read" style="min-height:32px"></button>
+                </div>
+                <div id="micro-pop-filter" class="micro-pop">
+                    <div id="micro-filters"></div>
+                    <button type="button" class="micro-tools-read" style="min-height:32px"></button>
+                </div>
+                <label class="micro-focus-wrap"><span class="micro-focus-label"></span><input id="micro-focus" type="range" min="0" max="100" step="1"></label>
+                <div id="micro-bar">
+                    ${tool('power')}${tool('clear')}${tool('drop')}${tool('capture')}${tool('stain')}${tool('filter')}${tool('dark')}${tool('guide', '📖')}
                 </div>
             </div>`;
         document.body.appendChild(panel);
@@ -1185,21 +1244,19 @@ Object.assign(Game.prototype, {
         this.microscopeSofter = buffer();
 
         panel.querySelector('.micro-close').addEventListener('click', () => this.microscopeClose());
-        panel.querySelector('.micro-guide').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_GUIDE_PAGE));
         panel.querySelector('.micro-read').addEventListener('click', () => {
             if (this.microscopeSelected) this.microscopeOpenGuide(MICRO_SPECIES[this.microscopeSelected.species].page);
         });
-        panel.querySelectorAll('[data-power]').forEach((button) => button.addEventListener('click', () => this.microscopeSetPower(Number(button.dataset.power))));
         panel.querySelector('#micro-focus').addEventListener('input', (event) => this.microscopeSetFocus(Number(event.target.value) / 100));
-        panel.querySelector('.micro-drop').addEventListener('click', () => this.microscopeSend('microscopeDrop', 'drop'));
-        panel.querySelector('.micro-clear').addEventListener('click', () => this.microscopeSend('microscopeClear', 'clear'));
-        panel.querySelector('.micro-capture').addEventListener('click', () => this.microscopeSend('microscopeCapture', 'capture'));
-        panel.querySelector('.micro-cheek').addEventListener('click', () => this.microscopePrepareSlide('cheek'));
-        panel.querySelector('.micro-dark').addEventListener('click', () => this.microscopeToggleDark());
-        panel.querySelector('.micro-filter').addEventListener('click', () => {
-            this.microscopeFiltersOpen = !this.microscopeFiltersOpen;
-            this.microscopeRenderControls();
-        });
+        this.microscopeBindTool('power', () => this.microscopeSetPower(microscopeCyclePower(this.microscopePower)));
+        this.microscopeBindTool('clear', () => this.microscopeSend('microscopeClear', 'clear'));
+        this.microscopeBindTool('drop', () => this.microscopeSend('microscopeDrop', 'drop'));
+        this.microscopeBindTool('capture', () => this.microscopeSend('microscopeCapture', 'capture'));
+        this.microscopeBindTool('cheek', () => this.microscopePrepareSlide('cheek'));
+        this.microscopeBindTool('dark', () => this.microscopeToggleDark());
+        this.microscopeBindTool('stain', () => this.microscopeTogglePop('stain'));
+        this.microscopeBindTool('filter', () => this.microscopeTogglePop('filter'));
+        this.microscopeBindTool('guide', () => this.microscopeOpenGuide(MICROSCOPE_GUIDE_PAGE));
         panel.querySelector('.micro-tools-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_LENS_PAGE));
         panel.querySelector('.micro-stain-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_STAIN_PAGE));
         for (const stain of Object.keys(MICRO_STAINS)) {
@@ -1222,13 +1279,13 @@ Object.assign(Game.prototype, {
             if (this.touchControlsEnabled && this.touchIsEmulatedMouse(event)) return;
             this.microscopeClose();
         });
-        // E or Escape close it; arrows move the stage, + and - change the power; nothing reaches the game.
+        // Escape closes an open popover first (microscopeEscape). E or Escape close it; arrows move the stage, + and - change the power; nothing reaches the game.
         document.addEventListener('keydown', (event) => {
             if (!this.microscopeAt) return;
             event.stopImmediatePropagation();
             if (event.code === 'Escape' || event.code === 'KeyE') {
                 event.preventDefault();
-                if (!event.repeat) this.microscopeClose();
+                if (!event.repeat && !(event.code === 'Escape' && this.microscopeEscape())) this.microscopeClose();
                 return;
             }
             const pan = { ArrowLeft: [24, 0], ArrowRight: [-24, 0], ArrowUp: [0, 24], ArrowDown: [0, -24] }[event.code];
@@ -1262,6 +1319,10 @@ Object.assign(Game.prototype, {
         };
         canvas.addEventListener('pointerdown', (event) => {
             event.preventDefault();
+            if (this.microscopePop) {
+                this.microscopeClosePop();
+                this.microscopeRenderControls();
+            }
             if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
             pointers.set(event.pointerId, toCanvas(event));
             if (pointers.size === 1) {
@@ -1336,7 +1397,7 @@ Object.assign(Game.prototype, {
 
     // ---- Stains ----
 
-    // The first press only asks: a stain cannot be undone.
+    // The first press only asks, in the popover: a stain cannot be undone.
     microscopeAskStain(stain) {
         if (!this.microscopeAt || !this.microscopePrep || this.microscopeStain() || !MICRO_STAINS[stain]) return;
         if (this.getInventoryCount(stain) <= 0) {
@@ -1344,17 +1405,48 @@ Object.assign(Game.prototype, {
             this.microscopeRenderLines();
             return;
         }
+        this.microscopePop = 'stain';
         this.microscopeStainAsked = stain;
         this.microscopeRenderControls();
     },
 
     microscopeApplyStain() {
         const stain = this.microscopeStainAsked;
-        this.microscopeStainAsked = null;
+        this.microscopeClosePop();
         if (stain && this.microscopeAt && this.microscopePrep && !this.microscopeStain()) {
             this.microscopeRequest('microscopeStain', 'stain', { ...this.microscopeAt, source: stain }, stain);
         }
         this.microscopeRenderControls();
+    },
+
+    // ---- The popovers ----
+
+    microscopeTogglePop(which) {
+        const was = this.microscopePop;
+        this.microscopeClosePop();
+        if (was !== which) this.microscopePop = which;
+        this.microscopeRenderControls();
+    },
+
+    microscopeClosePop() {
+        this.microscopePop = null;
+        this.microscopeStainAsked = null;
+    },
+
+    // Escape: what is open inside the panel goes first. Says whether there was anything.
+    microscopeEscape() {
+        if (!this.microscopePop) return false;
+        this.microscopeClosePop();
+        this.microscopeRenderControls();
+        return true;
+    },
+
+    // A popover sits above its icon, as far along as it fits in the bar.
+    microscopePlacePop(pop, name) {
+        const button = this.microscopePanel.querySelector(`.micro-${name}`);
+        const bar = this.microscopePanel.querySelector('.micro-bottom');
+        const room = (bar.clientWidth || 0) - (pop.offsetWidth || 0);
+        pop.style.left = `${Math.max(0, Math.min((button.offsetLeft || 0), room))}px`;
     },
 
     // ---- What this viewer puts in the light ----
@@ -1375,7 +1467,7 @@ Object.assign(Game.prototype, {
         const rgb = type ? microscopeFilterColor(type, this.world.blockTypes) : null;
         if (type && (!rgb || this.getInventoryCount(type) <= 0)) return;
         this.microscopeFilter = type ? { type, rgb } : null;
-        this.microscopeFiltersOpen = false;
+        this.microscopeClosePop();
         this.microscopeRenderControls();
     },
 
@@ -1384,58 +1476,128 @@ Object.assign(Game.prototype, {
         return this.inventory.filter((type) => this.getInventoryCount(type) > 0 && microscopeFilterColor(type, this.world.blockTypes));
     },
 
+    // A press on an icon: what it does, or if it cannot be used now, says why. That works on a touch screen,
+    // which has no tooltips, as a disabled button would not.
+    microscopeBindTool(name, action) {
+        const button = this.microscopePanel.querySelector(`.micro-${name}`);
+        button.addEventListener('click', () => {
+            if (!button.dataset.reason) {
+                action();
+                return;
+            }
+            this.microscopeNote = button.dataset.reason;
+            this.microscopeRenderLines();
+        });
+    },
+
+    // One icon of the bar. show: false hides it, reason greys it and says why. item: the game's own icon.
+    microscopeSetTool(name, { show = true, reason = '', tip = '', active = false, item = null }) {
+        const button = this.microscopePanel.querySelector(`.micro-${name}`);
+        button.style.display = show ? '' : 'none';
+        button.classList.toggle('off', Boolean(reason));
+        button.classList.toggle('active', active);
+        button.dataset.reason = reason;
+        button.title = reason || tip;
+        if (item) button.querySelector('.micro-ico').style.backgroundImage = `url(${this.world.getInventoryIconUrl(item)})`;
+    },
+
     microscopeRenderTools() {
         const panel = this.microscopePanel;
         // What is no longer in the inventory is no longer in the light.
         if (this.microscopeDark && this.getInventoryCount('darkfield_stop') <= 0) this.microscopeDark = false;
         if (this.microscopeFilter && this.getInventoryCount(this.microscopeFilter.type) <= 0) this.microscopeFilter = null;
-        const dark = panel.querySelector('.micro-dark');
-        dark.classList.toggle('active', Boolean(this.microscopeDark));
-        dark.textContent = microscopeSay(this.microscopeDark ? 'darkOn' : 'darkOff');
+        const prep = this.microscopePrep;
+        const stained = this.microscopeStain();
+
+        panel.querySelector('.micro-power').querySelector('.micro-ico').textContent = `${this.microscopePower}×`;
+        this.microscopeSetTool('power', { tip: microscopeSay('powerTip') });
+        this.microscopeSetTool('clear', { show: Boolean(prep), tip: microscopeSay('takeOff'), item: 'glass_slide' });
+        const flasks = this.getInventoryCount('water_flask');
+        this.microscopeSetTool('drop', {
+            show: Boolean(prep), tip: microscopeSay('dropReady'), item: 'water_flask',
+            reason: stained ? microscopeSay('dropStained') : flasks > 0 ? '' : microscopeSay('dropNeedsFlask')
+        });
+        // Only for the one in the ring: the icon does not give away what is on the slide.
+        const tardigrade = Boolean(this.microscopeSelected) && this.microscopeSelected.species === 'tardigrade';
+        const pipette = this.getInventoryCount('micropipette') > 0;
+        const tube = this.getInventoryCount('test_tube') > 0;
+        this.microscopeSetTool('capture', {
+            show: tardigrade, tip: microscopeSay('captureReady'), item: 'micropipette',
+            reason: stained ? microscopeSay('captureStained') : !pipette ? microscopeSay('captureNeedsPipette') : !tube ? microscopeSay('captureNeedsTube') : ''
+        });
+        const bottles = Object.keys(MICRO_STAINS).filter((stain) => this.getInventoryCount(stain) > 0);
+        this.microscopeSetTool('stain', {
+            show: Boolean(prep), tip: microscopeSay('stainTip'), active: this.microscopePop === 'stain' || Boolean(stained),
+            item: stained || this.microscopeStainAsked || bottles[0] || 'iodine_tincture',
+            reason: stained ? microscopeSay('refusedStainTwice') : bottles.length ? '' : microscopeSay('stainNoneCarried')
+        });
         const choices = this.microscopeFilterChoices();
-        const filter = panel.querySelector('.micro-filter');
-        filter.classList.toggle('active', Boolean(this.microscopeFilter));
-        filter.textContent = this.microscopeFilter ? microscopeSay('filterIs', this.microscopeName(this.microscopeFilter.type)) : microscopeSay('filterNone');
-        const list = panel.querySelector('#micro-filters');
-        list.style.display = this.microscopeFiltersOpen ? '' : 'none';
-        if (!this.microscopeFiltersOpen) return;
-        list.innerHTML = '';
-        const none = document.createElement('button');
-        none.type = 'button';
-        none.textContent = microscopeSay('none');
-        none.addEventListener('click', () => this.microscopeSetFilter(null));
-        list.appendChild(none);
-        for (const type of choices) {
-            const cell = document.createElement('div');
-            cell.className = 'micro-cell';
-            cell.classList.toggle('active', Boolean(this.microscopeFilter) && this.microscopeFilter.type === type);
-            cell.title = this.microscopeName(type);
-            cell.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
-            cell.addEventListener('click', () => this.microscopeSetFilter(type));
-            list.appendChild(cell);
-        }
+        const filter = this.microscopeFilter;
+        this.microscopeSetTool('filter', {
+            tip: filter ? microscopeSay('filterIs', this.microscopeName(filter.type)) : microscopeSay('filterTip'),
+            active: this.microscopePop === 'filter' || Boolean(filter), item: filter ? filter.type : choices[0] || 'cobalt_glass',
+            reason: choices.length ? '' : microscopeSay('filterNoneCarried')
+        });
+        this.microscopeSetTool('dark', {
+            tip: microscopeSay(this.microscopeDark ? 'darkOn' : 'darkOff'), active: Boolean(this.microscopeDark), item: 'darkfield_stop',
+            reason: this.microscopeDark || this.getInventoryCount('darkfield_stop') > 0 ? '' : microscopeSay('darkNeedsStop')
+        });
+        this.microscopeSetTool('guide', { tip: microscopeSay('guideTip') });
+        // A popover with nothing left to offer goes.
+        if (this.microscopePop === 'stain' && (!prep || stained || !bottles.length)) this.microscopeClosePop();
+        if (this.microscopePop === 'filter' && !choices.length && !filter) this.microscopeClosePop();
+        this.microscopeRenderFilters(choices);
+        this.microscopeRenderStain(bottles);
     },
 
-    microscopeRenderStain() {
+    // The filter's popover: none, and what the player carries.
+    microscopeRenderFilters(choices) {
         const panel = this.microscopePanel;
-        const prep = this.microscopePrep;
-        const box = panel.querySelector('#micro-stain');
-        // Only for a slide that has none yet.
-        box.style.display = prep && !prep.stain ? '' : 'none';
-        if (!prep || prep.stain) return;
-        for (const stain of Object.keys(MICRO_STAINS)) {
-            const def = microscopeStainText(stain);
-            const count = this.getInventoryCount(stain);
-            const button = panel.querySelector(`.micro-stain-${stain}`);
-            button.textContent = count > 0 ? microscopeSay('stainCount', def.name, count) : microscopeSay('stainNoneLeft', def.name);
-            button.classList.toggle('active', this.microscopeStainAsked === stain);
-        }
+        const pop = panel.querySelector('#micro-pop-filter');
+        const open = this.microscopePop === 'filter';
+        pop.classList.toggle('visible', open);
+        if (!open) return;
+        const list = panel.querySelector('#micro-filters');
+        list.innerHTML = '';
+        const row = (text, type, icon) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'micro-choice';
+            button.classList.toggle('active', (this.microscopeFilter ? this.microscopeFilter.type : null) === type);
+            const picture = document.createElement('span');
+            picture.className = 'micro-ico';
+            if (icon) picture.style.backgroundImage = `url(${icon})`;
+            const name = document.createElement('span');
+            name.textContent = text;
+            button.appendChild(picture);
+            button.appendChild(name);
+            button.addEventListener('click', () => this.microscopeSetFilter(type));
+            list.appendChild(button);
+        };
+        row(microscopeSay('none'), null, null);
+        for (const type of choices) row(this.microscopeName(type), type, this.world.getInventoryIconUrl(type));
+        this.microscopePlacePop(pop, 'filter');
+    },
+
+    // The stain's popover: only the bottles the player has, then the warning and the confirmation.
+    microscopeRenderStain(bottles) {
+        const panel = this.microscopePanel;
+        const pop = panel.querySelector('#micro-pop-stain');
+        const open = this.microscopePop === 'stain';
+        pop.classList.toggle('visible', open);
+        if (!open) return;
         const asked = this.microscopeStainAsked;
-        panel.querySelector('#micro-stain-warn').textContent = asked
-            ? microscopeStainWarning(asked)
-            : microscopeSay('stainAbout');
+        for (const stain of Object.keys(MICRO_STAINS)) {
+            const button = panel.querySelector(`.micro-stain-${stain}`);
+            button.style.display = bottles.includes(stain) ? '' : 'none';
+            button.classList.toggle('active', asked === stain);
+            button.querySelector('.micro-choice-name').textContent = microscopeSay('stainCount', microscopeStainText(stain).name, this.getInventoryCount(stain));
+            button.querySelector('.micro-ico').style.backgroundImage = `url(${this.world.getInventoryIconUrl(stain)})`;
+        }
+        panel.querySelector('#micro-stain-warn').textContent = asked ? microscopeStainWarning(asked) : '';
         panel.querySelector('#micro-stain-confirm').style.display = asked ? '' : 'none';
         if (asked) panel.querySelector('.micro-stain-yes').textContent = microscopeSay('stainIt', microscopeStainText(asked).name);
+        this.microscopePlacePop(pop, 'stain');
     },
 
     microscopePrepareSlide(source) {
@@ -1448,41 +1610,20 @@ Object.assign(Game.prototype, {
         this.microscopeRequest('microscopePrepare', 'prepare', { ...this.microscopeAt, source }, source);
     },
 
-    // What changes rarely: which buttons, what can go on a slide, who is in the ring.
+    // What changes rarely: which icons, what is said with no slide, who is in the ring.
     microscopeRenderControls() {
         const panel = this.microscopePanel;
         if (!panel || !this.microscopeAt) return;
-        panel.querySelectorAll('[data-power]').forEach((button) => button.classList.toggle('active', Number(button.dataset.power) === this.microscopePower));
-        const slider = panel.querySelector('#micro-focus');
-        slider.value = Math.round(this.microscopeFocus * 100);
-        const prep = this.microscopePrep;
-        panel.querySelector('#micro-stage-actions').style.display = prep ? '' : 'none';
-        panel.querySelector('#micro-prepare').style.display = prep ? 'none' : '';
-        if (prep) {
-            const drop = panel.querySelector('.micro-drop');
-            const flasks = this.getInventoryCount('water_flask');
-            drop.disabled = flasks <= 0 || Boolean(prep.stain);
-            drop.textContent = microscopeSay(prep.stain ? 'dropStained' : flasks > 0 ? 'dropReady' : 'dropNeedsFlask');
-        } else {
+        panel.querySelector('#micro-focus').value = Math.round(this.microscopeFocus * 100);
+        const empty = !this.microscopePrep;
+        panel.querySelector('#micro-empty').style.display = empty ? '' : 'none';
+        if (empty) {
             const slides = this.getInventoryCount('glass_slide');
-            panel.querySelector('#micro-prepare-title').textContent = slides > 0 ? microscopeSay('prepareTitle', slides) : microscopeSay('prepareNoSlide');
-            panel.querySelector('.micro-cheek').disabled = slides <= 0;
-            const list = panel.querySelector('#micro-sources');
-            list.innerHTML = '';
-            this.inventory.filter((type) => this.getInventoryCount(type) > 0 && microSpeciesOf(type) && type !== 'cheek' && this.world.blockTypes[type]).forEach((type) => {
-                const cell = document.createElement('div');
-                cell.className = 'micro-cell';
-                cell.title = this.microscopeName(type);
-                cell.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
-                const label = document.createElement('span');
-                label.textContent = this.getInventoryCount(type);
-                cell.appendChild(label);
-                cell.addEventListener('click', () => this.microscopePrepareSlide(type));
-                list.appendChild(cell);
-            });
+            panel.querySelector('#micro-empty-how').textContent = microscopeSay(this.touchControlsEnabled ? 'emptyHowTouch' : 'emptyHow');
+            panel.querySelector('#micro-empty-slides').textContent = slides > 0 ? '' : microscopeSay('needSlide');
+            this.microscopeSetTool('cheek', { tip: microscopeSay('cheek'), reason: slides > 0 ? '' : microscopeSay('needSlide') });
         }
         this.microscopeRenderTools();
-        this.microscopeRenderStain();
         this.microscopeRenderLines();
         this.microscopeRenderInfo();
     },
@@ -1492,15 +1633,30 @@ Object.assign(Game.prototype, {
         const panel = this.microscopePanel;
         if (!panel || !this.microscopeAt) return;
         const light = this.microscopeLight;
-        const line = panel.querySelector('#micro-light');
         const dark = !light || light.level <= 0;
-        line.classList.toggle('off', dark);
-        if (dark) line.textContent = microscopeDarkLine(this.microscopeUnlit && this.microscopeName(this.microscopeUnlit));
-        else if (light.source === 'sun') line.textContent = microscopeSay('lightSun');
-        else line.textContent = microscopeSay('lightLamp', this.microscopeLightName());
+        const indicator = panel.querySelector('#micro-light');
+        indicator.classList.toggle('off', dark);
+        const darkLine = dark ? microscopeDarkLine(this.microscopeUnlit && this.microscopeName(this.microscopeUnlit)) : '';
+        if (dark) {
+            indicator.textContent = `⚠ ${microscopeSay('lightShortOff')}`;
+            indicator.title = darkLine;
+        } else if (light.source === 'sun') {
+            indicator.textContent = `☀ ${microscopeSay('lightShortSun')}`;
+            indicator.title = microscopeSay('lightSun');
+        } else {
+            indicator.textContent = `🕯 ${this.microscopeLightName()}`;
+            indicator.title = microscopeSay('lightLamp', this.microscopeLightName());
+        }
+        // How to light it is a lesson: it stays in the middle of the black field, in full.
+        panel.querySelector('#micro-dark-note').textContent = darkLine;
         const prep = this.microscopePrep;
-        panel.querySelector('#micro-slide-line').textContent = prep ? microscopeSlideLine(prep, this.microscopeAge(), this.microscopeWoke()) : microscopeSay('noSlide');
-        panel.querySelector('#micro-note').textContent = this.microscopeNote || '';
+        panel.querySelector('#micro-slide-line').textContent = prep ? microscopeSlideLine(prep, this.microscopeAge(), this.microscopeWoke()) : '';
+        const note = this.microscopeNote || '';
+        if (note !== this.microscopeNoteShown) {
+            this.microscopeNoteShown = note;
+            this.microscopeNoteAt = performance.now();
+        }
+        panel.querySelector('#micro-note').textContent = note;
         // Dark-field first: how well it works is what changes as the light does.
         const tool = this.microscopeDark
             ? microscopeDarkfieldLine(light && { ...light, name: this.microscopeLightName() })
@@ -1534,15 +1690,6 @@ Object.assign(Game.prototype, {
             info.querySelector('.micro-fact').textContent = said.fact;
             const portrait = panel.querySelector('#micro-portrait');
             microDrawPortrait(portrait.getContext('2d'), org.species, portrait.width, portrait.height, 1.3, { stain, dark: Boolean(this.microscopeDark) });
-        }
-        const capture = info.querySelector('.micro-capture');
-        const tardigrade = org.species === 'tardigrade';
-        capture.style.display = tardigrade ? '' : 'none';
-        if (tardigrade) {
-            const pipette = this.getInventoryCount('micropipette') > 0;
-            const tube = this.getInventoryCount('test_tube') > 0;
-            capture.disabled = !pipette || !tube || Boolean(stain);
-            capture.textContent = microscopeSay(stain ? 'captureStained' : pipette && tube ? 'captureReady' : pipette ? 'captureNeedsTube' : 'captureNeedsPipette');
         }
         this.microscopeRenderSelected();
     },
@@ -1590,7 +1737,7 @@ registerModalPanel({
 ITEM_USE_HANDLERS.unshift(function (itemType, hit) {
     if (!hit || this.cameraController.isCrouching) return false;
     const position = this.world.getBlockPositionFromIntersection(hit);
-    return Boolean(position) && this.microscopeTryOpen(position);
+    return Boolean(position) && this.microscopeTryOpen(position, itemType);
 });
 
 registerItemUseHandler(function (item, hit) {

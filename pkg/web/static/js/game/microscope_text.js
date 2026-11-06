@@ -9,20 +9,55 @@ const MICROSCOPE_TEXT = {
     title: { ES: 'Microscopio', EN: 'Microscope' },
     close: { ES: 'Cerrar', EN: 'Close' },
     guideTip: { ES: 'El microscopio, en la guía', EN: 'The microscope, in the guide' },
-    inTheGuide: { ES: '📖 En la guía', EN: '📖 In the guide' },
     focus: { ES: 'Enfoque', EN: 'Focus' },
     takeOff: { ES: 'Retirar el portaobjetos', EN: 'Take the slide off' },
-    toolsGuideTip: { ES: 'Filtros y campo oscuro, en la guía', EN: 'Filters and dark-field, in the guide' },
-    stainGuideTip: { ES: 'Tinciones, en la guía', EN: 'Stains, in the guide' },
     notThisSlide: { ES: 'En este portaobjetos no', EN: 'Not this slide' },
-    cheek: { ES: 'Frotis de tu mejilla', EN: 'Smear of your cheek' },
+    cheek: { ES: 'Frotis de tu mejilla: solo gasta el portaobjetos', EN: 'Smear of your cheek: it costs only the slide' },
+    // The icons: a caption small enough for a phone's bar, and what the tooltip adds.
+    capPower: { ES: 'Aumento', EN: 'Zoom' },
+    capClear: { ES: 'Retirar', EN: 'Take off' },
+    capDrop: { ES: 'Gota', EN: 'Drop' },
+    capCapture: { ES: 'Capturar', EN: 'Capture' },
+    capStain: { ES: 'Tinción', EN: 'Stain' },
+    capFilter: { ES: 'Filtro', EN: 'Filter' },
+    capDark: { ES: 'Oscuro', EN: 'Dark' },
+    capGuide: { ES: 'Guía', EN: 'Guide' },
+    capCheek: { ES: 'Mejilla', EN: 'Cheek' },
+    powerTip: { ES: 'Aumento: púlsalo para cambiar entre 40×, 100× y 400×. También con + y -, o pellizcando', EN: 'Magnification: press it to go through 40×, 100× and 400×. Also + and -, or a pinch' },
+    focusTip: { ES: 'Enfoque: esta barra, o la rueda del ratón sobre el campo', EN: 'Focus: this slider, or the mouse wheel over the field' },
+    stainTip: { ES: 'Teñir este portaobjetos', EN: 'Stain this slide' },
+    filterTip: { ES: 'Poner un filtro de color en la luz', EN: 'Put a colour filter in the light' },
+    speciesGuideTip: { ES: 'Este organismo, en la guía', EN: 'This organism, in the guide' },
+    toolsGuide: { ES: '📖 Filtros y campo oscuro', EN: '📖 Filters and dark-field' },
+    stainGuide: { ES: '📖 Tinciones', EN: '📖 Stains' },
+    lightShortSun: { ES: 'Luz del día', EN: 'Daylight' },
+    lightShortOff: { ES: 'Sin luz', EN: 'No light' },
+    emptyHow: {
+        ES: 'Selecciona en tu inventario lo que quieras observar y haz clic derecho en el microscopio.',
+        EN: 'Select what you want to look at in your inventory, then right click the microscope.'
+    },
+    emptyHowTouch: {
+        ES: 'Selecciona en tu inventario lo que quieras observar y toca el microscopio.',
+        EN: 'Select what you want to look at in your inventory, then tap the microscope.'
+    },
+    slideAlreadyOn: {
+        ES: 'Ya hay un portaobjetos puesto, y es de todos los que miran. Retíralo primero para poner el tuyo.',
+        EN: 'There is already a slide on it, shared with whoever is looking. Take it off first to put on yours.'
+    },
+    slideReady: { ES: (name) => `Portaobjetos listo: ${name}.`, EN: (name) => `Slide ready: ${name}.` },
+    stainNoneCarried: {
+        ES: 'No llevas tinciones: la tintura de yodo sale de una reacción de la mesa de laboratorio, y el azul de metileno, del menú C.',
+        EN: 'You carry no stain: Iodine Tincture comes from a reaction at the lab bench, and Methylene Blue from the C menu.'
+    },
+    filterNoneCarried: {
+        ES: 'No llevas ningún filtro: sirve el vidrio de cobalto o cualquier vidriera, en bloque o en panel.',
+        EN: 'You carry no filter: cobalt glass or any stained glass will do, block or pane.'
+    },
     none: { ES: 'Ninguno', EN: 'None' },
     darkOn: { ES: 'Campo oscuro: sí', EN: 'Dark-field: on' },
     darkOff: { ES: 'Campo oscuro: no', EN: 'Dark-field: off' },
-    filterNone: { ES: 'Filtro: ninguno', EN: 'Filter: none' },
     filterIs: { ES: (name) => `Filtro: ${name}`, EN: (name) => `Filter: ${name}` },
     stainCount: { ES: (name, count) => `${name} (${count})`, EN: (name, count) => `${name} (${count})` },
-    stainNoneLeft: { ES: (name) => `${name}: no tienes`, EN: (name) => `${name}: none` },
     stainAbout: {
         ES: 'Una tinción enseña lo que no se ve en vivo, y mata lo que enseña. Una por portaobjetos.',
         EN: 'A stain shows what you cannot see alive, and kills what it shows. One to a slide.'
@@ -41,25 +76,16 @@ const MICROSCOPE_TEXT = {
         EN: 'Dark-field needs a Dark-field Stop (C: a glass slide and a piece of coal).'
     },
     needSlide: {
-        ES: 'Necesitas un portaobjetos (menú C: 1 vidrio da 4).',
-        EN: 'You need a Glass Slide (C: 1 glass makes 4).'
-    },
-    prepareTitle: {
-        ES: (count) => `Prepara un portaobjetos (tienes ${count}): elige qué poner`,
-        EN: (count) => `Prepare a slide (${count} Glass Slide${count === 1 ? '' : 's'}): pick what goes on it`
-    },
-    prepareNoSlide: {
-        ES: 'Prepara un portaobjetos: necesitas uno (menú C: 1 vidrio da 4)',
-        EN: 'Prepare a slide: you need a Glass Slide (C: 1 glass makes 4)'
+        ES: 'No tienes portaobjetos. Se hacen en el menú C: 1 vidrio da 4.',
+        EN: 'You have no Glass Slide. Make them in the C menu: 1 glass makes 4.'
     },
     dropStained: { ES: 'Teñido: una gota no devuelve nada', EN: 'Stained: a drop brings nothing back' },
-    dropReady: { ES: 'Echar una gota de agua', EN: 'Add a drop of water' },
+    dropReady: { ES: 'Echar una gota de agua (gasta un frasco de agua)', EN: 'Add a drop of water (uses a Water Flask)' },
     dropNeedsFlask: { ES: 'Una gota necesita un frasco de agua', EN: 'A drop needs a Water Flask' },
     captureStained: { ES: 'Teñido: no se puede sacar', EN: 'Stained: it cannot be drawn off' },
-    captureReady: { ES: 'Sacarlo a un tubo', EN: 'Draw it off into a tube' },
+    captureReady: { ES: 'Sacarlo a un tubo con la micropipeta', EN: 'Draw it off into a tube' },
     captureNeedsTube: { ES: 'Para quedártelo necesitas un tubo de ensayo vacío', EN: 'To keep it you need an empty Test Tube' },
     captureNeedsPipette: { ES: 'Para quedártelo necesitas una micropipeta', EN: 'To keep it you need a Micropipette' },
-    noSlide: { ES: 'No hay ningún portaobjetos en la platina.', EN: 'There is no slide on the stage.' },
     lightSun: { ES: 'El espejo recoge la luz del día.', EN: 'The mirror is catching the daylight.' },
     lightLamp: { ES: (name) => `El espejo recoge la luz de: ${name}.`, EN: (name) => `The mirror is catching the light of the ${name}.` },
     darkLine: {

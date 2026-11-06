@@ -8,11 +8,11 @@ Ocho patas rechonchas, cuatro garras curvas en cada una, un cuerpo transparente 
 
 1. Construye un [microscopio](238) y dale luz.
 2. [Toma muestras](239) de musgo, o de agua de lagos de bosque o de montaña. En el juego, los lagos de llanura y de desierto no valen.
-3. Pon una en un portaobjetos y empieza a **40×**: un tardígrado ya se ve de ese tamaño. Luego míralo a **100×**.
-4. ¿No hay ninguno? Esa parcela no tiene. Retira el portaobjetos y prueba en otro sitio.
+3. Selecciónala, haz clic derecho en el microscopio para ponerla en un portaobjetos y empieza a **40×**: un tardígrado ya se ve de ese tamaño. Luego míralo a **100×**.
+4. ¿No hay ninguno? Esa parcela no tiene. Retira el portaobjetos (icono **Retirar**) y prueba en otro sitio.
 5. Haz clic en él para identificarlo. Entra en tu [bestiario](5).
 
-Para **quedarte con uno** necesitas una [micropipeta](238) y un `test_tube` vacío: selecciónalo y pulsa *Draw it off into a tube*. Te da un ![](item:tardigrade_tube) `tardigrade_tube`. Solo vive en un tubo y bajo el microscopio: no puedes soltarlo por el mundo. Vuelve a ponerlo en un portaobjetos cuando quieras.
+Para **quedarte con uno** necesitas una [micropipeta](238) y un `test_tube` vacío: selecciónalo en el campo y pulsa el icono **Capturar**. Te da un ![](item:tardigrade_tube) `tardigrade_tube`. Solo vive en un tubo y bajo el microscopio: no puedes soltarlo por el mundo. Vuelve a ponerlo en un portaobjetos cuando quieras.
 
 No hay premio por ello. Entra en tu cuaderno, y lo habrás visto.
 

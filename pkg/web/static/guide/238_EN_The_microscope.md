@@ -16,7 +16,7 @@ A foot, an arm, a stage for the slide, a mirror under it and a brass tube with i
 
 ## It needs light
 
-A microscope shows nothing without light. **With no light the field is pitch black**, and the panel tells you so. There are two ways to light it:
+A microscope shows nothing without light. **With no light the field is pitch black**, and the field itself explains how to light it. There are two ways to light it:
 
 - **The sun**, by day, with the block out in the open: under the sky, under glass, or within two blocks of an opening with nothing in the way. The mirror catches it.
 - **A lamp**, day or night: anything that gives light within two blocks: a [candle, a lantern or a lamp](228), a torch, a lit [electric lamp](204) or a lit [light bulb](187). The stronger the light, the brighter the field: a bulb shows the slide, but dimmer than a lamp.
@@ -27,7 +27,9 @@ If the sun sets while you are looking, the field goes dark. A candle next to it 
 
 ## Preparing a slide
 
-With an empty stage the panel lists what you can put on a slide. Each one uses one `glass_slide`:
+**Select what you want to look at in your inventory or hotbar, then right click the microscope** (on a phone, tap it). If it is free, that uses one `glass_slide`, prepares the slide and opens the panel. With no slides it says so, and how to make them.
+
+What works:
 
 - A **sample** in a tube ([how to take one](239)). The empty tube comes back.
 - **Something you carry:**
@@ -42,29 +44,35 @@ With an empty stage the panel lists what you can put on a slide. Each one uses o
 | ![](item:mushroom_red) either mushroom | [spores](244) |
 | ![](item:white_wool) any wool | scaly fibres, and a few bacteria |
 
-- A **smear of your cheek**, the button in the panel: it costs only the slide, and shows [your own cells](242).
+- A **smear of your cheek**: you need to carry nothing. Open the microscope with nothing to look at selected and press the **Cheek** icon. It costs only the slide, and shows [your own cells](242).
 
-**Take the slide off** and it comes back washed. What was on it is gone.
+**Take the slide off** with the **Take off** icon and it comes back washed. What was on it is gone.
+
+If there is already a slide on it, a right click only shows that one and never replaces it, even with a sample in your hand: it belongs to everyone looking. Take it off first. And beware: with a block that works in your hand, such as `dirt` or leaves, the click uses one up. To build against the microscope, crouch.
 
 Everybody looking at the same microscope sees the same slide: the same organisms in the same places. Each one moves in its own way on each screen.
 
 ## Looking
 
+Every tool is an icon in the bar along the bottom, with its name under it. If one is grey, press it and it says why, and what you are missing. The ones that make no sense at that moment are not shown.
+
 | To do this | With a mouse | On a phone |
 |---|---|---|
 | Move the stage | drag | drag with a finger |
-| Change the power | the 40×, 100×, 400× buttons, or + and - | the buttons, or pinch |
+| Change the power | the **Zoom** icon (40×, 100×, 400×), or + and - | the icon, or pinch |
 | Focus | the slider, or the wheel | the slider |
 | Identify | click it | tap it |
 
 - **Power.** At 40× you see a wide field and the larger animals. At 400× you see the bacteria, but only a small part of the slide. Start low and go up. The line at the bottom of the field is a ruler.
 - **Focus.** Everything lies at its own depth in the drop, and what is at another depth looks blurred. The more power, the thinner the part that is sharp, so at 400× you have to keep turning.
-- **Identify.** Click what you see. If it is too small for this power or out of focus, the panel says what to do. Otherwise its sheet opens and it goes in your [bestiary](5).
+- **Identify.** Click what you see. If it is too small for this power or out of focus, the panel says what to do. Otherwise its name and story appear over the field, and it goes in your [bestiary](5).
 
 ## Seeing more
 
-- **[Stains](246):** iodine or methylene blue on the slide. They show starch and nuclei, and they kill what they show.
-- **[Filters and dark-field](247):** coloured glass in the light, or a black field where everything shines at its edges. Neither is used up.
+- **[Stains](246):** iodine or methylene blue on the slide, with the **Stain** icon. They show starch and nuclei, and they kill what they show.
+- **[Filters and dark-field](247):** coloured glass in the light, or a black field where everything shines at its edges, with the **Filter** and **Dark** icons. Neither is used up.
+
+The panel is in the game's language: pick it in this guide or in the settings of the pause menu.
 
 ## Science and game
 

@@ -612,9 +612,12 @@ test('the panel: it asks first and says why, and only then spends the bottle', (
     const game = panelGame();
     const panel = game.microscopePanel;
     slide(game, { source: 'sample_moss_a' });
-    assert.equal(panel.querySelector('#micro-stain').style.display, '');
+    assert.equal(panel.querySelector('.micro-stain').style.display, '');
+    assert.ok(!panel.querySelector('#micro-pop-stain').classes.has('visible'), 'closed until asked for');
+    panel.querySelector('.micro-stain').fire('click');
+    assert.ok(panel.querySelector('#micro-pop-stain').classes.has('visible'));
     assert.equal(panel.querySelector('#micro-stain-confirm').style.display, 'none');
-    assert.match(panel.querySelector('.micro-stain-methylene_blue').textContent, /Methylene Blue \(1\)/);
+    assert.match(panel.querySelector('.micro-stain-methylene_blue').querySelector('.micro-choice-name').textContent, /Methylene Blue \(1\)/);
 
     panel.querySelector(`.micro-stain-${BLUE}`).fire('click');
     assert.equal(game.getInventoryCount(BLUE), 1, 'asking costs nothing');
@@ -628,9 +631,11 @@ test('the panel: it asks first and says why, and only then spends the bottle', (
     panel.querySelector('.micro-stain-no').fire('click');
     assert.equal(game.microscopeStainAsked, null);
     assert.equal(game.getInventoryCount(BLUE), 1);
+    assert.ok(panel.querySelector('#micro-pop-stain').classes.has('visible'), 'the choice is still there');
 
     panel.querySelector(`.micro-stain-${BLUE}`).fire('click');
     panel.querySelector('.micro-stain-yes').fire('click');
+    assert.ok(!panel.querySelector('#micro-pop-stain').classes.has('visible'));
     assert.equal(game.getInventoryCount(BLUE), 0);
     const [type, payload] = game.network.last();
     assert.equal(type, 'microscopeStain');
@@ -657,7 +662,11 @@ test('the panel: a refused stain gives the bottle back and says why; none carrie
     game.microscopeAskStain(BLUE);
     assert.equal(game.microscopeStainAsked, null);
     assert.match(panel.querySelector('#micro-note').textContent, /C menu/);
-    assert.match(panel.querySelector(`.micro-stain-${BLUE}`).textContent, /none/);
+    // In the popover, only what the player has.
+    panel.querySelector('.micro-stain').fire('click');
+    assert.equal(panel.querySelector(`.micro-stain-${BLUE}`).style.display, 'none');
+    assert.equal(panel.querySelector(`.micro-stain-${IODINE}`).style.display, '');
+    game.microscopeClosePop();
     game.microscopeAskStain('water_flask');
     assert.equal(game.microscopeStainAsked, null);
 });
@@ -666,11 +675,14 @@ test('the panel: with no slide, or one already stained, there is no staining', (
     const game = panelGame();
     const panel = game.microscopePanel;
     game.microscopeRenderControls();
-    assert.equal(panel.querySelector('#micro-stain').style.display, 'none');
+    assert.equal(panel.querySelector('.micro-stain').style.display, 'none');
     game.microscopeAskStain(IODINE);
     assert.equal(game.microscopeStainAsked, null);
     slide(game, { source: 'cheek', stain: BLUE });
-    assert.equal(panel.querySelector('#micro-stain').style.display, 'none');
+    assert.ok(panel.querySelector('.micro-stain').classes.has('off'));
+    assert.match(panel.querySelector('.micro-stain').title, /one to a slide/);
+    panel.querySelector('.micro-stain').fire('click');
+    assert.ok(!panel.querySelector('#micro-pop-stain').classes.has('visible'), 'no popover for it');
     game.microscopeAskStain(IODINE);
     assert.equal(game.microscopeStainAsked, null);
     // Someone else stains it while this viewer is deciding: the question goes away, and no bottle is spent.
@@ -689,16 +701,16 @@ test('the panel: a stained slide, for anyone looking, cannot be drawn from or re
     slide(game, { source: 'tardigrade_tube' });
     game.microscopeSelected = game.microscopeOrganisms[0];
     game.microscopeRenderControls();
-    assert.equal(panel.querySelector('#micro-info').querySelector('.micro-capture').disabled, false);
+    assert.ok(!panel.querySelector('.micro-capture').classes.has('off'));
     const sent = () => game.network.sent.length;
 
     // Another player's stain arrives through the same contents.
     slide(game, { source: 'tardigrade_tube', stain: IODINE, age: 40 });
     assert.equal(game.microscopeOrganisms.length, 1, 'the same organisms, stopped');
-    assert.equal(panel.querySelector('#micro-info').querySelector('.micro-capture').disabled, true);
-    assert.match(panel.querySelector('#micro-info').querySelector('.micro-capture').textContent, /Stained/);
-    assert.equal(panel.querySelector('.micro-drop').disabled, true);
-    assert.match(panel.querySelector('.micro-drop').textContent, /Stained/);
+    assert.ok(panel.querySelector('.micro-capture').classes.has('off'));
+    assert.match(panel.querySelector('.micro-capture').title, /Stained/);
+    assert.ok(panel.querySelector('.micro-drop').classes.has('off'));
+    assert.match(panel.querySelector('.micro-drop').title, /Stained/);
     assert.match(panel.querySelector('#micro-slide-line').textContent, /Iodine Tincture.*fixed/);
     assert.match(panel.querySelector('.micro-state').textContent, /no drop will bring/);
 
@@ -723,7 +735,7 @@ test('the panel: a stained slide, for anyone looking, cannot be drawn from or re
     slide(game, null);
     slide(game, { source: 'sample_moss_a', seed: 77 });
     assert.equal(game.microscopeStain(), '');
-    assert.equal(panel.querySelector('#micro-stain').style.display, '');
+    assert.ok(!panel.querySelector('.micro-stain').classes.has('off'));
 });
 
 test('the panel: each viewer has their own filter and stop, from what they carry, and nothing is sent or spent', () => {
@@ -733,15 +745,19 @@ test('the panel: each viewer has their own filter and stop, from what they carry
     const sent = game.network.sent.length;
 
     assert.deepEqual(plain(game.microscopeFilterChoices()), ['cobalt_glass', 'red_stained_glass', 'red_stained_glass_pane']);
-    assert.match(panel.querySelector('.micro-filter').textContent, /none/);
+    assert.ok(!panel.querySelector('.micro-filter').classes.has('active'));
     panel.querySelector('.micro-filter').fire('click');
+    const pop = panel.querySelector('#micro-pop-filter');
     const list = panel.querySelector('#micro-filters');
-    assert.equal(list.style.display, '');
+    assert.ok(pop.classes.has('visible'));
+    list.children = [];
+    game.microscopeRenderControls();
     assert.equal(list.children.length, 4, 'None, and the three it carries');
     list.children[1].fire('click');
     assert.equal(game.microscopeFilter.type, 'cobalt_glass');
-    assert.equal(list.style.display, 'none');
-    assert.match(panel.querySelector('.micro-filter').textContent, /cobalt_glass/);
+    assert.ok(!pop.classes.has('visible'));
+    assert.ok(panel.querySelector('.micro-filter').classes.has('active'));
+    assert.match(panel.querySelector('.micro-filter').title, /cobalt_glass/);
     assert.match(panel.querySelector('#micro-tool-line').textContent, /only its own colour/);
     assert.deepEqual(plain(game.microscopeView({ age: 1, revived: false, stain: '' }).tint), [0x2a, 0x4f, 0xd0]);
     game.microscopeSetFilter('stone');
@@ -753,7 +769,8 @@ test('the panel: each viewer has their own filter and stop, from what they carry
     game.microscopeSetFilter('red_stained_glass');
     panel.querySelector('.micro-dark').fire('click');
     assert.equal(game.microscopeDark, true);
-    assert.match(panel.querySelector('.micro-dark').textContent, /on/);
+    assert.ok(panel.querySelector('.micro-dark').classes.has('active'));
+    assert.match(panel.querySelector('.micro-dark').title, /on/);
     assert.match(panel.querySelector('#micro-tool-line').textContent, /Dark-field/);
     assert.equal(game.microscopeView({ age: 1, revived: false, stain: '' }).dark, 1);
 
@@ -803,12 +820,39 @@ test('the panel: its portrait follows the stain and the dark field', () => {
     assert.match(panel.querySelector('.micro-state').textContent, /dark blue nucleus/);
 });
 
-test('the panel is usable by touch: every new control is a button or a cell of the sizes it already has', () => {
+test('the panel is usable by touch: every control is a button a finger can hit, and a grey one still answers', () => {
     const text = source('microscope.js');
-    for (const name of ['micro-dark', 'micro-filter', 'micro-stain-yes', 'micro-stain-no']) assert.match(text, new RegExp(`<button type="button" class="${name}"`), name);
-    assert.match(text, /#microscope-panel button\{min-width:44px;min-height:40px/);
-    assert.match(text, /#micro-sources,#micro-filters\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(50px,1fr\)\)/);
-    assert.match(text, /max-height:26vh/);
+    for (const name of ['micro-stain-yes', 'micro-stain-no']) assert.match(text, new RegExp(`<button type="button" class="${name}"`), name);
+    assert.match(text, /<button type="button" class="micro-tool micro-\$\{name\}">/);
+    assert.match(text, /\.micro-pop \.micro-row button\{flex:1 1 auto;min-height:40px\}/);
+    assert.match(text, /#microscope-panel \.micro-choice\{[^}]*min-height:40px/);
+    assert.doesNotMatch(text, /\.disabled\s*=/, 'a disabled button says nothing on a touch screen');
+});
+
+test('the popovers: one at a time, above its icon, and Escape closes it before the panel', () => {
+    const game = panelGame({ cobalt_glass: 1 });
+    const panel = game.microscopePanel;
+    slide(game, { source: 'cheek' });
+    const stain = panel.querySelector('#micro-pop-stain');
+    const filter = panel.querySelector('#micro-pop-filter');
+    panel.querySelector('.micro-stain').fire('click');
+    assert.ok(stain.classes.has('visible'));
+    panel.querySelector('.micro-filter').fire('click');
+    assert.ok(!stain.classes.has('visible') && filter.classes.has('visible'), 'the other one closes');
+    panel.querySelector('.micro-filter').fire('click');
+    assert.ok(!filter.classes.has('visible'), 'its icon closes it');
+    // Choosing and leaving forgets the question.
+    panel.querySelector(`.micro-stain-${BLUE}`).fire('click');
+    assert.equal(game.microscopeStainAsked, BLUE);
+    assert.equal(game.microscopeEscape(), true);
+    assert.equal(game.microscopeStainAsked, null);
+    assert.ok(!stain.classes.has('visible'));
+    assert.ok(game.microscopeAt, 'the panel is still there');
+    assert.equal(game.microscopeEscape(), false, 'and now there is nothing to close but it');
+    // A touch on the field closes it too.
+    panel.querySelector('.micro-filter').fire('click');
+    panel.querySelector('#micro-field').fire('pointerdown', { pointerId: 1, clientX: 1, clientY: 1 });
+    assert.ok(!filter.classes.has('visible'));
 });
 
 // ---- The guide ----

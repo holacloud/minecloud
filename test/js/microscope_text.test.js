@@ -45,7 +45,7 @@ function loadModules() {
     }
     vm.runInContext(`Object.assign(this, { gameLang, setGameLang, MICROSCOPE_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICRO_STAINS, MICRO_STAINS_ES, MICRO_ITEMS, MICRO_SAMPLES, MICROSCOPE_KIT,
         microscopeSay, microscopeItemNameEs, microscopeSpeciesText, microscopeStainNote, microscopeStainText, microscopeSampleId: microSampleId,
-        microscopeRefusalLine, microscopeDarkLine, microscopeDarkfieldLine, microscopeFilterLine, microscopeStainWarning, microscopeSlideLine, microscopeTardigradeLine, Game });`, context);
+        microscopeRefusalLine, microscopeDarkLine, microscopeDarkfieldLine, microscopeFilterLine, microscopeStainWarning, microscopeSlideLine, microscopeTardigradeLine, ITEM_USE_HANDLERS, Game });`, context);
     return context;
 }
 
@@ -149,6 +149,142 @@ test('every line of the panel is in both languages, and they are not the same li
             assert.notEqual(ES, EN, key);
         }
     }
+});
+
+test('no line is left over from a panel that is gone', () => {
+    const code = read('game/microscope.js');
+    for (const key of Object.keys(ctx.MICROSCOPE_TEXT)) assert.ok(code.includes(`'${key}'`), `${key} is said nowhere`);
+});
+
+// A page element with what the panel uses of it, that remembers everything written on it.
+function fakeElement(all) {
+    const found = new Map();
+    const listeners = {};
+    const element = {
+        style: {}, dataset: {}, width: 520, height: 520, value: '50', textContent: '', innerHTML: '', title: '', children: [], classes: new Set(),
+        classList: { add: (name) => element.classes.add(name), remove: (name) => element.classes.delete(name), toggle: (name, on) => (on ? element.classes.add(name) : element.classes.delete(name)) },
+        appendChild(child) { element.children.push(child); return child; },
+        addEventListener(type, listener) { (listeners[type] = listeners[type] || []).push(listener); },
+        fire(type) { for (const listener of listeners[type] || []) listener({ preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} }); },
+        querySelector(selector) {
+            if (!found.has(selector)) found.set(selector, fakeElement(all));
+            return found.get(selector);
+        },
+        querySelectorAll: () => [],
+        getContext: () => anyStub(),
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 520, height: 520 })
+    };
+    all.push(element);
+    return element;
+}
+
+// Everything on the panel just now that a player can read.
+const readable = (all) => all.flatMap((element) => (element.style.display === 'none' ? [] : [element.textContent, element.title, element.dataset.reason])).filter(Boolean);
+
+function scopeGame(carried, all) {
+    ctx.document = { pointerLockElement: null, head: fakeElement(all), body: fakeElement(all), exitPointerLock() {}, createElement: () => fakeElement(all), addEventListener() {} };
+    const counts = { glass_slide: 2, water_flask: 1, micropipette: 1, test_tube: 2, iodine_tincture: 1, methylene_blue: 1, darkfield_stop: 1, cobalt_glass: 1, red_stained_glass: 1, dirt: 3, ...carried };
+    const game = Object.create(ctx.Game.prototype);
+    const types = Object.fromEntries(Object.keys(counts).map((type) => [type, { name: type.split('_').join(' ') }]));
+    const network = {
+        connected: true, sent: [], handlers: {},
+        on(type, listener) { (this.handlers[type] = this.handlers[type] || []).push(listener); },
+        send(type, payload) { this.sent.push([type, payload]); },
+        deliver(type, payload) { for (const listener of this.handlers[type] || []) listener(payload); }
+    };
+    Object.assign(game, {
+        network, daylight: 1, inventory: Object.keys(counts), inventoryCounts: counts,
+        cameraController: { isCrouching: false, camera: { position: { x: 1, y: 2, z: 1 } } },
+        renderer: { domElement: {} },
+        world: {
+            blockTypes: { ...types, microscope: {}, candle: { name: 'Candle' }, cobalt_glass: { name: 'Cobalt Glass', color: 0x2a4fd0 }, red_stained_glass: { name: 'Red Stained Glass', color: 0xf25244, filterGlass: true } },
+            registry: { solid: [0, 1], transparent: [0, 0], lightLevel: { 7: 9 }, id: () => 7 },
+            getBlockTypeAt: (x, y, z) => (x === 0 && y === 1 && z === 0 ? 'microscope' : x === 1 && y === 1 && z === 0 ? 'candle' : null),
+            getBlockId: () => 1, isLightEmitterType: (type) => type === 'candle', getBlockPositionFromIntersection: () => ({ x: 0, y: 1, z: 0 }), getInventoryIconUrl: () => 'icon.png'
+        },
+        getInventoryCount: (type) => counts[type] || 0, addInventory() {},
+        getBlockDisplayName(type) { return (this.world.blockTypes[type] || {}).name || type; },
+        receiveSystemMessage() {}, updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
+        playTone() {}, playPickupSound() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}, microscopeIdentified() {}
+    });
+    ctx.window.devicePixelRatio = 1;
+    game.microscopeLoadPending();
+    game.microscopeUpdate(0.016);
+    ctx.ITEM_USE_HANDLERS[0].call(game, null, {});
+    return game;
+}
+
+const scopeSlide = (game, prep) => game.network.deliver('storageContents', {
+    x: 0, y: 1, z: 0, capacity: 1, slots: [{}], rev: (game.microscopeRev || 0) + 1, ...(prep ? { microscope: { seed: 42, age: 1, woke: -1, tardigrades: 1, ...prep } } : {})
+});
+
+// Goes through what a player can bring up on the panel, handing over what it reads at each step.
+function walkPanel(look) {
+    const all = [];
+    const game = scopeGame({}, all);
+    const panel = game.microscopePanel;
+    scopeSlide(game, null);
+    look(readable(all), 'empty');
+    scopeSlide(game, { source: 'tardigrade_tube' });
+    game.microscopeSelected = game.microscopeOrganisms[0];
+    game.microscopeRenderControls();
+    look(readable(all), 'a tardigrade');
+    panel.querySelector('.micro-stain').fire('click');
+    panel.querySelector('.micro-stain-methylene_blue').fire('click');
+    look(readable(all), 'the stain popover');
+    game.microscopeClosePop();
+    panel.querySelector('.micro-filter').fire('click');
+    look(readable(all), 'the filter popover');
+    game.microscopeSetFilter('red_stained_glass');
+    look(readable(all), 'a filter');
+    game.microscopeToggleDark();
+    look(readable(all), 'dark-field');
+    game.microscopeToggleDark();
+    scopeSlide(game, { source: 'tardigrade_tube', stain: 'methylene_blue' });
+    look(readable(all), 'stained');
+    return game;
+}
+
+test('walking through the panel in Spanish, nothing English is left on it', () => {
+    const english = /\b(the|is|are|with|your|you|this|that|slide|stain|filter|light|drop|dark-field|glass|tube|focus|take off|none)\b/i;
+    inLang('ES', () => walkPanel((lines, step) => {
+        assert.ok(lines.length > 10, step);
+        for (const line of lines) {
+            if (/icon\.png|#microscope-panel/.test(line)) continue;
+            assert.doesNotMatch(line, english, `${step}: ${line}`);
+        }
+    }));
+    let heard = 0;
+    let caught = 0;
+    walkPanel((lines) => {
+        heard++;
+        caught += lines.filter((line) => !/#microscope-panel/.test(line) && english.test(line)).length;
+    });
+    assert.equal(heard, 7, 'and it goes through in English too');
+    assert.ok(caught > 20, `the same look in English finds it: ${caught}`);
+});
+
+test('the Spanish panel names its items in Spanish, and changes language while it is open', () => {
+    const game = inLang('ES', () => {
+        const all = [];
+        const open = scopeGame({}, all);
+        scopeSlide(open, { source: 'dirt' });
+        const panel = open.microscopePanel;
+        assert.match(panel.querySelector('#micro-light').textContent, /Vela/);
+        assert.equal(panel.querySelector('h3').textContent, 'Microscopio');
+        assert.equal(panel.querySelector('.micro-stain').querySelector('.micro-cap').textContent, 'Tinción');
+        open.microscopeSetFilter('red_stained_glass');
+        assert.match(panel.querySelector('.micro-filter').title, /Filtro: Vidriera roja/);
+        return open;
+    });
+    // inLang has gone back to English, and whatever was open has heard. Here it is told by hand: each test's
+    // hook of the game's content does not run.
+    game.microscopeOnLang();
+    const panel = game.microscopePanel;
+    assert.equal(panel.querySelector('h3').textContent, 'Microscope');
+    assert.equal(panel.querySelector('.micro-stain').querySelector('.micro-cap').textContent, 'Stain');
+    assert.match(panel.querySelector('#micro-light').textContent, /Candle/);
+    assert.match(panel.querySelector('.micro-filter').title, /Filter: Red Stained Glass/);
 });
 
 test('every organism, in all it says, is in Spanish', () => {

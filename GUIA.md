@@ -395,13 +395,20 @@ Páginas 237 a 244 de la guía del juego.
 | Otro lago | `sample_plains_lake_*` | ninguno |
 | `moss` (orillas de lagos de bosque y montaña) | `sample_moss_*` | 60 % |
 
-- **Preparar:** clic derecho en el microscopio; un `glass_slide` más una muestra, un objeto (hojas, `wheat`, `milk`,
-  `cheese`, setas, flores, `dirt`, `honeycomb`, lana, `raw_fish`) o un frotis de mejilla. El tubo vacío se devuelve, y el
-  portaobjetos vuelve lavado al retirarlo.
+- **Preparar:** con algo observable seleccionado (una muestra, hojas, `wheat`, `milk`, `cheese`, setas, flores, `dirt`,
+  `honeycomb`, lana, `raw_fish`) y el microscopio libre, clic derecho (en táctil, tocar): gasta un `glass_slide`, prepara
+  y abre el panel. Sin portaobjetos, lo dice y cómo se hacen. Con uno ya puesto, solo lo enseña y avisa de que hay que
+  retirarlo: nunca lo cambia. Sin nada observable, abre el panel, con un icono para el frotis de mejilla. El tubo vacío
+  se devuelve, y el portaobjetos vuelve lavado al retirarlo.
+- **Panel:** el campo ocupa casi todo. Todo lo demás son iconos en una barra abajo (aumento, retirar, gota, capturar,
+  tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip. El que no se puede usar sale gris y al pulsarlo dice
+  por qué; el que no tiene sentido no sale. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes
+  que el panel. Está en el idioma del juego (`js/gameLang.js`, en la guía y en el menú de pausa); el bestiario, el
+  inventario y las recetas siguen en inglés.
 - **Luz:** sin luz, el campo se ve negro. Sirve el sol de día con el bloque al aire libre, o cualquier cosa que dé luz a
   dos bloques o menos. `light_bulb` (5 W, luz de nivel 7, `light_bulb:on`) y `electric_lamp` (10 W, nivel 14) necesitan
   corriente; si hay una apagada al lado, el panel lo dice. La bombilla ilumina el campo más tenue que la lámpara o el sol.
-- **Mirar:** arrastrar mueve la platina; botones o pellizco, 40×, 100× y 400×; barra o rueda, el enfoque. Clic en un
+- **Mirar:** arrastrar mueve la platina; icono de aumento, + y - o pellizco, 40×, 100× y 400×; barra o rueda, el enfoque. Clic en un
   organismo: lo identifica y lo apunta en el bestiario.
 - **Capturar:** con `micropipette` y un `test_tube` vacío, un tardígrado seleccionado pasa a `tardigrade_tube`, o a
   `tardigrade_tun` si el portaobjetos está seco.
@@ -420,7 +427,7 @@ Páginas 246 y 247 de la guía del juego.
 
 `iodine_tincture` sigue saliendo de la mesa de laboratorio (2 I + 1 `glass`).
 
-- **Tinción:** con un portaobjetos puesto, el panel pregunta primero y avisa del precio. La aplica el servidor (`microscopeStain`), se guarda en la preparación y la ven todos los que miren. Una por portaobjetos; el frasco se gasta y devuelve su `glass`; al retirar el portaobjetos se va.
+- **Tinción:** con un portaobjetos puesto, su recuadro pregunta primero y avisa del precio. La aplica el servidor (`microscopeStain`), se guarda en la preparación y la ven todos los que miren. Una por portaobjetos; el frasco se gasta y devuelve su `glass`; al retirar el portaobjetos se va.
 - **Lo que cuesta:** un portaobjetos teñido queda fijado. Nada se mueve ni se seca, y el servidor rechaza capturar y echar una gota: un tardígrado teñido no revive. Es una regla del juego: en la realidad hay tinciones vitales, en dosis muy bajas.
 - **Lo que enseña, por organismo** (`stains` en `microbes.js`):
 
@@ -429,8 +436,8 @@ Páginas 246 y 247 de la guía del juego.
 | `iodine_tincture` | azul negro | amarillo pardo; glucógeno pardo rojizo en levadura, cianobacterias y células animales; la euglena guarda paramilón y sus granos quedan pálidos |
 | `methylene_blue` | no cambia | núcleos azul oscuro; bacterias y levadura azules enteras; las esporas de bacteria quedan como huecos claros |
 
-- **Filtros:** en el panel, de lo que lleves: `cobalt_glass`, `<color>_stained_glass` y `<color>_stained_glass_pane`. Multiplican el color de la luz junto con el de la lámpara. No se gastan; son de cada jugador y no se guardan.
-- **Campo oscuro:** con `darkfield_stop` encima, se activa en el panel. No se gasta; es de cada jugador y no se guarda. Fondo negro, bordes brillantes, y un brillo que depende de la luz del campo:
+- **Filtros:** en su recuadro, de lo que lleves: `cobalt_glass`, `<color>_stained_glass` y `<color>_stained_glass_pane`. Multiplican el color de la luz junto con el de la lámpara. No se gastan; son de cada jugador y no se guardan.
+- **Campo oscuro:** con `darkfield_stop` encima, se activa con su icono. No se gasta; es de cada jugador y no se guarda. Fondo negro, bordes brillantes, y un brillo que depende de la luz del campo:
 
 | Nivel de luz del campo | Fuente | Brillo |
 |---|---|---|

@@ -8,11 +8,11 @@ Eight stubby legs, four hooked claws on each, a see-through segmented body, and 
 
 1. Build a [microscope](238), and give it light.
 2. [Take samples](239) of moss, or of water from lakes in forest or mountains. Plains and desert lakes will not do in the game.
-3. Put one on a slide, and start at **40×**: a tardigrade is big enough to see already. Then look at it at **100×**.
-4. No tardigrade? That patch has none. Clear the slide and try another place.
+3. Select it and right click the microscope to put it on a slide, and start at **40×**: a tardigrade is big enough to see already. Then look at it at **100×**.
+4. No tardigrade? That patch has none. Take the slide off (the **Take off** icon) and try another place.
 5. Click it to identify it. It goes in your [bestiary](5).
 
-To **keep one** you need a [micropipette](238) and an empty `test_tube`: select it and press *Draw it off into a tube*. You get a ![](item:tardigrade_tube) `tardigrade_tube`. It lives only in a tube and under the microscope: you cannot let it out in the world. Put it back on a slide whenever you like.
+To **keep one** you need a [micropipette](238) and an empty `test_tube`: select it in the field and press the **Capture** icon. You get a ![](item:tardigrade_tube) `tardigrade_tube`. It lives only in a tube and under the microscope: you cannot let it out in the world. Put it back on a slide whenever you like.
 
 There is no prize for it. It just goes in your notebook, and you will have seen it.
 

@@ -14,8 +14,8 @@ Most of what lives on a slide is nearly as clear as the water around it. A **sta
 ## Using one
 
 1. Put a slide on [the microscope](238).
-2. Press the name of a stain in the panel. It only asks, and tells you what it will cost.
-3. Press **Stain it** to go ahead, or *Not this slide* to change your mind.
+2. Press the **Stain** icon. A small box opens with the bottles you carry: pick one. It only asks, and tells you what it will cost.
+3. Press **Stain it** to go ahead, or *Not this slide* to change your mind. Escape closes the box and spends nothing.
 
 The bottle is used up and you get its `glass` back. The stain stays with the slide, and **everybody looking at that microscope sees it**. There is **one stain to a slide**. Take the slide off and it comes back washed, with no stain.
 

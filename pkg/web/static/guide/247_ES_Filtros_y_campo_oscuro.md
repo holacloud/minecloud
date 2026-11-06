@@ -6,7 +6,7 @@ Las tinciones cambian el **portaobjetos**. Estos dos cambian la **luz**. Ninguno
 
 ## Filtros de color
 
-Si llevas un vidrio de color, puede ir en el camino de la luz. Pulsa **Filter** en [el panel](238) y elige entre lo que lleves: ![](item:cobalt_glass) `cobalt_glass`, o cualquiera de las [16 vidrieras](229), en bloque o en panel.
+Si llevas un vidrio de color, puede ir en el camino de la luz. Pulsa el icono **Filtro** en [el panel](238) y elige entre lo que lleves: ![](item:cobalt_glass) `cobalt_glass`, o cualquiera de las [16 vidrieras](229), en bloque o en panel.
 
 Un filtro deja pasar su color y frena los demás, y todo el campo toma ese color. Se suma al que ya tiene la luz: la de una vela es anaranjada, y a través de un filtro azul sale más oscura y menos azul que el sol por el mismo vidrio.
 
@@ -28,7 +28,7 @@ Con un filtro puesto, el panel te dice hacia dónde ha ido el contraste del tint
 
 Un disco negro sobre vidrio claro, debajo del portaobjetos. Tapa la luz que sube recta, y solo pasa la que llega de lado. Esa luz no entra en la lente, salvo que algo del portaobjetos la desvíe. Así que el fondo queda **negro**, y lo que haya en el portaobjetos **brilla por los bordes**, sin teñir y vivo.
 
-Llévalo encima y pulsa **Dark-field** en el panel. Funciona con todos los organismos y con cualquier otra cosa del portaobjetos, así que también brilla cada mota de suciedad.
+Llévalo encima y pulsa el icono **Oscuro** en el panel. Funciona con todos los organismos y con cualquier otra cosa del portaobjetos, así que también brilla cada mota de suciedad.
 
 **Necesita luz fuerte.** Casi toda la luz se pierde, y lo que basta para la vista normal aquí no basta:
 

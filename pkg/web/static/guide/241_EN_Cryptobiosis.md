@@ -6,11 +6,11 @@
 
 ## The experiment, on a slide
 
-1. Put a sample with tardigrades (or a `tardigrade_tube`) on a [microscope](238).
+1. Select a sample with tardigrades (or a `tardigrade_tube`) and right click a [microscope](238).
 2. **Wait.** A slide dries out in one game day, 240 seconds. The panel tells you how long is left.
 3. Near the end the tardigrades pull in their legs and shrink into **tuns**, little wrinkled barrels. Everything else stops.
 4. Dry: look around. The paramecia and the rest are dead. Rotifers, amoebas and euglenas have shut themselves in **cysts**. Only the tun can come back in this game.
-5. Press **Add a drop of water** (this uses a `water_flask`, and you keep the bottle).
+5. Press the **Drop** icon (this uses a `water_flask`, and you keep the bottle).
 6. In about **20 seconds** the tun swells, its legs come out, and it walks away.
 
 Everything else stays as it is. This is the point: after the drought, the tardigrade has the slide to itself.
