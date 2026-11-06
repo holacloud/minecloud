@@ -137,6 +137,14 @@ func soilDepthAt(worldX, worldZ int, s Surface) int {
 
 // blockAt is the block type of a terrain cell at or below the column surface.
 func blockAt(worldX, y, worldZ int, s Surface, soilDepth int) string {
+	if y == s.Height && !s.Beach && s.Biome != "desert" && mossAt(worldX, worldZ, s) {
+		return "moss"
+	}
+	return groundBlockAt(worldX, y, worldZ, s, soilDepth)
+}
+
+// groundBlockAt is what a terrain cell is made of where no moss grows.
+func groundBlockAt(worldX, y, worldZ int, s Surface, soilDepth int) string {
 	depth := s.Height - y
 	if y == BedrockY || (y == BedrockY+1 && hash3(worldX, y, worldZ, 5) < 0.5) {
 		return "bedrock"
@@ -166,4 +174,47 @@ func blockAt(worldX, y, worldZ int, s Surface, soilDepth int) string {
 		return "grass"
 	}
 	return "dirt"
+}
+
+// How far from water moss grows, and the rest of its rule. Mirrored by terrainGen.js.
+const (
+	mossReach     = 4
+	mossChance    = 0.6
+	mossMaxAbove  = 3
+	mossLakeNoise = 0.56
+	mossMountain  = 0.10
+	mossForest    = 0.5
+)
+
+// mossDirections are the eight ways a shore is looked for, in the order both generators use.
+var mossDirections = [8][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}}
+
+// mossAt says whether the top of this column is moss: on the shore of a lake of forest or mountain.
+// It only looks at the climate and the heights of the columns around it, which nothing else depends
+// on, so trees, plants, ores and everything else come out as they would without it. The noise of the
+// lakes goes first: forests and mountains stand above the water except where a lake carves them, so
+// almost every column is done with before any neighbour is evaluated.
+func mossAt(worldX, worldZ int, s Surface) bool {
+	if s.Climate.Mountain < mossMountain && s.Climate.Forest < mossForest {
+		return false
+	}
+	if s.Height < WaterLevel || s.Height > WaterLevel+mossMaxAbove {
+		return false
+	}
+	if hash2(worldX, worldZ, 1913) >= mossChance {
+		return false
+	}
+	if fbm(float64(worldX), float64(worldZ), 90, 3, 97) < mossLakeNoise {
+		return false
+	}
+	for reach := 1; reach <= mossReach; reach++ {
+		for _, d := range mossDirections {
+			x := float64(worldX + d[0]*reach)
+			z := float64(worldZ + d[1]*reach)
+			if terrainHeight(x, z, sampleClimate(x, z)) < WaterLevel {
+				return true
+			}
+		}
+	}
+	return false
 }

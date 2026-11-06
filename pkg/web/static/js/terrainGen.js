@@ -142,8 +142,42 @@ function soilDepthAt(worldX, worldZ, surface) {
     return surface.biome === 'rocky' ? 1 : 3 + Math.floor(hash2(worldX, worldZ, 141) * 2);
 }
 
+// How far from water moss grows, and the rest of its rule. Mirrors pkg/terrain/climate.go.
+const MOSS_REACH = 4;
+const MOSS_CHANCE = 0.6;
+const MOSS_MAX_ABOVE = 3;
+const MOSS_LAKE_NOISE = 0.56;
+const MOSS_MOUNTAIN = 0.10;
+const MOSS_FOREST = 0.5;
+const MOSS_DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+// Whether the top of this column is moss: on the shore of a lake of forest or mountain. It only looks
+// at the climate and the heights of the columns around it, which nothing else depends on. The noise
+// of the lakes goes first, so almost every column is done with before any neighbour is evaluated.
+function mossAt(worldX, worldZ, surface) {
+    const { climate, height } = surface;
+    if (climate.mountain < MOSS_MOUNTAIN && climate.forest < MOSS_FOREST) return false;
+    if (height < WATER_LEVEL || height > WATER_LEVEL + MOSS_MAX_ABOVE) return false;
+    if (hash2(worldX, worldZ, 1913) >= MOSS_CHANCE) return false;
+    if (fbm(worldX, worldZ, 90, 3, 97) < MOSS_LAKE_NOISE) return false;
+    for (let reach = 1; reach <= MOSS_REACH; reach++) {
+        for (const [dx, dz] of MOSS_DIRECTIONS) {
+            const x = worldX + dx * reach;
+            const z = worldZ + dz * reach;
+            if (terrainHeight(x, z, sampleClimate(x, z)) < WATER_LEVEL) return true;
+        }
+    }
+    return false;
+}
+
 // Block type of a terrain cell at or below the column surface.
 function blockAt(worldX, y, worldZ, surface, soilDepth = soilDepthAt(worldX, worldZ, surface)) {
+    if (y === surface.height && !surface.beach && surface.biome !== 'desert' && mossAt(worldX, worldZ, surface)) return 'moss';
+    return groundBlockAt(worldX, y, worldZ, surface, soilDepth);
+}
+
+// What a terrain cell is made of where no moss grows.
+function groundBlockAt(worldX, y, worldZ, surface, soilDepth) {
     const { biome, height, beach } = surface;
     const depth = height - y;
     if (y === BEDROCK_Y || (y === BEDROCK_Y + 1 && hash3(worldX, y, worldZ, 5) < 0.5)) return 'bedrock';
