@@ -26,14 +26,14 @@ const BESTIARY_PORTRAIT_SIZE = 200;
 // MOB_SPECIES but missing here still get a generic card.
 const BESTIARY_ENTRIES = {
     sheep: {
-        name: 'Sheep', habitat: 'Plains and rocky hills', activity: 'Day', temperament: 'Passive',
+        name: 'Sheep', habitat: 'Plains, rocky hills and forests', activity: 'Day', temperament: 'Passive',
         hint: 'Grazes on open grassland.',
         description: 'A woolly grazer that wanders the meadows in small flocks, lowering its head to nibble the grass. It never fights back, it just bleats and trots away.'
     },
     duck: {
-        name: 'Duck', habitat: 'Plains and desert oases', activity: 'Day', temperament: 'Passive',
+        name: 'Duck', habitat: 'Plains and deserts', activity: 'Day', temperament: 'Passive',
         hint: 'Waddles near the water on the plains.',
-        description: 'A cheerful waddler usually found in little groups. It quacks when poked and is happiest near a pond, even an oasis in the middle of the sand.'
+        description: 'A cheerful waddler usually found in little groups. It quacks when poked and is happiest near a pond, but it also wanders the sand.'
     },
     pig: {
         name: 'Pig', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
@@ -41,7 +41,7 @@ const BESTIARY_ENTRIES = {
         description: 'A round, pink forager that snuffles through forests and fields, stopping to graze every few steps. Harmless and easily startled.'
     },
     giraffe: {
-        name: 'Giraffe', habitat: 'Deserts and dry savanna', activity: 'Day', temperament: 'Passive',
+        name: 'Giraffe', habitat: 'Deserts', activity: 'Day', temperament: 'Passive',
         hint: 'Something very tall roams the dry lands.',
         description: 'A solitary giant whose neck towers over every bush. It strolls slowly across the dry lands and grazes peacefully. You will spot it from far away.'
     },
@@ -61,7 +61,7 @@ const BESTIARY_ENTRIES = {
         description: 'A large, dark arachnid that rushes at anyone who comes near. It hits hard but is quick to fall to a few solid blows.'
     },
     cave_monster: {
-        name: 'Cave Monster', habitat: 'Rocky hills and caves', activity: 'Day and night', temperament: 'Hostile',
+        name: 'Cave Monster', habitat: 'Rocky hills', activity: 'Day and night', temperament: 'Hostile',
         hint: 'A heavy creature lurks among the rocks.',
         description: 'A hulking brute from the stony depths. It keeps its distance before charging and takes many hits to bring down. Dogs will fight it for you.'
     },
@@ -106,7 +106,7 @@ const BESTIARY_ENTRIES = {
         description: 'A nimble climber that leaps up ledges two blocks high and always seeks the highest ground. Every now and then it lowers its head and rams you.'
     },
     horse: {
-        name: 'Horse', habitat: 'Plains', activity: 'Day', temperament: 'Passive',
+        name: 'Horse', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
         hint: 'Hoofbeats thunder across the open plains.',
         description: 'A swift grazer that roams the plains in small herds. Right click to ride it: it gallops fast and jumps high. Shift gets you off.'
     },
@@ -116,7 +116,7 @@ const BESTIARY_ENTRIES = {
         description: 'Bees live in colonies around a hive hanging under a tree. They visit flowers by day and shelter in the rain, but strike the hive or one of them and the whole swarm stings.'
     },
     firefly: {
-        name: 'Firefly', habitat: 'Grassland and ponds', activity: 'Night', temperament: 'Passive',
+        name: 'Firefly', habitat: 'Grassland, forests and ponds', activity: 'Night', temperament: 'Passive',
         hint: 'Tiny lights blink over the grass at dusk.',
         description: 'From dusk to dawn fireflies drift in loose clouds over grass and ponds, blinking on and off. They shy away from you and scatter when swatted.'
     },
@@ -131,7 +131,7 @@ const BESTIARY_ENTRIES = {
         description: 'A majestic raptor that rides the thermals in wide circles, perches on the highest point around and stoops on fish near the surface.'
     },
     bat: {
-        name: 'Bat', habitat: 'Under roofs, overhangs and caves', activity: 'Night', temperament: 'Passive',
+        name: 'Bat', habitat: 'Under roofs, overhangs and tunnels', activity: 'Night', temperament: 'Passive',
         hint: 'Look up under overhangs and canopies.',
         description: 'By day bats hang upside down under roofs and canopies, wrapped in their wings; come too close and the colony bursts out. At night they flit about erratically, chasing fireflies.'
     },
@@ -146,12 +146,12 @@ const BESTIARY_ENTRIES = {
         description: 'A clever hunter that stalks rabbits and frogs. At night it sneaks around and steals items left lying on the ground, so keep your things close.'
     },
     rabbit: {
-        name: 'Rabbit', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
+        name: 'Rabbit', habitat: 'Plains, forests and deserts', activity: 'Day', temperament: 'Passive',
         hint: 'Long ears twitch near the burrows.',
         description: 'A timid hopper that lives near its burrow, moving in short jumps. It bolts from foxes, owls and players alike.'
     },
     owl: {
-        name: 'Owl', habitat: 'Forests', activity: 'Night', temperament: 'Passive',
+        name: 'Owl', habitat: 'Forests and trees on the plains', activity: 'Night', temperament: 'Passive',
         hint: 'Two round eyes follow you at night.',
         description: 'A silent night hunter that perches in the trees and turns its head to follow you. It swoops down on bats and rabbits in the dark.'
     },
@@ -161,9 +161,9 @@ const BESTIARY_ENTRIES = {
         description: 'A patient scavenger that circles above every fresh kill. If it starts circling over you, your health is running low.'
     },
     snake: {
-        name: 'Snake', habitat: 'Deserts', activity: 'Day', temperament: 'Hostile',
+        name: 'Snake', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Hostile',
         hint: 'A hiss rises from the sand.',
-        description: 'It lies hidden in the sand and hisses as a warning before it strikes. Its bite is venomous, and it moves in smooth waves.'
+        description: 'It lies hidden in the sand, or coiled flat on rock, and hisses as a warning before it strikes. Its bite is venomous, and it moves in smooth waves.'
     },
     storm_golem: {
         name: 'Storm Golem', habitat: 'Anywhere, during rain', activity: 'Rain', temperament: 'Neutral',
@@ -171,7 +171,7 @@ const BESTIARY_ENTRIES = {
         description: 'A towering figure that appears only in the rain and draws lightning to itself and to nearby metal blocks. Leave it be: strike it and it hurls bolts back.'
     },
     wisp: {
-        name: 'Wisp', habitat: 'Wetlands and ravines', activity: 'Night', temperament: 'Passive',
+        name: 'Wisp', habitat: 'Anywhere at night, mostly by water and ravines', activity: 'Night', temperament: 'Passive',
         hint: 'A faint light beckons in the night.',
         description: 'A drifting light that tries to lure travellers towards water or a ravine. It never attacks, and if you catch one it leaves glowing dust behind.'
     },

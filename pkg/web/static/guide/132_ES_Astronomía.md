@@ -31,7 +31,7 @@ que verás en el juego.
 | ![](mob:wisp) **El Farol del Fuego Fatuo** (*The Wisp's Lantern*) | un rombo con asa | **Wyll**, verdosa, que **parpadea** más que ninguna |
 | ![](mob:mole) **El Túnel del Topo** (*The Mole's Tunnel*) | un zigzag **bajo**, pegado al horizonte del sur | — |
 | ![](mob:turtle) **La Gran Tortuga** (*The Great Turtle*) | un caparazón de seis estrellas, cabeza y patas | **Paciencia** (*Patience*), en el centro del caparazón |
-| ![](mob:storm_golem) **El Gólem de la Tormenta** (*The Storm Golem*) | un gigante con brazos y piernas | **Corazón de Trueno** (*Thunderheart*), azul, la más brillante de todas |
+| ![](mob:storm_golem) **El Golem de la Tormenta** (*The Storm Golem*) | un gigante con brazos y piernas | **Corazón de Trueno** (*Thunderheart*), azul, la más brillante de todas |
 | ![](mob:bee) **La Colmena** (*The Hive*) | un enjambre apretado de estrellitas. **Nunca se pone** | **Reina** (*Queen*), dorada |
 | ![](mob:rabbit) **El Conejo Saltarín** (*The Leaping Rabbit*) | orejas largas y una pata lista para saltar | — |
 

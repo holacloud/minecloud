@@ -1,18 +1,18 @@
 # The complete notebook
 
 > You found a hidden page. It was on the last leaf of the bestiary, written in ink so faded that it only shows
-> once not a single black silhouette is left. **31 of 31.** You did it.
+> once not a single animal or creature is left to discover. **35 of 35.** You did it.
 
 ## Congratulations, naturalist
 
 You have seen **every** creature in MineCloud up close: the ones that graze in the sun and the ones that only
 come out at night, the ones that live underground and the ones born from a bolt of lightning. Very few
-explorers fill the whole notebook.
+explorers fill the whole notebook. The 16 organisms of the [microscope](238) are not needed: they are another collection.
 
-To get them all you have had to walk the four biomes, stay up through the night, get soaked in the storm and,
+To get them all you have had to walk the four biomes, stay up through the night, get soaked in the storm, build a [copper golem](215) and,
 most likely, fall for a wisp's trap at least once.
 
-## The 31, in order of arrival
+## The 35, in order of arrival
 
 This is the order in which each species came into the world.
 
@@ -49,9 +49,13 @@ This is the order in which each species came into the world.
 | 29 | ![Fox](mob:fox) [Fox](45) | 30 October 2026 |
 | 30 | ![Owl](mob:owl) [Owl](46) | 30 October 2026 |
 | 31 | ![Giant mole](mob:mole) [Giant mole](47) | 30 October 2026 |
+| 32 | ![Ant](mob:ant) [Ant](135) | 1 November 2026 |
+| 33 | ![Beaver](mob:beaver) [Beaver](137) | 1 November 2026 |
+| 34 | ![Electric eel](mob:eel) [Electric eel](213) | 2 November 2026 |
+| 35 | ![Copper golem](mob:copper_golem) [Copper golem](215) | 2 November 2026 |
 
-Five species were already there on the first day of mobs; eleven arrived together on 29 October, and another
-eleven the day after. See [History of MineCloud](102).
+Five species were already there on the first day of mobs; eleven arrived together on 29 October, another
+eleven the day after, and the last four in November. See [History of MineCloud](102).
 
 ## For the one who has seen it all
 

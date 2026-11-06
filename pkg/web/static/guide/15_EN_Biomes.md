@@ -9,14 +9,14 @@ The borders between them are smooth: the land blends little by little.
 - In some meadows yellow and red **flowers** cluster together.
 - Scattered trees: oak, birch, acacia and maple.
 - **Living here:** sheep, pigs, **horses**, ducks, dogs, cats, eagles, foxes, giant moles, rabbits and, in
-  smaller numbers, owls. There are bees, fireflies and bats.
+  smaller numbers, owls. There are bees, fireflies, bats and **anthills**.
 
 ## Forests
 
 - Dense trees of **eight kinds**: oak, spruce, birch, jungle, dark oak, cherry, maple and willow.
 - **Red and brown mushrooms** grow on the ground, with some tall grass and the odd flower.
 - **Living here:** pigs, cats, **macaws**, dogs, some sheep and horses, **foxes** (more than on the plains),
-  giant moles, rabbits and, rarely, spiders. This is where most **owls**, **bees** and **bats** live, and there are fireflies too.
+  giant moles, rabbits and, rarely, spiders. This is where most **owls**, **bees** and **bats** live, and there are fireflies and **anthills** too.
 
 ## Rocks
 
@@ -31,7 +31,7 @@ The borders between them are smooth: the land blends little by little.
 
 - **Sand** with low dunes and **cacti** 2 to 4 blocks tall. Not a single tree.
 - **Living here:** **camels**, lizards, giraffes, ducks and **vultures**; more rarely, scorpions and **snakes**. Now and then,
-  sand-coloured rabbits.
+  sand-coloured rabbits. There are **anthills** too.
 - No bats: they have nowhere to hang from.
 
 ## Water, lakes and beaches
@@ -40,6 +40,7 @@ The borders between them are smooth: the land blends little by little.
 - Next to the water, outside the rocks, there are **sandy beaches**.
 - **Schools of fish** swim in the water.
 - **Frogs** live on green banks; **turtles** and **crabs**, on sandy beaches.
+- **Beavers** live on the banks of forests and plains, and the **electric eel** on the bottom of deep water.
 
 ## Anywhere
 

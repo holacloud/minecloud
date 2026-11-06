@@ -9,7 +9,7 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 - En algunos prados se juntan **flores** amarillas y rojas.
 - Árboles sueltos: roble, abedul, acacia y arce.
 - **Viven aquí:** ovejas, cerdos, **caballos**, patos, perros, gatos, águilas, zorros, topos gigantes,
-  conejos y, en menor número, búhos. Hay abejas, luciérnagas y murciélagos.
+  conejos y, en menor número, búhos. Hay abejas, luciérnagas, murciélagos y **hormigueros**.
 
 ## Bosques
 
@@ -17,7 +17,7 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 - En el suelo crecen **setas** rojas y marrones, algo de hierba alta y alguna flor.
 - **Viven aquí:** cerdos, gatos, **guacamayos**, perros, algunas ovejas y caballos, **zorros** (más que en
   las llanuras), topos gigantes, conejos y, pocas veces, arañas. Es donde más **búhos**, **abejas** y **murciélagos** hay, y también hay
-  luciérnagas.
+  luciérnagas y **hormigueros**.
 
 ## Roca
 
@@ -31,7 +31,7 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 
 - **Arena** con dunas bajas y **cactus** de 2 a 4 bloques. Ni un árbol.
 - **Viven aquí:** **camellos**, lagartos, escorpiones, jirafas, patos, **buitres** y **serpientes**. A
-  veces, conejos de color arena.
+  veces, conejos de color arena. También hay **hormigueros**.
 - No hay murciélagos: no tienen dónde colgarse.
 
 ## Agua, lagos y playas
@@ -40,6 +40,7 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
 - Junto al agua, fuera de la roca, hay **playas de arena**.
 - En el agua nadan **bancos de peces**.
 - En las orillas verdes viven **ranas**; en las playas de arena, **tortugas** y **cangrejos**.
+- En las orillas de bosques y llanuras viven **castores**, y en el fondo de las aguas hondas, la **anguila eléctrica**.
 
 ## En cualquier sitio
 

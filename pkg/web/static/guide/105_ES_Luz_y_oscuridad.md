@@ -43,7 +43,7 @@ de antorchas.
 
 - **[Fuego fatuo](41)**: lleva una luz suave verde azulada. Solo hay una luz para todos los fuegos
   fatuos: la del más cercano a ti.
-- **[Rayo](43)**: cada rayo del gólem de tormenta ilumina toda la escena durante un instante.
+- **[Rayo](43)**: cada rayo del golem de tormenta ilumina toda la escena durante un instante.
 - **[Luciérnagas](36)** y **[frasco de luciérnagas](97)**: brillan y parpadean.
 - **Ojos que brillan:** los del búho, el zorro y la sombra, de noche.
 
@@ -51,7 +51,7 @@ de antorchas.
 
 En el [modo Ultra](14), la escena se dibuja con **alto rango dinámico** (HDR): las luces pueden ser "más
 brillantes que el blanco". Lo que pasa de ese límite (el disco del sol, las antorchas, los ojos de los búhos, las grietas
-del gólem, el fuego fatuo) se rodea de un **halo** (bloom). El cielo se queda por debajo de ese límite, así que no deslumbra aunque
+del golem, el fuego fatuo) se rodea de un **halo** (bloom). El cielo se queda por debajo de ese límite, así que no deslumbra aunque
 mires al sol. Además hay haces de luz del sol (god rays) y sombras
 nítidas que siguen al jugador.
 

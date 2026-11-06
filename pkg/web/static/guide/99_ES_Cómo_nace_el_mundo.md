@@ -10,8 +10,9 @@ El mundo se reparte en **chunks**, columnas de **16 × 16 bloques** de planta y 
 
 - El **agua** llena todo lo que queda por debajo de la altura **5**.
 - La **roca madre** está en la altura **−5** (y a veces un bloque más arriba).
-- Debajo de la tierra hay **piedra** con **minerales**: el carbón sale a cualquier profundidad, el **hierro solo
-  por debajo de la altura 4** y el **oro solo por debajo de la 1**. Ver [Minerales](53).
+- Debajo de la tierra hay **piedra** con **vetas de minerales**, y en las montañas y las cuestas empinadas también
+  **afloran al aire libre**. Cuánto hay de cada uno y a qué altura depende del bioma: fuera de las montañas, el
+  **hierro** sale por debajo de la altura 4 y el **oro** por debajo de la 0. Ver [Cómo encontrar metales](248).
 
 ## El clima decide el bioma
 

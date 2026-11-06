@@ -97,7 +97,7 @@ mundo que tienes alrededor.
 
 ## Curiosidades
 
-- *Gólem* viene del folclore judío: una figura de barro a la que se daba vida para ayudar y proteger.
+- *Golem* viene del folclore judío: una figura de barro a la que se daba vida para ayudar y proteger.
 - Muchos pararrayos de verdad son de **cobre**, porque conduce muy bien la electricidad y no se deshace oxidándose.
 - La bobina de su espalda es como las de los motores y generadores: un hilo de cobre muy largo enrollado una y otra
   vez.

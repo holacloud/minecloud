@@ -33,7 +33,7 @@ La jaula **no se gasta**: al recoger la presa te la devuelve.
 | Caben | |
 |---|---|
 | ![Oveja](mob:sheep) Oveja · ![Pato](mob:duck) Pato · ![Cerdo](mob:pig) Cerdo · ![Perro](mob:dog) Perro | ![Gato](mob:cat) Gato · ![Araña](mob:spider) Araña · ![Rana](mob:frog) Rana · ![Tortuga](mob:turtle) Tortuga |
-| ![Lagarto](mob:lizard) Lagarto · ![Escorpión](mob:scorpion) Escorpión · ![Cabra](mob:goat) Cabra · ![Cangrejo](mob:crab) Cangrejo | ![Zorro](mob:fox) Zorro · ![Conejo](mob:rabbit) Conejo · ![Serpiente](mob:snake) Serpiente · ![Topo gigante](mob:mole) Topo |
+| ![Lagarto](mob:lizard) Lagarto · ![Escorpión](mob:scorpion) Escorpión · ![Cabra](mob:goat) Cabra · ![Cangrejo](mob:crab) Cangrejo | ![Castor](mob:beaver) Castor · ![Zorro](mob:fox) Zorro · ![Conejo](mob:rabbit) Conejo · ![Serpiente](mob:snake) Serpiente · ![Topo gigante](mob:mole) Topo gigante |
 
 **No caben:** los grandes (jirafa, camello, caballo, monstruo de cueva, golem de tormenta), los voladores (aves,
 abejas, luciérnagas, murciélagos, fuego fatuo), los peces y la sombra errante.
@@ -42,10 +42,12 @@ abejas, luciérnagas, murciélagos, fuego fatuo), los peces y la sombra errante.
 
 | Cebo | Atrae hacia la jaula a |
 |---|---|
-| `bait_seeds` | oveja, pato, cerdo, cabra, conejo |
-| `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión, topo |
-| `bait_meat` | perro, gato, araña, zorro, serpiente |
+| `bait_seeds` | oveja, pato, cerdo, cabra, castor |
+| `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión |
+| `bait_meat` | perro, gato, araña |
 | `bait_fish` | gato, tortuga, cangrejo |
+
+El zorro, el conejo, la serpiente y el topo gigante caben, pero ningún cebo los lleva a la jaula: solo caen si pisan su centro por casualidad.
 
 ## Detalles
 

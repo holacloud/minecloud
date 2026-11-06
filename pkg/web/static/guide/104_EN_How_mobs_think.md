@@ -5,7 +5,7 @@ page tells you what they are.
 
 ## Ways of moving
 
-Each species has a **movement mode**, which decides almost everything it does. There are **20**:
+Each species has a **movement mode**, which decides almost everything it does. There are **24**:
 
 | Mode | Who | What it does |
 |---|---|---|
@@ -29,6 +29,10 @@ Each species has a **movement mode**, which decides almost everything it does. T
 | prowl | fox | Hunts and steals |
 | nightwatch | owl | Sleeps by day and hunts by night |
 | tunnel | giant mole | Travels underground and feels footsteps |
+| anthill | ant | Follows scent trails from its anthill to food |
+| lodge | beaver | Fells trees by the water and builds dams |
+| eel | electric eel | Cruises along the bottom, rises to gulp air and discharges |
+| helper | copper golem | Follows you, waits or brings you what lies on the ground |
 
 ## The walking mobs
 

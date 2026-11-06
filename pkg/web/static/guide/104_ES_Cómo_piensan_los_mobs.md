@@ -5,7 +5,7 @@ página cuenta cuáles son.
 
 ## Formas de moverse
 
-Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **20**:
+Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **24**:
 
 | Modo | Quién | Qué hace |
 |---|---|---|
@@ -24,11 +24,15 @@ Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. 
 | carroña | buitre | Aprovecha las térmicas y acude a lo derrotado |
 | engañar | fuego fatuo | Te lleva hacia el peligro |
 | reptar | serpiente | Espera enterrada y ataca |
-| tormenta | gólem de tormenta | Camina bajo la lluvia y llama al rayo |
+| tormenta | golem de tormenta | Camina bajo la lluvia y llama al rayo |
 | madriguera | conejo | Vive alrededor de su agujero |
 | merodear | zorro | Caza y roba |
 | vigilia | búho | Duerme de día y caza de noche |
 | túnel | topo gigante | Viaja bajo tierra y siente las pisadas |
+| hormiguero | hormiga | Sigue rastros de olor desde su hormiguero hasta la comida |
+| presa | castor | Tala árboles junto al agua y construye presas |
+| anguila | anguila eléctrica | Nada por el fondo, sube a tragar aire y da descargas |
+| ayudante | golem de cobre | Te sigue, te espera o te trae lo que hay por el suelo |
 
 ## Los mobs que andan
 
@@ -69,7 +73,7 @@ Los animales salvajes aparecen **por chunks** (trozos de 16 × 16 bloques):
 - Cada especie tiene un **límite** de ejemplares a la vez, y en total nunca hay más de **80** mobs. Los
   animales de tierra van primero, para que los peces y los insectos no les quiten el sitio.
 - Peces, ranas, tortugas, conejos, abejas, luciérnagas, murciélagos y las especies más nuevas tienen además sus
-  propias reglas de aparición. Los fuegos fatuos aparecen algunas noches, los gólems de vez en cuando con
+  propias reglas de aparición. Los fuegos fatuos aparecen algunas noches, los golems de vez en cuando con
   lluvia, y la [sombra errante](37) es una leyenda: muy, muy de vez en cuando, en plena noche.
 
 | Bioma | Animales (los más frecuentes primero) | Hostiles (raros) |

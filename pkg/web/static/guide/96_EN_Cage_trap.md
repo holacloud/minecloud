@@ -34,7 +34,7 @@ back too.
 | Fit inside | |
 |---|---|
 | ![Sheep](mob:sheep) Sheep · ![Duck](mob:duck) Duck · ![Pig](mob:pig) Pig · ![Dog](mob:dog) Dog | ![Cat](mob:cat) Cat · ![Spider](mob:spider) Spider · ![Frog](mob:frog) Frog · ![Turtle](mob:turtle) Turtle |
-| ![Lizard](mob:lizard) Lizard · ![Scorpion](mob:scorpion) Scorpion · ![Goat](mob:goat) Goat · ![Crab](mob:crab) Crab | ![Fox](mob:fox) Fox · ![Rabbit](mob:rabbit) Rabbit · ![Snake](mob:snake) Snake · ![Giant mole](mob:mole) Mole |
+| ![Lizard](mob:lizard) Lizard · ![Scorpion](mob:scorpion) Scorpion · ![Goat](mob:goat) Goat · ![Crab](mob:crab) Crab | ![Beaver](mob:beaver) Beaver · ![Fox](mob:fox) Fox · ![Rabbit](mob:rabbit) Rabbit · ![Snake](mob:snake) Snake · ![Giant mole](mob:mole) Giant mole |
 
 **Do not fit:** large ones (giraffe, camel, horse, cave monster, storm golem), flyers (birds, bees, fireflies, bats,
 wisp), fish and the wandering shadow.
@@ -43,10 +43,12 @@ wisp), fish and the wandering shadow.
 
 | Bait | Draws into the cage |
 |---|---|
-| `bait_seeds` | sheep, duck, pig, goat, rabbit |
-| `bait_worms` | duck, pig, frog, turtle, lizard, scorpion, mole |
-| `bait_meat` | dog, cat, spider, fox, snake |
+| `bait_seeds` | sheep, duck, pig, goat, beaver |
+| `bait_worms` | duck, pig, frog, turtle, lizard, scorpion |
+| `bait_meat` | dog, cat, spider |
 | `bait_fish` | cat, turtle, crab |
+
+The fox, the rabbit, the snake and the giant mole fit, but no bait leads them to the cage: they are only caught if they happen to step on its middle.
 
 ## Details
 

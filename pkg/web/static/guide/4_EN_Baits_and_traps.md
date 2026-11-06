@@ -26,14 +26,16 @@ With a bait in your hand, right click the ground to leave a small pile.
 
 | Bait | Draws |
 |---|---|
-| `bait_seeds` | sheep, duck, pig, giraffe, macaw, camel, goat, horse |
+| `bait_seeds` | sheep, duck, pig, giraffe, macaw, camel, goat, horse, beaver, ant |
 | `bait_worms` | duck, pig, frog, turtle, lizard, scorpion (and fish, but only on the fishing hook) |
-| `bait_meat` | dog, cat, spider, cave monster |
+| `bait_meat` | dog, cat, spider, cave monster, ant |
 | `bait_fish` | cat, turtle, crab |
-| `bait_honey` | bees (they sip the bait instead of flowers) |
+| `bait_honey` | bee (they sip the bait instead of flowers), ant |
 
-Wild animals with a will of their own (fox, rabbit, owl, vulture, eagle, snake, mole) ignore baits. Pets that
-follow you ignore them too.
+Wild animals with a will of their own (fox, rabbit, owl, vulture, eagle, snake, giant mole) **do not walk to baits**, even
+though their sheet in the [bestiary](5) and the chat's "Lures: …" name them: `bait_meat` the fox, owl, vulture and snake; `bait_seeds` the rabbit; `bait_fish` the eagle; `bait_worms` the mole. Only if one happens to pass within 1.4 blocks does it nibble. Pets that follow you ignore them too.
+
+Ants do not come one by one: if the bait is near their anthill, they open a trail to it ([Ant](135)).
 
 ## Cage trap (`cage_trap`)
 
@@ -44,8 +46,8 @@ follow you ignore them too.
 
 If the cage is empty and you are not holding a bait, a right click picks it up.
 
-**Fit inside:** sheep, duck, pig, dog, cat, spider, frog, turtle, lizard, scorpion, goat, crab, fox, rabbit, snake
-and mole.
+**Fit inside:** sheep, duck, pig, dog, cat, spider, frog, turtle, lizard, scorpion, goat, crab, beaver, fox, rabbit, snake
+and giant mole. The last four do not walk to the bait: they are only caught if they happen to step in.
 
 **Do not fit:** large animals, flying ones and fish.
 
@@ -83,6 +85,7 @@ Right click a small creature close by (up to 4.5 blocks) with the net:
 | Bee | `bee_egg` |
 | Bat | `bat_egg` |
 | Wisp | `glow_dust` |
+| Anthill | `ant_colony_jar` |
 
 ## Firefly jar (`firefly_jar`)
 

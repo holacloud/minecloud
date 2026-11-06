@@ -8,7 +8,7 @@ mientras funciona.
 | | Bloque | Id | Potencia | Qué hace |
 |---|---|---|---|---|
 | ![](item:electric_lamp) | Lámpara eléctrica | `electric_lamp` | **10 W** | ilumina como una antorcha |
-| ![](item:light_bulb) | Light Bulb | `light_bulb` | **5 W** | una luz amarilla tenue |
+| ![](item:light_bulb) | Bombilla | `light_bulb` | **5 W** | una luz amarilla tenue |
 | ![](item:grow_lamp) | Lámpara de cultivo | `grow_lamp` | **30 W** | hace que el trigo crezca el doble de rápido |
 | ![](item:electric_motor) | Motor eléctrico | `electric_motor` | **50 W** | gira, abre puertas de hierro |
 | ![](item:fridge) | Nevera | `fridge` | **30 W** | [enfría y congela](234) (sus dos celdas son una nevera) |

@@ -14,15 +14,19 @@ Coge en la mano la comida que le gusta al animal y haz clic derecho sobre él. C
 | Cerdo | `mushroom_brown`, `mushroom_red`, `wheat`, `honeycomb` | 1/3 |
 | Jirafa | `acacia_leaves`, `leaves`, `jungle_leaves`, `birch_leaves` | 1/4 |
 | Perro | `raw_fish`, `mushroom_brown` | 1/2 |
-| Gato | `raw_fish`, `milk`, `mushroom_brown` | 1/2 |
+| Gato | `raw_fish`, `milk`, `cold_milk`, `mushroom_brown` | 1/2 |
 | Guacamayo | `flower_red`, `flower_yellow`, `cherry_leaves` | 1/3 |
 | Camello | `cactus`, `tall_grass`, `wheat` | 1/3 |
 | Cabra | `leaves`, `tall_grass`, `wheat` | 1/3 |
 | Caballo | `tall_grass`, `wheat`, `flower_yellow`, `honeycomb` | 1/4 |
 
-Las criaturas hostiles (araña, escorpión, serpiente, sombra, golem, fuego fatuo…) y los animales salvajes con
-comportamiento propio (zorro, conejo, búho, rana, tortuga, peces, aves rapaces, abejas, murciélagos…) no se
-pueden domesticar. Si les ofreces comida, no se gasta.
+Solo se domestican los de esta tabla. Las criaturas hostiles (araña, escorpión, serpiente, sombra…) y los animales
+salvajes con comportamiento propio (zorro, conejo, búho, topo gigante, cangrejo, rana, lagarto, tortuga, castor,
+peces, aves rapaces, abejas, hormigas, murciélagos, fuego fatuo…) no se pueden domesticar. Si les ofreces comida, no
+se gasta. El [golem de cobre](215) tampoco: se construye, y ya te sigue.
+
+**Ojo con la Dieta del [bestiario](5):** las fichas del zorro, el conejo, el búho, el topo gigante y el cangrejo
+enseñan una comida, pero no los domestica ni les hace nada.
 
 ## Animales domesticados
 

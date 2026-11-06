@@ -10,8 +10,9 @@ The world is split into **chunks**, columns **16 × 16 blocks** wide and **256 b
 
 - **Water** fills everything below height **5**.
 - **Bedrock** lies at height **−5** (and sometimes one block higher).
-- Under the soil there is **stone** with **ores**: coal at any depth, **iron only below height 4** and **gold
-  only below height 1**. See [Ores](53).
+- Under the soil there is **stone** with **veins of ore**, and on mountains and steep slopes they also **crop out in
+  the open**. How much of each there is and at what height depends on the biome: outside the mountains, **iron** is
+  found below height 4 and **gold** below height 0. See [How to find metals](248).
 
 ## The climate picks the biome
 

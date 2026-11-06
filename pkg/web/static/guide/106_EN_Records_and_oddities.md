@@ -4,10 +4,10 @@ Fun facts taken straight from the game's insides. Some are useful; others are ju
 
 ## The numbers of the world
 
-- **31 species** of creatures. See [Bestiary](5).
+- **35 species** of animals and creatures, and **16 organisms** that only a [microscope](238) shows. See [Bestiary](5).
 - **36 element blocks**, from **hydrogen** to **lead**, and all made the same way: one block of stone and one
   of coal. See [Element blocks](60).
-- **20 different ways of moving** for the mobs. See [How mobs think](104).
+- **24 different ways of moving** for the mobs. See [How mobs think](104).
 - A **full day lasts 4 minutes**: 2 of day and 2 of night.
 - The world is **256 blocks tall** and split into pieces of **16 × 16**. See [How the world is born](99).
 - There are never more than **64 mobs** around you at once.

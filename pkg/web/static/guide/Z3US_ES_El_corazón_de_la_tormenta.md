@@ -3,9 +3,9 @@
 > Has encontrado una página escondida. La leíste en una piedra que todavía echaba chispas. Pocos se atreven a
 > derribar a un gigante en mitad de la lluvia.
 
-![Gólem de tormenta](mob:storm_golem)
+![Golem de tormenta](mob:storm_golem)
 
-En lo más negro de la tormenta late un corazón de piedra y rayo. El **gólem de tormenta** no odia a nadie: solo
+En lo más negro de la tormenta late un corazón de piedra y rayo. El **golem de tormenta** no odia a nadie: solo
 camina mientras llueve, llama al cielo y escucha el trueno. Pero tiene sus manías.
 
 ## Hijo del rayo
@@ -24,14 +24,14 @@ Cada 9 a 18 segundos levanta los brazos y **llama al rayo**. ¿Dónde cae?
 2. Entre los que encuentra, **prefiere los que ven el cielo**: sin nada sólido en los 15 bloques que tienen
    encima.
 3. El rayo cae sobre el metal (el bloque **no se rompe**), salta en chispas naranjas y la carga **viaja hasta
-   el puño** del gólem.
+   el puño** del golem.
 4. Si no hay metal (o esta vez no lo busca), el rayo cae **sobre su propia cabeza**.
 
 **¡No te subas al metal!** Si estás encima del bloque cuando cae el rayo, te quita **2** de vida.
 
 ## Se cura con su propio rayo
 
-Cuando el rayo cae sobre su cabeza, el gólem **absorbe la carga** y **recupera 4 de vida**: justo lo que le
+Cuando el rayo cae sobre su cabeza, el golem **absorbe la carga** y **recupera 4 de vida**: justo lo que le
 quita uno de tus golpes a mano. Tiene vida para **5 golpes** a mano, así que un rayo a destiempo te obliga a dar uno más.
 
 **Truco:** pon un bloque de hierro, cobre u oro **a cielo abierto** cerca de donde vas a pelear. Será tu
@@ -57,7 +57,7 @@ multiplica: sabrás a qué distancia cayó el rayo (el retraso nunca pasa de 3 s
 Al derribarlo deja **2–3 polvo luminoso** y **1–2 mineral de hierro**. Y algo más: una **marca grabada** entre
 sus escombros. Si estás leyendo esto, ya la viste.
 
-> Cuentan que cada gólem guarda en el pecho un trocito de la primera tormenta del mundo, y que por eso vuelve
+> Cuentan que cada golem guarda en el pecho un trocito de la primera tormenta del mundo, y que por eso vuelve
 > al cielo cuando la lluvia se acaba. La marca de los escombros sería su firma: el nombre de quien manda en las
 > tormentas.
 

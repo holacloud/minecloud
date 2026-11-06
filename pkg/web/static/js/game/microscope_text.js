@@ -321,8 +321,8 @@ const MICRO_SPECIES_ES = {
         name: 'Bacterias del suelo', size: '1-5 µm', where: 'El suelo, y un poco cualquier agua estancada',
         fact: 'Una cucharadita de buena tierra puede tener tantas como personas hay en la Tierra. Junto con los hongos, pudren lo que muere y devuelven su alimento a las plantas.',
         notes: {
-            iodine_tincture: 'Bastoncillos amarillo pardo. Sus látigos son demasiado finos para coger el tinte.',
-            methylene_blue: 'Bastoncillos azules, sin núcleo. Los huecos claros de algunos son esporas, cuya pared gruesa no deja entrar el tinte.'
+            iodine_tincture: 'Bastoncitos amarillo pardo. Sus látigos son demasiado finos para coger el tinte.',
+            methylene_blue: 'Bastoncitos azules, sin núcleo. Los huecos claros de algunos son esporas, cuya pared gruesa no deja entrar el tinte.'
         }
     },
     yeast: {
@@ -337,8 +337,8 @@ const MICRO_SPECIES_ES = {
         name: 'Lactobacilo', size: '2-10 µm', where: 'Leche y queso',
         fact: 'Una bacteria amiga que convierte el azúcar de la leche en ácido: así se hacen el yogur y el queso.',
         notes: {
-            iodine_tincture: 'Bastoncillos amarillo pardo en cadenas. Las gotas de grasa no cogen color.',
-            methylene_blue: 'Bastoncillos azules en cadenas, sin núcleo. Las gotas de grasa no cogen color.'
+            iodine_tincture: 'Bastoncitos amarillo pardo en cadenas. Las gotas de grasa no cogen color.',
+            methylene_blue: 'Bastoncitos azules en cadenas, sin núcleo. Las gotas de grasa no cogen color.'
         }
     },
     plant_cell: {
@@ -374,7 +374,7 @@ const MICROSCOPE_ITEMS_ES = {
     sample_still_water: 'Muestra de agua estancada', tardigrade_tube: 'Tardígrado en un tubo', tardigrade_tun: 'Barrilito de tardígrado',
     raw_fish: 'Pescado crudo', dirt: 'Tierra', flower_red: 'Flor roja', flower_yellow: 'Flor amarilla', honeycomb: 'Panal', milk: 'Leche', cheese: 'Queso',
     mushroom_red: 'Seta roja', mushroom_brown: 'Seta marrón', wheat: 'Trigo', leaves: 'Hojas', spruce_leaves: 'Hojas de abeto', birch_leaves: 'Hojas de abedul',
-    jungle_leaves: 'Hojas de la selva', dark_oak_leaves: 'Hojas de roble oscuro', acacia_leaves: 'Hojas de acacia', cherry_leaves: 'Hojas de cerezo',
+    jungle_leaves: 'Hojas de jungla', dark_oak_leaves: 'Hojas de roble oscuro', acacia_leaves: 'Hojas de acacia', cherry_leaves: 'Hojas de cerezo',
     maple_leaves: 'Hojas de arce', willow_leaves: 'Hojas de sauce',
     // What can light the mirror.
     torch: 'Antorcha', candle: 'Vela', lantern: 'Farol', table_lamp: 'Lámpara de mesa', floor_lamp: 'Lámpara de pie', chandelier: 'Lámpara de araña',

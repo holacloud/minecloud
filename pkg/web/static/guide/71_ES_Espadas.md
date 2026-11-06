@@ -42,7 +42,7 @@ Son las herramientas más baratas: piden **2** de material en vez de 3.
   | [Araña](20) (8) | 2 | 2 | 2 | 2 | 1 |
   | Animales, [sombra](37), [topo](47)… (12) | 3 | 3 | 2 | 2 | 2 |
   | [Monstruo de cueva](21) (16) | 4 | 4 | 3 | 3 | 2 |
-  | [Gólem de tormenta](43) (20) | 5 | 4 | 4 | 3 | 3 |
+  | [Golem de tormenta](43) (20) | 5 | 4 | 4 | 3 | 3 |
   | [Serpiente](42) (6, recibe la mitad) | 3 | 3 | 2 | 2 | 2 |
 
   Las abejas caen al primer golpe; los peces, las nubes de luciérnagas y el fuego fatuo no tienen vida.

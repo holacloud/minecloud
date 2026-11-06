@@ -20,13 +20,13 @@ make fish bite sooner on the [rod](94). There are five.
 
 | Bait | Animals |
 |---|---|
-| `bait_seeds` | ![Sheep](mob:sheep) sheep, ![Duck](mob:duck) duck, ![Pig](mob:pig) pig, ![Giraffe](mob:giraffe) giraffe, ![Macaw](mob:macaw) macaw, ![Camel](mob:camel) camel, ![Goat](mob:goat) goat, ![Horse](mob:horse) horse, ![Rabbit](mob:rabbit) rabbit |
-| `bait_worms` | ![Duck](mob:duck) duck, ![Pig](mob:pig) pig, ![Frog](mob:frog) frog, ![Turtle](mob:turtle) turtle, ![Lizard](mob:lizard) lizard, ![Scorpion](mob:scorpion) scorpion, ![Fish](mob:fish) fish, ![Giant mole](mob:mole) mole |
-| `bait_meat` | ![Dog](mob:dog) dog, ![Cat](mob:cat) cat, ![Spider](mob:spider) spider, ![Cave monster](mob:cave_monster) cave monster, ![Fox](mob:fox) fox, ![Owl](mob:owl) owl, ![Vulture](mob:vulture) vulture, ![Snake](mob:snake) snake |
-| `bait_fish` | ![Cat](mob:cat) cat, ![Turtle](mob:turtle) turtle, ![Eagle](mob:eagle) eagle, ![Crab](mob:crab) crab |
-| `bait_honey` | ![Bee](mob:bee) bees |
+| `bait_seeds` | ![Sheep](mob:sheep) sheep, ![Duck](mob:duck) duck, ![Pig](mob:pig) pig, ![Giraffe](mob:giraffe) giraffe, ![Macaw](mob:macaw) macaw, ![Camel](mob:camel) camel, ![Goat](mob:goat) goat, ![Horse](mob:horse) horse, ![Beaver](mob:beaver) beaver, ![Ant](mob:ant) ant |
+| `bait_worms` | ![Duck](mob:duck) duck, ![Pig](mob:pig) pig, ![Frog](mob:frog) frog, ![Turtle](mob:turtle) turtle, ![Lizard](mob:lizard) lizard, ![Scorpion](mob:scorpion) scorpion |
+| `bait_meat` | ![Dog](mob:dog) dog, ![Cat](mob:cat) cat, ![Spider](mob:spider) spider, ![Cave monster](mob:cave_monster) cave monster, ![Ant](mob:ant) ant |
+| `bait_fish` | ![Cat](mob:cat) cat, ![Turtle](mob:turtle) turtle, ![Crab](mob:crab) crab |
+| `bait_honey` | ![Bee](mob:bee) bee, ![Ant](mob:ant) ant |
 
-When you set it down, the chat tells you what it draws ("Lures: …").
+When you set it down, the chat gives you a longer list ("Lures: …"), the same as the **Lured by** line of the [bestiary](5). But the fox, the owl, the vulture and the snake (meat), the rabbit (seeds), the eagle (fish) and the giant mole (worms) are on it and **do not walk to the bait**: they go about their business. Fish (worms) do not leave the water either: that bait only works for them on the [hook](94).
 
 ## Step by step
 
@@ -48,7 +48,8 @@ is lost.
   little by little; a bait inside a [cage](96) draws them right to its middle.
 - **Bees:** the honey bait must be within about 20 blocks of their hive. Bees on their way to a flower go to the bait
   instead and sip it, more slowly than an animal eats.
-- **Animals with a will of their own:** some have their own behaviour and do not always heed it.
+- **Animals with a will of their own:** the ones on the longer list above do not come. Only if one happens to pass within 1.4 blocks of the bait does it nibble, and it stays around.
+- **Ants:** they do not come one by one: if the bait is near the anthill, they open a trail to it. See [Ant](135).
 - Pets following you and animals with a rider ignore it.
 - **Inside a [cage trap](96):** only the animals that fit in it come.
 
@@ -62,7 +63,7 @@ If you carry `bait_worms` or `bait_fish` in your inventory, one goes on the hook
 - **Seeds and worms are dirt cheap:** tall grass and dirt are everywhere.
 - For taming, a bait brings the animal to your feet without a chase.
 - Baits **are not kept** when the page reloads: use them there and then.
-- Careful with meat bait: it also draws spiders, snakes and cave monsters.
+- Careful with meat bait: it also draws spiders and cave monsters.
 
 ## Trivia
 

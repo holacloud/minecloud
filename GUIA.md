@@ -142,15 +142,18 @@ Coge en la mano la comida que le gusta al animal y haz clic derecho sobre él. C
 | Cerdo | `mushroom_brown`, `mushroom_red`, `wheat`, `honeycomb` | 1/3 |
 | Jirafa | `acacia_leaves`, `leaves`, `jungle_leaves`, `birch_leaves` | 1/4 |
 | Perro | `raw_fish`, `mushroom_brown` | 1/2 |
-| Gato | `raw_fish`, `milk`, `mushroom_brown` | 1/2 |
+| Gato | `raw_fish`, `milk`, `cold_milk`, `mushroom_brown` | 1/2 |
 | Guacamayo | `flower_red`, `flower_yellow`, `cherry_leaves` | 1/3 |
 | Camello | `cactus`, `tall_grass`, `wheat` | 1/3 |
 | Cabra | `leaves`, `tall_grass`, `wheat` | 1/3 |
 | Caballo | `tall_grass`, `wheat`, `flower_yellow`, `honeycomb` | 1/4 |
 
-Las criaturas hostiles (araña, escorpión, serpiente, sombra, golem, fuego fatuo…) y los animales salvajes con
-comportamiento propio (zorro, conejo, búho, rana, tortuga, peces, aves rapaces, abejas, murciélagos…) no se
-pueden domesticar. Si les ofreces comida, no se gasta.
+Solo se domestican los de esta tabla. Las criaturas hostiles (araña, escorpión, serpiente, sombra…) y los animales
+salvajes con comportamiento propio (zorro, conejo, búho, topo gigante, cangrejo, rana, lagarto, tortuga, castor, peces,
+aves rapaces, abejas, hormigas, murciélagos, fuego fatuo…) no se pueden domesticar. Si les ofreces comida, no se gasta.
+
+`TAMING_DIET` da comida al zorro, el conejo, el búho, el topo gigante y el cangrejo, y sus fichas del bestiario la enseñan
+como Dieta, pero `tamingCanTame` los rechaza: su movimiento no atiende a `getMobGoal`, y esa comida no les hace nada.
 
 ### Animales domesticados
 
@@ -226,14 +229,16 @@ Con un cebo en la mano, haz clic derecho en el suelo para dejar un montoncito.
 
 | Cebo | Atrae a |
 |---|---|
-| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo |
+| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo, castor, hormiga |
 | `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión (y los peces, pero solo en el anzuelo de la caña) |
-| `bait_meat` | perro, gato, araña, monstruo de cueva |
+| `bait_meat` | perro, gato, araña, monstruo de cueva, hormiga |
 | `bait_fish` | gato, tortuga, cangrejo |
-| `bait_honey` | abejas (liban el cebo en lugar de las flores) |
+| `bait_honey` | abeja (liban el cebo en lugar de las flores), hormiga |
 
-Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo) no hacen
-caso a los cebos. Las mascotas que te siguen también los ignoran.
+Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo gigante) no van
+hacia los cebos, aunque su ficha del bestiario y el aviso «Lures: …» del chat los nombren (`TRAPS_SPECIES`): su
+movimiento no atiende a `getMobGoal`. Solo si uno pasa por casualidad a menos de 1,4 bloques lo mordisquea. Las mascotas
+que te siguen también los ignoran. Las hormigas no vienen sueltas: si el cebo está cerca, abren un camino hasta él.
 
 ### Jaula (`cage_trap`)
 
@@ -244,8 +249,8 @@ caso a los cebos. Las mascotas que te siguen también los ignoran.
 
 Si la jaula está vacía y no llevas un cebo en la mano, el clic derecho la recoge.
 
-**Caben:** oveja, pato, cerdo, perro, gato, araña, rana, tortuga, lagarto, escorpión, cabra, cangrejo, zorro,
-conejo, serpiente y topo.
+**Caben:** oveja, pato, cerdo, perro, gato, araña, rana, tortuga, lagarto, escorpión, cabra, cangrejo, castor, zorro,
+conejo, serpiente y topo gigante. Estos cuatro últimos no van hacia el cebo: solo caen si pisan la jaula por casualidad.
 
 **No caben:** los animales grandes, los voladores y los peces.
 
@@ -283,6 +288,7 @@ Haz clic derecho con la red sobre una criatura pequeña cercana (hasta 4,5 bloqu
 | Abeja | `bee_egg` |
 | Murciélago | `bat_egg` |
 | Fuego fatuo | `glow_dust` |
+| Hormiguero | `ant_colony_jar` |
 
 ### Frasco de luciérnagas (`firefly_jar`)
 
@@ -295,15 +301,16 @@ Los frascos colocados se guardan al recargar la página.
 
 ## Bestiario
 
-Un cuaderno de campo con todas las especies del mundo (31).
+Un cuaderno de campo con todo lo que vive en el mundo: 35 animales y criaturas y 16 organismos microscópicos, 51 tarjetas
+en total, en el idioma del juego (`js/game/bestiary_text.js`).
 
-- **Abrir:** tecla **B**, o el botón "Bestiary (B)" del menú de pausa.
-- **Cerrar:** Escape, B, el botón Close o un clic fuera del panel.
+- **Abrir:** tecla **B**, o el botón "Bestiario (B)" del menú de pausa.
+- **Cerrar:** Escape, B, el botón "Cerrar" o un clic fuera del panel.
 
 ### Descubrir especies
 
 Una especie queda descubierta cuando la ves de cerca: a menos de 12 bloques y mirando hacia ella, o a menos de 2,5
-bloques aunque no la mires. Al descubrir una nueva aparece el aviso "New bestiary entry: …" con un acorde suave.
+bloques aunque no la mires. Al descubrir una nueva aparece el aviso "Nueva entrada en el bestiario: …" con un acorde suave.
 Derrotar a una criatura que aún no conocías también la descubre.
 
 ### Qué muestra
@@ -311,14 +318,15 @@ Derrotar a una criatura que aún no conocías también la descubre.
 - **Cuadrícula de tarjetas:**
   - Las especies descubiertas aparecen con su retrato en color, hecho con su propio modelo.
   - Las que faltan salen como una silueta negra con "???" y una pista de dónde encontrarlas.
-  - Arriba se ve el progreso, por ejemplo "12 / 31 discovered".
+  - Arriba se ve el progreso, por ejemplo "12 / 51 descubiertas".
 - **Ficha de cada especie:**
   - El modelo girando en 3D.
   - Una descripción de su comportamiento y de cómo interactuar con ella.
-  - Etiquetas de temperamento (pasivo, neutral u hostil) y de actividad (día o noche).
+  - Etiquetas de temperamento (pasivo, amistoso, neutral u hostil) y de actividad ("Actividad: de día"…).
   - Hábitat.
-  - Las tablas de las otras mecánicas: **Diet** (con qué se domestica), **Drops** (qué recursos da) y
-    **Lured by** (qué cebos la atraen).
+  - Las tablas de las otras mecánicas: **Dieta** (con qué se domestica; el zorro, el conejo, el búho, el topo gigante y el
+    cangrejo la enseñan pero no se domestican), **Botín** (qué recursos da) y **Cebos** (los de `TRAPS_SPECIES`; el zorro, el
+    conejo, el búho, el buitre, el águila, la serpiente y el topo gigante los enseñan pero no van hacia ellos).
   - Número de encuentros, criaturas derrotadas y fecha del primer avistamiento.
 
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso
@@ -326,7 +334,9 @@ se guarda en el navegador.
 
 Los 16 organismos del [microscopio](#microscopio-y-tardígrados) son tarjetas más, pero solo se descubren
 identificándolos en su panel. Su ficha enseña su dibujo animado y su tamaño real, sin temperamento, dieta, objetos ni
-derrotas. No cuentan para el cuaderno completo.
+derrotas. No cuentan para el cuaderno completo: el contador suma las 51 tarjetas, pero el aviso "¡Tu bestiario está
+completo!" y el código de la última página (`B31X`) solo miran los 35 animales y criaturas, y pueden salir con el contador
+en "35 / 51". Uno de esos 35, el golem de cobre, no aparece solo: hay que construirlo, o sacarlo de su huevo.
 
 ## Cultivos
 
@@ -410,8 +420,8 @@ Páginas 237 a 244 de la guía del juego.
 - **Panel:** el campo ocupa casi todo. Todo lo demás son iconos en una barra abajo (aumento, retirar, gota, capturar,
   tinción, filtro, campo oscuro, guía), con nombre debajo y tooltip, siempre los mismos. El que no se puede usar sale gris
   y al pulsarlo dice por qué: la gota, mientras el portaobjetos sigue mojado; capturar, sin un tardígrado seleccionado. Tinción y filtro abren un recuadro sobre su icono, que Escape cierra antes
-  que el panel. Está en el idioma del juego (`js/gameLang.js`, en la guía y en el menú de pausa); el bestiario, el
-  inventario y las recetas siguen en inglés.
+  que el panel. Está en el idioma del juego (`js/gameLang.js`, en la guía y en el menú de pausa); el bestiario también
+  (`js/game/bestiary_text.js`); el inventario y las recetas siguen en inglés.
 - **Luz:** sin luz, el campo se ve negro. Sirve el sol de día con el bloque al aire libre, o cualquier cosa que dé luz a
   dos bloques o menos. `light_bulb` (5 W, luz de nivel 7, `light_bulb:on`) y `electric_lamp` (10 W, nivel 14) necesitan
   corriente; si hay una apagada al lado, el panel lo dice. La bombilla ilumina el campo más tenue que la lámpara o el sol.

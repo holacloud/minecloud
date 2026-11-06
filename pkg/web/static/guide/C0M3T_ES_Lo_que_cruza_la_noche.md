@@ -46,7 +46,7 @@ El Búho y La Colmena **nunca se ponen**: dan vueltas alrededor de El Clavo toda
 búho del cielo y el búho de los árboles se vigilan el uno al otro, y que por eso ninguno de los dos duerme de
 noche.
 
-> Hay quien dice que el cometa no viene de lejos, sino de muy abajo: que es una chispa del corazón de un gólem de
+> Hay quien dice que el cometa no viene de lejos, sino de muy abajo: que es una chispa del corazón de un golem de
 > tormenta que subió demasiado alto y no supo volver.
 
 ---

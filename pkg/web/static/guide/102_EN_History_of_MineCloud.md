@@ -65,7 +65,7 @@ So that so many creatures could fit without making a mess, the game learned to t
 item or mechanic can live in its own file.
 
 And on the same day: [mob resources](2), [taming and breeding](3), [baits and traps](4) and the
-[bestiary](5), which records all 31 species.
+[bestiary](5), which then recorded the 31 species there were.
 
 ## And then, this book
 

@@ -14,15 +14,19 @@ Hold the food the animal likes and right click it. Each try uses up one item.
 | Pig | `mushroom_brown`, `mushroom_red`, `wheat`, `honeycomb` | 1/3 |
 | Giraffe | `acacia_leaves`, `leaves`, `jungle_leaves`, `birch_leaves` | 1/4 |
 | Dog | `raw_fish`, `mushroom_brown` | 1/2 |
-| Cat | `raw_fish`, `milk`, `mushroom_brown` | 1/2 |
+| Cat | `raw_fish`, `milk`, `cold_milk`, `mushroom_brown` | 1/2 |
 | Macaw | `flower_red`, `flower_yellow`, `cherry_leaves` | 1/3 |
 | Camel | `cactus`, `tall_grass`, `wheat` | 1/3 |
 | Goat | `leaves`, `tall_grass`, `wheat` | 1/3 |
 | Horse | `tall_grass`, `wheat`, `flower_yellow`, `honeycomb` | 1/4 |
 
-Hostile creatures (spider, scorpion, snake, shadow, golem, wisp…) and wild animals with a will of their own (fox,
-rabbit, owl, frog, turtle, fish, birds of prey, bees, bats…) cannot be tamed. If you offer them food, it is not
-used up.
+Only the ones in this table can be tamed. Hostile creatures (spider, scorpion, snake, shadow…) and wild animals with
+a will of their own (fox, rabbit, owl, giant mole, crab, frog, lizard, turtle, beaver, fish, birds of prey, bees, ants,
+bats, wisp…) cannot be tamed. If you offer them food, it is not used up. Nor can the [copper golem](215): it is built,
+and it follows you already.
+
+**Careful with the Diet in the [bestiary](5):** the sheets of the fox, the rabbit, the owl, the giant mole and the crab
+show a food, but it does not tame them or do anything to them.
 
 ## Tamed animals
 

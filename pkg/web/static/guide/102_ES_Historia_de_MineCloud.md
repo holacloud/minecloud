@@ -60,20 +60,20 @@ El caballo trajo algo nuevo: se puede **montar**, y los demás jugadores te ven 
 
 ## 30 de octubre: la noche se puebla
 
-Llegaron las criaturas de la noche y de los rincones: ![Sombra](mob:shadow) [sombra errante](37),
+Llegaron las criaturas de la noche y de los rincones: ![Sombra errante](mob:shadow) [sombra errante](37),
 ![Murciélago](mob:bat) [murciélago](38), ![Cangrejo](mob:crab) [cangrejo](39), ![Buitre](mob:vulture)
 [buitre](40), ![Fuego fatuo](mob:wisp) [fuego fatuo](41), ![Serpiente](mob:snake) [serpiente](42),
-![Gólem](mob:storm_golem) [gólem de tormenta](43), ![Conejo](mob:rabbit) [conejo](44), ![Zorro](mob:fox)
-[zorro](45), ![Búho](mob:owl) [búho](46) y ![Topo](mob:mole) [topo gigante](47).
+![Golem de tormenta](mob:storm_golem) [golem de tormenta](43), ![Conejo](mob:rabbit) [conejo](44), ![Zorro](mob:fox)
+[zorro](45), ![Búho](mob:owl) [búho](46) y ![Topo gigante](mob:mole) [topo gigante](47).
 
 Para que tantas criaturas cupieran sin desordenarlo todo, el juego aprendió a recibir **extensiones**: cada
 mob, objeto o mecánica puede vivir en su propio archivo.
 
 Y el mismo día: los [recursos de los mobs](2), [domesticar y criar](3), los [cebos y trampas](4) y el
-[bestiario](5), que recoge las 31 especies.
+[bestiario](5), que entonces recogía las 31 especies que había.
 
 ## Y después, este libro
 
-La última pieza es la que tienes en las manos: la **guía**, para que nadie se pierda en un mundo que ya tiene
+La última pieza es la que tienes en las manos: la **guía**, para que nadie se pierda en un mundo que por entonces ya tenía
 31 especies y más de un centenar de
 bloques distintos. Lo que venga después, se escribirá en páginas nuevas.

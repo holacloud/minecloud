@@ -1,17 +1,17 @@
 # El cuaderno completo
 
 > Has encontrado una página escondida. Estaba en la última hoja del bestiario, escrita con una tinta tan
-> desvaída que solo aparece cuando no queda ni una silueta negra. **31 de 31.** Lo has conseguido.
+> desvaída que solo aparece cuando no queda ni un animal ni una criatura por descubrir. **35 de 35.** Lo has conseguido.
 
 ## Enhorabuena, naturalista
 
 Has visto de cerca a **todas** las criaturas de MineCloud: las que pastan al sol y las que solo salen de noche,
-las que viven bajo tierra y las que nacen de un rayo. Muy pocos exploradores llenan el cuaderno entero.
+las que viven bajo tierra y las que nacen de un rayo. Muy pocos exploradores llenan el cuaderno entero. Los 16 organismos del [microscopio](238) no hacen falta: son otra colección.
 
 Para tenerlas todas has tenido que pisar los cuatro biomas, quedarte despierto de noche, mojarte bajo la
-tormenta y, probablemente, caer al menos una vez en la trampa de un fuego fatuo.
+tormenta, construir un [golem de cobre](215) y, probablemente, caer al menos una vez en la trampa de un fuego fatuo.
 
-## Las 31, por orden de llegada
+## Las 35, por orden de llegada
 
 Este es el orden en que cada especie llegó al mundo.
 
@@ -43,20 +43,24 @@ Este es el orden en que cada especie llegó al mundo.
 | 24 | ![Buitre](mob:vulture) [Buitre](40) | 30 de octubre de 2026 |
 | 25 | ![Fuego fatuo](mob:wisp) [Fuego fatuo](41) | 30 de octubre de 2026 |
 | 26 | ![Serpiente](mob:snake) [Serpiente](42) | 30 de octubre de 2026 |
-| 27 | ![Gólem de tormenta](mob:storm_golem) [Gólem de tormenta](43) | 30 de octubre de 2026 |
+| 27 | ![Golem de tormenta](mob:storm_golem) [Golem de tormenta](43) | 30 de octubre de 2026 |
 | 28 | ![Conejo](mob:rabbit) [Conejo](44) | 30 de octubre de 2026 |
 | 29 | ![Zorro](mob:fox) [Zorro](45) | 30 de octubre de 2026 |
 | 30 | ![Búho](mob:owl) [Búho](46) | 30 de octubre de 2026 |
 | 31 | ![Topo gigante](mob:mole) [Topo gigante](47) | 30 de octubre de 2026 |
+| 32 | ![Hormiga](mob:ant) [Hormiga](135) | 1 de noviembre de 2026 |
+| 33 | ![Castor](mob:beaver) [Castor](137) | 1 de noviembre de 2026 |
+| 34 | ![Anguila eléctrica](mob:eel) [Anguila eléctrica](213) | 2 de noviembre de 2026 |
+| 35 | ![Golem de cobre](mob:copper_golem) [Golem de cobre](215) | 2 de noviembre de 2026 |
 
-Cinco especies estaban ya el primer día de mobs; once llegaron juntas el 29 de octubre, y otras once al día
-siguiente. Ver [Historia de MineCloud](102).
+Cinco especies estaban ya el primer día de mobs; once llegaron juntas el 29 de octubre, otras once al día
+siguiente, y las cuatro últimas, en noviembre. Ver [Historia de MineCloud](102).
 
 ## Para el que ya lo ha visto todo
 
 - Abre cualquier ficha del bestiario: verás cuántas has encontrado, cuántas has derrotado y el día en que viste
   la primera. Ver [Bestiario](5).
-- ¿Alguna especie que solo viste una vez? El [fuego fatuo](41), el [gólem de tormenta](43) y la
+- ¿Alguna especie que solo viste una vez? El [fuego fatuo](41), el [golem de tormenta](43) y la
   [sombra errante](37) no se dejan ver a menudo.
 - Ahora que conoces a todos, mira cómo se relacionan: [La cadena alimenticia](100).
 

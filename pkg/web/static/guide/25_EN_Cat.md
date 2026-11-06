@@ -31,7 +31,7 @@ are acceptable, and then it follows you and purrs.
 
 | Food | Chance per try |
 |---|---|
-| ![Raw fish](item:raw_fish) `raw_fish`, ![Milk](item:milk) `milk`, ![Brown mushroom](item:mushroom_brown) `mushroom_brown` | **1/2** |
+| ![Raw fish](item:raw_fish) `raw_fish`, ![Milk](item:milk) `milk`, ![Cold milk](item:cold_milk) `cold_milk`, ![Brown mushroom](item:mushroom_brown) `mushroom_brown` | **1/2** |
 
 - **Baits:** it comes to `bait_fish` and `bait_meat` (see [Baits and traps](4)).
 - **Cage:** it **does** fit in the `cage_trap`.

@@ -26,14 +26,16 @@ Con un cebo en la mano, haz clic derecho en el suelo para dejar un montoncito.
 
 | Cebo | Atrae a |
 |---|---|
-| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo |
+| `bait_seeds` | oveja, pato, cerdo, jirafa, guacamayo, camello, cabra, caballo, castor, hormiga |
 | `bait_worms` | pato, cerdo, rana, tortuga, lagarto, escorpión (y los peces, pero solo en el anzuelo de la caña) |
-| `bait_meat` | perro, gato, araña, monstruo de cueva |
+| `bait_meat` | perro, gato, araña, monstruo de cueva, hormiga |
 | `bait_fish` | gato, tortuga, cangrejo |
-| `bait_honey` | abejas (liban el cebo en lugar de las flores) |
+| `bait_honey` | abeja (liban el cebo en lugar de las flores), hormiga |
 
-Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo) no hacen
-caso a los cebos. Las mascotas que te siguen también los ignoran.
+Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo gigante) **no van
+hacia los cebos**, aunque su ficha del [bestiario](5) y el aviso «Lures: …» del chat los nombren: `bait_meat` al zorro, al búho, al buitre y a la serpiente; `bait_seeds` al conejo; `bait_fish` al águila; `bait_worms` al topo. Solo si uno pasa por casualidad a menos de 1,4 bloques lo mordisquea. Las mascotas que te siguen también los ignoran.
+
+Las hormigas no vienen sueltas: si el cebo está cerca de su hormiguero, abren un camino hasta él ([Hormiga](135)).
 
 ## Jaula (`cage_trap`)
 
@@ -44,8 +46,8 @@ caso a los cebos. Las mascotas que te siguen también los ignoran.
 
 Si la jaula está vacía y no llevas un cebo en la mano, el clic derecho la recoge.
 
-**Caben:** oveja, pato, cerdo, perro, gato, araña, rana, tortuga, lagarto, escorpión, cabra, cangrejo, zorro,
-conejo, serpiente y topo.
+**Caben:** oveja, pato, cerdo, perro, gato, araña, rana, tortuga, lagarto, escorpión, cabra, cangrejo, castor, zorro,
+conejo, serpiente y topo gigante. Estos cuatro últimos no van hacia el cebo: solo caen si pisan la jaula por casualidad.
 
 **No caben:** los animales grandes, los voladores y los peces.
 
@@ -83,6 +85,7 @@ Haz clic derecho con la red sobre una criatura pequeña cercana (hasta 4,5 bloqu
 | Abeja | `bee_egg` |
 | Murciélago | `bat_egg` |
 | Fuego fatuo | `glow_dust` |
+| Hormiguero | `ant_colony_jar` |
 
 ## Frasco de luciérnagas (`firefly_jar`)
 

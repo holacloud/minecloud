@@ -68,7 +68,7 @@ Todas las herramientas son iconos en la barra de abajo, con su nombre debajo. Si
 
 - **Aumento.** A 40× ves un campo ancho y los animales grandes. A 400× ves las bacterias, pero solo un trocito del portaobjetos. A 1000× lo pequeño se ve de cerca (una bacteria, una levadura, el núcleo de una célula), los animales grandes no caben y el campo es diminuto: encuentra primero lo que quieres a menos aumento. Empieza bajo y ve subiendo. La línea de abajo del campo es una regla.
 - **Enfoque.** Cada cosa está a su propia profundidad en la gota, y lo que está a otra se ve borroso. A más aumento, más fina la parte nítida, así que a 400× hay que ir ajustando, y a 1000× aún más.
-- **Identificar.** Haz clic en lo que ves. Si es demasiado pequeño para ese aumento o está desenfocado, el panel te dice qué hacer. Si no, sale su nombre y su historia sobre el campo, y entra en tu [bestiario](5). La tarjeta del bestiario aún está en inglés: el nombre científico es el mismo en las dos.
+- **Identificar.** Haz clic en lo que ves. Si es demasiado pequeño para ese aumento o está desenfocado, el panel te dice qué hacer. Si no, sale su nombre y su historia sobre el campo, y entra en tu [bestiario](5).
 
 ## Ver más
 

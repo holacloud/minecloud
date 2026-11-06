@@ -17,7 +17,7 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 | ![](mob:macaw) | [Guacamayo](23) | pájaro de colores del bosque | 2026-05-16 |
 | ![](mob:dog) | [Perro](24) | amigo fiel; te defiende | 2026-05-16 |
 | ![](mob:cat) | [Gato](25) | pequeño y ronroneante | 2026-06-02 |
-| ![](mob:fish) | [Peces](26) | nadan en bancos por lagos y mares | 2026-10-29 |
+| ![](mob:fish) | [Pez](26) | nadan en bancos por lagos y mares | 2026-10-29 |
 | ![](mob:frog) | [Rana](27) | salta por las orillas | 2026-10-29 |
 | ![](mob:turtle) | [Tortuga](28) | lenta, en las playas | 2026-10-29 |
 | ![](mob:camel) | [Camello](29) | cruza las dunas; da leche | 2026-10-29 |

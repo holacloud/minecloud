@@ -20,13 +20,13 @@ Montoncitos de comida que **atraen a los animales** hacia un punto. Sirven para 
 
 | Cebo | Animales |
 |---|---|
-| `bait_seeds` | ![Oveja](mob:sheep) oveja, ![Pato](mob:duck) pato, ![Cerdo](mob:pig) cerdo, ![Jirafa](mob:giraffe) jirafa, ![Guacamayo](mob:macaw) guacamayo, ![Camello](mob:camel) camello, ![Cabra](mob:goat) cabra, ![Caballo](mob:horse) caballo, ![Conejo](mob:rabbit) conejo |
-| `bait_worms` | ![Pato](mob:duck) pato, ![Cerdo](mob:pig) cerdo, ![Rana](mob:frog) rana, ![Tortuga](mob:turtle) tortuga, ![Lagarto](mob:lizard) lagarto, ![Escorpión](mob:scorpion) escorpión, ![Pez](mob:fish) peces, ![Topo gigante](mob:mole) topo |
-| `bait_meat` | ![Perro](mob:dog) perro, ![Gato](mob:cat) gato, ![Araña](mob:spider) araña, ![Monstruo de cueva](mob:cave_monster) monstruo de cueva, ![Zorro](mob:fox) zorro, ![Búho](mob:owl) búho, ![Buitre](mob:vulture) buitre, ![Serpiente](mob:snake) serpiente |
-| `bait_fish` | ![Gato](mob:cat) gato, ![Tortuga](mob:turtle) tortuga, ![Águila](mob:eagle) águila, ![Cangrejo](mob:crab) cangrejo |
-| `bait_honey` | ![Abeja](mob:bee) abejas |
+| `bait_seeds` | ![Oveja](mob:sheep) oveja, ![Pato](mob:duck) pato, ![Cerdo](mob:pig) cerdo, ![Jirafa](mob:giraffe) jirafa, ![Guacamayo](mob:macaw) guacamayo, ![Camello](mob:camel) camello, ![Cabra](mob:goat) cabra, ![Caballo](mob:horse) caballo, ![Castor](mob:beaver) castor, ![Hormiga](mob:ant) hormiga |
+| `bait_worms` | ![Pato](mob:duck) pato, ![Cerdo](mob:pig) cerdo, ![Rana](mob:frog) rana, ![Tortuga](mob:turtle) tortuga, ![Lagarto](mob:lizard) lagarto, ![Escorpión](mob:scorpion) escorpión |
+| `bait_meat` | ![Perro](mob:dog) perro, ![Gato](mob:cat) gato, ![Araña](mob:spider) araña, ![Monstruo de cueva](mob:cave_monster) monstruo de cueva, ![Hormiga](mob:ant) hormiga |
+| `bait_fish` | ![Gato](mob:cat) gato, ![Tortuga](mob:turtle) tortuga, ![Cangrejo](mob:crab) cangrejo |
+| `bait_honey` | ![Abeja](mob:bee) abeja, ![Hormiga](mob:ant) hormiga |
 
-Al colocarlo, el chat te dice a quién atrae («Lures: …»).
+Al colocarlo, el chat te da una lista más larga («Lures: …»), la misma de la casilla **Cebos** del [bestiario](5). Pero el zorro, el búho, el buitre y la serpiente (carne), el conejo (semillas), el águila (pescado) y el topo gigante (gusanos) salen en ella y **no van hacia el cebo**: siguen a lo suyo. Los peces (gusanos) tampoco salen del agua: ese cebo solo les sirve en el [anzuelo](94).
 
 ## Paso a paso
 
@@ -48,7 +48,8 @@ se pierde.
   poco hacia él; el cebo de dentro de una [jaula](96) los lleva hasta su centro.
 - **Abejas:** el cebo de miel tiene que estar a menos de unos 20 bloques de su colmena. Las abejas que iban a una
   flor van al cebo y lo liban, más despacio que un animal que come.
-- **Animales con voluntad propia:** algunos tienen su comportamiento y no siempre hacen caso.
+- **Animales con voluntad propia:** los de la lista larga de arriba no acuden. Solo si uno pasa por casualidad a menos de 1,4 bloques del cebo lo mordisquea, y se queda por la zona.
+- **Hormigas:** no vienen sueltas: si el cebo está cerca del hormiguero, abren un camino hasta él. Ver [Hormiga](135).
 - Las mascotas que te siguen y los animales con jinete lo ignoran.
 - **Dentro de una [jaula](96):** solo acuden los animales que caben en ella.
 
@@ -62,7 +63,7 @@ Si llevas `bait_worms` o `bait_fish` en el inventario, al lanzar se pone uno en 
 - **Semillas y gusanos son baratísimos:** hierba alta y tierra hay en todas partes.
 - Para domesticar, un cebo te trae al animal a los pies sin perseguirlo.
 - Los cebos **no se guardan** al recargar la página: úsalos en el momento.
-- Ojo con el cebo de carne: también atrae a arañas, serpientes y monstruos de cueva.
+- Ojo con el cebo de carne: también atrae a arañas y monstruos de cueva.
 
 ## Curiosidades
 

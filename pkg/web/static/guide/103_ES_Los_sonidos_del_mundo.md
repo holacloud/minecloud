@@ -22,7 +22,7 @@ Cada mob tiene una **nota propia**, la que suena cuando lo golpeas. Las más gra
 | | Mob | Frecuencia |
 |---|---|---|
 | Más grave | ![Sombra](mob:shadow) [Sombra errante](37) | 70 Hz |
-| | ![Gólem](mob:storm_golem) [Gólem de tormenta](43) | 80 Hz |
+| | ![Golem](mob:storm_golem) [Golem de tormenta](43) | 80 Hz |
 | | ![Monstruo de cueva](mob:cave_monster) [Monstruo de cueva](21) y ![Buitre](mob:vulture) [buitre](40) | 120 Hz |
 | | ![Águila](mob:eagle) [Águila](33) | 2400 Hz |
 | | ![Cangrejo](mob:crab) [Cangrejo](39) | 2600 Hz |
@@ -39,7 +39,7 @@ Cada mob tiene una **nota propia**, la que suena cuando lo golpeas. Las más gra
 - **[Fuego fatuo](41)**: campanillas con las notas de una **escala pentatónica** (do, re, mi, sol, la).
   Cuando caes en su trampa, suelta una risita: las mismas notas, bajando.
 - **[Sombra errante](37)**: susurros de ruido filtrado y un tono grave que desafina un poco cada vez.
-- **[Gólem de tormenta](43)**: el trueno llega **más tarde cuanto más lejos** cayó el rayo, y retumba
+- **[Golem de tormenta](43)**: el trueno llega **más tarde cuanto más lejos** cayó el rayo, y retumba
   durante segundos.
 - **[Topo gigante](47)**: un retumbar grave bajo tus pies, cada vez más fuerte, justo antes de salir.
 

@@ -4,10 +4,10 @@ Datos curiosos sacados directamente de las tripas del juego. Algunos son útiles
 
 ## Los números del mundo
 
-- **31 especies** de criaturas. Ver [Bestiario](5).
+- **35 especies** de animales y criaturas, y **16 organismos** que solo se ven al [microscopio](238). Ver [Bestiario](5).
 - **36 bloques de elementos** químicos, del **hidrógeno** al **plomo**, y todos se fabrican igual: un bloque de
   piedra y uno de carbón. Ver [Bloques de elementos](60).
-- **20 formas de moverse** distintas para los mobs. Ver [Cómo piensan los mobs](104).
+- **24 formas de moverse** distintas para los mobs. Ver [Cómo piensan los mobs](104).
 - Un **día completo dura 4 minutos**: 2 de día y 2 de noche.
 - El mundo mide **256 bloques de alto** y se reparte en trozos de **16 × 16**. Ver [Cómo nace el mundo](99).
 - Nunca hay más de **64 mobs** a tu alrededor a la vez.
@@ -36,7 +36,7 @@ El caballo es el único que te deja **más rápido que tú mismo**. Ver [Montar 
 
 ## Resistencia
 
-- El más duro es el ![Gólem](mob:storm_golem) [gólem de tormenta](43): **5 golpes** a mano. Y encima se cura cuando
+- El más duro es el ![Golem](mob:storm_golem) [golem de tormenta](43): **5 golpes** a mano. Y encima se cura cuando
   se llama el rayo a sí mismo.
 - Le sigue el [monstruo de cueva](21), con 4 golpes.
 - Los animales pacíficos aguantan **3 golpes** a mano; con una [espada](71) de piedra o mejor, 2. Las más frágiles son las
@@ -71,5 +71,5 @@ El caballo es el único que te deja **más rápido que tú mismo**. Ver [Montar 
 | Lana de oveja volviendo a crecer | 150 s |
 | Pelo, leche y miel otra vez disponibles | 120 / 60 / 120 s |
 | Cola del lagarto volviendo a crecer | 60 s |
-| Sombras, fuegos fatuos y gólems invocados, a la luz del día o sin lluvia | 60 s |
-| Furia de un gólem golpeado | 15 s |
+| Sombras, fuegos fatuos y golems invocados, a la luz del día o sin lluvia | 60 s |
+| Furia de un golem golpeado | 15 s |

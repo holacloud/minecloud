@@ -191,9 +191,9 @@ test('every item a sheet can list has a Spanish name, and the same one as the gu
     assert.ok(items.length >= 30, `${items.length} items`);
     for (const item of items) assert.ok(ctx.bestiaryItemNameEs(item), `${item} has no Spanish name`);
     assert.equal(ctx.bestiaryItemNameEs('no_such_thing'), null);
-    // Both tables together: only the jungle's leaves differ, and the guide says "de jungla" (see the report).
+    // Both tables together.
     for (const [item, name] of Object.entries(ctx.BESTIARY_ITEMS_ES)) {
-        if (ctx.MICROSCOPE_ITEMS_ES[item] && item !== 'jungle_leaves') assert.equal(name, ctx.MICROSCOPE_ITEMS_ES[item], item);
+        if (ctx.MICROSCOPE_ITEMS_ES[item]) assert.equal(name, ctx.MICROSCOPE_ITEMS_ES[item], item);
     }
     // The guide's pictures of an item carry its name.
     const guide = guideText();
@@ -218,8 +218,8 @@ function guideText() {
 test('every creature is called what the guide calls it', () => {
     const index = guidePage(16);
     const named = Object.fromEntries([...index.matchAll(/!\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\)/g)].map((match) => [match[1], { name: match[2], page: match[3] }]));
-    // The index's row names two of them differently from their own page: the page's title is what the card takes.
-    const titled = { fish: 'Pez', bee: 'Abeja' };
+    // The bee's page covers the hive too, so its index row and its title say more than its card.
+    const titled = { bee: 'Abeja' };
     for (const id of mobIds) {
         assert.ok(named[id], `${id} is not in the guide's index of mobs`);
         const name = ctx.BESTIARY_ENTRIES_ES[id].name;
@@ -422,7 +422,7 @@ test('a sheet in Spanish, from top to bottom, with what other mechanics feed it'
         game.bestiaryRender();
         const detail = game.bestiaryPanel.querySelector('#bestiary-detail');
         const seen = readable(detail).join(' | ');
-        for (const said of ['Oveja', 'Temperamento: pasivo', 'Actividad: de día', 'Hábitat', 'Llanuras y rocas', 'Dieta', 'Hierba alta, Trigo, Flor amarilla, Hojas',
+        for (const said of ['Oveja', 'Temperamento: pasivo', 'Actividad: de día', 'Hábitat', 'Llanuras, rocas y bosques', 'Dieta', 'Hierba alta, Trigo, Flor amarilla, Hojas',
             'Botín', 'Lana blanca', 'Cebos', 'Cebo de semillas', 'Encuentros', 'Derrotados', 'Primer avistamiento', '< Volver']) assert.ok(seen.includes(said), `${said} in: ${seen}`);
         assert.match(seen, /5 mar 2026/);
         // The colour of a tag does not hang on the words.
@@ -457,7 +457,7 @@ test('English still reads as it always did', () => {
     const panel = game.bestiaryPanel;
     assert.equal(panel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${mobIds.length + 16} discovered`);
     const seen = readable(panel.querySelector('#bestiary-detail')).join(' | ');
-    for (const said of ['Sheep', 'Passive', 'Active: Day', 'Habitat', 'Plains and rocky hills', 'Diet', 'Drops', 'Lured by', 'Encounters', 'Defeated', 'First seen', '< Back']) assert.ok(seen.includes(said), `${said} in: ${seen}`);
+    for (const said of ['Sheep', 'Passive', 'Active: Day', 'Habitat', 'Plains, rocky hills and forests', 'Diet', 'Drops', 'Lured by', 'Encounters', 'Defeated', 'First seen', '< Back']) assert.ok(seen.includes(said), `${said} in: ${seen}`);
     assert.match(seen, /Mar 5, 2026/);
     assert.ok(readable(panel.querySelector('#bestiary-grid')).includes('Seen 3x'));
     assert.ok(readable(panel.querySelector('#bestiary-grid')).includes('Identified 2x'));

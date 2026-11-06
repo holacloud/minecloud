@@ -78,14 +78,14 @@ const BESTIARY_BIOMES = {
 // The mobs in Spanish. BESTIARY_ENTRIES has the English of each, with the same facts.
 const BESTIARY_ENTRIES_ES = {
     sheep: {
-        name: 'Oveja', habitat: 'Llanuras y rocas',
+        name: 'Oveja', habitat: 'Llanuras, rocas y bosques',
         hint: 'Pasta en la hierba, a campo abierto.',
         description: 'Un animal lanudo que recorre los prados en grupitos y baja la cabeza para mordisquear la hierba. Nunca se defiende: solo bala y se aleja trotando.'
     },
     duck: {
-        name: 'Pato', habitat: 'Llanuras y oasis del desierto',
+        name: 'Pato', habitat: 'Llanuras y desiertos',
         hint: 'Camina bamboleándose junto al agua, en las llanuras.',
-        description: 'Un caminante alegre y bamboleante que suele ir en grupitos. Grazna si le das un toque, y donde mejor está es junto a una charca, aunque sea un oasis en medio de la arena.'
+        description: 'Un caminante alegre y bamboleante que suele ir en grupitos. Grazna si le das un toque, y donde mejor está es junto a una charca, aunque también pasea por la arena.'
     },
     pig: {
         name: 'Cerdo', habitat: 'Llanuras y bosques',
@@ -93,7 +93,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Un buscador de comida, rosa y redondo, que olisquea bosques y campos y se para a pastar cada pocos pasos. Es inofensivo y se asusta con facilidad.'
     },
     giraffe: {
-        name: 'Jirafa', habitat: 'Desiertos y sabana seca',
+        name: 'Jirafa', habitat: 'Desiertos',
         hint: 'Algo muy alto recorre las tierras secas.',
         description: 'Una gigante solitaria cuyo cuello sobresale por encima de todos los arbustos. Pasea despacio por las tierras secas y pasta tranquilamente. La verás desde muy lejos.'
     },
@@ -113,7 +113,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Un gran arácnido oscuro que se lanza contra quien se acerque. Golpea fuerte, pero cae rápido con unos cuantos golpes bien dados.'
     },
     cave_monster: {
-        name: 'Monstruo de cueva', habitat: 'Rocas y cuevas',
+        name: 'Monstruo de cueva', habitat: 'Rocas',
         hint: 'Una criatura pesada acecha entre las rocas.',
         description: 'Un bruto enorme de las profundidades de piedra. Guarda las distancias antes de embestir, y hacen falta muchos golpes para derribarlo. Los perros luchan contra él por ti.'
     },
@@ -158,7 +158,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Una trepadora ágil que salta salientes de dos bloques de alto y siempre busca el punto más alto. De vez en cuando baja la cabeza y te embiste.'
     },
     horse: {
-        name: 'Caballo', habitat: 'Llanuras',
+        name: 'Caballo', habitat: 'Llanuras y bosques',
         hint: 'Un galope retumba por las llanuras abiertas.',
         description: 'Un animal veloz que pasta por las llanuras en pequeñas manadas. Haz clic derecho para montarlo: galopa rápido y salta alto. Con Shift te bajas.'
     },
@@ -168,7 +168,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Las abejas viven en colonias alrededor de una colmena que cuelga bajo un árbol. De día visitan las flores y se refugian de la lluvia, pero si golpeas la colmena o a una de ellas, todo el enjambre te pica.'
     },
     firefly: {
-        name: 'Luciérnaga', habitat: 'Prados y charcas',
+        name: 'Luciérnaga', habitat: 'Prados, bosques y charcas',
         hint: 'Lucecitas diminutas parpadean sobre la hierba al anochecer.',
         description: 'Del anochecer al amanecer, las luciérnagas flotan en nubes sueltas sobre la hierba y las charcas, encendiéndose y apagándose. Se apartan de ti y se dispersan si les das un manotazo.'
     },
@@ -183,7 +183,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Una majestuosa rapaz que aprovecha las corrientes de aire caliente para volar en amplios círculos, se posa en el punto más alto que encuentra y se lanza en picado a por los peces cerca de la superficie.'
     },
     bat: {
-        name: 'Murciélago', habitat: 'Bajo techos y salientes, y en cuevas',
+        name: 'Murciélago', habitat: 'Bajo techos y salientes, y en túneles',
         hint: 'Mira hacia arriba, bajo los salientes y las copas de los árboles.',
         description: 'De día, los murciélagos cuelgan boca abajo bajo techos y copas de árboles, envueltos en sus alas; si te acercas demasiado, toda la colonia sale volando. De noche revolotean sin rumbo fijo, persiguiendo luciérnagas.'
     },
@@ -198,12 +198,12 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Un cazador astuto que acecha a conejos y ranas. De noche se mueve a hurtadillas y roba los objetos que hay por el suelo, así que ten tus cosas cerca.'
     },
     rabbit: {
-        name: 'Conejo', habitat: 'Llanuras y bosques',
+        name: 'Conejo', habitat: 'Llanuras, bosques y desiertos',
         hint: 'Unas orejas largas se mueven cerca de las madrigueras.',
         description: 'Un saltarín tímido que vive cerca de su madriguera y se mueve a saltitos. Huye de zorros, búhos y jugadores por igual.'
     },
     owl: {
-        name: 'Búho', habitat: 'Bosques',
+        name: 'Búho', habitat: 'Bosques y árboles de las llanuras',
         hint: 'Dos ojos redondos te siguen de noche.',
         description: 'Un silencioso cazador nocturno que se posa en los árboles y gira la cabeza para seguirte. En la oscuridad se lanza sobre murciélagos y conejos.'
     },
@@ -213,9 +213,9 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Un carroñero paciente que vuela en círculos sobre cada presa recién caída. Si empieza a dar vueltas sobre ti, es que te queda poca vida.'
     },
     snake: {
-        name: 'Serpiente', habitat: 'Desiertos',
+        name: 'Serpiente', habitat: 'Desiertos y rocas',
         hint: 'Un siseo sube desde la arena.',
-        description: 'Se esconde en la arena y sisea para avisar antes de atacar. Su mordedura es venenosa, y se mueve en suaves ondas.'
+        description: 'Se esconde en la arena, o enroscada sobre la roca, y sisea para avisar antes de atacar. Su mordedura es venenosa, y se mueve en suaves ondas.'
     },
     storm_golem: {
         name: 'Golem de tormenta', habitat: 'Cualquier lugar, cuando llueve',
@@ -223,7 +223,7 @@ const BESTIARY_ENTRIES_ES = {
         description: 'Una figura altísima que solo aparece con la lluvia y atrae los rayos hacia sí misma y hacia los bloques de metal cercanos. Déjala en paz: si la golpeas, te lanza rayos.'
     },
     wisp: {
-        name: 'Fuego fatuo', habitat: 'Humedales y barrancos',
+        name: 'Fuego fatuo', habitat: 'Cualquier lugar de noche, sobre todo junto al agua y los barrancos',
         hint: 'Una luz débil te llama en la noche.',
         description: 'Una luz flotante que intenta atraer a los viajeros hacia el agua o hacia un barranco. Nunca ataca, y si atrapas una, deja polvo luminoso.'
     },

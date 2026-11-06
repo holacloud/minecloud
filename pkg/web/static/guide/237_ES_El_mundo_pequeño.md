@@ -30,14 +30,14 @@ Cada uno es una tarjeta de tu [bestiario](5). Sigue siendo una silueta hasta que
 | ![](mob:spirogyra) | Espirogira | un alga, en hilos | 100× | hilos de muchos cm |
 | ![](mob:plant_cell) | Célula vegetal | un trozo de planta | 100× | 20-100 µm |
 | ![](mob:diatom) | Diatomea | una célula, en vidrio | 400× | 2-200 µm |
-| ![](mob:cyanobacteria) | Cianobacteria | bacterias que usan la luz | 400× | células de 1-10 µm |
+| ![](mob:cyanobacteria) | Cianobacterias | bacterias que usan la luz | 400× | células de 1-10 µm |
 | ![](mob:animal_cell) | Célula animal | un trozo de animal | 400× | 10-60 µm |
 | ![](mob:lactobacillus) | Lactobacilo | una bacteria | 400× | 2-10 µm |
 | ![](mob:soil_bacteria) | Bacterias del suelo | una bacteria | 400× | 1-5 µm |
 | ![](mob:yeast) | Levadura | una célula, un hongo | 400× | 5-10 µm |
 | ![](mob:mushroom_spore) | Esporas de seta | las «semillas» de un hongo | 400× | 5-15 µm |
 
-En el juego salen con su nombre en inglés. Un **micrómetro** (µm) es la milésima parte de un milímetro. Un pelo tiene unos 70 µm de grosor.
+Un **micrómetro** (µm) es la milésima parte de un milímetro. Un pelo tiene unos 70 µm de grosor.
 
 ## ¿Es peligroso algo de esto?
 

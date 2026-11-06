@@ -8,7 +8,7 @@ Son la forma de **llevarte animales a casa** o de completar tu [Bestiario](5).
 ## Cómo conseguirlos
 
 - **Segando hierba alta o rompiendo hojas:** un **3,5 %** de las veces sale un huevo de una especie **al azar**,
-  ¡de cualquiera de las 31!
+  ¡de cualquiera de las 35!
 - **Con una [jaula](96):** pon cebo, espera a que entre un animal y recógelo: te da **su huevo** y la jaula.
 - **Con la [red para insectos](95):** atrapa una abeja o un murciélago y te llevas su huevo.
 

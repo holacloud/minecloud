@@ -30,7 +30,7 @@ le caes bien, y entonces te sigue y ronronea.
 
 | Comida | Probabilidad por intento |
 |---|---|
-| ![Pescado crudo](item:raw_fish) `raw_fish`, ![Leche](item:milk) `milk`, ![Seta marrón](item:mushroom_brown) `mushroom_brown` | **1/2** |
+| ![Pescado crudo](item:raw_fish) `raw_fish`, ![Leche](item:milk) `milk`, ![Leche fría](item:cold_milk) `cold_milk`, ![Seta marrón](item:mushroom_brown) `mushroom_brown` | **1/2** |
 
 - **Cebos:** acude al `bait_fish` y al `bait_meat` (ver [Cebos y trampas](4)).
 - **Jaula:** **sí** cabe en la `cage_trap`.

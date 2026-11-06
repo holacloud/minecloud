@@ -8,7 +8,7 @@ right there. Eggs are how you **bring animals home** or fill in your [Bestiary](
 ## How to get them
 
 - **Mowing tall grass or breaking leaves:** **3.5 %** of the time an egg of a **random** species drops, any of
-  the 31!
+  the 35!
 - **With a [cage trap](96):** set bait, wait for an animal to walk in and collect it: you get **its egg** and the
   cage back.
 - **With the [bug net](95):** catch a bee or a bat and you take its egg.
