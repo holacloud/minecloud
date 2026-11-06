@@ -1,7 +1,7 @@
 // The language of the game, in one place: ES or EN. It starts with the browser's language until the
 // player picks one, in the pause menu or in the guide; both selectors are this one setting. The key in
 // localStorage is the guide's from before it was shared, so nobody loses their choice (the printable guide
-// reads the same key). Not everything is translated yet: js/game/microscope_text.js says what is.
+// reads the same key). Not everything is translated yet: js/game/microscope_text.js and bestiary_text.js are.
 // gameLang() the language now, setGameLang(lang) changes it and tells whoever asked with onGameLangChange,
 // gameText({ ES, EN }) picks from a table. Loaded before the game; touches nothing but its storage.
 

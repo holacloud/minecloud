@@ -11,6 +11,9 @@
 // portrait is their own 2D drawing, animated on the sheet. A card says what applies to something that
 // has no temper and cannot be fought: its real size and the power it takes. They do not count for the
 // complete notebook of the mobs (page B31X): there is no reward for a tardigrade.
+// Every word on the panel comes from js/game/bestiary_text.js, in the language of the game: a change of
+// language rewrites what is on screen at once (bestiaryOnLang). BESTIARY_ENTRIES is the English; its
+// temperament and activity are also the keys of the tags.
 // Mixed into Game.prototype; everything is wired from a registerGameContent hook.
 
 const BESTIARY_STORAGE_KEY = 'minecloud-bestiary';
@@ -269,6 +272,25 @@ Object.assign(Game.prototype, {
         window.addEventListener('keydown', (event) => this.bestiaryOnKeyDown(event), true);
         // The pause menu markup exists by now; its listeners are wired later, which is fine.
         this.bestiaryAddPauseButton();
+        onGameLangChange(() => this.bestiaryOnLang());
+    },
+
+    // The language changed: whatever is on screen says it again. The sheet's model keeps turning.
+    bestiaryOnLang() {
+        this.bestiaryWriteLabels();
+        if (this.bestiaryOpen) this.bestiaryRender();
+        const toast = document.getElementById('bestiary-toast');
+        if (toast && this.bestiaryToastSpecies) this.bestiaryWriteToast(toast, this.bestiaryToastSpecies);
+    },
+
+    // What never changes but for the language: the panel's title and button, and the pause menu's.
+    bestiaryWriteLabels() {
+        if (this.bestiaryPanel) {
+            this.bestiaryPanel.querySelector('h3').textContent = bestiarySay('title');
+            this.bestiaryPanel.querySelector('.bestiary-close').textContent = bestiarySay('close');
+        }
+        const button = document.getElementById('settings-bestiary');
+        if (button) button.textContent = bestiarySay('pauseButton');
     },
 
     bestiaryLoad() {
@@ -320,30 +342,31 @@ Object.assign(Game.prototype, {
     bestiaryEntry(species) {
         const organism = this.bestiaryOrganism(species);
         if (organism) {
+            const text = bestiaryOrganismText(species);
             return {
-                name: organism.name, habitat: organism.where, description: organism.fact,
-                hint: `Only a microscope shows it. ${organism.hint}`, organism
+                name: text.name, habitat: text.where, description: text.fact, size: text.size,
+                hint: bestiarySay('microscopeOnly', text.hint), organism
             };
         }
         const entry = BESTIARY_ENTRIES[species] || {};
+        const text = bestiaryMobText(species);
         const info = (typeof getMobSpecies === 'function' && getMobSpecies(species)) || {};
         const pretty = species.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         return {
-            name: entry.name || pretty,
-            habitat: entry.habitat || this.bestiarySpawnBiomes(species) || 'Unknown',
+            name: text.name || bestiarySay('genericName', pretty),
+            habitat: text.habitat || this.bestiarySpawnBiomes(species) || bestiarySay('genericHabitat'),
             activity: entry.activity || (info.nocturnal ? 'Night' : 'Day'),
             temperament: entry.temperament || (info.hostile ? 'Hostile' : 'Passive'),
-            hint: entry.hint || 'Keep exploring to find it.',
-            description: entry.description || 'Little is known about this creature yet.'
+            hint: text.hint || bestiarySay('genericHint'),
+            description: text.description || bestiarySay('genericDescription')
         };
     },
 
     bestiarySpawnBiomes(species) {
         if (typeof this.getBiomeSpawnTable !== 'function') return '';
-        const names = { plains: 'Plains', desert: 'Deserts', forest: 'Forests', rocky: 'Rocky hills' };
-        return Object.keys(names)
+        return Object.keys(BESTIARY_BIOMES)
             .filter((biome) => this.getBiomeSpawnTable(biome).some(([id]) => id === species))
-            .map((biome) => names[biome]).join(', ');
+            .map((biome) => bestiaryBiomeName(biome)).join(', ');
     },
 
     // Discovery: a few times per second, every mob close enough and roughly in view.
@@ -375,7 +398,7 @@ Object.assign(Game.prototype, {
         if (isNew) {
             this.bestiaryAnnounce(species);
             if (!this.bestiaryOrganism(species) && this.bestiaryMobList().every((other) => this.bestiaryData[other])) {
-                setTimeout(() => this.receiveSystemMessage({ text: 'Your bestiary is complete! Something is written on its last page...' }), 3500);
+                setTimeout(() => this.receiveSystemMessage({ text: bestiarySay('complete') }), 3500);
             }
             if (this.bestiaryOpen) this.bestiaryRender();
         } else if (this.bestiaryOpen && this.bestiarySelected === species) {
@@ -404,19 +427,27 @@ Object.assign(Game.prototype, {
             toast.id = 'bestiary-toast';
             document.body.appendChild(toast);
         }
-        toast.innerHTML = '';
-        toast.append('New bestiary entry: ');
-        const name = document.createElement('span');
-        name.textContent = this.bestiaryEntry(species).name;
-        toast.appendChild(name);
+        this.bestiaryToastSpecies = species;
+        this.bestiaryWriteToast(toast, species);
         toast.classList.add('visible');
         clearTimeout(this.bestiaryToastTimer);
-        this.bestiaryToastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+        this.bestiaryToastTimer = setTimeout(() => {
+            toast.classList.remove('visible');
+            this.bestiaryToastSpecies = null;
+        }, 3200);
 
         // A soft rising chime.
         [784, 1046, 1318].forEach((frequency, index) => {
             setTimeout(() => this.playTone({ frequency, duration: 0.16, type: 'sine', volume: 0.022, attack: 0.01, release: 0.35 }), index * 110);
         });
+    },
+
+    bestiaryWriteToast(toast, species) {
+        toast.innerHTML = '';
+        toast.append(bestiarySay('newEntry'));
+        const name = document.createElement('span');
+        name.textContent = this.bestiaryEntry(species).name;
+        toast.appendChild(name);
     },
 
     // ---- Panel ----
@@ -426,9 +457,9 @@ Object.assign(Game.prototype, {
         panel.id = 'bestiary-panel';
         panel.innerHTML = `
             <div class="bestiary-header">
-                <h3>Bestiary</h3>
+                <h3></h3>
                 <div id="bestiary-progress"></div>
-                <button class="bestiary-close" type="button">Close</button>
+                <button class="bestiary-close" type="button"></button>
             </div>
             <div class="bestiary-body">
                 <div id="bestiary-grid"></div>
@@ -440,6 +471,7 @@ Object.assign(Game.prototype, {
         panel.addEventListener('pointerdown', (event) => event.stopPropagation());
         document.body.appendChild(panel);
         this.bestiaryPanel = panel;
+        this.bestiaryWriteLabels();
         // Clicking outside the panel closes it, like the other panels.
         document.addEventListener('mousedown', () => { if (this.bestiaryOpen) this.bestiaryClose(); });
     },
@@ -450,7 +482,7 @@ Object.assign(Game.prototype, {
         const button = document.createElement('button');
         button.id = 'settings-bestiary';
         button.type = 'button';
-        button.textContent = 'Bestiary (B)';
+        button.textContent = bestiarySay('pauseButton');
         button.addEventListener('click', () => {
             this.closePauseMenu(false);
             this.bestiaryShow();
@@ -504,8 +536,8 @@ Object.assign(Game.prototype, {
         const discovered = list.filter((species) => this.bestiaryData[species]).length;
         const progress = this.bestiaryPanel.querySelector('#bestiary-progress');
         // A full notebook of mobs reveals a code for the guide's secret pages.
-        const complete = this.bestiaryMobList().every((species) => this.bestiaryData[species]) ? ' &middot; on the last page, in faded ink: <b>B31X</b>' : '';
-        progress.innerHTML = `<b>${discovered}</b> / ${list.length} discovered${complete}`;
+        const complete = this.bestiaryMobList().every((species) => this.bestiaryData[species]) ? bestiarySay('lastPage', 'B31X') : '';
+        progress.innerHTML = `${bestiarySay('discovered', discovered, list.length)}${complete}`;
 
         const grid = this.bestiaryPanel.querySelector('#bestiary-grid');
         grid.innerHTML = '';
@@ -522,8 +554,8 @@ Object.assign(Game.prototype, {
             name.textContent = known ? entry.name : '???';
             const meta = document.createElement('div');
             meta.className = 'bestiary-card-meta';
-            const seen = entry.organism ? 'Identified' : 'Seen';
-            meta.textContent = known ? `${seen} ${this.bestiaryData[species].encounters || 1}x` : entry.habitat;
+            const seen = entry.organism ? 'identifiedCount' : 'seenCount';
+            meta.textContent = known ? bestiarySay(seen, this.bestiaryData[species].encounters || 1) : entry.habitat;
             card.append(portrait, name, meta);
             card.addEventListener('click', () => {
                 this.bestiarySelected = species;
@@ -775,7 +807,7 @@ Object.assign(Game.prototype, {
         const back = document.createElement('button');
         back.className = 'bestiary-back';
         back.type = 'button';
-        back.textContent = '< Back';
+        back.textContent = bestiarySay('back');
         back.addEventListener('click', () => {
             this.bestiarySelected = null;
             this.bestiaryRender();
@@ -812,7 +844,7 @@ Object.assign(Game.prototype, {
         if (!record) {
             const hint = document.createElement('div');
             hint.className = 'bestiary-description';
-            hint.textContent = `Not yet discovered. ${entry.hint} Habitat: ${entry.habitat}.`;
+            hint.textContent = bestiarySay('undiscovered', entry.hint, entry.habitat);
             detail.appendChild(hint);
             return;
         }
@@ -826,10 +858,10 @@ Object.assign(Game.prototype, {
         tags.className = 'bestiary-tags';
         const temperament = document.createElement('span');
         temperament.className = `bestiary-tag ${entry.temperament.toLowerCase()}`;
-        temperament.textContent = entry.temperament;
+        temperament.textContent = bestiaryTemperamentLabel(entry.temperament);
         const activity = document.createElement('span');
         activity.className = 'bestiary-tag';
-        activity.textContent = entry.activity === 'Rain' ? 'Active in rain' : `Active: ${entry.activity}`;
+        activity.textContent = bestiaryActivityLabel(entry.activity);
         tags.append(temperament, activity);
         detail.appendChild(tags);
 
@@ -848,16 +880,16 @@ Object.assign(Game.prototype, {
             dd.textContent = value;
             facts.append(dt, dd);
         };
-        addFact('Habitat', entry.habitat);
-        addFact('Diet', this.bestiaryLookup(typeof TAMING_DIET !== 'undefined' ? TAMING_DIET : null, species));
+        addFact(bestiarySay('factHabitat'), entry.habitat);
+        addFact(bestiarySay('factDiet'), this.bestiaryLookup(typeof TAMING_DIET !== 'undefined' ? TAMING_DIET : null, species));
         // Drops are [item, min, max, chance] rows; lures come from the trap table's baits.
         const drops = typeof RESOURCE_DROPS !== 'undefined' && RESOURCE_DROPS[species] ? { [species]: RESOURCE_DROPS[species].map(([item]) => item) } : null;
         const lures = typeof TRAPS_SPECIES !== 'undefined' && TRAPS_SPECIES[species] ? { [species]: TRAPS_SPECIES[species].baits } : null;
-        addFact('Drops', this.bestiaryLookup(drops, species));
-        addFact('Lured by', this.bestiaryLookup(lures, species));
-        addFact('Encounters', String(record.encounters || 1));
-        addFact('Defeated', String(record.defeated || 0));
-        addFact('First seen', this.bestiaryFormatDate(record.firstSeen));
+        addFact(bestiarySay('factDrops'), this.bestiaryLookup(drops, species));
+        addFact(bestiarySay('factLures'), this.bestiaryLookup(lures, species));
+        addFact(bestiarySay('factEncounters'), String(record.encounters || 1));
+        addFact(bestiarySay('factDefeated'), String(record.defeated || 0));
+        addFact(bestiarySay('factFirstSeen'), this.bestiaryFormatDate(record.firstSeen));
         detail.appendChild(facts);
     },
 
@@ -868,7 +900,7 @@ Object.assign(Game.prototype, {
         tags.className = 'bestiary-tags';
         const seenAt = document.createElement('span');
         seenAt.className = 'bestiary-tag';
-        seenAt.textContent = `Seen from ${organism.mag}×`;
+        seenAt.textContent = bestiarySay('seenFrom', organism.mag);
         tags.appendChild(seenAt);
         detail.appendChild(tags);
 
@@ -879,8 +911,8 @@ Object.assign(Game.prototype, {
 
         const facts = document.createElement('dl');
         facts.className = 'bestiary-facts';
-        const rows = [['Real size', organism.size], ['Group', organism.latin], ['Lives in', organism.where],
-            ['Identified', String(record.encounters || 1)], ['First seen', this.bestiaryFormatDate(record.firstSeen)]];
+        const rows = [[bestiarySay('factSize'), entry.size], [bestiarySay('factGroup'), organism.latin], [bestiarySay('factLivesIn'), entry.habitat],
+            [bestiarySay('factIdentified'), String(record.encounters || 1)], [bestiarySay('factFirstSeen'), this.bestiaryFormatDate(record.firstSeen)]];
         for (const [label, value] of rows) {
             if (!value) continue;
             const dt = document.createElement('dt');
@@ -895,7 +927,7 @@ Object.assign(Game.prototype, {
             const book = document.createElement('button');
             book.className = 'bestiary-book';
             book.type = 'button';
-            book.textContent = '📖 In the guide';
+            book.textContent = bestiarySay('inGuide');
             book.addEventListener('click', () => {
                 this.bestiaryClose();
                 this.guideShow(String(organism.page));
@@ -943,6 +975,8 @@ Object.assign(Game.prototype, {
     },
 
     bestiaryItemName(id) {
+        const spanish = gameLang() === 'ES' && bestiaryItemNameEs(id);
+        if (spanish) return spanish;
         if (typeof ITEM_TYPES !== 'undefined' && ITEM_TYPES[id] && ITEM_TYPES[id].name) return ITEM_TYPES[id].name;
         const blockTypes = this.world && this.world.blockTypes;
         const block = blockTypes && (blockTypes[id] || (Array.isArray(blockTypes) ? blockTypes.find((b) => b && b.id === id) : null));
@@ -955,7 +989,7 @@ Object.assign(Game.prototype, {
         const date = iso ? new Date(iso) : null;
         if (!date || isNaN(date.getTime())) return '';
         try {
-            return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            return date.toLocaleDateString(gameLang() === 'ES' ? 'es' : 'en', { year: 'numeric', month: 'short', day: 'numeric' });
         } catch (_error) {
             return date.toISOString().slice(0, 10);
         }

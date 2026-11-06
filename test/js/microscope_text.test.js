@@ -40,7 +40,7 @@ function loadModules() {
     });
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(read(file), context);
-    for (const file of ['bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
+    for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
         vm.runInContext(read(`game/${file}`), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { gameLang, setGameLang, MICROSCOPE_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICRO_STAINS, MICRO_STAINS_ES, MICRO_ITEMS, MICRO_SAMPLES, MICROSCOPE_KIT,
@@ -317,18 +317,22 @@ test('every organism, in all it says, is in Spanish', () => {
     assert.match(ctx.MICRO_SPECIES_ES.tardigrade.fact, /barrilito/);
 });
 
-test('the bestiary keeps the English, whole: no card is half translated', () => {
-    const def = ctx.MICRO_SPECIES.tardigrade;
-    assert.equal(def.name, 'Tardigrade');
-    const bestiary = read('game/bestiary.js');
-    assert.doesNotMatch(bestiary, /MICRO_SPECIES_ES|microscopeSay|microscopeSpeciesText|gameLang/);
+test('the bestiary calls an organism what the panel calls it, in both languages', () => {
     const game = Object.create(ctx.Game.prototype);
-    const entry = inLang('ES', () => game.bestiaryEntry('tardigrade'));
-    assert.equal(entry.name, 'Tardigrade');
-    assert.equal(entry.description, def.fact);
-    assert.equal(entry.habitat, def.where);
-    assert.match(entry.hint, /^Only a microscope shows it/);
-    inLang('ES', () => assert.equal(ctx.microscopeSpeciesText('tardigrade').name, 'Tardígrado'));
+    for (const id of Object.keys(ctx.MICRO_SPECIES)) {
+        for (const lang of ['ES', 'EN']) {
+            inLang(lang, () => {
+                const entry = game.bestiaryEntry(id);
+                const said = ctx.microscopeSpeciesText(id);
+                assert.equal(entry.name, said.name, `${id} ${lang}`);
+                assert.equal(entry.habitat, said.where, `${id} ${lang}`);
+                assert.equal(entry.description, said.fact, `${id} ${lang}`);
+                assert.equal(entry.size, said.size, `${id} ${lang}`);
+            });
+        }
+    }
+    inLang('ES', () => assert.equal(game.bestiaryEntry('tardigrade').name, 'Tardígrado'));
+    assert.equal(game.bestiaryEntry('tardigrade').name, 'Tardigrade');
 });
 
 test('every item the panel can name has a Spanish name', () => {

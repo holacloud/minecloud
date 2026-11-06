@@ -52,7 +52,7 @@ function loadModules() {
     context.window.addEventListener = () => {};
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context);
-    for (const file of ['bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
+    for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_STAINS, MICRO_SCENERY_STAINS, MICRO_LENS, MicroLens, ITEM_TYPES, GAME_CONTENT_HOOKS, ITEM_USE_HANDLERS, MICROSCOPE_KIT, MICROSCOPE_STAIN_PAGE, MICROSCOPE_LENS_PAGE,

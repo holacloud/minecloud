@@ -1,7 +1,6 @@
-// Everything the microscope's panel says, in both languages (js/gameLang.js). Only the panel and the
-// messages of taking a sample are translated: inventory names, recipes and the bestiary stay in English for
-// now. So a microbe's card in the bestiary is English from top to bottom (MICRO_SPECIES in microbes.js), with
-// no half-translated cards; the scientific name is what the panel and the card have in common.
+// Everything the microscope's panel says, in both languages (js/gameLang.js). The panel and the messages of
+// taking a sample are translated here: inventory names and recipes stay in English for now. A microbe's card
+// in the bestiary (bestiary_text.js) reads its name, size, habitat and fact from here, so both say the same.
 // test/js/microscope_text.test.js fails if any entry here lacks a language.
 
 // microscopeSay(key, ...args) reads this. A function takes the same arguments in both languages.
@@ -235,8 +234,8 @@ const MICRO_STAINS_ES = {
     }
 };
 
-// The organisms in Spanish, as the panel shows them; MICRO_SPECIES (microbes.js) has the English, which is
-// also what the bestiary shows. `notes` is what each stain does to it.
+// The organisms in Spanish, as the panel and the bestiary show them; MICRO_SPECIES (microbes.js) has the
+// English. `notes` is what each stain does to it.
 const MICRO_SPECIES_ES = {
     tardigrade: {
         name: 'Tardígrado', size: '0,3-0,5 mm', where: 'Musgo húmedo, y agua fría o umbría cerca de él',
