@@ -1,5 +1,5 @@
 // Node tests for the pointer lock: whatever frees the pointer on purpose must not open the pause
-// menu, which is what losing the lock means otherwise (the pointerlockchange listener in js/game.js).
+// menu, which is what losing the lock means otherwise (onPointerLockChange in js/game/menus.js).
 // Reads the sources: every document.exitPointerLock() is checked, including the ones to come.
 // Run with: node --test test/js
 
@@ -20,8 +20,9 @@ function sources(dir = JS) {
 
 // The state flags that keep the listener from opening the pause menu.
 function listenerFlags() {
-    const game = fs.readFileSync(path.join(JS, 'game.js'), 'utf8');
-    const listener = game.slice(game.indexOf("'pointerlockchange'"), game.indexOf('this.openPauseMenu();'));
+    const menus = fs.readFileSync(path.join(JS, 'game', 'menus.js'), 'utf8');
+    const start = menus.indexOf('    onPointerLockChange() {');
+    const listener = menus.slice(start, menus.indexOf('this.openPauseMenu();', start));
     return { listener, flags: new Set([...listener.matchAll(/!this\.(\w+)/g)].map((match) => match[1])) };
 }
 

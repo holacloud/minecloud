@@ -303,6 +303,8 @@ class Game {
         eggItems.forEach((egg) => addItemSlot(egg));
         toolItems.forEach((tool) => addItemSlot(tool));
         ['spruce_wood', 'birch_wood', 'jungle_wood', 'acacia_wood', 'dark_oak_wood', 'cherry_wood', 'maple_wood', 'willow_wood', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'cherry_leaves', 'maple_leaves', 'willow_leaves'].forEach(addItemSlot);
+        // First of all: Escape has to be heard before the listeners the hooks install (js/game/menus.js).
+        this.escapeInstall();
         GAME_CONTENT_HOOKS.forEach((hook) => hook.call(this, { addItem: addItemSlot, addRecipe }));
     }
 
@@ -819,23 +821,7 @@ class Game {
             signCloseButton.addEventListener('click', () => this.closeSignReader());
         }
         document.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
-        document.addEventListener('pointerlockchange', () => {
-            this.updatePointerLockHint();
-            if (document.pointerLockElement === this.renderer.domElement) {
-                // A focused button or slider would swallow Space/arrow keys while playing.
-                if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-                return;
-            }
-            if (document.pointerLockElement !== this.renderer.domElement) {
-                this.stopMining();
-                if (performance.now() < this.suppressPointerLockPauseUntil) {
-                    return;
-                }
-                if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending && !this.getOpenModalPanel()) {
-                    this.openPauseMenu();
-                }
-            }
-        });
+        document.addEventListener('pointerlockchange', () => this.onPointerLockChange());
         window.addEventListener('blur', () => {
             this.stopMining();
             this.resetTouchTransientInput();
@@ -921,6 +907,8 @@ class Game {
             if (this.closeActiveMenuFromEscape()) {
                 return;
             }
+            // Behind the title screen there is nothing to pause yet (the menu would wait there, unseen).
+            if (this.titleScreenOpen) return;
             if (this.followTargetPlayerId) {
                 this.followTargetPlayerId = null;
                 this.decoratePlayerListInteractions();

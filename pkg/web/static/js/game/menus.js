@@ -1,5 +1,24 @@
-// Title screen, appearance editor, pause menu and settings.
+// Title screen, appearance editor, pause menu and settings, and what Escape and the pointer lock do.
 // Mixed into Game.prototype; `this` is the Game instance.
+// Escape, and what a browser allows:
+// - While the pointer is locked the browser keeps Escape to itself to free the pointer, and a page cannot
+//   stop it. So it can only close a menu if opening the menu has freed the pointer; every menu does, and
+//   nothing may leave it locked with one open (releasePointerForMenu, each frame).
+// - Then Escape reaches the page, and one listener, the first of all, closes the top menu (escapeOnKeyDown),
+//   whatever has the focus and whatever the panels do with their keys.
+// - The pointer can come back with no gesture because the page itself let it go. That only works after
+//   exitPointerLock: if the player pressed Escape in play (which opens the pause menu), the browser wants a
+//   click, so the request fails and "Click to play" shows, with no pause menu by surprise.
+// - The pointer waits until Escape is released: some browsers free it when the key comes up or repeats, and
+//   would take back a pointer locked in the meantime (recapturePointerLock).
+// - In fullscreen a browser may let the page keep Escape (Keyboard Lock, Chromium only, over HTTPS), and
+//   then it does everything here, also in play; holding it leaves fullscreen.
+
+// How long the pointer waits for Escape to come up, if it never hears that it did (milliseconds).
+const MENU_ESCAPE_HELD_MS = 1500;
+// How long an answer to a lock request can take before it is taken for lost, and for browsers that give none.
+const MENU_LOCK_ANSWER_MS = 3000;
+const MENU_LOCK_NO_PROMISE_MS = 300;
 
 Object.assign(Game.prototype, {
     getHairStyles() {
@@ -273,7 +292,10 @@ Object.assign(Game.prototype, {
             this.saveSettings();
         });
 
-        document.addEventListener('fullscreenchange', () => this.updateSettingsUI());
+        document.addEventListener('fullscreenchange', () => {
+            this.updateSettingsUI();
+            this.syncKeyboardLock();
+        });
 
         // The game's language: the same setting as the guide's selector, each following the other.
         const languageSelect = document.getElementById('settings-language');
@@ -344,10 +366,25 @@ Object.assign(Game.prototype, {
         }
     },
 
+    // In fullscreen, Chromium can leave Escape to the page. Elsewhere there is no such thing.
+    syncKeyboardLock() {
+        const keyboard = typeof navigator === 'object' && navigator ? navigator.keyboard : null;
+        if (!keyboard || typeof keyboard.lock !== 'function') return;
+        if (!document.fullscreenElement) {
+            keyboard.unlock();
+            return;
+        }
+        const request = keyboard.lock(['Escape']);
+        // Refused (not over HTTPS...): Escape just stays the browser's.
+        if (request && typeof request.catch === 'function') request.catch(() => {});
+    },
+
     openPauseMenu() {
         const menu = document.getElementById('pause-menu');
         if (!menu) return;
 
+        // Photo mode hides this menu: it would be open and unseen.
+        if (this.photoMode && !this.cinematic) this.togglePhotoMode();
         this.pauseOpen = true;
         this.stopMining();
         this.closeChatInput();
@@ -417,7 +454,9 @@ Object.assign(Game.prototype, {
         const canvas = this.renderer.domElement;
         if (this.pointerLockPending || document.pointerLockElement === canvas || this.getOpenModalPanel()) return;
         this.pointerLockPending = true;
+        let waiting = null;
         const done = () => {
+            clearTimeout(waiting);
             this.pointerLockPending = false;
             this.updatePointerLockHint();
         };
@@ -426,12 +465,71 @@ Object.assign(Game.prototype, {
             if (request && typeof request.then === 'function') {
                 // Browsers refuse without a fresh gesture or for ~1 s after Esc; the hint asks for a click.
                 request.then(done, done);
+                waiting = setTimeout(done, MENU_LOCK_ANSWER_MS);
             } else {
-                setTimeout(done, 300);
+                waiting = setTimeout(done, MENU_LOCK_NO_PROMISE_MS);
             }
         } catch (_error) {
             done();
         }
+    },
+
+    // The pointer was locked, or lost. A lock that lands on an open menu goes back: with it the browser would
+    // keep Escape. Lost with nothing to explain it, the player has pressed Escape in play: that is the pause menu.
+    onPointerLockChange() {
+        this.updatePointerLockHint();
+        if (document.pointerLockElement === this.renderer.domElement) {
+            if (this.isMenuOpen()) {
+                this.releasePointerForMenu();
+                return;
+            }
+            // A focused button or slider would swallow Space/arrow keys while playing.
+            if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+            return;
+        }
+        this.stopMining();
+        if (performance.now() < this.suppressPointerLockPauseUntil) return;
+        if (!this.titleScreenOpen && !this.pauseOpen && !this.chatOpen && !this.craftingOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending && !this.getOpenModalPanel()) {
+            this.openPauseMenu();
+        }
+    },
+
+    releasePointerForMenu() {
+        this.suppressPointerLockPauseUntil = performance.now() + 1000;
+        document.exitPointerLock();
+    },
+
+    // Any window of the game that Escape would close.
+    isMenuOpen() {
+        return Boolean(this.appearanceMenuOpen || this.chatOpen || this.signReaderOpen || this.inventoryOpen || this.craftingOpen || this.pauseOpen || this.getOpenModalPanel());
+    },
+
+    // The first listener of all, in the capture phase of the window: with a menu open, Escape is for it, and
+    // nothing else hears it, whether a field has the focus or a panel keeps its keys to itself.
+    escapeInstall() {
+        window.addEventListener('keydown', (event) => this.escapeOnKeyDown(event), true);
+        window.addEventListener('keyup', (event) => {
+            if (event.code === 'Escape' || event.key === 'Escape') this.escapeReleased();
+        }, true);
+        window.addEventListener('blur', () => this.escapeReleased());
+    },
+
+    escapeOnKeyDown(event) {
+        if (event.code !== 'Escape' && event.key !== 'Escape') return;
+        this.escapeHeld = true;
+        if (!this.isMenuOpen()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) this.closeActiveMenuFromEscape();
+    },
+
+    // Escape is up: the pointer that was waiting for it can come back.
+    escapeReleased() {
+        this.escapeHeld = false;
+        clearTimeout(this.relockTimer);
+        const relock = this.relockAfterEscape;
+        this.relockAfterEscape = null;
+        if (relock) relock();
     },
 
     updatePointerLockHint() {
@@ -446,7 +544,7 @@ Object.assign(Game.prototype, {
             this.pointerLockHint = hint;
         }
         const locked = document.pointerLockElement === this.renderer.domElement;
-        const show = !locked && !this.pointerLockPending && !this.touchControlsEnabled && this.isGameplayActive();
+        const show = !locked && !this.pointerLockPending && !this.relockAfterEscape && !this.touchControlsEnabled && this.isGameplayActive();
         const display = show ? 'block' : 'none';
         if (this.pointerLockHint.style.display !== display) this.pointerLockHint.style.display = display;
     },
@@ -468,19 +566,18 @@ Object.assign(Game.prototype, {
     },
 
     recapturePointerLock(defer = true) {
-        if (this.touchControlsEnabled) return;
-        if (this.titleScreenOpen || this.chatOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen || this.inventoryOpen || this.respawnPending) {
-            return;
-        }
+        if (this.touchControlsEnabled || !this.isGameplayActive()) return;
         if (document.pointerLockElement === this.renderer.domElement) return;
 
         const requestPointer = () => {
-            if (!this.touchControlsEnabled && !this.titleScreenOpen && !this.chatOpen && !this.craftingOpen && !this.pauseOpen && !this.signReaderOpen && !this.inventoryOpen && !this.respawnPending) {
-                this.requestPointerLockOnce();
-            }
+            if (!this.touchControlsEnabled && this.isGameplayActive()) this.requestPointerLockOnce();
         };
 
-        if (defer) {
+        if (this.escapeHeld) {
+            this.relockAfterEscape = requestPointer;
+            clearTimeout(this.relockTimer);
+            this.relockTimer = setTimeout(() => this.escapeReleased(), MENU_ESCAPE_HELD_MS);
+        } else if (defer) {
             setTimeout(requestPointer, 0);
         } else {
             requestPointer();
@@ -488,6 +585,13 @@ Object.assign(Game.prototype, {
     },
 
     closeActiveMenuFromEscape() {
+        const closed = this.closeTopMenu();
+        // A search box left with the focus in a panel that is gone would keep every key to itself.
+        if (closed && !this.isMenuOpen() && document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        return closed;
+    },
+
+    closeTopMenu() {
         this.suppressPointerLockPauseUntil = performance.now() + 250;
 
         if (this.appearanceMenuOpen) {
@@ -513,7 +617,7 @@ Object.assign(Game.prototype, {
         }
         const panel = this.getOpenModalPanel();
         if (panel) {
-            panel.close.call(this);
+            if (!panel.escape || !panel.escape.call(this)) panel.close.call(this);
             return true;
         }
         if (this.pauseOpen) {
@@ -530,6 +634,9 @@ Object.assign(Game.prototype, {
 registerFrameUpdate(function () {
     const open = Boolean(this.inventoryOpen || this.craftingOpen || this.pauseOpen || this.signReaderOpen ||
         this.appearanceMenuOpen || this.getOpenModalPanel());
+    // Whatever way it came about (a lock that was on its way when the menu opened...), a menu never stays
+    // open with the pointer locked: Escape would not reach it.
+    if (document.pointerLockElement === this.renderer.domElement && this.isMenuOpen()) this.releasePointerForMenu();
     if (open !== this.windowOpenClass) {
         this.windowOpenClass = open;
         document.body.classList.toggle('window-open', open);

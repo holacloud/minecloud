@@ -94,7 +94,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Move into a `ladder` and hold `W` or `Space`: climb up; hold `S` or `Shift`: climb down.
 - `V`: cycle the camera: first person, third person from the front, third person from behind.
 - `F2`: toggle photo mode.
-- `Esc`: close the open panel, or open the pause/settings menu.
+- `Esc`: close the open panel and go back to playing with no click (a popover in the microscope closes first), or, in play, open the pause/settings menu.
 - Press `R` 3 times quickly: toggle RTX mode.
 - `Voice` button in the HUD: enable/disable proximity voice chat.
 

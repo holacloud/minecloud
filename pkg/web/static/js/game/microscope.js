@@ -722,6 +722,10 @@ const MICROSCOPE_CSS = `
 .micro-choice .micro-ico{flex:0 0 26px}
 #micro-filters,#micro-stain-choices{display:flex;flex-direction:column;gap:4px}
 #micro-stain-warn{color:#ffe9a8}
+@media (min-aspect-ratio:5/4){
+#micro-lines{right:auto;width:max(170px,calc(50cqw - 50cqh - 6px))}
+#micro-info{left:auto;right:0;top:0;bottom:auto;width:max(170px,calc(50cqw - 50cqh - 6px));max-height:100%;box-sizing:border-box;flex-wrap:wrap}
+}
 `;
 
 Object.assign(Game.prototype, {
@@ -1730,7 +1734,8 @@ Object.assign(Game.prototype, {
 
 registerModalPanel({
     isOpen() { return Boolean(this.microscopeAt); },
-    close() { this.microscopeClose(); }
+    close() { this.microscopeClose(); },
+    escape() { return this.microscopeEscape(); }
 });
 
 // Before a chest would see it: the microscope has its own panel, not the panel of a chest.

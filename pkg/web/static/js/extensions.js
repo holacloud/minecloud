@@ -65,8 +65,9 @@ function registerDamageModifier(modifier) {
     DAMAGE_MODIFIERS.push(modifier);
 }
 
-// Panels from other files (bestiary...): registerModalPanel({ isOpen(), close() }). While one is
-// open the game is not in play, the pointer stays free, and Escape closes it.
+// Panels from other files (bestiary...): registerModalPanel({ isOpen(), close(), escape() }). While one
+// is open the game is not in play, the pointer stays free, and Escape closes it. escape(), optional: Escape
+// asks it first, and if it returns true (it closed something smaller inside) the panel stays open.
 const MODAL_PANELS = [];
 function registerModalPanel(panel) {
     MODAL_PANELS.push(panel);
