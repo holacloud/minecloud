@@ -241,7 +241,7 @@ class NetworkClient {
     }
     
     // mount: { key: "species:variant", yaw } while riding, otherwise null.
-    updatePosition(position, heldItem = null, action = '', mount = null) {
+    updatePosition(position, heldItem = null, action = '', mount = null, offhandItem = null) {
         this.send('playerMove', {
             id: this.playerId,
             username: this.username,
@@ -254,6 +254,7 @@ class NetworkClient {
             hairStyle: this.hairStyle,
             hairColor: this.hairColor,
             heldItem: heldItem || '',
+            offhandItem: offhandItem || '',
             action: action || '',
             mount: mount ? mount.key : '',
             mountYaw: mount ? mount.yaw : 0

@@ -19,7 +19,7 @@ Un pie, un brazo, una platina para el portaobjetos, un espejo debajo y un tubo d
 Un microscopio no enseña nada sin luz. **Sin luz, el campo se ve totalmente negro**, y en el propio campo se explica cómo iluminarlo. Hay dos formas de iluminarlo:
 
 - **El sol**, de día, con el bloque al aire libre: bajo el cielo, bajo un vidrio o a dos bloques o menos de una abertura, sin nada en medio. El espejo lo recoge.
-- **Una lámpara**, de día o de noche: cualquier cosa que dé luz a dos bloques o menos: una [vela, un farol o una lámpara](228), una antorcha, una [lámpara eléctrica](204) o una [bombilla](187) encendidas. Cuanto más fuerte la luz, más claro el campo: una bombilla deja ver el portaobjetos, pero más tenue que una lámpara.
+- **Una lámpara**, de día o de noche: cualquier cosa que dé luz a dos bloques o menos: una [vela, un farol o una lámpara](228), una antorcha, una [lámpara eléctrica](204) o una [bombilla](187) encendidas. Cuanto más fuerte la luz, más claro el campo: una bombilla deja ver el portaobjetos, pero más tenue que una lámpara. También vale una luz **en la mano**, si estás a 3 bloques o menos ([la mano izquierda](251)).
 
 Una lámpara eléctrica o una bombilla necesitan corriente. Si hay una al lado y está apagada, el panel lo dice: dale un generador o una batería que la toque, o un cable hasta uno.
 

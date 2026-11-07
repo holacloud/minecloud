@@ -205,7 +205,7 @@ function scopeGame(carried, all) {
         getInventoryCount: (type) => counts[type] || 0, addInventory() {},
         getBlockDisplayName(type) { return (this.world.blockTypes[type] || {}).name || type; },
         receiveSystemMessage() {}, updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
-        playTone() {}, playPickupSound() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}, microscopeIdentified() {}, isGameplayActive: () => true
+        playTone() {}, playPickupSound() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {}, microscopeIdentified() {}, isGameplayActive: () => true, carriedLampNear: () => null
     });
     ctx.window.devicePixelRatio = 1;
     game.microscopeLoadPending();

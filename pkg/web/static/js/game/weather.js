@@ -560,6 +560,15 @@ Object.assign(Game.prototype, {
         panel.style.opacity = '1';
     },
 
+    // The multimeter's panel sits in the same corner: with both in hand this one goes above it.
+    weatherStackPanel() {
+        const weather = this.weatherPanelElement;
+        if (!weather) return;
+        const multimeter = this.electricPanelElement;
+        const both = multimeter && multimeter.style.opacity === '1' && weather.style.opacity === '1';
+        weather.style.bottom = both ? `${84 + multimeter.offsetHeight + 6}px` : '84px';
+    },
+
     weatherRefreshPanel() {
         if (!this.isGameplayActive()) {
             this.weatherRenderPanel(null);
@@ -570,9 +579,11 @@ Object.assign(Game.prototype, {
             this.weatherRenderPanel('Weather Station', this.weatherStationDescribe(station));
             return;
         }
-        const item = this.getSelectedHeldItemType();
-        if (WEATHER_INSTRUMENTS.includes(item)) {
-            this.weatherRenderPanel(this.getBlockDisplayName(item), this.weatherDescribe(item, this.camera.position));
+        // Either hand (js/game/offhand.js), one panel for both: the same instrument twice reads once.
+        const items = this.handsInstruments(WEATHER_INSTRUMENTS);
+        if (items.length > 0) {
+            const lines = items.flatMap((item) => this.weatherDescribe(item, this.camera.position));
+            this.weatherRenderPanel(items.map((item) => this.getBlockDisplayName(item)).join(' + '), lines);
             return;
         }
         this.weatherRenderPanel(null);
@@ -905,6 +916,7 @@ Object.assign(Game.prototype, {
         if (this.weatherPanelTimer <= 0) {
             this.weatherPanelTimer = 0.25;
             this.weatherRefreshPanel();
+            this.weatherStackPanel();
         }
     }
 });

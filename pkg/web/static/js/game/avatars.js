@@ -12,6 +12,7 @@ Object.assign(Game.prototype, {
         this.poseUpright(this.localPlayerAvatar);
         this.applyAvatarHeadPitch(this.localPlayerAvatar, this.cameraController.pitch, 1);
         this.updateAvatarHeldItem(this.localPlayerAvatar, this.getSelectedHeldItemType());
+        this.updateAvatarOffhandItem(this.localPlayerAvatar, this.offhandType);
         this.animatePlayerAvatar(this.localPlayerAvatar, previousPosition, delta, false);
         if (this.ridingMob) {
             this.localPlayerAvatar.position.y += getMobSpecies(this.ridingMob.userData.species).mount.seat;
@@ -496,6 +497,7 @@ Object.assign(Game.prototype, {
 
         this.updateAvatarNameTag(avatar, displayName);
         this.updateAvatarHeldItem(avatar, player.heldItem || null);
+        this.offhandApplyRemote(avatar, player);
         // Riders' eyes are higher; their avatar sits on the saddle.
         const mountInfo = player.mount ? (getMobSpecies(player.mount.split(':')[0]) || {}).mount : null;
         const avatarHeight = mountInfo ? mountInfo.eyeHeight - mountInfo.seat : 1.62;

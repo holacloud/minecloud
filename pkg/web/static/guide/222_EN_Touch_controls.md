@@ -38,6 +38,7 @@ Tap a slot of the **hotbar** at the bottom to pick that item.
   **Interact** (the F key: read a sign, sleep in a bed, play a sound block), eat, drop, camera view, photo
   mode, the player list, voice chat, full screen and the **settings**.
 - **🎒** opens the **inventory**.
+- **L** moves a light or an instrument to the [left hand](251), like the X key, and shows what you carry.
 - **💬** opens the **chat** with the keyboard. Write and press **Send** (or the keyboard's send key);
   **✕** closes it. [Commands](12) such as `/guide 12` work just like on a computer.
 

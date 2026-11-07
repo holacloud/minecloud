@@ -19,7 +19,7 @@ A foot, an arm, a stage for the slide, a mirror under it and a brass tube with i
 A microscope shows nothing without light. **With no light the field is pitch black**, and the field itself explains how to light it. There are two ways to light it:
 
 - **The sun**, by day, with the block out in the open: under the sky, under glass, or within two blocks of an opening with nothing in the way. The mirror catches it.
-- **A lamp**, day or night: anything that gives light within two blocks: a [candle, a lantern or a lamp](228), a torch, a lit [electric lamp](204) or a lit [light bulb](187). The stronger the light, the brighter the field: a bulb shows the slide, but dimmer than a lamp.
+- **A lamp**, day or night: anything that gives light within two blocks: a [candle, a lantern or a lamp](228), a torch, a lit [electric lamp](204) or a lit [light bulb](187). The stronger the light, the brighter the field: a bulb shows the slide, but dimmer than a lamp. A light **in your hand** counts too, within 3 blocks ([the left hand](251)).
 
 An electric lamp or a bulb needs power. If one is beside it and off, the panel says so: give it a generator or a battery touching it, or a wire to one.
 

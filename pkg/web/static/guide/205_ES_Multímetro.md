@@ -14,6 +14,8 @@ Llévalo en la mano y **haz clic derecho en cualquier bloque eléctrico** (un ca
 lámpara...). Un panel en la esquina muestra la lectura de **toda su red**, y se actualiza cada segundo mientras sigas
 con el multímetro en la mano. Cambia de objeto para guardarlo.
 
+En la [mano izquierda](251) no hace falta clic: lee el bloque eléctrico que miras.
+
 | Línea | Qué significa |
 |---|---|
 | **This block** (este bloque) | qué hace ese bloque: cuántos vatios da (generador) o usa (consumidor), o cuánta energía guarda (batería) |

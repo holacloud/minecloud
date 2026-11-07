@@ -63,6 +63,7 @@ function makeElement(id = '') {
         set innerHTML(value) { this.children = []; this.html = value; },
         get innerHTML() { return this.html || ''; },
         appendChild(child) { this.children.push(child); return child; },
+        append(...children) { this.children.push(...children); },
         addEventListener(type, listener) { (this.listeners[type] = this.listeners[type] || []).push(listener); },
         setAttribute() {}, removeAttribute() {}, querySelector: () => makeElement(), querySelectorAll: () => [], insertBefore(child) { return child; }, remove() {},
         focus() { this.focused++; },

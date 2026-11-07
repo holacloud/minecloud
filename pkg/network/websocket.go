@@ -104,6 +104,8 @@ type Player struct {
 	MountYaw float64 `json:"mountYaw,omitempty"`
 	// Whether X, Y, Z come from the player: until their first move they are playerJoin's placeholder.
 	Located bool `json:"-"`
+	// OffhandItem is what the left hand holds; clients that know nothing of it never send it.
+	OffhandItem string `json:"offhandItem,omitempty"`
 }
 
 type GameState struct {

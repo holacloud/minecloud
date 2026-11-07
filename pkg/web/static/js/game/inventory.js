@@ -14,6 +14,7 @@ Object.assign(Game.prototype, {
             if (parsed.counts && typeof parsed.counts === 'object') {
                 this.inventoryCounts = { ...this.inventoryCounts, ...parsed.counts };
             }
+            this.offhandType = offhandFromSave(parsed.offhand, this.inventoryCounts);
             if (Number.isInteger(parsed.selectedSlot)) {
                 this.selectedSlot = Math.max(0, Math.min(parsed.selectedSlot, this.inventory.length - 1));
             }
@@ -37,7 +38,8 @@ Object.assign(Game.prototype, {
             counts: this.inventoryCounts,
             selectedSlot: this.selectedSlot,
             hotbarPrimaryType: this.hotbarPrimaryType,
-            hotbarPinnedTypes: this.hotbarPinnedTypes
+            hotbarPinnedTypes: this.hotbarPinnedTypes,
+            offhand: this.offhandType || null
         }));
     },
 
@@ -50,6 +52,7 @@ Object.assign(Game.prototype, {
         this.inventory = this.inventory.filter(known);
         this.hotbarPinnedTypes = (this.hotbarPinnedTypes || []).filter(known);
         if (this.hotbarPrimaryType && !known(this.hotbarPrimaryType)) this.hotbarPrimaryType = null;
+        if (this.offhandType && !known(this.offhandType)) this.offhandType = null;
         const index = this.inventory.indexOf(selectedType);
         this.selectedSlot = index >= 0 ? index : 0;
     },
@@ -177,6 +180,7 @@ Object.assign(Game.prototype, {
             searchInput.value = this.inventorySearchTerm;
         }
         grid.innerHTML = '';
+        this.offhandRenderHud();
 
         const query = this.inventorySearchTerm.trim();
         const parsed = itemTagParseQuery(this.inventorySearchTerm);
@@ -226,6 +230,7 @@ Object.assign(Game.prototype, {
             item.appendChild(icon);
             item.appendChild(name);
             item.appendChild(count);
+            this.offhandDecorateItem(item, type);
             grid.appendChild(item);
         });
     },
@@ -561,6 +566,7 @@ Object.assign(Game.prototype, {
     },
 
     refreshHeldItemMesh(forceRebuild = false) {
+        this.offhandRefreshMesh(forceRebuild);
         if (!this.firstPersonItemAnchor || !this.world) return;
 
         const selectedType = this.getSelectedBlockType();

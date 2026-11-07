@@ -176,6 +176,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:warm_coat) [Abrigo cálido](90)
 - ![](item:scale_mail) [Cota de escamas](91)
 - ![](item:feather_cape) [Capa de plumas](92)
+- ![](item:torch) [La mano izquierda](251): torch, lantern, candle, firefly_jar, multimeter, thermometer, barometer, anemometer, helium_balloon
 
 ## Cebos y trampas
 

@@ -492,7 +492,7 @@ Object.assign(Game.prototype, {
         data.resourcesHarvestedAt = now;
         this.resourcesDrop('honeycomb', 1 + Math.floor(Math.random() * 2), hive.position);
         data.shake = 1;
-        if (item === 'torch') {
+        if (item === 'torch' || this.offhandType === 'torch') {
             data.colony.anger = 0;
             this.playNoiseBurst({ duration: 0.6, volume: 0.025, highpass: 500, lowpass: 2500 });
             this.receiveSystemMessage({ text: 'The smoke calms the bees while you take the honeycomb' });

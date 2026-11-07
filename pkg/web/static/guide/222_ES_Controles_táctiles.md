@@ -39,6 +39,7 @@ Toca una casilla de la **barra rápida** de abajo para elegir ese objeto.
   comer, soltar, la vista de cámara, el modo foto, la lista de jugadores, el chat de voz, la pantalla completa y
   los **ajustes**.
 - **🎒** abre el **inventario**.
+- **L** pasa una luz o un instrumento a la [mano izquierda](251), como la tecla X, y enseña lo que llevas.
 - **💬** abre el **chat** con el teclado. Escribe y pulsa **Send** (o la tecla de enviar del teclado); **✕** lo
   cierra. Los [comandos](12) como `/guide 12` funcionan igual que en un ordenador.
 

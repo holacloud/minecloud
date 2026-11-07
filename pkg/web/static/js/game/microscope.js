@@ -1099,6 +1099,9 @@ Object.assign(Game.prototype, {
                 }
             }
         }
+        // A light in the hand, held near it (js/game/offhand.js).
+        const carried = this.carriedLampNear(at);
+        if (carried && (!lamp || carried.level > lamp.level)) lamp = carried;
         const registry = world.registry;
         const blocks = (x, y, z) => {
             const id = world.getBlockId(x, y, z);

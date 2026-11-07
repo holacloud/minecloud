@@ -46,6 +46,8 @@ class Game {
         this.selectedSlot = 0;
         this.hotbarPrimaryType = null;
         this.hotbarPinnedTypes = [];
+        // The left hand (js/game/offhand.js): one unit, out of inventoryCounts.
+        this.offhandType = null;
         this.restoreInventoryState();
         this.playerName = this.loadPlayerName();
         this.playerShirtColor = this.loadPlayerShirtColor();
@@ -668,6 +670,10 @@ class Game {
             mesh.renderOrder = 10000;
             mesh.frustumCulled = false;
         });
+        const leftItemAnchor = new THREE.Group();
+        leftItemAnchor.position.copy(itemAnchor.position);
+        leftSleeve.add(leftItemAnchor);
+        this.firstPersonOffhandAnchor = leftItemAnchor;
         leftHandGroup.add(leftSleeve);
         leftHandGroup.add(leftCuff);
         leftHandGroup.add(leftHand);
@@ -1028,6 +1034,12 @@ class Game {
             return;
         }
 
+        if (event.code === 'KeyX' && !event.repeat) {
+            event.preventDefault();
+            this.offhandSwapSelected(event.shiftKey);
+            return;
+        }
+
         if (event.code === 'KeyG' && !event.repeat) {
             event.preventDefault();
             this.eatSelectedItem();
@@ -1187,10 +1199,8 @@ class Game {
     updateHeldTorchLight() {
         if (!this.heldTorchLight) return;
 
-        const hasTorchInHand = this.getSelectedBlockType() === 'torch' && this.getInventoryCount('torch') > 0;
-        this.heldTorchLight.intensity = hasTorchInHand ? 1.45 : 0;
-        // Terrain receives the held torch through the voxel-light shader (sky-independent).
-        this.world.setHeldLight(this.camera.position, hasTorchInHand);
+        // Terrain receives it through the voxel-light shader (sky-independent), and others' too: js/game/offhand.js.
+        this.carriedLightUpdate();
     }
 
     animate() {
@@ -1317,7 +1327,7 @@ class Game {
         }
         
         if (this.network.connected && now - this.lastNetworkUpdate >= 100) {
-            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType(), this.getCurrentPlayerAction(), this.getMountState());
+            this.network.updatePosition(this.playerAnchorPosition || this.cameraController.getPosition(), this.getSelectedHeldItemType(), this.getCurrentPlayerAction(), this.getMountState(), this.offhandType);
             this.lastNetworkUpdate = now;
         }
         

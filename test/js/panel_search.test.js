@@ -53,6 +53,7 @@ function makeGame({ touch = false } = {}) {
             getInventoryIconUrl: () => ''
         },
         inventory: ['stone', 'dirt', 'planks'],
+        offhandRenderHud() {}, offhandDecorateItem() {}, offhandRefreshMesh() {},
         inventoryCounts: { stone: 3, dirt: 2, planks: 1 },
         selectedSlot: 0, hotbarSize: 9, hotbarPinnedTypes: [], touchControlsEnabled: touch,
         craftingOpen: false, inventoryOpen: false, craftingSearchTerm: '', inventorySearchTerm: '', selectedCraftingRecipeId: null,

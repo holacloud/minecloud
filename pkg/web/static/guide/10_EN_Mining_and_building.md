@@ -52,6 +52,7 @@ For example, a gold pickaxe breaks stone in about 0.3 s. The [sword](71) does no
 - **Surprises:** breaking grass or leaves sometimes gives a [sapling](55) (8 %), and tall grass or leaves,
   very rarely, a [mob egg](74) (3.5 %).
 - **Q** drops one unit of the item in your hand.
+- **X** moves a light or an instrument to the [left hand](251).
 
 ## Building
 

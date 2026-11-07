@@ -50,8 +50,8 @@ class WorldRenderer {
         // 0 = torch light invisible (bright day) .. 1 = full strength (night, caves).
         this.blockLightStrength = { value: 0.6 };
         // The torch held by the local player, applied to terrain like placed torches.
-        this.heldLightPosition = { value: new THREE.Vector3() };
-        this.heldLightStrength = { value: 0 };
+        // Lights carried by players, for the terrain shader: x, y, z and reach in blocks (setCarriedLights).
+        this.carriedLights = { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] };
         this.hiddenBlock = null;
         this.textures = new Map();
         this.iconCache = new Map();
@@ -958,12 +958,11 @@ class WorldRenderer {
 
     // Baked voxel lighting for chunk meshes:
     // - `skyLight` scales sun/ambient lighting, so roofs and tunnels get dark;
-    // - `blockLight` (torches) and the held torch add warm light on top, independent of the sky.
+    // - `blockLight` (torches) and the lights players carry add warm light on top, independent of the sky.
     addBlockLight(material, foliage = null) {
         const uniforms = {
             blockLightStrength: this.blockLightStrength,
-            heldLightPosition: this.heldLightPosition,
-            heldLightStrength: this.heldLightStrength,
+            carriedLights: this.carriedLights,
             ...this.windUniforms,
             ...this.rippleUniforms
         };
@@ -1025,7 +1024,7 @@ class WorldRenderer {
                     '#include <common>',
                     'attribute float blockLight;',
                     'attribute float skyLight;',
-                    'uniform vec3 heldLightPosition;',
+                    'uniform vec4 carriedLights[3];',
                     'uniform float windTime;',
                     'uniform float windStrength;',
                     'varying float vBlockLight;',
@@ -1038,14 +1037,18 @@ class WorldRenderer {
                     wind,
                     'vBlockLight = blockLight;',
                     'vSkyLight = skyLight;',
-                    'float heldDistance = distance((modelMatrix * vec4(transformed, 1.0)).xyz, heldLightPosition);',
-                    'vHeldLight = pow(clamp(1.0 - heldDistance / 9.0, 0.0, 1.0), 2.0);'
+                    'vec3 carriedWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+                    'vHeldLight = 0.0;',
+                    // The further a light reaches the stronger it is; a free slot (reach 0) adds nothing.
+                    'for (int i = 0; i < 3; i++) {',
+                    '    float carried = clamp(1.0 - distance(carriedWorld, carriedLights[i].xyz) / max(carriedLights[i].w, 0.001), 0.0, 1.0);',
+                    '    vHeldLight = max(vHeldLight, carried * carried * carriedLights[i].w * 0.1);',
+                    '}'
                 ].join('\n'));
             shader.fragmentShader = shader.fragmentShader
                 .replace('#include <common>', [
                     '#include <common>',
                     'uniform float blockLightStrength;',
-                    'uniform float heldLightStrength;',
                     'varying float vBlockLight;',
                     'varying float vSkyLight;',
                     'varying float vHeldLight;'
@@ -1060,16 +1063,20 @@ class WorldRenderer {
                 ].join('\n'))
                 .replace('#include <emissivemap_fragment>', [
                     '#include <emissivemap_fragment>',
-                    'float torchLight = max(vBlockLight * blockLightStrength, vHeldLight * heldLightStrength);',
+                    'float torchLight = max(vBlockLight * blockLightStrength, vHeldLight);',
                     'totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.74, 0.45) * torchLight;'
                 ].join('\n'));
         };
         material.customProgramCacheKey = () => `voxel-light-${foliage || 'solid'}`;
     }
 
-    setHeldLight(position, active) {
-        if (position) this.heldLightPosition.value.copy(position);
-        this.heldLightStrength.value = active ? 0.9 : 0;
+    // `lights`: up to three { x, y, z, level }, where level is a block's light level (a torch, 14, reaches 9 blocks).
+    setCarriedLights(lights) {
+        this.carriedLights.value.forEach((slot, i) => {
+            const light = lights[i];
+            if (light) slot.set(light.x, light.y, light.z, light.level * 9 / 14);
+            else slot.w = 0;
+        });
     }
 
     setBlockLightStrength(value) {

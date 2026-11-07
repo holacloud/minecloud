@@ -80,6 +80,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Mouse wheel: select previous/next hotbar slot.
 - Keys `1` to `8`: select a hotbar slot.
 - `Q`: drop one unit of the selected item.
+- `X`: move the selected light or instrument to the left hand, or swap (`Shift + X`: put the left hand's away).
 - `G`: eat or use the selected item (food, drinks, gear).
 - `E`: open/close the full inventory panel.
 - `C`: open/close the crafting panel.
@@ -109,8 +110,8 @@ or off.
 - `Mine` (hold) and `Use`: the left and right mouse buttons.
 - `Jump` (double tap in creative: fly; then `Up` / `Down`), `Sneak` (toggle; gets off a mount).
 - Tap hotbar slots: change selected block.
-- `☰`: inventory, crafting, guide, bestiary, chat, blueprints, interact (`F`), eat, drop, camera view, photo mode,
-  players, voice, full screen and settings. `🎒`: inventory. `💬`: chat with Send and ✕ (commands work).
+- `☰`: inventory, crafting, guide, bestiary, chat, blueprints, interact (`F`), eat, drop, left hand, camera view, photo mode,
+  players, voice, full screen and settings. `🎒`: inventory. `💬`: chat with Send and ✕ (commands work). `L`: left hand (`X`).
 
 ## Crafting And Special Blocks
 

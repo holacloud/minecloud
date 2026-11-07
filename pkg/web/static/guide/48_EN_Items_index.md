@@ -176,6 +176,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:warm_coat) [Warm coat](90)
 - ![](item:scale_mail) [Scale mail](91)
 - ![](item:feather_cape) [Feather cape](92)
+- ![](item:torch) [The left hand](251): torch, lantern, candle, firefly_jar, multimeter, thermometer, barometer, anemometer, helium_balloon
 
 ## Baits and traps
 

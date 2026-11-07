@@ -46,6 +46,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
   [logic for the curious](212).
 - [Motor rams](217) and [lifts](218): electricity that moves blocks, with [mechanical projects](219).
 - [A laboratory that works](250): a whole institute on the grid, lever by lever.
+- [The left hand](251): a torch or an instrument while the right hand works (**X** key).
 - [Furniture](223): [chairs](224), [tables](225), [chests that store things](226), [kitchen and bath](227),
   [lights](228), [stained glass](229), [carpets and curtains](230), [paintings and a clock](231), [mirrors](232),
   an [oven that cooks](233), and a [fridge and freezer](234) that run on electricity.

@@ -579,13 +579,13 @@ registerModalPanel({
 });
 
 registerDamageModifier(function (amount, type) {
-    return type === 'fall' && this.getSelectedHeldItemType() === 'helium_balloon' ? 0 : amount;
+    return type === 'fall' && this.handsHold('helium_balloon') ? 0 : amount;
 });
 
 // The balloon holds you up: falling speed is capped while it is in your hand.
 registerFrameUpdate(function () {
     const camera = this.cameraController;
-    if (!camera || camera.mount || this.getSelectedHeldItemType() !== 'helium_balloon') return;
+    if (!camera || camera.mount || !this.handsHold('helium_balloon')) return;
     if (camera.velocityY < -CHEMISTRY_BALLOON_FALL_SPEED) camera.velocityY = -CHEMISTRY_BALLOON_FALL_SPEED;
 });
 

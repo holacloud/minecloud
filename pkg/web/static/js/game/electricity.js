@@ -54,6 +54,8 @@ const ELECTRIC_KINDS = {
 
 const ELECTRIC_PX = 1 / 16;
 const ELECTRIC_PROBE_INTERVAL = 1;
+// How often a multimeter in the left hand looks at what the player aims at (seconds).
+const ELECTRIC_AIM_INTERVAL = 0.25;
 const ELECTRIC_ROTOR_SCAN = 1;
 // Chunks around the player whose moving parts are drawn.
 const ELECTRIC_ROTOR_CHUNKS = 2;
@@ -682,12 +684,13 @@ Object.assign(Game.prototype, {
         this.electricListen();
         this.electricUpdateRotors(delta);
 
-        const holding = this.getSelectedHeldItemType() === 'multimeter' && this.isGameplayActive();
+        const holding = this.handsHold('multimeter') && this.isGameplayActive();
         if (!holding) {
             this.electricProbeTarget = null;
             this.electricRenderPanel(null);
             return;
         }
+        if (this.offhandType === 'multimeter') this.electricAimFromLeftHand(delta);
         if (this.electricPanelHold > 0) {
             this.electricPanelHold -= delta;
             if (this.electricPanelHold <= 0 && !this.electricProbeTarget) this.electricRenderPanel(null);
@@ -709,6 +712,26 @@ Object.assign(Game.prototype, {
         }
         this.network.send('powerProbe', target);
         if (!this.electricReport) this.electricRenderPanel('Multimeter', [['Reading', '...']]);
+    },
+
+    // In the left hand the right click belongs to the other hand: the multimeter reads what the player looks at.
+    electricAimFromLeftHand(delta) {
+        this.electricAimTimer = (this.electricAimTimer || 0) - delta;
+        if (this.electricAimTimer > 0) return;
+        this.electricAimTimer = ELECTRIC_AIM_INTERVAL;
+        const hit = this.raycastBlock(this.breakDistance);
+        const position = hit ? this.world.getBlockPositionFromIntersection(hit) : null;
+        if (position && electricKindOf(this.world.getBlockTypeAt(position.x, position.y, position.z))) {
+            const target = this.electricProbeTarget;
+            if (target && target.x === position.x && target.y === position.y && target.z === position.z) return;
+            this.electricProbeTarget = { x: position.x, y: position.y, z: position.z };
+            this.electricReport = null;
+            this.electricProbeTimer = 0;
+        } else if (this.electricProbeTarget) {
+            this.electricProbeTarget = null;
+            this.electricReport = null;
+            this.electricRenderPanel(null);
+        }
     },
 
     electricKindName(kind) {

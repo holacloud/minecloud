@@ -591,7 +591,7 @@ function panelGame(carried = {}) {
         receiveSystemMessage: (message) => game.said.push(message.text),
         updateHotbarCounts() {}, refreshHeldItemMesh() {}, renderCraftingPanel() {}, renderInventoryPanel() {}, saveInventoryState() {},
         playTone() {}, playPickupSound() {}, playPlaceSound() {}, showHitIndicator() {}, stopMining() {}, recapturePointerLock() {}, updatePointerLockHint() {},
-        isGameplayActive: () => true
+        isGameplayActive: () => true, carriedLampNear: () => null
     });
     ctx.window.devicePixelRatio = 1;
     game.microscopeIdentified = () => {};

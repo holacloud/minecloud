@@ -14,6 +14,8 @@ Hold it and **right click any electric block** (a wire, a generator, a battery, 
 shows the reading of **its whole network**, and it updates every second while you keep holding the multimeter.
 Switch to another item to put it away.
 
+In the [left hand](251) no click is needed: it reads the electric block you look at.
+
 | Line | What it means |
 |---|---|
 | **This block** | what that block is doing: how many watts it gives (generator) or uses (consumer), or how much energy it holds (battery) |

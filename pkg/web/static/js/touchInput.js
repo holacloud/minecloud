@@ -156,7 +156,7 @@ function computeTouchLayout({ width, height, insets = {} }) {
     }
     const hotbarHeight = slot + 2 * TOUCH_HOTBAR_FRAME;
     const hotbarWidth = touchHotbarWidth(slot);
-    // The top bar (menu, inventory and chat buttons) and the chat log below it.
+    // The top bar (menu, inventory, chat and left-hand buttons) and the chat log below it.
     const topBar = top + 8;
     const topButton = 44;
     const chatTop = topBar + topButton + 8;
@@ -179,7 +179,7 @@ function touchLayoutRects(layout, width, height) {
         joystick: fromBottom(layout.sideLeft, layout.controlsBottom, layout.joystick, layout.joystick),
         sprint: fromBottom(layout.sideLeft, layout.controlsBottom + layout.joystick + 10, layout.sprint, layout.sprint),
         buttons: fromBottom(width - layout.sideRight - layout.clusterWidth, layout.controlsBottom, layout.clusterWidth, layout.clusterHeight),
-        topBar: { left: layout.sideLeft, right: layout.sideLeft + 3 * layout.topButton + 16, top: layout.topBar, bottom: layout.topBar + layout.topButton }
+        topBar: { left: layout.sideLeft, right: layout.sideLeft + 4 * layout.topButton + 24, top: layout.topBar, bottom: layout.topBar + layout.topButton }
     };
 }
 

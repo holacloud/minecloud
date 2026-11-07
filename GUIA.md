@@ -526,3 +526,32 @@ microscopio: la luz del juego tiene nivel pero no color.
   canal, 221 estados en total, escritos en el nombre: `glow_block` (3000 K), `glow_block:k6500`, `glow_block:rgb503`.
   Cambia para todos; el servidor comprueba el alcance y el nombre.
 - **Al romperlo** da un `glow_block` normal: el color no se guarda en el inventario. Los planos y `/build` sí lo guardan.
+
+## La mano izquierda
+
+Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/offhand.js`).
+
+- **X** pasa a la izquierda el objeto seleccionado, o los intercambia; con el mismo en las dos manos lo devuelve; con la derecha
+  vacía, el de la izquierda pasa a la derecha. **Mayús + X** lo guarda. En el inventario, el botón **L** de cada objeto y la
+  casilla de arriba. En táctil, el botón **L** de arriba y **Left hand** en el menú.
+- **Una unidad de verdad:** sale de `inventoryCounts` y se guarda como `offhand` en `minecloud-inventory-state`, en el mismo JSON,
+  así que no se duplica. Colocar, tirar (Q), fabricar, cofres y microscopio solo ven el contador: no pueden tocarla. Morir no cambia
+  el inventario.
+
+| Objeto | En la izquierda |
+|---|---|
+| `torch` | luz 14; su humo calma a las abejas |
+| `lantern` | luz 13 |
+| `candle` | luz 9 |
+| `firefly_jar` | luz 7 |
+| `multimeter` | lee el bloque eléctrico que miras, sin clic |
+| `thermometer`, `barometer`, `anemometer` | su panel (un solo panel para las dos manos) |
+| `helium_balloon` | caída lenta y sin daño |
+
+- **Fuera de la lista:** lo que pide clic derecho (telescopio, cinta métrica, red, caña...) y las lámparas de mesa, de pie y candelabros,
+  que no son para llevar en la mano. No hay escudo, brújula ni reloj como objetos: la brújula y el reloj están siempre en pantalla.
+- **Luz:** alcance en bloques = nivel × 9 / 14. Tres huecos en el sombreador del terreno (`world.setCarriedLights`): el jugador y los dos
+  jugadores más cercanos con luz, a menos de 40 bloques. No rehace chunks. Mobs y avatares solo reciben la luz propia, por la luz puntual
+  que ya llevaba la cámara. Las luces alumbran también en la mano derecha.
+- **Microscopio:** una luz en cualquier mano cuenta si estás a 3 bloques o menos.
+- **Red:** el campo `offhandItem` de `playerMove`; los clientes antiguos lo ignoran y los que no lo mandan salen con la mano vacía.
