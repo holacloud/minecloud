@@ -76,7 +76,7 @@ test('the catalogue is the size the guide says, on every page that counts it', (
     const mobs = mobIds.length;
     const organisms = organismIds.length;
     assert.equal(mobs, 35);
-    assert.equal(organisms, 16);
+    assert.equal(organisms, 17);
     assert.ok(page(5, 'ES').includes(`**${mobs} animales y criaturas** y **${organisms} organismos microscópicos**, ${mobs + organisms} tarjetas`));
     assert.ok(page(5, 'EN').includes(`**${mobs} animals and creatures** and **${organisms} microscopic organisms**, ${mobs + organisms} cards`));
     assert.ok(page('B31X', 'ES').includes(`**${mobs} de ${mobs}.**`));
@@ -115,7 +115,7 @@ test('page 5 quotes the panel in its own language, and not in the other', () => 
         const text = ctx.BESTIARY_TEXT;
         return [text.pauseButton, text.close, text.factHabitat, text.factDiet, text.factDrops, text.factLures, text.factHookBait, text.factEncounters, text.factDefeated, text.factFirstSeen,
             text.factSize, text.factGroup, text.factIdentified, text.complete].map((line) => line[lang])
-            .concat(text.newEntry[lang].trim(), text.discovered[lang](12, 51).replace(/<\/?b>/g, ''), text.seenFrom[lang](40));
+            .concat(text.newEntry[lang].trim(), text.discovered[lang](12, 52).replace(/<\/?b>/g, ''), text.seenFrom[lang](40));
     };
     for (const [lang, other] of [['ES', 'EN'], ['EN', 'ES']]) {
         const text = page(5, lang);
@@ -345,7 +345,8 @@ test('an index row of page 16 and the title of its page say the same, and the sm
         }
     }
     const table = [...page(237, 'ES').matchAll(/^\| !\[\]\(mob:([a-z_]+)\) \| ([^|]+) \|/gm)];
-    assert.equal(table.length, organismIds.length);
+    // The table of 237 has the organisms of its time; the mould came with cultures (255).
+    assert.equal(table.length, organismIds.filter((id) => ctx.MICRO_SPECIES[id].page <= 247).length);
     for (const row of table) assert.equal(row[2], ctx.MICRO_SPECIES_ES[row[1]].name, row[1]);
 });
 

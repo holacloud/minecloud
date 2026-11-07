@@ -273,7 +273,8 @@ const BESTIARY_ORGANISM_HINTS_ES = {
     lactobacillus: 'Bastoncitos finos unidos en cadenas, allí donde ha habido leche.',
     plant_cell: 'Habitaciones diminutas de paredes verdes, una junto a otra.',
     animal_cell: 'Llevas millones encima, vayas donde vayas.',
-    mushroom_spore: 'Motas oscuras que caen de debajo de un sombrero.'
+    mushroom_spore: 'Motas oscuras que caen de debajo de un sombrero.',
+    mould: 'Pelusa verdeazulada en una placa que tenía que seguir limpia.'
 };
 
 // The items a sheet can name, in Spanish, as the guide does: diets, drops and baits.

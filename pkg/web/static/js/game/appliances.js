@@ -8,8 +8,9 @@
 // - Nothing spoils, and nothing changes in the inventory: what comes out cold stays cold, and what
 //   comes out frozen stays frozen until an oven thaws it. Frozen food cannot be eaten.
 // APPLIANCE_RECIPES, APPLIANCE_FUELS, APPLIANCE_FOUNDRY, APPLIANCE_FOUNDRY_FUELS, APPLIANCE_ARC,
-// APPLIANCE_CHILL and APPLIANCE_FREEZE mirror ovenRecipes, ovenFuels, foundryRecipes, foundryFuels,
-// arcRecipes, chillChanges and freezeChanges in appliances.go (test/js/furniture.test.js checks them).
+// APPLIANCE_AUTOCLAVE, APPLIANCE_CHILL and APPLIANCE_FREEZE mirror ovenRecipes, ovenFuels, foundryRecipes,
+// foundryFuels, arcRecipes, autoclaveRecipes, chillChanges and freezeChanges in appliances.go
+// (test/js/furniture.test.js and test/js/cultures.test.js check them).
 // Mixed into Game.prototype; hooked through js/extensions.js.
 
 const APPLIANCE_RECIPES = {
@@ -50,6 +51,17 @@ const APPLIANCE_ARC = {
     iron_ore: { out: 'steel_ingot', in: 1, coal: 1, yield: 2, seconds: 15 }
 };
 const APPLIANCE_ARC_REDUCER = 'coal_ore';
+// The autoclave (js/game/cultures.js has its block): steam sterilises dishes, and unsterile plates.
+const APPLIANCE_AUTOCLAVE = {
+    used_dish: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
+    agar_plate_unsterile: { out: 'agar_plate', in: 1, yield: 1, seconds: 15 }
+};
+
+// What the autoclave's panel says is in js/game/cultures_text.js, in both languages; this falls back on
+// English where that file is not loaded (some tests).
+function applianceCultureLine(key, english, ...args) {
+    return typeof cultureSay === 'function' ? cultureSay(key, ...args) : english;
+}
 
 // One entry per machine: what the panel shows and what it takes (`machines` in appliances.go).
 const APPLIANCE_MACHINES = {
@@ -69,6 +81,25 @@ const APPLIANCE_MACHINES = {
         recipes: APPLIANCE_ARC, reducer: APPLIANCE_ARC_REDUCER, captions: ['To melt', 'Coal', 'Result'], work: 'Melting',
         items: 'What it can melt, and coal: click to put them in',
         refused: 'not for the arc furnace', refusal: 'The arc furnace only takes what it can melt, and coal'
+    },
+    // Electric, with nothing in its second slot: its water is its own. Its lines are in both languages.
+    autoclave: {
+        recipes: APPLIANCE_AUTOCLAVE, refused: 'not for the autoclave',
+        get captions() { return [applianceCultureLine('autoclaveIn', 'To sterilise'), applianceCultureLine('autoclaveWater', 'Water (its own)'), applianceCultureLine('autoclaveOut', 'Sterile')]; },
+        get work() { return applianceCultureLine('autoclaveWork', 'Steam'); },
+        get items() { return applianceCultureLine('autoclaveItems', 'What it can sterilise: click to put it in'); },
+        get refusal() { return applianceCultureLine('autoclaveRefusal', 'The autoclave only takes used dishes and unsterile plates'); },
+        status(watts, contents) {
+            if (!contents.oven || !(contents.oven.cookMax > 0)) return { text: applianceCultureLine('autoclaveIdle', `Waiting: it draws no power until it has something to sterilise (then ${watts} W)`, watts), off: false };
+            if (contents.oven.starting) return { text: applianceCultureLine('autoclaveAsking', `Asking the network for ${watts} W...`, watts), off: false };
+            if (contents.powered) return { text: applianceCultureLine('autoclaveOn', `Steam at 121 °C, drawing ${watts} W`, watts), off: false };
+            return { text: applianceCultureLine('autoclaveOff', `No power: needs ${watts} W. It waits, and keeps what it has done`, watts), off: true };
+        },
+        recipeLine(type, englishNames) {
+            const recipe = APPLIANCE_AUTOCLAVE[type];
+            const names = (id) => (typeof cultureItemName === 'function' ? cultureItemName(id, englishNames(id)) : englishNames(id));
+            return recipe ? applianceCultureLine('autoclaveRecipe', `${names(type)} becomes ${names(recipe.out)} in ${recipe.seconds} s`, names(type), names(recipe.out), recipe.seconds) : '';
+        }
     }
 };
 

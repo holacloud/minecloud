@@ -215,6 +215,7 @@ const MICROSCOPE_TEXT = {
     sampleTooFar: { ES: 'Eso está demasiado lejos', EN: 'That is too far away' },
     sampleNeeds: { ES: 'Una muestra necesita agua o musgo', EN: 'A sample needs water or moss' },
     sampleAim: { ES: 'Apunta al agua o al musgo para tomar una muestra', EN: 'Aim at water or moss to take a sample' },
+    filterAim: { ES: 'Apunta al agua para filtrarla: el filtro solo sirve con agua', EN: 'Aim at water to filter it: a filter only works on water' },
     kitGiven: {
         ES: 'Equipo de microscopio: microscopio, tubos, portaobjetos, pipeta, un farol, muestras, tinciones, filtros y un diafragma de campo oscuro',
         EN: 'Microscope kit: microscope, tubes, slides, pipette, a lantern, samples, stains, filters and a dark-field stop'
@@ -364,6 +365,14 @@ const MICRO_SPECIES_ES = {
             iodine_tincture: 'Casi no cambian: la pared oscura ya tapa lo que hay dentro.',
             methylene_blue: 'Casi no cambian: la pared oscura no deja entrar el tinte y tapa lo que hay dentro.'
         }
+    },
+    mould: {
+        name: 'Moho Penicillium', size: 'esporas de 2-4 µm, pinceles de 0,1-0,3 mm', where: 'Una placa de agar abierta, o una placa sin esterilizar',
+        fact: 'En 1928 Alexander Fleming encontró una placa de bacterias estropeada por un moho como este: a su alrededor, las bacterias habían muerto. De esa placa estropeada salió la penicilina, el primer antibiótico.',
+        notes: {
+            iodine_tincture: 'Hilos amarillo pardo, sin almidón que enseñar: un hongo guarda glucógeno.',
+            methylene_blue: 'Los hilos y el pincel se vuelven azules y resaltan. En los laboratorios tiñen los mohos con un tinte azul muy parecido, el azul de algodón lactofenol.'
+        }
     }
 };
 
@@ -376,6 +385,9 @@ const MICROSCOPE_ITEMS_ES = {
     mushroom_red: 'Seta roja', mushroom_brown: 'Seta marrón', wheat: 'Trigo', leaves: 'Hojas', spruce_leaves: 'Hojas de abeto', birch_leaves: 'Hojas de abedul',
     jungle_leaves: 'Hojas de jungla', dark_oak_leaves: 'Hojas de roble oscuro', acacia_leaves: 'Hojas de acacia', cherry_leaves: 'Hojas de cerezo',
     maple_leaves: 'Hojas de arce', willow_leaves: 'Hojas de sauce',
+    // What the incubator grows, and the filter (js/game/cultures.js).
+    sample_filtered: 'Muestra filtrada', water_filter: 'Filtro de agua', culture_yeast: 'Cultivo de levadura', culture_lactobacillus: 'Cultivo de lactobacilos',
+    culture_soil: 'Cultivo de bacterias del suelo', culture_cyano: 'Cultivo de cianobacterias', culture_mould: 'Cultivo de moho',
     // What can light the mirror.
     torch: 'Antorcha', candle: 'Vela', lantern: 'Farol', table_lamp: 'Lámpara de mesa', floor_lamp: 'Lámpara de pie', chandelier: 'Lámpara de araña',
     electric_lamp: 'Lámpara eléctrica', light_bulb: 'Bombilla', grow_lamp: 'Lámpara de cultivo', oven: 'Horno', foundry: 'Fundición', arc_furnace: 'Horno de arco eléctrico'

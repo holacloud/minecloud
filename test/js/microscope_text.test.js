@@ -291,7 +291,7 @@ test('the Spanish panel names its items in Spanish, and changes language while i
 
 test('every organism, in all it says, is in Spanish', () => {
     const species = Object.keys(ctx.MICRO_SPECIES);
-    assert.equal(species.length, 16);
+    assert.equal(species.length, 17);
     assert.deepEqual(Object.keys(ctx.MICRO_SPECIES_ES).sort(), [...species].sort());
     for (const id of species) {
         const es = ctx.MICRO_SPECIES_ES[id];

@@ -218,3 +218,10 @@ func mossAt(worldX, worldZ int, s Surface) bool {
 	}
 	return false
 }
+
+// ChunkBiome is the biome a chunk is known by: the dominant one at its middle column, as Generate writes
+// it into Chunk.Biome and the client keeps in chunkBiomes (the weather's climate reads it).
+func ChunkBiome(chunkX, chunkZ int) string {
+	center := ChunkSize / 2
+	return dominantBiome(sampleClimate(float64(chunkX*ChunkSize+center), float64(chunkZ*ChunkSize+center)))
+}

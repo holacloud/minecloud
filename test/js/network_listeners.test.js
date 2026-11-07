@@ -32,5 +32,6 @@ test('both chests and the microscope listen to what a chest says', () => {
     for (const type of ['storageResult', 'storageContents', 'storageClosed']) {
         assert.ok(read('storage.js').includes(`network.on('${type}'`), `storage.js listens to ${type}`);
         assert.ok(read('microscope.js').includes(`network.on('${type}'`), `microscope.js listens to ${type}`);
+        assert.ok(read('cultures.js').includes(`network.on('${type}'`), `cultures.js listens to ${type}`);
     }
 });

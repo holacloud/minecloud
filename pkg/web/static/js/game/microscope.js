@@ -99,7 +99,7 @@ const MICROSCOPE_CAPTIONS = {
 // What each reason of the server is called in MICROSCOPE_TEXT.
 const MICROSCOPE_REFUSALS = {
     occupied: 'refusedOccupied', 'none left': 'refusedNoneLeft', gone: 'refusedGone', 'too far': 'refusedTooFar', 'not a microscope': 'refusedNotScope',
-    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not water or moss': 'sampleNeeds', 'bad request': 'refusedBadRequest', lost: 'refusedLost'
+    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not water or moss': 'sampleNeeds', 'not water': 'filterAim', 'bad request': 'refusedBadRequest', lost: 'refusedLost'
 };
 
 // What the panel says when the server refuses.
@@ -112,7 +112,8 @@ function microscopeRefusalLine(op, reason) {
 // What each request takes out of the inventory and gives on success.
 function microscopeRequestItems(op, source) {
     switch (op) {
-        case 'sample': return { took: { test_tube: 1 }, gives: { result: 1 } };
+        // A filter is a tube too, of sand and charcoal, and it is the filter that becomes the sample.
+        case 'sample': return { took: { [source === 'water_filter' ? 'water_filter' : 'test_tube']: 1 }, gives: { result: 1 } };
         case 'prepare': {
             const took = { glass_slide: 1 };
             if (source !== 'cheek') took[source] = 1;
@@ -866,7 +867,8 @@ Object.assign(Game.prototype, {
             }
             if (pending.op === 'sample') this.receiveSystemMessage({ text: microscopeSay('tookSample', this.microscopeName(outcome.type)) });
         } else if (pending.op === 'sample') {
-            this.receiveSystemMessage({ text: microscopeSay(outcome.reason === 'too far' ? 'sampleTooFar' : 'sampleNeeds') });
+            const why = { 'too far': 'sampleTooFar', 'not water': 'filterAim' }[outcome.reason] || 'sampleNeeds';
+            this.receiveSystemMessage({ text: microscopeSay(why) });
         } else if (this.microscopeAt) {
             this.microscopeNote = microscopeRefusalLine(pending.op, outcome.reason);
             this.microscopeRenderLines();
@@ -880,18 +882,18 @@ Object.assign(Game.prototype, {
 
     // ---- Taking samples ----
 
-    microscopeTakeSample(hit) {
+    microscopeTakeSample(hit, filter = null) {
         const water = this.bucketFindWater();
         let at = water;
-        if (!at && hit) {
+        if (!at && hit && !filter) {
             const position = this.world.getBlockPositionFromIntersection(hit);
             if (position && this.world.getBlockTypeAt(position.x, position.y, position.z) === 'moss') at = position;
         }
         if (!at) {
-            this.receiveSystemMessage({ text: microscopeSay('sampleAim') });
+            this.receiveSystemMessage({ text: microscopeSay(filter ? 'filterAim' : 'sampleAim') });
             return true;
         }
-        if (!this.microscopeRequest('sampleTake', 'sample', { x: at.x, y: at.y, z: at.z })) return true;
+        if (!this.microscopeRequest('sampleTake', 'sample', { x: at.x, y: at.y, z: at.z, ...(filter ? { source: filter } : {}) }, filter)) return true;
         if (water) this.bucketAfterUse(at.x, at.y, at.z);
         else {
             this.playPlaceSound('moss');
@@ -1840,6 +1842,7 @@ ITEM_USE_HANDLERS.unshift(function (itemType, hit) {
 });
 
 registerItemUseHandler(function (item, hit) {
+    if (item === 'water_filter') return this.microscopeTakeSample(hit, 'water_filter');
     return item === 'test_tube' ? this.microscopeTakeSample(hit) : false;
 });
 

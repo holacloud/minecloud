@@ -76,8 +76,8 @@ test('the stains match the server', () => {
     assert.match(fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'websocket.go'), 'utf8'), /"microscopeStain":/);
 });
 
-test('every one of the 16 organisms says what each stain does to it', () => {
-    assert.equal(SPECIES.length, 16);
+test('every one of the 17 organisms says what each stain does to it', () => {
+    assert.equal(SPECIES.length, 17);
     for (const id of SPECIES) {
         for (const stain of Object.keys(ctx.MICRO_STAINS)) {
             const entry = ctx.MICRO_SPECIES[id].stains[stain];
@@ -892,7 +892,8 @@ test('the guide: 246 and 247 in both languages, linked, and in the printed book'
 test('the guide says what the game does, and that a stain does not always kill', () => {
     for (const lang of ['ES', 'EN']) {
         const stains = guidePage(246, lang);
-        for (const id of SPECIES) assert.ok(stains.includes(`(mob:${id})`), `${id} in the table ${lang}`);
+        // The table of page 246 has the organisms there were when it was written; the mould's own page says it.
+        for (const id of SPECIES) assert.ok(guidePage(ctx.MICRO_SPECIES[id].page > 247 ? ctx.MICRO_SPECIES[id].page : 246, lang).includes(`(mob:${id})`), `${id} in the table ${lang}`);
         assert.match(stains, /1 `coal_ore` \+ 1 `element_s` \+ 1 `water_flask`/);
         assert.match(stains, lang === 'EN' ? /vital stains/ : /tinciones vitales/);
         assert.match(stains, lang === 'EN' ? /one stain to a slide/ : /un tinte por portaobjetos/);

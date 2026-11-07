@@ -18,7 +18,8 @@ import (
 //
 //   - sampleTake        {x, y, z, reqId}: a test tube dipped in water or moss. Answers sampleResult with
 //     the item it became: what a sample holds is decided here, from the column and the place, and
-//     never changes. The block stays.
+//     never changes. The block stays. With source "water_filter" it is the filter tube that was dipped,
+//     and only water gives a sample_filtered.
 //   - microscopePrepare {x, y, z, source, reqId}: puts a slide on the stage with `source` on it (a sample,
 //     another item, a tardigrade, or "cheek" for a smear of the player's own cheek).
 //   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed.
@@ -45,6 +46,9 @@ const (
 	tardigradeTube  = "tardigrade_tube"
 	tardigradeTun   = "tardigrade_tun"
 	sampleStill     = "sample_still_water"
+	sampleFiltered  = "sample_filtered"
+	// A tube of sand and charcoal: dipped in water, it takes a filtered sample.
+	waterFilter = "water_filter"
 
 	// A slide dries in a game day (240 s); nothing else about it changes with time here.
 	microscopeDrySeconds = 240.0
@@ -129,6 +133,15 @@ var microscopeItems = map[string][]string{
 	sampleStill:       {"soil_bacteria"},
 	tardigradeTube:    {"tardigrade"},
 	tardigradeTun:     {"tardigrade"},
+	// Water through a filter of sand and charcoal: what was big enough to see stays in the filter, and
+	// only a few bacteria get through (microbes.go).
+	sampleFiltered: {"soil_bacteria"},
+	// What an incubator grew, each its own kind (microbes.go).
+	"culture_yeast":         {"yeast"},
+	"culture_lactobacillus": {"lactobacillus"},
+	"culture_soil":          {"soil_bacteria"},
+	"culture_cyano":         {"cyanobacteria"},
+	"culture_mould":         {"mould"},
 }
 
 var microscopeWool = []string{"soil_bacteria"}
@@ -317,10 +330,16 @@ func (b *storageBook) takeSample(w cropWorld, surfaceAt func(x, z int) terrain.S
 		return refuse("not water or moss")
 	}
 	item := ""
-	switch name {
-	case "water":
+	switch {
+	case request.Source == waterFilter:
+		// Whatever the water held, only what is smaller than the gaps in the sand gets through.
+		if name != "water" {
+			return refuse("not water")
+		}
+		item = sampleFiltered
+	case name == "water":
 		item = sampleOfWater(surfaceAt(request.X, request.Z), request.X, request.Y, request.Z)
-	case "moss":
+	case name == "moss":
 		item = sampleOfMoss(request.X, request.Y, request.Z)
 	default:
 		return refuse("not water or moss")

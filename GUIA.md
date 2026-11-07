@@ -486,6 +486,46 @@ Páginas 246 y 247 de la guía del juego.
 | 0,77 | `candle` | 0,53: flojo |
 | 0,88 o más | lámpara de mesa, `lantern`, `electric_lamp`, sol pleno | 0,87 a 1: bueno |
 
+### Cultivos de microbios: incubadora, autoclave y filtro
+
+Páginas 253 a 255 de la guía del juego (`js/game/cultures.js`, `pkg/network/microbes.go`). Ningún microbio daña al
+jugador: los cultivos viven dentro de la incubadora, en el servidor, y en el inventario no cambia nada.
+
+| Resultado | Ingredientes |
+|---|---|
+| `incubator` | 4 `iron_ore` + 2 `glass` + 1 `thermometer` |
+| `autoclave` | 3 `iron_block` + 1 `glass` |
+| 2 `petri_dish` | 1 `glass` |
+| `agar_plate` | 1 `petri_dish` + 1 `wheat` + 1 `water_flask` |
+| `agar_plate_unsterile` | 1 `used_dish` + 1 `wheat` + 1 `water_flask` (lleva esporas de moho) |
+| `water_filter` | 1 `sand` + 1 `coal_ore` + 1 `test_tube` |
+
+- **Incubadora:** clic derecho (en táctil, tocar) abre su panel: tres placas, la temperatura de dentro, la elegida (de 5 a
+  45 °C, con barra o − y +), corriente, luz y la curva de la placa elegida. Gasta 20 W solo mientras algo crece. Sin
+  corriente se queda a la temperatura del sitio (el modelo del termómetro, portado al servidor).
+- **Sembrar:** flores o `honeycomb` dan levadura; `milk` o `cheese`, lactobacilos; `dirt`, bacterias del suelo; una
+  muestra con cianobacterias, cianobacterias (solo crecen con sol directo o una lámpara de cultivo cerca); un cultivo, el
+  suyo. Una siembra por placa.
+- **Sacar:** con 10⁶ células o más, un `culture_*` y una `used_dish`; si no, solo la `used_dish`; sin nada crecido, la
+  placa tal cual. Una placa sin esterilizar con moho da `culture_mould`.
+- **Modelo:** por placa, log10 de células, latencia (trabajo h0 = 2) y nutriente; ritmo con el modelo de temperaturas
+  cardinales de Rosso. Las cuatro fases (latencia, exponencial, estacionaria, muerte). Unos 3 minutos de 10³ a 10⁹ a la
+  temperatura óptima, y un día de juego llena antes de morir. El moho frena a lactobacilos y bacterias del suelo
+  (penicilina) y deja un anillo limpio en la placa.
+
+| Microbio | Mín. | Ópt. | Máx. |
+|---|---|---|---|
+| Levadura | 5 | 30 | 42 |
+| Lactobacilo | 15 | 42 | 48 |
+| Bacterias del suelo | 10 | 30 | 45 |
+| Cianobacterias (con luz) | 15 | 28 | 38 |
+| Moho Penicillium | 4 | 23 | 37 |
+
+- **Autoclave:** máquina eléctrica de 40 W bajo demanda, panel de cofre: `used_dish` → `petri_dish` (10 s),
+  `agar_plate_unsterile` → `agar_plate` (15 s).
+- **Filtro:** como un tubo, sobre agua: `sample_filtered`, que al microscopio solo enseña unas pocas bacterias.
+- **Kit de pruebas:** `/culturekit`, solo en modo creativo.
+
 ## Metales
 
 Páginas 248 y 249 de la guía del juego. Lo decide `pkg/terrain/ores.go`, y `js/terrainGen.js` hace lo mismo.

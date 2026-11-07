@@ -53,6 +53,8 @@ const WEATHER_BIOME_CLIMATE = {
     forest: { day: 20, night: 12 },
     rocky: { day: 15, night: 4 }
 };
+// Where the climate of a place is read: there and 10 blocks each way.
+const WEATHER_CLIMATE_SAMPLES = [[0, 0], [10, 0], [-10, 0], [0, 10], [0, -10]];
 
 // ---------------------------------------------------------------------------------------
 // The models (pure functions: also usable from Node tests)
@@ -91,6 +93,44 @@ function weatherAirTemperature(climate, hour, y, rain = 0) {
     const altitude = Math.max(0, y - 14) * 0.4;
     const shower = rain * (3 + 0.1 * (climate.day - climate.night));
     return climate.night + (climate.day - climate.night) * warmth - altitude - shower;
+}
+
+// The climate of a place from the biomes of the chunks around it (null where a chunk is not known): their
+// average, so borders blend. Any biome without a climate of its own counts as plains, and with nothing known
+// it is plains. pkg/network/temperature.go has the same (test/js/weather_station.test.js and its Go test
+// compare both on pkg/network/testdata/temperature_grid.json).
+function weatherClimateOf(biomes) {
+    const sum = { day: 0, night: 0 };
+    let count = 0;
+    for (const biome of biomes) {
+        const climate = WEATHER_BIOME_CLIMATE[biome] || (biome ? WEATHER_BIOME_CLIMATE.plains : null);
+        if (!climate) continue;
+        sum.day += climate.day;
+        sum.night += climate.night;
+        count++;
+    }
+    if (count === 0) return WEATHER_BIOME_CLIMATE.plains;
+    return { day: sum.day / count, night: sum.night / count };
+}
+
+// The temperature (°C) at a place: the open air for its climate, hour (0-24), height and rain, then what
+// is around it. In water it barely follows the day; under 3 or more solid blocks (`cover`, of the 16 over
+// it) it is a cave, steady and cool; under a roof it leans a little towards 18. Mirrored in Go (above).
+function weatherLocalTemperature(climate, hour, y, rain, inWater, cover) {
+    let celsius = weatherAirTemperature(climate, hour, y, rain);
+    if (inWater) {
+        // Water barely follows the day: it stays near the day's mean.
+        const mean = (climate.day + climate.night) / 2 - Math.max(0, y - 14) * 0.4;
+        return Math.max(2, mean + (celsius - mean) * 0.25);
+    }
+    if (cover >= 3) {
+        // Caves keep a steady cool, a little warmer the deeper you go.
+        const cave = 12 + Math.max(0, -y) * 0.3;
+        celsius += (cave - celsius) * Math.min(1, cover / 6);
+    } else if (cover > 0) {
+        celsius += (18 - celsius) * 0.25;
+    }
+    return celsius;
 }
 
 // Sea-level pressure (hPa): a slow drift from day to day, a small twice-daily tide, and a deep
@@ -399,19 +439,10 @@ Object.assign(Game.prototype, {
 
     // The biome climate around a position, averaged over nearby chunks so borders blend.
     weatherClimateAt(position) {
-        const sum = { day: 0, night: 0 };
-        let count = 0;
-        [[0, 0], [10, 0], [-10, 0], [0, 10], [0, -10]].forEach(([dx, dz]) => {
+        return weatherClimateOf(WEATHER_CLIMATE_SAMPLES.map(([dx, dz]) => {
             const { chunkX, chunkZ } = this.world.getChunkCoords(position.x + dx, position.z + dz);
-            const biome = this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ));
-            const climate = WEATHER_BIOME_CLIMATE[biome] || (biome ? WEATHER_BIOME_CLIMATE.plains : null);
-            if (!climate) return;
-            sum.day += climate.day;
-            sum.night += climate.night;
-            count++;
-        });
-        if (count === 0) return WEATHER_BIOME_CLIMATE.plains;
-        return { day: sum.day / count, night: sum.night / count };
+            return this.world.chunkBiomes.get(this.world.chunkKey(chunkX, chunkZ)) || null;
+        }));
     },
 
     // Solid blocks over a station, not counting its own upper half.
@@ -424,24 +455,9 @@ Object.assign(Game.prototype, {
         const time = ((this.timeOfDay || 0) + ahead * WEATHER_HOUR) % 1;
         const climate = this.weatherClimateAt(position);
         const hour = ((time * 24) + 6) % 24;
-        let celsius = weatherAirTemperature(climate, hour, position.y, weatherRainLevel(time, this.rainWindow));
-        const x = Math.floor(position.x);
-        const y = Math.floor(position.y);
-        const z = Math.floor(position.z);
-        if (this.world.getBlockTypeAt(x, y, z) === 'water') {
-            // Water barely follows the day: it stays near the day's mean.
-            const mean = (climate.day + climate.night) / 2 - Math.max(0, position.y - 14) * 0.4;
-            return Math.max(2, mean + (celsius - mean) * 0.25);
-        }
-        const cover = this.weatherCover(position);
-        if (cover >= 3) {
-            // Caves keep a steady cool, a little warmer the deeper you go.
-            const cave = 12 + Math.max(0, -position.y) * 0.3;
-            celsius += (cave - celsius) * Math.min(1, cover / 6);
-        } else if (cover > 0) {
-            celsius += (18 - celsius) * 0.25;
-        }
-        return celsius;
+        const rain = weatherRainLevel(time, this.rainWindow);
+        const inWater = this.world.getBlockTypeAt(Math.floor(position.x), Math.floor(position.y), Math.floor(position.z)) === 'water';
+        return weatherLocalTemperature(climate, hour, position.y, rain, inWater, inWater ? 0 : this.weatherCover(position));
     },
 
     // Local pressure (hPa, lower high up) and its change over the last in-game hour.

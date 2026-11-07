@@ -20,7 +20,7 @@
 // (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; the panel is a modal panel (see registerModalPanel).
 
-const STORAGE_KINDS = { arc_furnace: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, microscope: 1, oven: 3, wardrobe: 45 };
+const STORAGE_KINDS = { arc_furnace: 3, autoclave: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, incubator: 3, microscope: 1, oven: 3, wardrobe: 45 };
 // Kinds with a second compartment, and how many slots it has.
 const STORAGE_FREEZERS = { fridge: 9 };
 const STORAGE_FREEZER_TAB = 'freezer';
@@ -496,14 +496,15 @@ Object.assign(Game.prototype, {
             if (machine && machine.fuels) {
                 status.textContent = storageOvenStatus(contents.oven, machine);
             } else if (machine) {
-                const line = storageArcStatus(this.storageKind, contents);
+                const line = machine.status ? machine.status(ELECTRIC_KINDS[this.storageKind].watts, contents) : storageArcStatus(this.storageKind, contents);
                 status.textContent = line.text;
                 status.classList.toggle('off', line.off);
                 if (food) food.parentNode.classList.toggle('paused', line.off);
             }
             // The foundry and the arc furnace say what they will make of what is in them.
             const held = this.storageKind !== 'oven' && contents.slots[0] && contents.slots[0].type;
-            const recipe = held ? applianceRecipeLine(this.storageKind, held, (type) => this.getBlockDisplayName(type)) : '';
+            const names = (type) => this.getBlockDisplayName(type);
+            const recipe = !held ? '' : machine && machine.recipeLine ? machine.recipeLine(held, names) : applianceRecipeLine(this.storageKind, held, names);
             if (recipe) status.textContent += `. ${recipe}`;
         }
         if (!contents.cold) return;

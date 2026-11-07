@@ -49,7 +49,10 @@ const ELECTRIC_KINDS = {
     chest_freezer: { role: 'consumer', watts: 30 },
     // --- The electric arc furnace (js/game/smelters.js) ---
     // 150 W: one 80 W rtg is not enough, two are. It asks only while it has work to do.
-    arc_furnace: { role: 'consumer', watts: 150, onDemand: true }
+    arc_furnace: { role: 'consumer', watts: 150, onDemand: true },
+    // Cultures (js/game/cultures.js): they ask only while they have work.
+    incubator: { role: 'consumer', watts: 20, onDemand: true },
+    autoclave: { role: 'consumer', watts: 40, onDemand: true }
 };
 
 const ELECTRIC_PX = 1 / 16;

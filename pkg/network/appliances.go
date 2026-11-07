@@ -49,6 +49,8 @@ const (
 	ovenKind    = "oven"
 	foundryKind = "foundry"
 	arcKind     = "arc_furnace"
+	// The autoclave sterilises what cultures dirtied (microbes.go).
+	autoclaveKind = "autoclave"
 	// What the arc furnace's recipes use up, and what its second slot takes.
 	arcReducer = "coal_ore"
 	// The slots of every machine: what is worked on, the fuel (or the arc's coal), the result.
@@ -151,10 +153,19 @@ type machine struct {
 	Reducer string
 }
 
+// What the autoclave does: steam under pressure, about 121 C, kills every microbe and spore. A dish comes
+// out sterile, and an unsterile plate a sterile one (labs sterilise their media before they pour them).
+// Its water is its own, and its second slot takes nothing (microbes.go).
+var autoclaveRecipes = map[string]ovenRecipe{
+	"used_dish":            {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"agar_plate_unsterile": {Out: "agar_plate", In: 1, Yield: 1, Seconds: 15},
+}
+
 var machines = map[string]*machine{
-	ovenKind:    {Name: "oven", Recipes: ovenRecipes, Fuels: ovenFuels},
-	foundryKind: {Name: "foundry", Recipes: foundryRecipes, Fuels: foundryFuels},
-	arcKind:     {Name: "arc furnace", Recipes: arcRecipes, Reducer: arcReducer},
+	ovenKind:      {Name: "oven", Recipes: ovenRecipes, Fuels: ovenFuels},
+	foundryKind:   {Name: "foundry", Recipes: foundryRecipes, Fuels: foundryFuels},
+	arcKind:       {Name: "arc furnace", Recipes: arcRecipes, Reducer: arcReducer},
+	autoclaveKind: {Name: "autoclave", Recipes: autoclaveRecipes},
 }
 
 func (m *machine) electric() bool {
@@ -194,13 +205,13 @@ func applianceIsCold(kind string) bool {
 }
 
 func applianceIsKind(kind string) bool {
-	return machines[kind] != nil || applianceIsCold(kind)
+	return machines[kind] != nil || applianceIsCold(kind) || kind == incubatorKind
 }
 
 // applianceUsesPower: its panel says whether it has electricity.
 func applianceUsesPower(kind string) bool {
 	m := machines[kind]
-	return applianceIsCold(kind) || (m != nil && m.electric())
+	return applianceIsCold(kind) || kind == incubatorKind || (m != nil && m.electric())
 }
 
 // slotFor says which slot takes this item: the food's, the second one, or -1.
@@ -391,7 +402,13 @@ func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 			continue
 		}
 		var changed, work bool
-		if m := machines[block.Kind]; m != nil {
+		b.world = w
+		if block.Kind == incubatorKind {
+			changed, work = b.incubatorStepLocked(w, key, cell, block, dt)
+			if !work {
+				b.stopAskingLocked(cell, key)
+			}
+		} else if m := machines[block.Kind]; m != nil {
 			// The grid has heard an electric machine only if it asked before this tick.
 			changed, work = m.step(block, dt, m.electric() && b.asked[key] > 0 && b.powered(cell))
 			b.showFireLocked(w, cell, name, b.litLocked(m, cell, block))

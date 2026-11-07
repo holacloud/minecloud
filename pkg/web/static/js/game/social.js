@@ -244,6 +244,9 @@ Object.assign(Game.prototype, {
             case 'microkit':
                 this.microscopeKit(normalized);
                 break;
+            case 'culturekit':
+                this.cultureKit(normalized);
+                break;
             case 'build':
                 this.constructionCommand(normalized, args);
                 break;

@@ -195,3 +195,5 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:tardigrade_tun) [Cryptobiosis](241): tardigrade_tun
 - ![](item:methylene_blue) [Stains](246): methylene_blue, iodine_tincture
 - ![](item:darkfield_stop) [Filters and dark-field](247): darkfield_stop, cobalt_glass, the stained glass
+- ![](item:incubator) [Cultures and the incubator](253): incubator, petri_dish, agar_plate, used_dish, the `culture_*`
+- ![](item:autoclave) [Sterilising](255): autoclave, agar_plate_unsterile, water_filter, sample_filtered, culture_mould

@@ -93,7 +93,7 @@ const ITEM_TAG_NOT_ITEMS = ['air'];
 const ITEM_TAG_METAL_ELEMENTS = /^(Li|Be|Na|Mg|Al|K|Ca|Ti|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ag|Sn|W|Pt|Au|Hg|Pb)$/;
 const ITEM_TAG_COLOR_PATTERN = new RegExp(`(?:^|_)(${Object.keys(ITEM_TAG_COLORS).sort((a, b) => b.length - a.length).join('|')})(?:_|$)`);
 // Machines with slots, but nobody keeps things in them.
-const ITEM_TAG_NOT_STORAGE = ['oven', 'foundry', 'arc_furnace', 'microscope'];
+const ITEM_TAG_NOT_STORAGE = ['oven', 'foundry', 'arc_furnace', 'microscope', 'incubator', 'autoclave'];
 
 // Patterns of the id: id -> what it says.
 const ITEM_TAG_PATTERNS = [
@@ -111,6 +111,7 @@ const ITEM_TAG_PATTERNS = [
     [/_ram$/, ['mechanism']],
     [/^lift_/, ['mechanism', 'transport']],
     [/^sample_/, ['sample', 'science', 'microscope']],
+    [/^culture_/, ['science', 'microscope']],
     [/^bait_/, ['bait']],
     [/_bucket$/, ['tool']],
     [/^flower_(?!pot$)|^mushroom_/, ['plant']]
@@ -139,8 +140,10 @@ const ITEM_TAG_TABLE = {
         'copper_sulfate', 'gold_leaf', 'baking_soda', 'quicklime', 'pyrite', 'iodine_tincture', 'fluorite', 'battery', 'meteoric_iron', 'lab_bench', 'neon_lamp', 'argon_lamp',
         'cobalt_glass', 'mirror', 'foundry', 'arc_furnace', 'methylene_blue'],
     science: ['thermometer', 'barometer', 'anemometer', 'telescope', 'star_chart', 'weather_station', 'breeding_notebook', 'multimeter', 'lab_bench', 'microscope', 'ant_farm',
-        'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop'],
-    microscope: ['microscope', 'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop', 'moss'],
+        'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop',
+        'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter'],
+    microscope: ['microscope', 'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop', 'moss',
+        'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter'],
     decoration: ['sign', 'flower_pot', 'vase', 'wall_clock', 'wall_mirror', 'mirror', 'sound_block', 'spray_paint', 'glow_block'],
     transport: ['ladder'],
     // Colours no id says.

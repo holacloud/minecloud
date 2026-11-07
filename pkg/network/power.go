@@ -103,6 +103,11 @@ var powerKinds = map[string]powerKind{
 	// --- The electric arc furnace (appliances.go) ---
 	// 150 W: one 80 W rtg is not enough, two are. It asks only while it has work to do.
 	"arc_furnace": {Role: powerConsumer, Watts: 150, OnDemand: true},
+	// --- Cultures (microbes.go) ---
+	// An incubator holds its temperature with 20 W while something grows in it; the autoclave asks 40 W
+	// while it has something to sterilise.
+	"incubator": {Role: powerConsumer, Watts: 20, OnDemand: true},
+	"autoclave": {Role: powerConsumer, Watts: 40, OnDemand: true},
 }
 
 const (

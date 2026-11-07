@@ -93,7 +93,15 @@ const MICRO_ITEMS = {
     willow_leaves: ['plant_cell'],
     sample_still_water: ['soil_bacteria'],
     tardigrade_tube: ['tardigrade'],
-    tardigrade_tun: ['tardigrade']
+    tardigrade_tun: ['tardigrade'],
+    // Through sand and charcoal only a few bacteria get (js/game/cultures.js).
+    sample_filtered: ['soil_bacteria'],
+    // What an incubator grew.
+    culture_yeast: ['yeast'],
+    culture_lactobacillus: ['lactobacillus'],
+    culture_soil: ['soil_bacteria'],
+    culture_cyano: ['cyanobacteria'],
+    culture_mould: ['mould']
 };
 const MICRO_WOOL_SPECIES = ['soil_bacteria'];
 
@@ -1432,6 +1440,52 @@ function microDrawSpore(ctx, t, st = {}) {
     microFill(ctx, 'rgba(36,22,14,0.95)');
 }
 
+// Penicillium, the mould of an old orange and of Fleming's plate: threads (hyphae) with cross-walls, and
+// standing from them a stalk that ends in a little brush, the penicillus that names it, of chains of round
+// blue-green spores (conidia). Drawn with the stalk along +x.
+function microDrawMould(ctx, t, st = {}) {
+    const seed = st.seed ?? 9;
+    const random = microRng(seed);
+    const sway = st.still ? 0 : Math.sin(t * 0.4 + seed) * 1.5;
+    const wall = st.marks && st.marks.wall;
+    // The hypha it grows from, crossing at the foot, with its cross-walls.
+    microCurve(ctx, [[-50, -26], [-46, -6], [-50, 14], [-44, 34]]);
+    microStroke(ctx, wall || 'rgba(150,170,150,0.7)', 5);
+    microCurve(ctx, [[-50, -26], [-46, -6], [-50, 14], [-44, 34]]);
+    microStroke(ctx, 'rgba(226,236,222,0.5)', 2.6);
+    for (const y of [-16, 6, 24]) {
+        ctx.beginPath();
+        ctx.moveTo(-51, y);
+        ctx.lineTo(-44, y + 1);
+        microStroke(ctx, 'rgba(110,130,110,0.7)', 0.8);
+    }
+    // The stalk.
+    microCurve(ctx, [[-47, 0], [-20, sway * 0.3], [8, sway]]);
+    microStroke(ctx, wall || 'rgba(150,170,150,0.75)', 4.4);
+    microCurve(ctx, [[-47, 0], [-20, sway * 0.3], [8, sway]]);
+    microStroke(ctx, 'rgba(230,240,226,0.5)', 2.2);
+    // The brush: a few branches, each with its chains of spores.
+    const branches = 4;
+    for (let i = 0; i < branches; i++) {
+        const spread = (i - (branches - 1) / 2) * 0.32;
+        const bx = 8 + Math.cos(spread) * 10;
+        const by = sway + Math.sin(spread) * 10;
+        ctx.beginPath();
+        ctx.moveTo(8, sway);
+        ctx.lineTo(bx, by);
+        microStroke(ctx, wall || 'rgba(140,160,140,0.8)', 2.6);
+        const chain = 6 + Math.floor(random() * 4);
+        for (let k = 0; k < chain; k++) {
+            const r = 3.1 - k * 0.12;
+            const cx = bx + (k + 0.7) * 6.2 * Math.cos(spread * 1.25);
+            const cy = by + (k + 0.7) * 6.2 * Math.sin(spread * 1.25);
+            microOval(ctx, cx, cy, r, r);
+            microFill(ctx, (st.marks && st.marks.spores) || 'rgba(70,136,120,0.85)');
+            microStroke(ctx, 'rgba(30,80,70,0.7)', 0.5);
+        }
+    }
+}
+
 // What most of them become when the slide dries: a round thick-walled cyst.
 function microDrawCyst(ctx, t, st = {}) {
     microOval(ctx, 0, 0, 34, 32);
@@ -1564,6 +1618,13 @@ const MICRO_SPECIES = {
         fact: 'A mushroom is only the fruit of a fungus: one can release billions of spores, each a single cell that does the work of a seed, and the wind takes them.',
         hint: 'Dark specks that fall from under a cap.', page: 244,
         dot: '#54402c', count: [40, 70], spread: 220, move: 'still', whenDry: 'dies', draw: microDrawSpore
+    },
+    mould: {
+        name: 'Penicillium Mould', latin: 'Penicillium', size: 'spores 2-4 µm, brushes 0.1-0.3 mm', drawn: 160, mag: 100,
+        where: 'An agar plate left open, or a dish not sterilised',
+        fact: 'In 1928 Alexander Fleming found a plate of bacteria spoilt by a mould like this one: around it, the bacteria had died. From that spoilt plate came penicillin, the first antibiotic.',
+        hint: 'Blue-green fuzz on a plate that should have stayed clean.', page: 255,
+        dot: '#4a8a78', count: [5, 9], spread: 600, move: 'still', whenDry: 'dies', draw: microDrawMould
     }
 };
 
@@ -1642,6 +1703,10 @@ const MICRO_STAIN_TABLE = {
     mushroom_spore: {
         iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.15, note: 'Hardly any change: the dark wall already hides what is inside.' },
         methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.15, note: 'Hardly any change: the dark wall keeps the dye out and hides what is inside.' }
+    },
+    mould: {
+        iodine_tincture: { tint: MICRO_IODINE_TINT, amount: 0.5, note: 'Yellow-brown threads, with no starch to show: a fungus stores glycogen.' },
+        methylene_blue: { tint: MICRO_BLUE_TINT, amount: 0.6, wall: 'rgba(40,70,160,0.85)', note: 'The threads and the brush go blue and stand out. Labs stain moulds with a blue dye much like this one, lactophenol cotton blue.' }
     }
 };
 for (const [id, stains] of Object.entries(MICRO_STAIN_TABLE)) MICRO_SPECIES[id].stains = stains;
@@ -1677,7 +1742,8 @@ function microPopulate(source, seed, tardigrades = 0) {
     const organisms = [];
     for (const id of species) {
         const def = MICRO_SPECIES[id];
-        const count = id === 'tardigrade' ? tardigrades : (source === 'sample_still_water' ? 8 + Math.floor(random() * 8) : microRange(random, def.count));
+        const few = source === 'sample_filtered' ? 2 + Math.floor(random() * 4) : source === 'sample_still_water' ? 8 + Math.floor(random() * 8) : null;
+        const count = id === 'tardigrade' ? tardigrades : (few ?? microRange(random, def.count));
         const columns = Math.ceil(Math.sqrt(count * 1.3));
         for (let i = 0; i < count; i++) {
             // Tissue lies in rows, wall to wall; anything else is scattered about the middle.

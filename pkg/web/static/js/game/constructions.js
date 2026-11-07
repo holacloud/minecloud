@@ -1178,6 +1178,12 @@ function constructionShowroom(b) {
     b.set(51, 1, 16, 'rtg');
     b.shaped(52, 1, 16, 'arc_furnace', 'arc_furnace', { facing: 'n', fire: 'off' });
     b.set(53, 1, 16, 'rtg');
+    // Cultures, on a generator of their own: an incubator (20 W) and an autoclave (40 W) of its 80 W.
+    b.set(51, 1, 9, 'rtg');
+    piece(52, 1, 9, 'incubator', 'incubator', 's');
+    piece(53, 1, 9, 'autoclave', 'autoclave', 's');
+    sign(50, 10, 's', 'Incubadora y autoclave.', 'Incubadora: placa de agar y algo que sembrar. Autoclave: esteriliza las placas sucias. Guía 253.',
+        'Incubator and autoclave. Incubator: an agar plate and something to inoculate. Autoclave: it sterilises dirty dishes. Guide 253.');
 
     // ---- 14. The microscope: one by the daylight strip, water and moss to sample, and two in the light
     // room, one beside a candle and one in the bay with no light at all ----

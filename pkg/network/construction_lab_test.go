@@ -499,6 +499,20 @@ func TestLabColdChainAndArc(t *testing.T) {
 				t.Fatalf("%s does not run", name)
 			}
 		}
+		// The incubator and the autoclave share the chain and ask only with work: both at once still fit.
+		r.g.asks[powerPos(r.mark("incubator"))] = true
+		r.g.asks[powerPos(r.mark("autoclave"))] = true
+		r.seconds(4)
+		cold = r.networkOf("rtg:cold")
+		want := 90 + powerKinds[incubatorKind].Watts + powerKinds[autoclaveKind].Watts
+		if cold.demand != want || want > cold.gen || !cold.powered {
+			t.Fatalf("cold with cultures: %v W of %v W, %v", cold.demand, cold.gen, cold.powered)
+		}
+		for _, name := range []string{"incubator", "autoclave", "freezer"} {
+			if !r.g.runsAt(powerPos(r.mark(name))) {
+				t.Fatalf("%s does not run with everything on", name)
+			}
+		}
 		// Idle, the arc asks for nothing; given work, it runs on its 2 rtg.
 		arc := r.networkOf("arc")
 		if arc.demand != 0 || arc.gen != 160 {

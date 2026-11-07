@@ -1220,7 +1220,13 @@ function labDrawChemistry(b, t) {
     t.mark('fridge:2', 45, y, 32);
     piece(46, y, 32, 'chest_freezer', 'chest_freezer', 'n');
     t.mark('freezer', 46, y, 32);
-    sign(47, y, 31, 'n', 'Frío de verdad', 'Dos neveras y un congelador con su RTG: 90 W de 160. Enfría y congela lo que metas. Vienen vacíos.', 'Real cold: 2 fridges and a freezer on their rtgs, 90 W of 160. They chill and freeze what you put in. They come empty.');
+    // Cultures on the same chain: the incubator and the autoclave ask only while they have work, so with
+    // everything at once it is 90 + 20 + 40 = 150 W of 160 (guide 253).
+    piece(47, y, 32, 'incubator', 'incubator', 'n');
+    t.mark('incubator', 47, y, 32);
+    piece(48, y, 32, 'autoclave', 'autoclave', 'n');
+    t.mark('autoclave', 48, y, 32);
+    sign(49, y, 31, 'n', 'Frío y cultivos', 'Neveras, congelador, incubadora y autoclave con su RTG: hasta 150 W de 160. Placas: /culturekit. Guía 253.', 'Cold and cultures: fridges, a freezer, an incubator and an autoclave on their rtgs, up to 150 W of 160. Plates: /culturekit. Guide 253.');
     piece(50, y, 32, 'chest', 'chest', 'n');
     piece(51, y, 32, 'barrel', 'barrel', 'n');
     for (const x of [50, 51, 52]) piece(x, y + 2, 32, 'wall_shelf', 'wall_shelf', 'n');

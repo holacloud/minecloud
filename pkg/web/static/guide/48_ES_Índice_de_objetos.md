@@ -195,3 +195,5 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:tardigrade_tun) [Criptobiosis](241): tardigrade_tun
 - ![](item:methylene_blue) [Tinciones](246): methylene_blue, iodine_tincture
 - ![](item:darkfield_stop) [Filtros y campo oscuro](247): darkfield_stop, cobalt_glass, las vidrieras
+- ![](item:incubator) [Cultivos e incubadora](253): incubator, petri_dish, agar_plate, used_dish, los `culture_*`
+- ![](item:autoclave) [Esterilizar](255): autoclave, agar_plate_unsterile, water_filter, sample_filtered, culture_mould

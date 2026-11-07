@@ -127,7 +127,7 @@ function problemsOf(context, mobs, organisms) {
 
 test('every species, the mobs and the organisms, says everything in both languages', () => {
     assert.ok(mobIds.length >= 35, `${mobIds.length} mobs found in the code`);
-    assert.equal(organismIds.length, 16);
+    assert.equal(organismIds.length, 17);
     assert.deepEqual(problemsOf(ctx, mobIds, organismIds), []);
     // Nothing is written for a species that is gone, either.
     assert.deepEqual(Object.keys(ctx.BESTIARY_ENTRIES).sort(), [...mobIds].sort());
@@ -242,7 +242,7 @@ test('every creature is called what the guide calls it', () => {
             assert.equal(name, named[id].name, id);
         }
     }
-    const small = [237, 240, 242, 243, 244].map(guidePage).join('\n').toLowerCase();
+    const small = [237, 240, 242, 243, 244, 255].map(guidePage).join('\n').toLowerCase();
     for (const id of organismIds) assert.ok(small.includes(ctx.MICRO_SPECIES_ES[id].name.toLowerCase()), `the guide does not say ${ctx.MICRO_SPECIES_ES[id].name}`);
 });
 
@@ -389,7 +389,7 @@ function englishWords(context) {
     return words;
 }
 
-const SPELLED_ALIKE = new Set(['a', 'no', 'cactus', 'oasis', 'golem', 'acacia', 'animal', 'neutral', 'shift', 'metal', 'hooke', 'robert', 'bacteria', 'gas', 'cm', 'alga', 'm', 'mm', 'real']);
+const SPELLED_ALIKE = new Set(['a', 'no', 'cactus', 'oasis', 'golem', 'acacia', 'animal', 'neutral', 'shift', 'metal', 'hooke', 'robert', 'bacteria', 'gas', 'cm', 'alga', 'm', 'mm', 'real', 'agar', 'penicillium', 'alexander', 'fleming']);
 
 function englishIn(line, words) {
     // The scientific name is Latin in both languages, and the code of a secret page is a code.
@@ -467,7 +467,7 @@ test('English still reads as it always did', () => {
     game.bestiarySelected = 'sheep';
     game.bestiaryRender();
     const panel = game.bestiaryPanel;
-    assert.equal(panel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${mobIds.length + 16} discovered`);
+    assert.equal(panel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${mobIds.length + Object.keys(ctx.MICRO_SPECIES).length} discovered`);
     const seen = readable(panel.querySelector('#bestiary-detail')).join(' | ');
     for (const said of ['Sheep', 'Passive', 'Active: Day', 'Habitat', 'Plains, rocky hills and forests', 'Diet', 'Drops', 'Lured by', 'Encounters', 'Defeated', 'First seen', '< Back']) assert.ok(seen.includes(said), `${said} in: ${seen}`);
     assert.match(seen, /Mar 5, 2026/);

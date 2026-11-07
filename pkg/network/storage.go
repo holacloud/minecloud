@@ -45,11 +45,13 @@ import (
 
 var storageKinds = map[string]int{
 	"arc_furnace":   3,
+	"autoclave":     3,
 	"barrel":        18,
 	"chest":         27,
 	"chest_freezer": 36,
 	"foundry":       3,
 	"fridge":        18,
+	"incubator":     3,
 	"microscope":    1,
 	"oven":          3,
 	"wardrobe":      45,
@@ -111,6 +113,11 @@ type StorageBlock struct {
 	Cook    float64 `json:"cook,omitempty"`
 	// A microscope (microscope.go): what lies on the slide in its one slot.
 	Prep *MicroscopePrep `json:"prep,omitempty"`
+	// An incubator (microbes.go): what lives on the plate in each slot, the temperature it is set to (0 for
+	// the default) and the one inside it now (nil until it has run).
+	Plates []*CulturePlate `json:"plates,omitempty"`
+	Target float64         `json:"target,omitempty"`
+	Inside *float64        `json:"inside,omitempty"`
 }
 
 // storageOutcome answers one request: how many items moved (0 when refused).
@@ -119,6 +126,8 @@ type storageOutcome struct {
 	Type   string `json:"type,omitempty"`
 	Amount int    `json:"amount"`
 	Reason string `json:"reason,omitempty"`
+	// A second item that comes with the first, one of it (a culture's dirty dish: microbes.go).
+	Also string `json:"also,omitempty"`
 }
 
 // storageMove is a storagePut or storageTake message.
@@ -151,6 +160,8 @@ type storageSnapshot struct {
 	Oven    *ovenStatus   `json:"oven,omitempty"`
 	// A microscope: what lies on the slide.
 	Microscope *microscopeView `json:"microscope,omitempty"`
+	// An incubator: its temperatures, light and plates.
+	Incubator *incubatorView `json:"incubator,omitempty"`
 }
 
 // storageBase is a block name without its states.
@@ -207,7 +218,7 @@ func (s *StorageBlock) compartment(name string) *[]StorageSlot {
 
 // holdsNothing: no item in it, and no fire that must burn out.
 func (s *StorageBlock) holdsNothing() bool {
-	return storageIsEmpty(s.Slots) && storageIsEmpty(s.Freezer) && s.Burn <= 0
+	return storageIsEmpty(s.Slots) && storageIsEmpty(s.Freezer) && s.Burn <= 0 && s.Target == 0
 }
 
 // storageBook holds every chest's contents and who is watching them. Lock order: mu, then
@@ -239,6 +250,11 @@ type storageBook struct {
 	// The clock slides dry by, and where their seeds come from (microscope.go; replaced by the tests).
 	now  func() time.Time
 	seed func() uint32
+	// The temperature where a block stands, and whether light reaches it (microbes.go; replaced by the tests).
+	ambient func(w cropWorld, cell [3]int) float64
+	lit     func(w cropWorld, cell [3]int) bool
+	// The world the book last read, for what a panel shows of the place (nil until then).
+	world cropWorld
 }
 
 func newStorageBook() *storageBook {
@@ -256,6 +272,8 @@ func newStorageBook() *storageBook {
 		wantPower:  powerAsk,
 		now:        time.Now,
 		seed:       microscopeNewSeed,
+		ambient:    incubatorAmbient,
+		lit:        incubatorLight,
 	}
 }
 
@@ -338,6 +356,9 @@ func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
 	if place.kind == microscopeKind {
 		snapshot.Microscope = b.microscopeViewOf(block)
 	}
+	if place.kind == incubatorKind {
+		snapshot.Incubator = b.incubatorViewOf(b.world, cell, block)
+	}
 	return snapshot
 }
 
@@ -397,6 +418,9 @@ func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storage
 		} else if place.kind == microscopeKind {
 			// A slide and what lies on it only move together (microscope.go).
 			reason = "not for the microscope"
+		} else if place.kind == incubatorKind {
+			// Nor a plate and what lives on it (microbes.go).
+			reason = "not for the incubator"
 		}
 	}
 	if reason != "" {
@@ -548,6 +572,7 @@ func (b *storageBook) open(w cropWorld, eye *[3]float64, client *Client, x, y, z
 	b.viewers[cell][client] = true
 	b.viewing[client] = cell
 	b.settleOnOpenLocked(w, place)
+	b.world = w
 	return b.snapshotLocked(place), true
 }
 
@@ -599,10 +624,14 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 	key := storageKeyOf(had)
 	var spill []StorageSlot
 	if block := b.blocks[key]; block != nil {
-		for _, list := range [][]StorageSlot{block.Slots, block.Freezer} {
-			for _, slot := range list {
-				if slot.Count > 0 {
-					spill = append(spill, StorageSlot{Type: slot.Type, Count: slot.Count})
+		if block.Kind == incubatorKind {
+			spill = incubatorSpill(block)
+		} else {
+			for _, list := range [][]StorageSlot{block.Slots, block.Freezer} {
+				for _, slot := range list {
+					if slot.Count > 0 {
+						spill = append(spill, StorageSlot{Type: slot.Type, Count: slot.Count})
+					}
 				}
 			}
 		}
@@ -636,6 +665,7 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 		copied.Freezer = storageCleanSlots(block.Freezer)
 		applianceCleanLoaded(&copied)
 		microscopeCleanLoaded(&copied)
+		cultureCleanLoaded(&copied)
 		if copied.holdsNothing() {
 			continue
 		}
@@ -681,6 +711,11 @@ func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 		if block.Prep != nil {
 			prep := *block.Prep
 			copied.Prep = &prep
+		}
+		copied.Plates = cultureCopyPlates(block.Plates)
+		if block.Inside != nil {
+			inside := *block.Inside
+			copied.Inside = &inside
 		}
 		blocks[key] = copied
 	}

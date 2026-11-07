@@ -36,7 +36,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     }
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
-    for (const file of ['joinery.js', 'weather.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'smelters.js', 'farming.js', 'glow_block.js', 'microbes.js', 'microscope.js', 'decor.js', 'mirrors.js', 'construction_lab.js']) {
+    for (const file of ['joinery.js', 'weather.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'smelters.js', 'farming.js', 'glow_block.js', 'microbes.js', 'microscope.js', 'cultures_text.js', 'cultures.js', 'decor.js', 'mirrors.js', 'construction_lab.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS, ConstructionBuilder, constructionPlan, constructionLayout, chunkIndex,
@@ -212,7 +212,7 @@ test('it has what was asked for', () => {
     const need = {
         microscope: 8, lab_bench: 50, chest: 10, rtg: 10, solar_panel: 24, wind_turbine: 2, water_wheel: 1, battery_block: 8, copper_wire: 100, wire_post: 30, electric_lamp: 30,
         light_bulb: 2, lever: 10, push_button: 6, pressure_plate: 2, daylight_sensor: 3, proximity_sensor: 1, rain_sensor: 1, and_gate: 1, or_gate: 1, xor_gate: 1, not_gate: 1, delay_gate: 1,
-        latch: 1, electric_motor: 2, hand_crank: 1, lift_stop: 4, lift_winch: 1, lift_platform: 1, fridge: 4, chest_freezer: 1, oven: 2, foundry: 1, arc_furnace: 1, grow_lamp: 5, farmland: 50,
+        latch: 1, electric_motor: 2, hand_crank: 1, lift_stop: 4, lift_winch: 1, lift_platform: 1, fridge: 4, chest_freezer: 1, oven: 2, foundry: 1, arc_furnace: 1, grow_lamp: 5, farmland: 50, incubator: 1, autoclave: 1,
         wheat_0: 10, wheat_3: 1, bench: 40, sofa: 0, bookshelf: 30, sign: 40, water: 50, moss: 3, desk: 5, mirror: 20
     };
     for (const [type, least] of Object.entries(need)) {

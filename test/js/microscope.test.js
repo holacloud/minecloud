@@ -95,7 +95,7 @@ test('the samples match the server', () => {
 test('what other things show matches the server', () => {
     const table = goTable('microscopeItems');
     const read = {};
-    const constants = { sampleStill: 'sample_still_water', tardigradeTube: 'tardigrade_tube', tardigradeTun: 'tardigrade_tun' };
+    const constants = { sampleStill: 'sample_still_water', sampleFiltered: 'sample_filtered', tardigradeTube: 'tardigrade_tube', tardigradeTun: 'tardigrade_tun' };
     for (const [, quoted, named, species] of table.matchAll(/(?:"(\w+)"|(\w+)):\s*\{([^}]*)\},/g)) {
         read[quoted || constants[named]] = list(species);
     }
@@ -135,9 +135,9 @@ test('the share of places with tardigrades is the plan\'s', () => {
     }
 });
 
-test('the catalogue has the 16 organisms of the plan, with what a card needs', () => {
+test('the catalogue has the 16 organisms of the plan, the mould of its cultures, with what a card needs', () => {
     const ids = Object.keys(ctx.MICRO_SPECIES).sort();
-    assert.deepEqual(ids, ['amoeba', 'animal_cell', 'cyanobacteria', 'diatom', 'euglena', 'lactobacillus', 'mushroom_spore', 'paramecium', 'plant_cell', 'rotifer', 'soil_bacteria', 'spirogyra', 'tardigrade', 'vorticella', 'water_flea', 'yeast']);
+    assert.deepEqual(ids, ['amoeba', 'animal_cell', 'cyanobacteria', 'diatom', 'euglena', 'lactobacillus', 'mould', 'mushroom_spore', 'paramecium', 'plant_cell', 'rotifer', 'soil_bacteria', 'spirogyra', 'tardigrade', 'vorticella', 'water_flea', 'yeast']);
     for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
         for (const field of ['name', 'latin', 'size', 'where', 'fact', 'hint']) assert.ok(typeof def[field] === 'string' && def[field].length > 2, `${id}.${field}`);
         assert.ok(ctx.MICRO_MAGNIFICATIONS.includes(def.mag), `${id}.mag`);
@@ -145,7 +145,7 @@ test('the catalogue has the 16 organisms of the plan, with what a card needs', (
         assert.equal(typeof def.draw, 'function', `${id}.draw`);
         assert.ok(['tun', 'cyst', 'dies'].includes(def.whenDry), `${id}.whenDry`);
     }
-    const mags = { tardigrade: 40, water_flea: 40, rotifer: 100, paramecium: 100, amoeba: 100, vorticella: 100, euglena: 100, spirogyra: 100, plant_cell: 100, diatom: 400, cyanobacteria: 400, soil_bacteria: 400, yeast: 400, lactobacillus: 400, animal_cell: 400, mushroom_spore: 400 };
+    const mags = { tardigrade: 40, water_flea: 40, rotifer: 100, paramecium: 100, amoeba: 100, vorticella: 100, euglena: 100, spirogyra: 100, plant_cell: 100, diatom: 400, cyanobacteria: 400, soil_bacteria: 400, yeast: 400, lactobacillus: 400, animal_cell: 400, mushroom_spore: 400, mould: 100 };
     for (const [id, mag] of Object.entries(mags)) assert.equal(ctx.MICRO_SPECIES[id].mag, mag, id);
 });
 
@@ -1441,7 +1441,7 @@ test('the organisms are cards of the one bestiary, and not mobs', () => {
     const game = bestiaryGame();
     const list = game.bestiarySpeciesList();
     const organisms = Object.keys(ctx.MICRO_SPECIES);
-    assert.equal(organisms.length, 16);
+    assert.equal(organisms.length, 17);
     for (const id of organisms) {
         assert.ok(list.includes(id), id);
         assert.equal(ctx.MOB_SPECIES[id], undefined, `${id} must not be a mob`);
@@ -1572,7 +1572,7 @@ test('a mob\'s sheet and the notebook of the mobs are as they were', () => {
     for (const id of mobs) other.bestiaryData[id] = { encounters: 1 };
     other.bestiaryRender();
     assert.match(other.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, /B31X/);
-    assert.match(other.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, new RegExp(`/ ${mobs.length + 16} discovered`));
+    assert.match(other.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, new RegExp(`/ ${mobs.length + Object.keys(ctx.MICRO_SPECIES).length} discovered`));
 });
 
 test('portraits for the guide and the printed book need no game and no WebGL', () => {
@@ -1647,11 +1647,14 @@ test('the guide: every link, picture and id is real, and they are linked from th
         assert.match(guidePage(52, lang), /\(239\)/);
         assert.match(guidePage(228, lang), /\(238\)/);
         assert.match(guidePage(234, lang), /\(241\)/);
-        // Every organism has a picture on its page, and its page links back to where to start.
+        // Every organism has a picture on its page, and its page links back to where to start. The overview
+        // (237) shows those of the first pages; one that came later links back to it from its own page, as
+        // a page once stable does not change (guide/README.md).
         for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
-            assert.ok(SMALL_WORLD.includes(def.page), id);
+            assert.ok(SMALL_WORLD.includes(def.page) || def.page >= 253, id);
             assert.ok(guidePage(def.page, lang).includes(`(mob:${id})`), `${id} on page ${def.page} ${lang}`);
-            assert.ok(guidePage(237, lang).includes(`(mob:${id})`), `${id} in the overview ${lang}`);
+            if (SMALL_WORLD.includes(def.page)) assert.ok(guidePage(237, lang).includes(`(mob:${id})`), `${id} in the overview ${lang}`);
+            else assert.match(guidePage(def.page, lang), /\(237\)/, `${id}'s page links to the overview ${lang}`);
         }
     }
     assert.equal(ctx.MICROSCOPE_GUIDE_PAGE, 238);

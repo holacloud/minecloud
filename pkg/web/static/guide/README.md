@@ -316,6 +316,9 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 250 | Un laboratorio que funciona | A laboratory that works | `/build lab`, js/game/construction_lab.js: ten separate networks, what truly runs on the grid and what is decoration, why chests come empty (electricity 200, contents 0) |
 | 251 | La mano izquierda | The left hand | `X`, js/game/offhand.js: one unit out of the count, which items and why, carried light on the terrain shader, two tools and two swords, what other players see |
 | 252 | Escudo | Shield | shield; left hand only, what it stops per damage type, order with armour |
+| 253 | Cultivos e incubadora | Cultures and the incubator | incubator, petri_dish, agar_plate, used_dish, the `culture_*`: plates, inocula, harvest, 20 W only while growing, the place's temperature without power (pkg/network/microbes.go, temperature.go, js/game/cultures.js); agar and Fanny Hesse (items index 48, contents 0) |
+| 254 | La curva de crecimiento | The growth curve | the four phases on a log scale, cardinal temperatures (Rosso 1993) per species, the experiment at 10, 30 and 45 °C |
+| 255 | Esterilizar: autoclave, filtro y moho | Sterilising: autoclave, filter and mould | autoclave, agar_plate_unsterile, water_filter, sample_filtered, `mould` (organism), culture_mould: spores and 121 °C, contamination, penicillin's clear ring, Fleming's story |
 
 ### Secret pages
 

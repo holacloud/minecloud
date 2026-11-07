@@ -38,7 +38,7 @@ function loadGame() {
     }
     // The furniture modules, as in index.html; what they add is what the showroom has to hold.
     context.FURNITURE_ITEMS = [];
-    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'glow_block.js']) {
+    for (const file of ['furniture.js', 'seating.js', 'storage.js', 'decor.js', 'mirrors.js', 'smelters.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js', 'glow_block.js']) {
         const before = new Set(vm.runInContext('Object.keys(BLOCK_TYPES)', context));
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
         for (const type of vm.runInContext('Object.keys(BLOCK_TYPES)', context)) {
@@ -867,7 +867,7 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
         }
         const isSign = (type) => type === 'sign' || String(type).startsWith('sign:');
         const signs = sent.filter(({ payload }) => isSign(payload.blockType));
-        assert.equal(signs.length, 28);
+        assert.equal(signs.length, 29);
         assert.equal(signs.length, layout.cells.filter((cell) => isSign(cell.type)).length);
         for (const { payload } of signs) {
             assert.ok(payload.text);
