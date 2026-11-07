@@ -362,18 +362,28 @@ Object.assign(Game.prototype, {
 
         // Tools registered from other files may bring their own tier (miningTier).
         const tier = toolDef.miningTier || { wood: 1.45, stone: 1.9, iron: 2.6, gold: 3.2 }[toolDef.toolMaterial] || 1;
+        return this.toolFitsBlock(toolType, blockType) ? tier : Math.max(1, tier * 0.55);
+    },
+
+    // Whether `toolType` is the right tool for that block.
+    toolFitsBlock(toolType, blockType) {
+        const toolDef = this.getItemDefinition(toolType);
+        const blockDef = this.getItemDefinition(blockType);
+        if (!toolDef || !toolDef.toolType || !blockDef) return false;
         const category = blockDef.category || (blockType.includes('wood') || blockType.includes('planks') ? 'wood' : blockType.includes('leaves') ? 'leaves' : blockType === 'dirt' || blockType === 'sand' ? 'soil' : 'stone');
-        const effective = (toolDef.toolType === 'pickaxe' && (category === 'stone' || category === 'element')) ||
+        return (toolDef.toolType === 'pickaxe' && (category === 'stone' || category === 'element')) ||
             (toolDef.toolType === 'shovel' && (category === 'soil' || blockType === 'dirt' || blockType === 'sand' || blockType === 'grass')) ||
             (toolDef.toolType === 'axe' && category === 'wood') ||
             (toolDef.toolType === 'hoe' && (category === 'leaves' || blockType === 'grass')) ||
             (toolDef.toolType === 'shears' && (category === 'leaves' || category === 'wool'));
-        return effective ? tier : Math.max(1, tier * 0.55);
     },
 
     getAdjustedBreakDuration(blockType, baseDuration) {
         if (!blockType || !baseDuration) return baseDuration;
-        const multiplier = this.getToolMiningMultiplier(this.getSelectedBlockType(), blockType);
+        // What is really in the hands: the selected slot still names the last unit after it went to the left hand.
+        const right = this.getSelectedHeldItemType();
+        const pair = this.offhandPairMultiplier(right, blockType);
+        const multiplier = pair || this.getToolMiningMultiplier(right, blockType);
         return Math.max(0.08, baseDuration / multiplier);
     },
 
@@ -604,7 +614,7 @@ Object.assign(Game.prototype, {
         heldItem.frustumCulled = false;
         heldItem.traverse((node) => {
             if (node.material) {
-                node.renderOrder = 10001;
+                node.renderOrder = 10001 + (node.userData.viewLayer || 0);
                 node.frustumCulled = false;
                 const materials = Array.isArray(node.material) ? node.material : [node.material];
                 materials.forEach((material) => {

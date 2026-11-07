@@ -864,7 +864,7 @@ Object.assign(Game.prototype, {
             const hit = canRam && Math.hypot(dx, dz) < 1.2;
             if (hit) {
                 this.cameraController.applyKnockback(Math.cos(data.facing), Math.sin(data.facing), 9, 5);
-                this.applyDamage(1, 'You were rammed by a goat', 'mob');
+                this.applyDamage(1, 'You were rammed by a goat', 'mob', mob.position);
                 this.playTone({ frequency: 95, duration: 0.12, type: 'triangle', volume: 0.05, release: 0.1 });
                 this.playNoiseBurst({ duration: 0.08, volume: 0.03, highpass: 80, lowpass: 700 });
             }

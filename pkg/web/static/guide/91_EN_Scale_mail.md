@@ -36,7 +36,7 @@ you what it does.
 
 **It does not protect from:** poison, falls, lightning or the void.
 
-If you also carry the [warm coat](90), only the better of the two counts: the mail.
+If you also carry the [warm coat](90), only the better of the two counts: the mail. With a [shield](252) in the left hand, the mail subtracts first and the shield then stops half of what is left.
 
 ## Tips
 

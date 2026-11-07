@@ -46,7 +46,7 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
   [circuitos de ejemplo](211) y [lógica para curiosos](212).
 - [Empujadores](217) y [ascensores](218): electricidad que mueve bloques, con [proyectos mecánicos](219).
 - [Un laboratorio que funciona](250): un instituto entero en la red, palanca a palanca.
-- [La mano izquierda](251): una antorcha o un instrumento mientras la derecha trabaja (tecla **X**).
+- [La mano izquierda](251): una antorcha, un instrumento, otra herramienta, otra espada o un [escudo](252) mientras la derecha trabaja (tecla **X**).
 - [Muebles](223): [sillas](224), [mesas](225), [cofres que guardan de verdad](226), [cocina y baño](227),
   [luces](228), [vidrieras](229), [alfombras y cortinas](230), [cuadros y un reloj](231), [espejos](232),
   un [horno que cocina](233), y una [nevera y un congelador](234) que van con electricidad.

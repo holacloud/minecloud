@@ -603,6 +603,7 @@ Object.assign(Game.prototype, {
         if (eelInWater && playerInWater && distance <= EEL_SHOCK_WATER) damage = 2;
         else if (distance <= EEL_SHOCK_AIR) damage = 1;
         if (damage > 0 && !this.titleScreenOpen && !this.respawnPending) {
+            // A discharge through the water or the air has no front: no source, so a shield does nothing.
             this.applyDamage(damage, 'You were shocked by an electric eel', 'mob');
         }
         this.eelSpawnArcs(mob, damage > 0 ? player : null, eelInWater);

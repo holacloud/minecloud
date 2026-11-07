@@ -77,6 +77,7 @@ bake it into bread (see [Growing wheat](107)).
 | ![](item:warm_coat) `warm_coat` | −1 damage per creature attack |
 | ![](item:scale_mail) `scale_mail` | −2 damage per creature attack (never below 1) |
 | ![](item:feather_cape) `feather_cape` | −60 % fall damage. See [Feather cape](92) |
+| ![](item:shield) `shield` | **Left hand only:** −50 % of attacks by creatures in front of you. See [Shield](252) |
 
 The recipes for all of this are in [Mob resources](2).
 

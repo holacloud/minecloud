@@ -314,7 +314,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 248 | Cómo encontrar metales | How to find metals | veins and outcrops (pkg/terrain/ores.go): what each ore looks like, in which biome and at what depth (items index 48, contents 0, 53, 59, 115, 235) |
 | 249 | Cómo se funden los metales | How metals are smelted | copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore in the foundry and the C menu; heat, zinc's distillation, silver from lead (next to 248) |
 | 250 | Un laboratorio que funciona | A laboratory that works | `/build lab`, js/game/construction_lab.js: ten separate networks, what truly runs on the grid and what is decoration, why chests come empty (electricity 200, contents 0) |
-| 251 | La mano izquierda | The left hand | `X`, js/game/offhand.js: one unit out of the count, which items and why, carried light on the terrain shader, what other players see |
+| 251 | La mano izquierda | The left hand | `X`, js/game/offhand.js: one unit out of the count, which items and why, carried light on the terrain shader, two tools and two swords, what other players see |
+| 252 | Escudo | Shield | shield; left hand only, what it stops per damage type, order with armour |
 
 ### Secret pages
 

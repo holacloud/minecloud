@@ -964,6 +964,7 @@ Object.assign(Game.prototype, {
         }
         if (onYou < 2) return;
         colony.biteCooldown = ANT_BITE_COOLDOWN;
+        // Ants on your legs, from every side: no source, so a shield does nothing.
         this.applyDamage(1, 'You were bitten by ants', 'mob');
         this.playTone({ frequency: getMobSpecies('ant').tone, duration: 0.03, type: 'square', volume: 0.012, release: 0.03 });
     },

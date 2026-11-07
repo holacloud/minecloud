@@ -80,7 +80,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Mouse wheel: select previous/next hotbar slot.
 - Keys `1` to `8`: select a hotbar slot.
 - `Q`: drop one unit of the selected item.
-- `X`: move the selected light or instrument to the left hand, or swap (`Shift + X`: put the left hand's away).
+- `X`: move the selected light, instrument, pickaxe, shovel, axe, sword or shield to the left hand, or swap (`Shift + X`: put the left hand's away).
 - `G`: eat or use the selected item (food, drinks, gear).
 - `E`: open/close the full inventory panel.
 - `C`: open/close the crafting panel.

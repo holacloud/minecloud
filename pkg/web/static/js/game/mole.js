@@ -436,7 +436,7 @@ Object.assign(Game.prototype, {
             if (!this.respawnPending && Math.hypot(dx, dz) < 1.5 && Math.abs(feetY - data.surfaceY) < 1.3) {
                 const away = Math.hypot(dx, dz) > 0.05 ? [dx, dz] : [Math.cos(data.facing), Math.sin(data.facing)];
                 this.cameraController.applyKnockback(away[0], away[1], 6.5, 5.5);
-                this.applyDamage(2, 'You were bowled over by a giant mole', 'mob');
+                this.applyDamage(2, 'You were bowled over by a giant mole', 'mob', mob.position);
             }
         }
         data.moleTimer = data.moleDuration;

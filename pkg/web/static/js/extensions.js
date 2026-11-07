@@ -60,8 +60,8 @@ function registerItemUseHandler(handler) {
     ITEM_USE_HANDLERS.push(handler);
 }
 
-// Damage the player takes: modifier(amount, type, reason) returns the new amount (armour,
-// immunities...). Types are listed at Game.applyDamage.
+// Damage the player takes: modifier(amount, type, reason, source) returns the new amount (armour,
+// immunities...), in the order they were registered. Types and source are at Game.applyDamage.
 const DAMAGE_MODIFIERS = [];
 function registerDamageModifier(modifier) {
     DAMAGE_MODIFIERS.push(modifier);

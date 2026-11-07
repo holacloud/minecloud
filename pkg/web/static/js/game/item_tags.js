@@ -222,7 +222,7 @@ function itemTagsDerived(id, def) {
         if (def.elementSymbol && ITEM_TAG_METAL_ELEMENTS.test(def.elementSymbol)) tags.add('metal');
         if (def.logicKind) tags.add('logic');
         if (def.toolType) tags.add(def.toolType === 'sword' ? 'weapon' : 'tool');
-        if (def.armour || def.fallGuard) tags.add('armor');
+        if (def.armour || def.fallGuard || def.frontGuard) tags.add('armor');
         if (def.food) tags.add('food');
         if (def.bottle) tags.add('drink');
         if (def.eggSpecies) tags.add('egg');

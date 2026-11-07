@@ -15,6 +15,8 @@ const MOB_HOSTILE_CHANCE = { plains: 0, forest: 0.015, desert: 0.025, rocky: 0.0
 // sword material (see getPlayerAttackDamage).
 const PLAYER_BASE_DAMAGE = 4;
 const PLAYER_SWORD_DAMAGE = { wood: 5, stone: 6, iron: 7, gold: 8 };
+// What a sword in the left hand adds to the strike of one in the right (guide page 251).
+const PLAYER_LEFT_SWORD_SHARE = 0.5;
 
 Object.assign(Game.prototype, {
     // `modelSpecies` builds a different model than the species' own (a bee colony's hive).
@@ -342,12 +344,17 @@ Object.assign(Game.prototype, {
     },
 
     // Damage of one strike by the local player: 4 bare-handed (or holding anything that is
-    // not a sword), more with a sword depending on its material.
+    // not a sword), more with a sword depending on its material. A sword in the left hand adds
+    // PLAYER_LEFT_SWORD_SHARE of its own, but only to one in the right: alone, it strikes nothing.
+    // In half points, like the half a snake takes: mob health is a plain number, and only its bar shows it.
     getPlayerAttackDamage() {
-        const type = this.getSelectedHeldItemType();
-        const def = type && this.world && this.world.blockTypes[type];
-        if (!def || def.toolType !== 'sword') return PLAYER_BASE_DAMAGE;
-        return PLAYER_SWORD_DAMAGE[def.toolMaterial] || PLAYER_BASE_DAMAGE;
+        const swordDamage = (type) => {
+            const def = type && this.world && this.world.blockTypes[type];
+            return def && def.toolType === 'sword' ? PLAYER_SWORD_DAMAGE[def.toolMaterial] || 0 : 0;
+        };
+        const right = swordDamage(this.getSelectedHeldItemType());
+        if (!right) return PLAYER_BASE_DAMAGE;
+        return Math.round((right + swordDamage(this.offhandType) * PLAYER_LEFT_SWORD_SHARE) * 2) / 2;
     },
 
     // A player's strike on a mob with a health pool: takes the damage and updates its health
@@ -377,6 +384,7 @@ Object.assign(Game.prototype, {
     },
 
     interactWithMob(mob) {
+        this.offhandNoteStrike();
         this.emitMobEvent('hit', mob);
         // A 'hit' listener may have taken it already (a fish caught by hand, resources.js).
         if (!mob.parent) return;
@@ -623,7 +631,7 @@ Object.assign(Game.prototype, {
 
             if (isChasing && distanceToPlayer < 1.2 && mob.userData.attackCooldown <= 0) {
                 const name = mob.userData.species.replace('_', ' ');
-                this.applyDamage(info.attackDamage, `You were attacked by a ${name}`, 'mob');
+                this.applyDamage(info.attackDamage, `You were attacked by a ${name}`, 'mob', mob.position);
                 if (info.poison) this.poisonPlayer(info.poison, name);
                 mob.userData.attackCooldown = 1.2;
                 mob.userData.attackPose = 0.4;

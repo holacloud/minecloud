@@ -138,6 +138,7 @@ hace.
 | `warm_coat` | −1 de daño por cada ataque de criatura |
 | `scale_mail` | −2 de daño por cada ataque de criatura, sin bajar nunca de 1 |
 | `feather_cape` | −60 % de daño por caída |
+| `shield` | solo en la mano izquierda: −50 % de los ataques de criaturas de frente (después de restar la armadura); ver «La mano izquierda» |
 
 Si llevas el abrigo y la cota a la vez, solo cuenta la mejor de las dos.
 
@@ -548,9 +549,22 @@ Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/
 | `multimeter` | lee el bloque eléctrico que miras, sin clic |
 | `thermometer`, `barometer`, `anemometer` | su panel (un solo panel para las dos manos) |
 | `helium_balloon` | caída lenta y sin daño |
+| `shield` | −50 % de los ataques de criaturas de frente |
+| picos, palas, hachas (`wood`, `stone`, `iron`, `gold`, `steel`) | con otro del mismo tipo en la derecha, mina a ×1,5 |
+| espadas (`wood`, `stone`, `iron`, `gold`, `steel`) | con otra en la derecha, suma el 50 % de su daño |
 
-- **Fuera de la lista:** lo que pide clic derecho (telescopio, cinta métrica, red, caña...) y las lámparas de mesa, de pie y candelabros,
-  que no son para llevar en la mano. No hay escudo, brújula ni reloj como objetos: la brújula y el reloj están siempre en pantalla.
+- **Fuera de la lista:** lo que pide clic derecho (telescopio, cinta métrica, red, caña, azadas, tijeras...) y las lámparas de mesa, de pie y
+  candelabros, que no son para llevar en la mano. No hay brújula ni reloj como objetos: están siempre en pantalla.
+- **Dos herramientas:** dos del mismo tipo (`pickaxe`, `shovel` o `axe`) y la de la derecha buena para el bloque: multiplicador del
+  peor material × 1,5 (`OFFHAND_PAIR_SPEED`). Con una mucho peor, la buena va más lenta que sola (hierro 2,6; hierro + madera 2,175). Si no se
+  cumple, la derecha mina como siempre. La izquierda sola no mina: la mano derecha se mira con `getSelectedHeldItemType`, así que tras pasar la
+  última unidad se pica con la mano vacía. Los brazos golpean por turnos, en primera persona.
+- **Dos espadas:** daño = derecha + 50 % de la izquierda (`PLAYER_LEFT_SWORD_SHARE`), en medios puntos; sin cooldown. Sin espada en la derecha, 4.
+  Cada golpe alterna el brazo.
+- **Escudo:** `shield`, 4 `planks` + 2 `iron_ore`, sin durabilidad, página 252. Es un modificador de daño: solo en la izquierda, solo tipo `mob` y solo
+  si `applyDamage` recibe `source` (la posición del atacante) a ≤ 60° de donde mira el jugador, en el plano. Sin `source`: anguila, hormigas. No lo
+  reducen veneno, caída, rayo del cielo ni vacío; sí la picadura previa al veneno y el rayo que lanza el golem. Corre tras la armadura. La vida
+  puede quedar en medios puntos.
 - **Luz:** alcance en bloques = nivel × 9 / 14. Tres huecos en el sombreador del terreno (`world.setCarriedLights`): el jugador y los dos
   jugadores más cercanos con luz, a menos de 40 bloques. No rehace chunks. Mobs y avatares solo reciben la luz propia, por la luz puntual
   que ya llevaba la cámara. Las luces alumbran también en la mano derecha.

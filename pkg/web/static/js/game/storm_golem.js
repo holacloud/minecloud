@@ -338,7 +338,7 @@ Object.assign(Game.prototype, {
             this.playNoiseBurst({ duration: 0.2, volume: volume * 0.06, highpass: 1500, lowpass: 9000 });
         });
         if (hit && !this.respawnPending) {
-            this.applyDamage(2 + (Math.random() < 0.5 ? 1 : 0), 'You were struck down by a storm golem', 'mob');
+            this.applyDamage(2 + (Math.random() < 0.5 ? 1 : 0), 'You were struck down by a storm golem', 'mob', origin);
             this.playNoiseBurst({ duration: 0.15, volume: 0.05, highpass: 2500, lowpass: 9000 });
         }
         data.recoil = 0.35;

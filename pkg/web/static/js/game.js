@@ -1163,7 +1163,19 @@ class Game {
         }
 
         const isMining = this.isBreakInputActive && this.miningTargetKey !== null;
-        if (isMining) {
+        if (isMining && this.offhandPairMultiplier(this.getSelectedHeldItemType(), this.miningTargetType)) {
+            // Two tools: the arms strike by turns (js/game/offhand.js).
+            this.handSwingTime += delta * 16;
+            const arms = offhandArmsOfSwing(Math.sin(this.handSwingTime));
+            targetY += arms.right * 0.05;
+            targetZ += arms.right * 0.08;
+            targetRotX += 0.12 + arms.right * 0.3;
+            targetRotZ += arms.right * 0.14;
+            leftTargetY += arms.left * 0.05;
+            leftTargetZ += arms.left * 0.08;
+            leftTargetRotX += 0.12 + arms.left * 0.3;
+            leftTargetRotZ -= arms.left * 0.14;
+        } else if (isMining) {
             this.handSwingTime += delta * 16;
             const swing = Math.sin(this.handSwingTime);
             const strike = Math.abs(swing);
@@ -1178,7 +1190,21 @@ class Game {
             this.handSwingTime = 0;
         }
 
-        const t = Math.min(1, delta * (isMining ? 18 : 10));
+        // Two swords: each strike is one arm's.
+        const blow = this.offhandStrikePose(delta);
+        if (blow) {
+            if (blow.arm === 'left') {
+                leftTargetZ += blow.amount * 0.1;
+                leftTargetRotX += blow.amount * 0.5;
+                leftTargetRotZ -= blow.amount * 0.2;
+            } else {
+                targetZ += blow.amount * 0.1;
+                targetRotX += blow.amount * 0.5;
+                targetRotZ += blow.amount * 0.2;
+            }
+        }
+
+        const t = Math.min(1, delta * (isMining || blow ? 18 : 10));
         this.firstPersonHand.position.x = THREE.MathUtils.lerp(this.firstPersonHand.position.x, targetX, t);
         this.firstPersonHand.position.y = THREE.MathUtils.lerp(this.firstPersonHand.position.y, targetY, t);
         this.firstPersonHand.position.z = THREE.MathUtils.lerp(this.firstPersonHand.position.z, targetZ, t);

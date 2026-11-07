@@ -663,6 +663,8 @@ Object.assign(Game.prototype, {
             return;
         }
 
+        // The hands can change half way through a block (X): the time follows what they hold now.
+        this.miningTargetDuration = breakDuration;
         this.bindMiningBlockVisual(hit, targetKey);
         this.miningTargetType = blockType;
         this.miningProgress += delta;

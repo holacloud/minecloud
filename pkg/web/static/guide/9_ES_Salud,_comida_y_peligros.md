@@ -77,6 +77,7 @@ Basta con **llevarlo en el inventario**:
 | ![](item:warm_coat) `warm_coat` | −1 de daño por ataque de criatura |
 | ![](item:scale_mail) `scale_mail` | −2 de daño por ataque de criatura (nunca menos de 1) |
 | ![](item:feather_cape) `feather_cape` | −60 % de daño por caída. Ver [Capa de plumas](92) |
+| ![](item:shield) `shield` | **Solo en la mano izquierda:** −50 % de los ataques de criaturas que tienes delante. Ver [Escudo](252) |
 
 Las recetas de todo esto están en [Recursos de los mobs](2).
 

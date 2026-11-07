@@ -36,7 +36,7 @@ recuerda lo que hace.
 
 **No protege de:** el veneno, las caídas, los rayos ni el vacío.
 
-Si llevas también el [abrigo cálido](90), solo cuenta la mejor de las dos: la cota.
+Si llevas también el [abrigo cálido](90), solo cuenta la mejor de las dos: la cota. Con un [escudo](252) en la mano izquierda, primero resta la cota y luego el escudo para la mitad de lo que queda.
 
 ## Trucos
 

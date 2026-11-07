@@ -72,7 +72,7 @@ const ctx = loadGame();
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 const BLOCK_DEFS = {
-    torch: { name: 'Torch' }, lantern: { name: 'Lantern' }, candle: { name: 'Candle' }, stone: { name: 'Stone' }, iron_pickaxe: { name: 'Iron Pickaxe', itemOnly: true },
+    torch: { name: 'Torch' }, lantern: { name: 'Lantern' }, candle: { name: 'Candle' }, stone: { name: 'Stone' }, iron_hoe: { name: 'Iron Hoe', itemOnly: true },
     multimeter: { name: 'Multimeter', itemOnly: true }, thermometer: { name: 'Thermometer', itemOnly: true }, barometer: { name: 'Barometer', itemOnly: true },
     firefly_jar: { name: 'Firefly Jar', itemOnly: true }, helium_balloon: { name: 'Helium Balloon', itemOnly: true }
 };
@@ -188,13 +188,13 @@ test('a swap puts the other item in the right hand, on the hotbar', () => {
 });
 
 test('an item that cannot be held is refused and says so', () => {
-    const game = makeGame({ iron_pickaxe: 1, torch: 1 });
+    const game = makeGame({ iron_hoe: 1, torch: 1 });
     game.offhandType = 'lantern';
-    select(game, 'iron_pickaxe');
+    select(game, 'iron_hoe');
     game.offhandSwapSelected();
     assert.equal(game.offhandType, 'lantern');
-    assert.equal(game.getInventoryCount('iron_pickaxe'), 1);
-    assert.match(game.messages[0], /Iron Pickaxe cannot be held/);
+    assert.equal(game.getInventoryCount('iron_hoe'), 1);
+    assert.match(game.messages[0], /Iron Hoe cannot be held/);
 });
 
 test('Shift + X and the panel put it away, and the panel button sends without closing', () => {

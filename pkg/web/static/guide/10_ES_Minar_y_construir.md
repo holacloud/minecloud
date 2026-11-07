@@ -51,7 +51,7 @@ Por ejemplo, un pico de oro rompe la piedra en unos 0,3 s. La [espada](71) no ac
 - **Sorpresas:** al romper hierba u hojas sale a veces un [brote](55) (8 %), y de la hierba alta u hojas, muy
   de vez en cuando, un [huevo de mob](74) (3,5 %).
 - **Q** tira al suelo una unidad del objeto que tienes en la mano.
-- **X** pasa una luz o un instrumento a la [mano izquierda](251).
+- **X** pasa una luz, un instrumento, una herramienta, una espada o un escudo a la [mano izquierda](251): dos picos, palas o hachas minan a ×1,5.
 
 ## Construir
 

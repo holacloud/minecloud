@@ -59,7 +59,8 @@ Object.assign(Game.prototype, {
         const healthValue = document.getElementById('health-value');
         const healthFill = document.getElementById('health-fill');
         if (healthValue) {
-            healthValue.textContent = `${Math.max(0, Math.ceil(this.health))}/${this.maxHealth}`;
+            // A blow on a shield can take half a point (js/game/offhand.js): the text says it, as the bar does.
+            healthValue.textContent = `${Math.max(0, Math.ceil(this.health * 2) / 2)}/${this.maxHealth}`;
         }
         if (healthFill) {
             const ratio = Math.max(0, Math.min(1, this.health / this.maxHealth));
@@ -120,9 +121,10 @@ Object.assign(Game.prototype, {
     },
 
     // type: 'mob' (a creature's attack), 'poison', 'fall', 'lightning', 'void' or 'other';
-    // damage modifiers (registerDamageModifier) can reduce it, e.g. armour.
-    applyDamage(amount, reason = 'Respawning soon...', type = 'other') {
-        amount = DAMAGE_MODIFIERS.reduce((current, modifier) => modifier.call(this, current, type, reason), amount);
+    // damage modifiers (registerDamageModifier) can reduce it, e.g. armour. `source`: where a blow with a
+    // direction comes from ({ x, z }, the attacker's position); null when it has none (a shield reads it).
+    applyDamage(amount, reason = 'Respawning soon...', type = 'other', source = null) {
+        amount = DAMAGE_MODIFIERS.reduce((current, modifier) => modifier.call(this, current, type, reason, source), amount);
         if (amount <= 0 || this.health <= 0 || this.respawnPending) return;
 
         this.health = Math.max(0, this.health - amount);
