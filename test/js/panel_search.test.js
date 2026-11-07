@@ -137,3 +137,25 @@ test('on a phone the field is emptied too, without popping up the keyboard', () 
     assert.equal(items().length, 3);
     assert.equal(document.getElementById('inventory-search').focused, 0);
 });
+
+// ---- The field itself: one style, in index.html ----
+
+const HTML = fs.readFileSync(path.join(JS, '..', 'index.html'), 'utf8');
+const inputTag = (id) => HTML.match(new RegExp(`<input id="${id}"[^>]*>`))[0];
+
+test('both search fields share one style, and no rule sets either apart', () => {
+    for (const id of ['inventory-search', 'crafting-search']) {
+        assert.match(inputTag(id), /class="[^"]*\bpanel-search\b/, id);
+        assert.doesNotMatch(inputTag(id), /style=/, id);
+        assert.doesNotMatch(HTML, new RegExp(`#${id}\\b[^{]*\\{`), `${id} has no rule of its own, desktop or touch`);
+    }
+    assert.equal([...HTML.matchAll(/\.panel-search\b[^{]*\{/g)].length, 1, 'one rule for both');
+});
+
+test('the shared style cannot be squeezed by the list below it', () => {
+    const rule = HTML.match(/\.panel-search\s*\{([^}]*)\}/)[1];
+    assert.match(rule, /flex:\s*none/);
+    assert.match(rule, /height:\s*40px/);
+    assert.match(rule, /padding:\s*0 12px/);
+    assert.match(rule, /font:\s*13px/);
+});
