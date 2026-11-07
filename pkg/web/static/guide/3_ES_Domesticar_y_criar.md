@@ -25,9 +25,6 @@ salvajes con comportamiento propio (zorro, conejo, búho, topo gigante, cangrejo
 peces, aves rapaces, abejas, hormigas, murciélagos, fuego fatuo…) no se pueden domesticar. Si les ofreces comida, no
 se gasta. El [golem de cobre](215) tampoco: se construye, y ya te sigue.
 
-**Ojo con la Dieta del [bestiario](5):** las fichas del zorro, el conejo, el búho, el topo gigante y el cangrejo
-enseñan una comida, pero no los domestica ni les hace nada.
-
 ## Animales domesticados
 
 - **Te siguen** y se paran a unos 2 bloques. Si te alejas más de 20 bloques o se atascan, reaparecen detrás de ti.

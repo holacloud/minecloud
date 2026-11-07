@@ -25,9 +25,6 @@ a will of their own (fox, rabbit, owl, giant mole, crab, frog, lizard, turtle, b
 bats, wisp…) cannot be tamed. If you offer them food, it is not used up. Nor can the [copper golem](215): it is built,
 and it follows you already.
 
-**Careful with the Diet in the [bestiary](5):** the sheets of the fox, the rabbit, the owl, the giant mole and the crab
-show a food, but it does not tame them or do anything to them.
-
 ## Tamed animals
 
 - **They follow you** and stop about 2 blocks away. If you get more than 20 blocks ahead or they get stuck, they

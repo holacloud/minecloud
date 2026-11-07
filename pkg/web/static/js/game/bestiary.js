@@ -881,7 +881,8 @@ Object.assign(Game.prototype, {
             facts.append(dt, dd);
         };
         addFact(bestiarySay('factHabitat'), entry.habitat);
-        addFact(bestiarySay('factDiet'), this.bestiaryLookup(typeof TAMING_DIET !== 'undefined' ? TAMING_DIET : null, species));
+        // Only what really tames it: TAMING_DIET also has foods for species tamingCanTame turns down.
+        if (this.tamingCanTame && this.tamingCanTame(species)) addFact(bestiarySay('factDiet'), this.bestiaryLookup(TAMING_DIET, species));
         // Drops are [item, min, max, chance] rows; lures come from the trap table's baits.
         const drops = typeof RESOURCE_DROPS !== 'undefined' && RESOURCE_DROPS[species] ? { [species]: RESOURCE_DROPS[species].map(([item]) => item) } : null;
         const lures = typeof TRAPS_SPECIES !== 'undefined' && TRAPS_SPECIES[species] ? { [species]: TRAPS_SPECIES[species].baits } : null;

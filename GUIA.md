@@ -152,9 +152,6 @@ Solo se domestican los de esta tabla. Las criaturas hostiles (araña, escorpión
 salvajes con comportamiento propio (zorro, conejo, búho, topo gigante, cangrejo, rana, lagarto, tortuga, castor, peces,
 aves rapaces, abejas, hormigas, murciélagos, fuego fatuo…) no se pueden domesticar. Si les ofreces comida, no se gasta.
 
-`TAMING_DIET` da comida al zorro, el conejo, el búho, el topo gigante y el cangrejo, y sus fichas del bestiario la enseñan
-como Dieta, pero `tamingCanTame` los rechaza: su movimiento no atiende a `getMobGoal`, y esa comida no les hace nada.
-
 ### Animales domesticados
 
 - **Te siguen** y se paran a unos 2 bloques. Si te alejas más de 20 bloques o se atascan, reaparecen detrás de ti.
@@ -324,8 +321,8 @@ Derrotar a una criatura que aún no conocías también la descubre.
   - Una descripción de su comportamiento y de cómo interactuar con ella.
   - Etiquetas de temperamento (pasivo, amistoso, neutral u hostil) y de actividad ("Actividad: de día"…).
   - Hábitat.
-  - Las tablas de las otras mecánicas: **Dieta** (con qué se domestica; el zorro, el conejo, el búho, el topo gigante y el
-    cangrejo la enseñan pero no se domestican), **Botín** (qué recursos da) y **Cebos** (los de `TRAPS_SPECIES`; el zorro, el
+  - Las tablas de las otras mecánicas: **Dieta** (con qué se domestica; solo sale en los que se pueden domesticar),
+    **Botín** (qué recursos da) y **Cebos** (los de `TRAPS_SPECIES`; el zorro, el
     conejo, el búho, el buitre, el águila, la serpiente y el topo gigante los enseñan pero no van hacia ellos).
   - Número de encuentros, criaturas derrotadas y fecha del primer avistamiento.
 

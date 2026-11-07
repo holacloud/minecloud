@@ -41,11 +41,23 @@ function loadGame() {
         BESTIARY_ACTIVITIES, BESTIARY_BIOMES, BESTIARY_ORGANISM_HINTS_ES, BESTIARY_ITEMS_ES, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
         TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, bestiarySay, bestiaryItemNameEs });`, context);
     // The species other files add join the table here, without loading those files.
-    for (const id of mobIdsInTheCode()) if (!context.MOB_SPECIES[id]) context.MOB_SPECIES[id] = {};
+    for (const id of mobIdsInTheCode()) if (!context.MOB_SPECIES[id]) context.MOB_SPECIES[id] = ownSpeciesFacts(id);
     return context;
 }
 
 // Every species any file of the game defines, read from the code: one added tomorrow is here too.
+// What decides who is tamed and who comes to a bait, from the definition in a species' own file.
+function ownSpeciesFacts(id) {
+    const dir = path.join(STATIC, 'js', 'game');
+    for (const name of fs.readdirSync(dir)) {
+        const match = new RegExp(`MOB_SPECIES\\.${id}\\s*=\\s*\\{([\\s\\S]*?)\\};`).exec(fs.readFileSync(path.join(dir, name), 'utf8'));
+        if (!match) continue;
+        const movement = /movement:\s*'([a-z_]+)'/.exec(match[1]);
+        return { ...(movement ? { movement: movement[1] } : {}), ...(/hostile:\s*true/.test(match[1]) ? { hostile: true } : {}) };
+    }
+    return {};
+}
+
 function mobIdsInTheCode() {
     const ids = new Set();
     const walk = (dir) => {
@@ -609,4 +621,46 @@ test('it is loaded by the game, before the bestiary and without touching the pri
     const portrait = code.slice(code.indexOf('bestiaryRenderPortrait(species) {'), code.indexOf('// An organism\'s sheet'));
     assert.doesNotMatch(portrait, /bestiarySay|gameLang|bestiaryEntry/);
     assert.doesNotMatch(code.slice(0, code.indexOf('Object.assign(Game.prototype, {')), /gameLang\(|bestiarySay\(/, 'nothing at load time');
+});
+
+// What a found species' sheet reads, line by line.
+function sheetOf(game, id) {
+    game.bestiaryOpen = true;
+    game.bestiaryData = { [id]: { firstSeen: '2026-03-05T12:00:00Z', encounters: 1, defeated: 0 } };
+    game.bestiarySelected = id;
+    game.bestiaryRender();
+    const lines = readable(game.bestiaryPanel.querySelector('#bestiary-detail'));
+    game.bestiaryOpen = false;
+    return lines;
+}
+
+test('a sheet shows a diet only where it tames: never on the species tamingCanTame turns down', () => {
+    const game = installed;
+    const shown = { ES: [], EN: [] };
+    for (const lang of ['ES', 'EN']) {
+        inLang(ctx, lang, () => {
+            for (const id of Object.keys(ctx.BESTIARY_ENTRIES)) {
+                const hasDiet = sheetOf(game, id).includes(ctx.bestiarySay('factDiet'));
+                assert.equal(hasDiet, game.tamingCanTame(id), `${lang} ${id}`);
+                if (hasDiet) shown[lang].push(id);
+            }
+        });
+    }
+    assert.deepEqual(shown.ES, shown.EN);
+    assert.deepEqual(shown.EN.slice().sort(), ['camel', 'cat', 'dog', 'duck', 'giraffe', 'goat', 'horse', 'macaw', 'pig', 'sheep']);
+    for (const id of ['fox', 'rabbit', 'owl', 'mole', 'crab']) {
+        assert.ok(ctx.TAMING_DIET[id].foods.length > 0, `${id}: the table itself stays as it was`);
+        assert.equal(game.tamingCanTame(id), false, id);
+    }
+});
+
+test('offering food to a species that cannot be tamed is still turned down, and not spent', () => {
+    const game = installed;
+    for (const [id, food] of [['fox', 'raw_fish'], ['rabbit', 'tall_grass'], ['owl', 'raw_fish'], ['mole', 'mushroom_brown'], ['crab', 'raw_fish']]) {
+        let spent = 0;
+        game.consumeSelectedBlock = () => { spent++; return true; };
+        const mob = { userData: { species: id }, position: { x: 0, y: 0, z: 0 } };
+        assert.equal(game.tamingUse(mob, food), false, id);
+        assert.equal(spent, 0, id);
+    }
 });

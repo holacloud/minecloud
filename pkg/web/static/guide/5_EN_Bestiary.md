@@ -23,7 +23,7 @@ a creature you had not met yet also discovers it.
   - A description of how it behaves and how to deal with it.
   - Its **Habitat**.
   - The tables of the other mechanics, with their limits:
-    - **Diet:** what tames it, see [Taming and breeding](3). The fox, the rabbit, the owl, the giant mole and the crab show one too, but they **cannot be tamed**: that food does nothing to them.
+    - **Diet:** what tames it, see [Taming and breeding](3). Only those that can be tamed show it.
     - **Drops:** what resources it gives, see [Mob resources](2).
     - **Lured by:** the baits written down for it, see [Baits and traps](4). The fox, the rabbit, the owl, the vulture, the eagle, the snake and the giant mole show them too, but they **do not walk to them**.
   - **Encounters**, **Defeated** and **First seen**.

@@ -169,15 +169,18 @@ test('page 3 lists who can really be tamed, with their real foods and chances', 
     }
 });
 
-test('pages 3 and 5 warn of the diets on the cards of animals that cannot be tamed', () => {
-    const misleading = mobIds.filter((id) => ctx.TAMING_DIET[id] && !canTame(id));
-    assert.deepEqual(sorted(misleading), sorted(['crab', 'fox', 'mole', 'owl', 'rabbit']));
-    for (const id of misleading) {
-        for (const pageId of [3, 5]) {
-            assert.ok(page(pageId, 'ES').toLowerCase().includes(nameEs(id).toLowerCase()), `${pageId} ES ${id}`);
-            assert.ok(page(pageId, 'EN').toLowerCase().includes(nameEn(id).toLowerCase()), `${pageId} EN ${id}`);
-        }
+test('page 3 says who has food written down but cannot be tamed; their cards no longer show it, so no warnings', () => {
+    const untameable = mobIds.filter((id) => ctx.TAMING_DIET[id] && !canTame(id));
+    assert.deepEqual(sorted(untameable), sorted(['crab', 'fox', 'mole', 'owl', 'rabbit']));
+    for (const id of untameable) {
+        assert.ok(page(3, 'ES').toLowerCase().includes(nameEs(id).toLowerCase()), `3 ES ${id}`);
+        assert.ok(page(3, 'EN').toLowerCase().includes(nameEn(id).toLowerCase()), `3 EN ${id}`);
     }
+    for (const lang of ['ES', 'EN']) {
+        assert.doesNotMatch(page(3, lang), /Ojo con la Dieta|Careful with the Diet/, `3 ${lang}`);
+        assert.doesNotMatch(page(5, lang), /también la enseñan|show one too/, `5 ${lang}`);
+    }
+    assert.doesNotMatch(read('../../../../GUIA.md'), /la enseñan/);
 });
 
 // ---- Baits ----

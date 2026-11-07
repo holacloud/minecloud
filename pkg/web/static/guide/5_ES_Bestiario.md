@@ -23,7 +23,7 @@ Derrotar a una criatura que aún no conocías también la descubre.
   - Una descripción de su comportamiento y de cómo interactuar con él.
   - **Hábitat**.
   - Las tablas de las otras mecánicas, con sus límites:
-    - **Dieta:** con qué se domestica, ver [Domesticar y criar](3). El zorro, el conejo, el búho, el topo gigante y el cangrejo también la enseñan, pero **no se pueden domesticar**: esa comida no les hace nada.
+    - **Dieta:** con qué se domestica, ver [Domesticar y criar](3). Solo sale en los que se pueden domesticar.
     - **Botín:** qué recursos da, ver [Recursos de los mobs](2).
     - **Cebos:** los que tiene apuntados, ver [Cebos y trampas](4). El zorro, el conejo, el búho, el buitre, el águila, la serpiente y el topo gigante también los enseñan, pero **no van hacia ellos**.
   - **Encuentros**, **Derrotados** y **Primer avistamiento**.
