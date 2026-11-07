@@ -5,8 +5,8 @@ En MineCloud no hay mesa de trabajo: todo se fabrica desde el **panel de recetas
 ## El panel de recetas
 
 1. Pulsa **C** para abrirlo. Otra vez **C** o **Escape** lo cierran.
-2. Escribe en el **buscador** (*Search recipes...*): busca por el nombre de la receta, del resultado o de
-   un ingrediente. Prueba "fish", "torch" o "wool".
+2. Escribe en el **buscador** (*Buscar recetas o #etiquetas...*): busca por el nombre de la receta, del resultado o
+   de un ingrediente. Prueba "fish", "torch" o "wool". También busca por etiquetas: mira más abajo.
 3. Cada tarjeta muestra lo que fabrica y cuántas unidades ("Creates x4"). Las que no puedes hacer aún salen
    apagadas.
 4. Haz clic en una tarjeta para ver sus ingredientes y **cuántos tienes** de cada uno. Los que faltan salen
@@ -14,6 +14,35 @@ En MineCloud no hay mesa de trabajo: todo se fabrica desde el **panel de recetas
 5. Pulsa **Craft**. Si te falta algo, el botón dice "Missing materials".
 
 Los ingredientes se gastan y el resultado va a tu inventario, a la barra y a tu mano.
+
+## Buscar por etiquetas
+
+El **inventario** (tecla **E**) y el **panel de recetas** (tecla **C**) buscan también por **etiquetas**: la familia
+de cada objeto y su color. Una receta tiene las etiquetas de lo que fabrica.
+
+- Escribe `#construcción #azul` y verás lo que es de construcción **y** azul. Cuantas más pongas, menos resultados.
+- Se combinan con texto: `#azul brick` da el ladrillo azul. El texto sigue buscando por nombre, en inglés, como siempre.
+- Vale en español o en inglés (`#azul` y `#blue` son lo mismo), con mayúsculas o sin ellas y con tilde o sin
+  ella: `#construccion` también sirve. Tampoco hace falta terminar la palabra: `#const` ya busca.
+- Debajo del buscador hay una línea con las **etiquetas más útiles de lo que estás viendo**: tócalas para añadirlas a
+  la búsqueda y vuelve a tocarlas para quitarlas. Primero van las que ya usas y después las que mejor filtran. Las que
+  no caben no se muestran, pero puedes escribirlas igual.
+- Cada objeto lleva en el borde de su casilla, en letra pequeña, sus etiquetas más concretas, a veces abreviadas
+  (`const.` es `#construcción`). La lista completa aparece al dejar el ratón sobre él en el inventario y en el detalle
+  de cada receta.
+- Cada vez que abres el panel, la búsqueda empieza vacía y con la lista completa.
+
+| Familia | Etiqueta |
+|---|---|
+| Construir | `#construcción`, `#madera`, `#piedra`, `#metal`, `#vidrio`, `#lana` |
+| Minar y terreno | `#mineral`, `#naturaleza` |
+| Muebles y casa | `#mueble`, `#almacén`, `#luz`, `#decoración` |
+| Electricidad y máquinas | `#eléctrico`, `#lógica`, `#mecanismo`, `#transporte` |
+| Equipo | `#herramienta`, `#arma`, `#armadura` |
+| Comer y cultivar | `#comida`, `#bebida`, `#cultivo`, `#planta` |
+| Animales | `#animal`, `#huevo`, `#cebo` |
+| Ciencia | `#química`, `#elemento`, `#ciencia`, `#microscopio`, `#muestra` |
+| Colores | `#blanco`, `#gris-claro`, `#gris`, `#negro`, `#marrón`, `#rojo`, `#naranja`, `#amarillo`, `#lima`, `#verde`, `#cian`, `#azul-claro`, `#azul`, `#morado`, `#magenta`, `#rosa` |
 
 ## Recetas básicas
 

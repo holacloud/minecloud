@@ -3,6 +3,30 @@
 Guía de juego de las mecánicas de fauna: cómo se consigue cada cosa y para qué sirve. Los nombres de objetos
 y recetas aparecen tal y como salen en el juego (en inglés).
 
+## Etiquetas: buscar en el inventario y en las recetas
+
+El inventario (E) y las recetas (C) buscan también por etiquetas: `#construcción #azul` son los objetos de construcción
+**y** azules, y `#azul brick` añade el texto "brick" (el texto sigue buscando por nombre, como siempre). Valen en
+español o en inglés, con tilde o sin ella (`#construccion`), y a medias (`#const`). Debajo del buscador hay una línea con
+las etiquetas más útiles de lo que se está viendo, para tocarlas; las que no caben se escriben a mano. Cada casilla
+lleva en su borde, en letra pequeña, las etiquetas más concretas de su objeto. Una receta tiene las etiquetas de lo que fabrica. La búsqueda se
+vacía cada vez que se abre el panel.
+
+| Familia | Etiqueta |
+|---|---|
+| Construir | `#construcción`, `#madera`, `#piedra`, `#metal`, `#vidrio`, `#lana` |
+| Minar y terreno | `#mineral`, `#naturaleza` |
+| Muebles y casa | `#mueble`, `#almacén`, `#luz`, `#decoración` |
+| Electricidad y máquinas | `#eléctrico`, `#lógica`, `#mecanismo`, `#transporte` |
+| Equipo | `#herramienta`, `#arma`, `#armadura` |
+| Comer y cultivar | `#comida`, `#bebida`, `#cultivo`, `#planta` |
+| Animales | `#animal`, `#huevo`, `#cebo` |
+| Ciencia | `#química`, `#elemento`, `#ciencia`, `#microscopio`, `#muestra` |
+| Colores | `#blanco`, `#gris-claro`, `#gris`, `#negro`, `#marrón`, `#rojo`, `#naranja`, `#amarillo`, `#lima`, `#verde`, `#cian`, `#azul-claro`, `#azul`, `#morado`, `#magenta`, `#rosa` |
+
+Casi todas salen solas de los datos de cada objeto (`js/game/item_tags.js`); un objeto nuevo sin familia hace fallar
+`test/js/item_tags.test.js`.
+
 ## Recursos de los mobs
 
 Los animales y criaturas dan recursos de cuatro formas: al **recolectarlos** con clic derecho, al

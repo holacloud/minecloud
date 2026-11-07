@@ -5,13 +5,41 @@ There is no crafting table in MineCloud: everything is crafted from the **recipe
 ## The recipe panel
 
 1. Press **C** to open it. **C** again or **Escape** closes it.
-2. Type in the **search box** (*Search recipes...*): it searches the recipe name, the result and the
-   ingredients. Try "fish", "torch" or "wool".
+2. Type in the **search box** (*Search recipes or #tags...*): it searches the recipe name, the result and the
+   ingredients. Try "fish", "torch" or "wool". It also searches by tags: see below.
 3. Each card shows what it makes and how many ("Creates x4"). The ones you cannot make yet are dimmed.
 4. Click a card to see its ingredients and **how many you own** of each. Missing ones are marked.
 5. Press **Craft**. If something is missing, the button says "Missing materials".
 
 The ingredients are used up and the result goes to your inventory, your hotbar and your hand.
+
+## Searching by tags
+
+The **inventory** (**E** key) and the **recipe panel** (**C** key) also search by **tags**: each item's family and its
+colour. A recipe has the tags of what it makes.
+
+- Type `#building #blue` to see what is building **and** blue. The more you add, the fewer results.
+- They combine with text: `#blue brick` gives the blue brick. Text still searches by name, as always.
+- Spanish and English both work (`#azul` and `#blue` are the same), in any case and with or without accents:
+  `#construccion` works too. There is no need to finish the word either: `#const` already searches.
+- Under the search field is a line with the **most useful tags of what you are looking at**: tap one to add it to the
+  search, and tap it again to take it out. The ones you are using come first, then those that filter best. Those that
+  do not fit are not shown, but you can still type them.
+- Each item carries its most specific tags on the edge of its cell, in small type and sometimes shortened (`furn.` is
+  `#furniture`). The full list shows when you rest the mouse on it in the inventory, and in each recipe's detail.
+- Each time you open the panel, the search starts empty, with the whole list.
+
+| Family | Tag |
+|---|---|
+| Building | `#building`, `#wood`, `#stone`, `#metal`, `#glass`, `#wool` |
+| Mining and terrain | `#ore`, `#nature` |
+| Furniture and home | `#furniture`, `#storage`, `#light`, `#decoration` |
+| Electricity and machines | `#electric`, `#logic`, `#mechanism`, `#transport` |
+| Gear | `#tool`, `#weapon`, `#armor` |
+| Eating and growing | `#food`, `#drink`, `#farming`, `#plant` |
+| Animals | `#animal`, `#egg`, `#bait` |
+| Science | `#chemistry`, `#element`, `#science`, `#microscope`, `#sample` |
+| Colours | `#white`, `#light-gray`, `#gray`, `#black`, `#brown`, `#red`, `#orange`, `#yellow`, `#lime`, `#green`, `#cyan`, `#light-blue`, `#blue`, `#purple`, `#magenta`, `#pink` |
 
 ## Basic recipes
 

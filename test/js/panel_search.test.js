@@ -42,9 +42,9 @@ function makeGame({ touch = false } = {}) {
         },
         createElement: () => makeElement()
     };
-    const context = vm.createContext({ console, Math, document, window: { localStorage: { getItem: () => null, setItem() {} } } });
+    const context = vm.createContext({ console, Math, document, window: { localStorage: { getItem: () => null, setItem() {} }, addEventListener() {} } });
     vm.runInContext('class Game {}', context);
-    vm.runInContext(read('game/inventory.js'), context, { filename: 'inventory.js' });
+    for (const file of ['gameLang.js', 'game/item_tags.js', 'game/inventory.js']) vm.runInContext(read(file), context, { filename: file });
     const game = new (vm.runInContext('Game', context))();
     const block = (name) => ({ name, color: 0x808080 });
     Object.assign(game, {

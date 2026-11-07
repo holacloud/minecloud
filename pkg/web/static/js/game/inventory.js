@@ -66,6 +66,7 @@ Object.assign(Game.prototype, {
 
     initHotbar() {
         this.pruneUnknownInventoryTypes();
+        this.getItemTagIndex();
         const hotbar = document.getElementById('hotbar');
         hotbar.innerHTML = '';
         this.hotbarSlotElements = [];
@@ -177,15 +178,18 @@ Object.assign(Game.prototype, {
         }
         grid.innerHTML = '';
 
-        const query = this.inventorySearchTerm.trim().toLowerCase();
+        const query = this.inventorySearchTerm.trim();
+        const parsed = itemTagParseQuery(this.inventorySearchTerm);
+        const index = this.getItemTagIndex();
         const visibleItems = this.inventory
-            .map((type, index) => ({ type, index }))
+            .map((type, slot) => ({ type, slot }))
             .filter(({ type }) => this.getInventoryCount(type) > 0)
             .filter(({ type }) => {
-                if (!query) return true;
-                const searchable = `${type} ${this.getBlockDisplayName(type)}`.toLowerCase();
-                return searchable.includes(query);
+                if (parsed.empty) return true;
+                const entry = index.entry(type);
+                return itemTagMatches(parsed, entry.set, entry.text);
             });
+        this.renderPanelTags('inventory', this.inventoryOpen, parsed, visibleItems.map(({ type }) => index.entry(type).tags));
 
         if (visibleItems.length === 0) {
             const empty = document.createElement('div');
@@ -195,11 +199,14 @@ Object.assign(Game.prototype, {
             return;
         }
 
-        visibleItems.forEach(({ type, index }) => {
+        visibleItems.forEach(({ type, slot }) => {
             const item = document.createElement('div');
-            item.className = 'inventory-item' + (this.selectedSlot === index ? ' selected' : '');
+            item.className = 'inventory-item' + (this.selectedSlot === slot ? ' selected' : '');
+            const brief = index.brief(type, ITEM_TAG_BRIEF_MAX.inventory);
+            if (brief) item.dataset.tags = brief;
+            item.title = `${this.getBlockDisplayName(type)}\n${index.entry(type).tags.map((tag) => itemTagLabel(tag)).join(' ')}`;
             item.addEventListener('click', () => {
-                this.selectSlot(index, { promoteToHotbar: true });
+                this.selectSlot(slot, { promoteToHotbar: true });
                 this.closeInventoryPanel();
             });
 
@@ -223,6 +230,79 @@ Object.assign(Game.prototype, {
         });
     },
 
+    // The tags of every item, worked out once (js/game/item_tags.js).
+    getItemTagIndex() {
+        const blockTypes = this.world && this.world.blockTypes;
+        if (!this.itemTagIndex || this.itemTagIndex.blockTypes !== blockTypes) this.itemTagIndex = new ItemTagIndex(blockTypes || {});
+        return this.itemTagIndex;
+    },
+
+    // The row of chips under a search field: the most useful tags of what is on show (itemTagChips).
+    renderPanelTags(panel, open, parsed, tagLists) {
+        if (!this.panelTagRows) {
+            this.panelTagRows = {};
+            // The panels change width with the window: the row is fitted again, from widths already known.
+            window.addEventListener('resize', () => {
+                if (this.inventoryOpen) this.drawPanelTags('inventory');
+                if (this.craftingOpen) this.drawPanelTags('crafting');
+            });
+        }
+        this.panelTagRows[panel] = { chips: open ? itemTagChips(parsed, tagLists) : [], active: parsed.exact };
+        this.drawPanelTags(panel);
+    },
+
+    makePanelTag(panel, tag, active) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'panel-tag' + (active ? ' active' : '');
+        chip.textContent = itemTagLabel(tag);
+        chip.dataset.tag = tag;
+        // The field keeps the focus, and with it the keys: a chip must not take them to the game.
+        chip.addEventListener('mousedown', (event) => event.preventDefault());
+        chip.addEventListener('click', () => this.togglePanelTag(panel, tag));
+        return chip;
+    },
+
+    // The width of each chip, measured once for each label: all that are new in one go, before anything is painted.
+    measurePanelTags(box, panel, chips) {
+        if (!this.panelTagWidths) this.panelTagWidths = new Map();
+        const keyOf = (tag) => `${this.touchControlsEnabled ? 'touch' : 'mouse'}|${itemTagLabel(tag)}`;
+        const fresh = chips.filter((tag) => !this.panelTagWidths.has(keyOf(tag))).map((tag) => {
+            const probe = this.makePanelTag(panel, tag, false);
+            box.appendChild(probe);
+            return { tag, probe };
+        });
+        for (const { tag, probe } of fresh) this.panelTagWidths.set(keyOf(tag), Math.ceil(probe.getBoundingClientRect().width));
+        for (const { probe } of fresh) box.removeChild(probe);
+        return chips.map((tag) => this.panelTagWidths.get(keyOf(tag)));
+    },
+
+    // Only what fits, whole, and only touching the page if that changed: a click is not lost when the list is redrawn.
+    drawPanelTags(panel) {
+        const box = document.getElementById(`${panel}-tags`);
+        const row = this.panelTagRows && this.panelTagRows[panel];
+        if (!box || !row) return;
+        const available = box.clientWidth;
+        // With no width the panel is not on the screen: nothing to cut yet, and the next drawing will.
+        const chips = available > 0
+            ? itemTagFitChips(this.measurePanelTags(box, panel, row.chips), available - 1).map((index) => row.chips[index])
+            : row.chips;
+        const shown = `${gameLang()}|${chips.join(' ')}|${row.active.join(' ')}`;
+        if (box.dataset.shown === shown) return;
+        box.dataset.shown = shown;
+        box.innerHTML = '';
+        for (const tag of chips) box.appendChild(this.makePanelTag(panel, tag, row.active.includes(tag)));
+    },
+
+    togglePanelTag(panel, tag) {
+        const term = `${panel}SearchTerm`;
+        this[term] = itemTagToggleInQuery(this[term], tag);
+        if (panel === 'inventory') this.renderInventoryPanel();
+        else this.renderCraftingPanel();
+        const search = document.getElementById(`${panel}-search`);
+        if (search && !this.touchControlsEnabled) search.focus();
+    },
+
     openInventoryPanel() {
         this.inventoryOpen = true;
         // Every opening starts from the whole list, not from the last search.
@@ -234,6 +314,7 @@ Object.assign(Game.prototype, {
         }
         this.renderInventoryPanel();
         const search = document.getElementById('inventory-search');
+        if (search) search.placeholder = itemTagSearchHint('items');
         // On a phone, focusing would pop up the keyboard over the items.
         if (search && !this.touchControlsEnabled) search.focus();
     },
@@ -549,6 +630,20 @@ Object.assign(Game.prototype, {
         return recipe.inputs.every((input) => this.getInventoryCount(input.type) >= input.amount);
     },
 
+    getRecipeSearchText(recipe) {
+        if (!this.recipeSearchTexts) this.recipeSearchTexts = new WeakMap();
+        let text = this.recipeSearchTexts.get(recipe);
+        if (text === undefined) {
+            text = itemTagFold([
+                recipe.name,
+                this.getBlockDisplayName(recipe.output.type),
+                ...recipe.inputs.map((input) => this.getBlockDisplayName(input.type))
+            ].join(' '));
+            this.recipeSearchTexts.set(recipe, text);
+        }
+        return text;
+    },
+
     renderCraftingPanel() {
         const panel = document.getElementById('crafting-panel');
         const list = document.getElementById('crafting-recipes');
@@ -561,16 +656,14 @@ Object.assign(Game.prototype, {
         }
         list.innerHTML = '';
 
-        const query = this.craftingSearchTerm.trim().toLowerCase();
+        const parsed = itemTagParseQuery(this.craftingSearchTerm);
+        const index = this.getItemTagIndex();
+        // A recipe has the tags of what it makes; its text also has what it takes.
         const visibleRecipes = this.craftingRecipes.filter((recipe) => {
-            if (!query) return true;
-            const searchable = [
-                recipe.name,
-                this.getBlockDisplayName(recipe.output.type),
-                ...recipe.inputs.map((input) => this.getBlockDisplayName(input.type))
-            ].join(' ').toLowerCase();
-            return searchable.includes(query);
+            if (parsed.empty) return true;
+            return itemTagMatches(parsed, index.entry(recipe.output.type).set, this.getRecipeSearchText(recipe));
         });
+        this.renderPanelTags('crafting', this.craftingOpen, parsed, visibleRecipes.map((recipe) => index.entry(recipe.output.type).tags));
 
         if (this.selectedCraftingRecipeId && !visibleRecipes.some((recipe) => recipe.id === this.selectedCraftingRecipeId)) {
             this.selectedCraftingRecipeId = null;
@@ -588,6 +681,8 @@ Object.assign(Game.prototype, {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'craft-card' + (canCraft ? '' : ' unavailable') + (recipe.id === this.selectedCraftingRecipeId ? ' selected' : '');
+            const brief = index.brief(recipe.output.type, ITEM_TAG_BRIEF_MAX.crafting);
+            if (brief) card.dataset.tags = brief;
             card.addEventListener('click', () => {
                 this.selectedCraftingRecipeId = recipe.id;
                 this.renderCraftingPanel();
@@ -655,8 +750,13 @@ Object.assign(Game.prototype, {
         button.disabled = !canCraft;
         button.addEventListener('click', () => this.craftRecipe(recipe.id));
 
+        const tags = document.createElement('div');
+        tags.className = 'craft-detail-tags';
+        tags.textContent = this.getItemTagIndex().entry(recipe.output.type).tags.map((tag) => itemTagLabel(tag)).join(' ');
+
         body.appendChild(title);
         body.appendChild(meta);
+        body.appendChild(tags);
         body.appendChild(materials);
         body.appendChild(button);
         detail.appendChild(icon);
@@ -686,6 +786,7 @@ Object.assign(Game.prototype, {
         }
         this.renderCraftingPanel();
         const search = document.getElementById('crafting-search');
+        if (search) search.placeholder = itemTagSearchHint('recipes');
         if (search && !this.touchControlsEnabled) search.focus();
     },
 

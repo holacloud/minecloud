@@ -565,6 +565,59 @@
             font: 13px/1 'Consolas', monospace;
             outline: none;
         }
+        /* The tags on show, under the search field: one row, of those that fit whole (drawPanelTags measures them;
+           the gap is ITEM_TAG_CHIP_GAP). Its height is fixed, also empty, so that the list below never jumps. */
+        .panel-tags {
+            flex: none;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 5px;
+            height: 26px;
+            overflow: hidden;
+        }
+        .panel-tag {
+            flex: none;
+            height: 26px;
+            padding: 0 8px;
+            border-radius: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.06);
+            color: #cfe0f5;
+            font: 11px/1 'Consolas', monospace;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .panel-tag:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .panel-tag.active {
+            background: rgba(120, 190, 255, 0.4);
+            border-color: rgba(160, 210, 255, 0.8);
+            color: #fff;
+        }
+        /* The tags of an item, on the bottom edge of its cell. No extra nodes: the words are the cell's data-tags. They
+           are part of the cell, so a click on them is a click on it. One line high, and a word that does not fit
+           wraps out of sight, so words are never cut. The padding keeps icon, name and count clear of them. */
+        .inventory-item[data-tags]::after,
+        .craft-card[data-tags]::after {
+            content: attr(data-tags);
+            position: absolute;
+            left: 3px;
+            right: 3px;
+            bottom: 3px;
+            height: 11px;
+            overflow: hidden;
+            font: 9px/11px 'Consolas', monospace;
+            color: #8fa6c2;
+            text-align: center;
+            pointer-events: none;
+        }
+        .inventory-item[data-tags] {
+            padding-bottom: 16px;
+        }
+        .craft-card[data-tags] {
+            padding-bottom: 16px;
+        }
         #crafting-recipes {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
@@ -574,6 +627,7 @@
             padding-right: 2px;
         }
         .craft-card {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -611,6 +665,12 @@
         .craft-card-amount {
             color: #a9bdd5;
             font-size: 11px;
+        }
+        .craft-detail-tags {
+            color: #a9bdd5;
+            font-size: 11px;
+            line-height: 1.4;
+            margin-bottom: 4px;
         }
         .craft-empty {
             grid-column: 1 / -1;
@@ -707,6 +767,7 @@
             overflow: auto;
         }
         .inventory-item {
+            position: relative;
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -1271,6 +1332,20 @@
         body.touch-ui #pause-menu button {
             min-height: 44px;
         }
+        /* Bigger chips for a finger, in their one row. On a low screen the panel itself scrolls, instead of
+           squeezing the recipes down to nothing. */
+        body.touch-ui .panel-tag {
+            height: 32px;
+            padding: 0 10px;
+            border-radius: 16px;
+            font-size: 12px;
+        }
+        body.touch-ui .panel-tags {
+            height: 32px;
+        }
+        body.touch-ui #crafting-recipes {
+            min-height: 126px;
+        }
 
         /* The touch menu: every panel that a desktop opens with a key. */
         body.touch-ui #touch-menu.visible {
@@ -1367,6 +1442,7 @@
     <div id="inventory-panel">
         <h3>Inventory</h3>
         <input id="inventory-search" class="panel-search" type="text" placeholder="Search items..." autocomplete="off">
+        <div id="inventory-tags" class="panel-tags"></div>
         <div id="inventory-grid"></div>
     </div>
     <div id="health-hud">
@@ -1376,6 +1452,7 @@
     <div id="crafting-panel">
         <h3>Crafting</h3>
         <input id="crafting-search" class="panel-search" type="text" placeholder="Search recipes..." autocomplete="off">
+        <div id="crafting-tags" class="panel-tags"></div>
         <div id="crafting-recipes"></div>
         <div id="crafting-detail"></div>
     </div>
@@ -1571,6 +1648,7 @@
     <script src="js/game/construction_apartments.js"></script>
     <script src="js/game/construction_castle.js"></script>
     <script src="js/game/construction_lab.js"></script>
+    <script src="js/game/item_tags.js"></script>
     <script src="js/game/inventory.js"></script>
     <script src="js/game/social.js"></script>
     <script src="js/game/building.js"></script>
