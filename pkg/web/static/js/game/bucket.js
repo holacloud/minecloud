@@ -119,7 +119,7 @@ Object.assign(Game.prototype, {
         const x = Math.round(block.x + normal.x);
         const y = Math.round(block.y + normal.y);
         const z = Math.round(block.z + normal.z);
-        if (y < 0 || this.world.getBlockTypeAt(x, y, z)) return true;
+        if (y < WORLD_MIN_Y || y > WORLD_MAX_Y || this.world.getBlockTypeAt(x, y, z)) return true;
         // Same path as placing a block. Water is not solid, so it may go where you stand.
         const payload = { x, y, z, blockType: 'water' };
         if (!this.world.addBlock(payload)) return true;

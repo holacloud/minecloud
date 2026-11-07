@@ -515,7 +515,7 @@ Object.assign(Game.prototype, {
             z: Math.round(worldPos.z + normal.z)
         };
 
-        if (newPos.y >= 0) {
+        if (newPos.y >= WORLD_MIN_Y && newPos.y <= WORLD_MAX_Y) {
             const blockType = this.getSelectedBlockType();
             if (blockType === 'spray_paint') {
                 this.trySprayPaint(hit);

@@ -16,6 +16,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/holacloud/store"
+
+	"minecloud/pkg/terrain"
 )
 
 var upgrader = websocket.Upgrader{
@@ -517,6 +519,17 @@ func (c *Client) writePump() {
 	}
 }
 
+// blockEditable says whether a player's message may change the cell (x, y, z). The world is what
+// lies between WorldMinY and WorldMaxY, negative heights included, and bedrock stays where it is:
+// the game never asks otherwise (world.js marks it unbreakable), so this only stops other clients.
+func blockEditable(x, y, z int) bool {
+	if y < terrain.WorldMinY || y > terrain.WorldMaxY {
+		return false
+	}
+	name, err := chunkStore.Block(x, y, z)
+	return err != nil || name != "bedrock"
+}
+
 func handleMessage(client *Client, msg Message) {
 	switch msg.Type {
 	case "ping":
@@ -596,6 +609,9 @@ func handleMessage(client *Client, msg Message) {
 			Z int `json:"z"`
 		}
 		json.Unmarshal(msg.Payload, &payload)
+		if !blockEditable(payload.X, payload.Y, payload.Z) {
+			return
+		}
 
 		// The chunk store is the source of truth; never call it while holding stateMu.
 		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
@@ -622,6 +638,9 @@ func handleMessage(client *Client, msg Message) {
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
+		if !blockEditable(payload.X, payload.Y, payload.Z) {
+			return
+		}
 		sanitizeSignPayload(&payload)
 		if payload.BlockType == "sound_block" {
 			payload.Instrument = strings.TrimSpace(payload.Instrument)
