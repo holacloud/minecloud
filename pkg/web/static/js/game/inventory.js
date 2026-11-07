@@ -225,6 +225,8 @@ Object.assign(Game.prototype, {
 
     openInventoryPanel() {
         this.inventoryOpen = true;
+        // Every opening starts from the whole list, not from the last search.
+        this.inventorySearchTerm = '';
         this.stopMining();
         this.closeChatInput();
         if (document.pointerLockElement === this.renderer.domElement) {
@@ -671,6 +673,9 @@ Object.assign(Game.prototype, {
 
     openCraftingPanel() {
         this.craftingOpen = true;
+        // Every opening starts from the whole list. A search that hid the selected recipe has already
+        // dropped the selection, so the first one is picked below and the detail never shows a hidden one.
+        this.craftingSearchTerm = '';
         this.stopMining();
         this.closeChatInput();
         if (document.pointerLockElement === this.renderer.domElement) {
