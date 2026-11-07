@@ -195,7 +195,8 @@ Object.assign(Game.prototype, {
         this.tamingSaveSoon();
     },
 
-    // Where a tamed mob walks: to its mate when in love, to a parent when a baby, else to you.
+    // Where a tamed mob walks: to its mate when in love, to its place around a parent when a baby,
+    // else to its place around you (js/game/herd.js shares out the room).
     tamingGoal(mob) {
         const data = mob.userData;
         if (!data.tamed || this.titleScreenOpen) return null;
@@ -206,9 +207,11 @@ Object.assign(Game.prototype, {
         if (data.tamingSitting) return null;
         if (this.tamingIsBaby(mob)) {
             const parent = this.tamingLiveParent(mob);
-            if (parent) return Object.assign(parent.position.clone(), { stopDistance: 1.5 });
+            if (parent) return this.herdGoal(mob) || Object.assign(parent.position.clone(), { stopDistance: 1.5 });
         }
         if (this.respawnPending) return null;
+        const place = this.herdGoal(mob);
+        if (place) return place;
         const player = this.getLocalPlayerPosition();
         return Object.assign(new THREE.Vector3(player.x, mob.position.y, player.z), { stopDistance: TAMING.followStop });
     },
@@ -287,7 +290,8 @@ Object.assign(Game.prototype, {
         const data = mob.userData;
         const distance = Math.hypot(mob.position.x - player.x, mob.position.z - player.z);
         const last = data.tamingLastPosition || (data.tamingLastPosition = mob.position.clone());
-        if (distance > 6 && last.distanceTo(mob.position) < delta * 0.15) {
+        // Far from its place, not from you: a big herd's outer ring stands that far from you anyway.
+        if (this.herdLeftBehind(mob, distance) && last.distanceTo(mob.position) < delta * 0.15) {
             data.tamingStuck = (data.tamingStuck || 0) + delta;
         } else {
             data.tamingStuck = 0;
@@ -295,6 +299,16 @@ Object.assign(Game.prototype, {
         last.copy(mob.position);
         if (distance < TAMING.teleportDistance && data.tamingStuck < 4) return;
 
+        // A free spot around you, so that a herd left behind does not land in one heap.
+        const spot = this.herdCatchUpSpot(mob, player);
+        if (spot) {
+            mob.position.set(spot.x, spot.floor + data.flyHeight, spot.z);
+            data.home.set(spot.x, spot.floor, spot.z);
+            data.tamingStuck = 0;
+            last.copy(mob.position);
+            this.herdPlaced(mob);
+            return;
+        }
         const yaw = player.yaw || 0;
         for (const [ahead, side] of [[-1.5, 0], [-1.2, 1.2], [-1.2, -1.2], [0, 1.5], [0, -1.5]]) {
             const x = player.x - Math.sin(yaw) * ahead + Math.cos(yaw) * side;
@@ -305,6 +319,7 @@ Object.assign(Game.prototype, {
             data.home.set(x, floor, z);
             data.tamingStuck = 0;
             last.copy(mob.position);
+            this.herdPlaced(mob);
             return;
         }
     },

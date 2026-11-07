@@ -548,6 +548,8 @@ Object.assign(Game.prototype, {
             const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
             const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
             const isFollowingCat = mob.userData.species === 'cat' && this.followingCat === mob;
+            // A tamed friend finds its place with the rest of the herd (js/game/herd.js).
+            const walksAlone = !mob.userData.tamed;
             let goal = null;
 
             if (mob.userData.species === 'dog' && !this.followingDog && distanceToPlayer <= 10) {
@@ -559,11 +561,11 @@ Object.assign(Game.prototype, {
                 this.receiveSystemMessage({ text: 'A tiny cat decided you are acceptable' });
             }
 
-            if (isFollowingCat && distanceToPlayer > 1.6) {
+            if (walksAlone && isFollowingCat && distanceToPlayer > 1.6) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
-            } else if (isFollowingCat && distanceToPlayer <= 1.6) {
+            } else if (walksAlone && isFollowingCat && distanceToPlayer <= 1.6) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x) + Math.PI * 0.5;
-            } else if (isFollowingDog) {
+            } else if (walksAlone && isFollowingDog) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
             } else if (isChasing) {
                 mob.userData.direction = Math.atan2(playerPosition.z - mob.position.z, playerPosition.x - mob.position.x);
@@ -582,7 +584,7 @@ Object.assign(Game.prototype, {
 
             const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed * (mob.userData.geneticsSpeed || 1);
             const goalReached = goal && Math.hypot(goal.x - mob.position.x, goal.z - mob.position.z) <= (goal.stopDistance ?? 1);
-            const moveScale = mob.userData.resting > 0 || goalReached || (isChasing && distanceToPlayer <= keepDistance) || (isFollowingDog && distanceToPlayer <= 2.1) || (isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
+            const moveScale = mob.userData.resting > 0 || goalReached || (isChasing && distanceToPlayer <= keepDistance) || (walksAlone && isFollowingDog && distanceToPlayer <= 2.1) || (walksAlone && isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);
             if (mob.position.y - mob.userData.flyHeight < -20) {
                 // Spawned before its chunk was generated: drop it onto the terrain once it exists.
@@ -597,7 +599,7 @@ Object.assign(Game.prototype, {
             // Search from just above the feet so mobs can climb one block but not tunnel into hills.
             const floorY = this.cameraController.getFloorY(candidate.x, candidate.z, feetY + 1);
             const homeDistance = Math.hypot(candidate.x - mob.userData.home.x, candidate.z - mob.userData.home.z);
-            const leashed = !isChasing && !isFollowingDog && !isFollowingCat && !goal;
+            const leashed = !isChasing && !(walksAlone && (isFollowingDog || isFollowingCat)) && !goal;
             // A whisker a little ahead also has to be climbable: thin barriers (fences, closed
             // doors) are narrower than one frame's step after a hitch.
             const aheadY = moveScale > 0

@@ -27,7 +27,8 @@ se gasta. El [golem de cobre](215) tampoco: se construye, y ya te sigue.
 
 ## Animales domesticados
 
-- **Te siguen** y se paran a unos 2 bloques. Si te alejas más de 20 bloques o se atascan, reaparecen detrás de ti.
+- **Te siguen** y se reparten a tu alrededor, cada uno con el sitio que ocupa su cuerpo. Si te alejas más de 20 bloques
+  o se atascan, reaparecen en un hueco libre cerca de ti.
 - **Sentarse y quedarse quietos:** clic derecho con la mano vacía. Otro clic vuelve a ponerlos a seguirte.
   - En el caballo es **Shift + clic**, porque el clic normal lo monta.
 - **No desaparecen** al alejarte, a diferencia de los salvajes.

@@ -27,8 +27,8 @@ and it follows you already.
 
 ## Tamed animals
 
-- **They follow you** and stop about 2 blocks away. If you get more than 20 blocks ahead or they get stuck, they
-  reappear behind you.
+- **They follow you** and spread out around you, each with the room its body takes. If you get more than 20 blocks
+  ahead or they get stuck, they reappear in a free spot near you.
 - **Sit and stay:** right click with an empty hand. Another click has them follow you again.
   - On the horse it is **Shift + click**, because a plain click rides it.
 - **They never despawn** when you walk away, unlike wild ones.
