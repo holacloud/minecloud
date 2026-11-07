@@ -84,8 +84,13 @@ Object.assign(Game.prototype, {
             return true;
         }
         const name = this.getBlockDisplayName(def.variantOf || type);
-        // The head goes into the cell above.
-        if (this.world.registry.fullCube[this.world.getBlockId(position.x, position.y + 1, position.z)]) {
+        const controller = this.cameraController;
+        const eye = def.lieDown
+            ? bedEyePosition(position.x, position.y, position.z, def.lieDown, def.state.facing)
+            : seatEyePosition(position.x, position.y, position.z, def.seat, controller.standingEyeHeight);
+        // The head goes into the cell above: a slab there would have the eye in it, or nearly.
+        if (this.world.registry.fullCube[this.world.getBlockId(position.x, position.y + 1, position.z)] ||
+            controller.clearanceAt(eye.x, eye.y, eye.z) < CAMERA_CLEARANCE) {
             this.receiveSystemMessage({ text: `There is no room to ${def.lieDown ? 'lie down' : 'sit'} on the ${name} here` });
             return true;
         }
@@ -97,10 +102,9 @@ Object.assign(Game.prototype, {
                 return true;
             }
         }
-        const controller = this.cameraController;
         if (def.lieDown) {
             const facing = def.state.facing;
-            controller.setSeat(bedEyePosition(position.x, position.y, position.z, def.lieDown, facing));
+            controller.setSeat(eye);
             controller.yaw = SEAT_YAW[SHAPE_OPPOSITE[facing]];
             controller.pitch = BED_LOOK_UP;
             const [foot] = shapeLinkedCells(type, position, typeAt, this.world.blockTypes);
@@ -112,7 +116,7 @@ Object.assign(Game.prototype, {
         }
         const ray = this.getInteractionRay();
         const facing = (def.state && def.state.facing) || shapeFacingFromVector(ray.direction.x, ray.direction.z);
-        controller.setSeat(seatEyePosition(position.x, position.y, position.z, def.seat, controller.standingEyeHeight));
+        controller.setSeat(eye);
         controller.yaw = SEAT_YAW[facing];
         this.seated = { x: position.x, y: position.y, z: position.z, base: def.variantOf || type, facing, avatarYaw: SEAT_YAW[facing] + Math.PI };
         this.playPlaceSound(type);

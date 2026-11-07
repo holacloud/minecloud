@@ -1,3 +1,6 @@
+// How fast (blocks per second) the third-person camera goes back out once a wall stops being in the way.
+const THIRD_PERSON_RETURN_SPEED = 8;
+
 class Game {
     constructor() {
         this.scene = null;
@@ -484,6 +487,21 @@ class Game {
         offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraController.yaw + (this.cameraViewMode === 'thirdBack' ? 0 : Math.PI));
         this.camera.position.copy(orbitTarget).add(offset);
         this.camera.lookAt(orbitTarget);
+        // Short of any wall in between at once, and back out of there smoothly. The aim stays: the
+        // camera only slides along the line to the player.
+        const direction = offset.clone().multiplyScalar(1 / distance);
+        const free = this.cameraController.viewDistanceAlong(orbitTarget, direction, distance);
+        this.thirdPersonDistance = Math.min(free, (this.thirdPersonDistance ?? free) + delta * THIRD_PERSON_RETURN_SPEED);
+        this.camera.position.copy(orbitTarget).addScaledVector(direction, this.thirdPersonDistance);
+    }
+
+    // The field of view and the window change from many places (the settings, a telescope, a shot, a
+    // resize), and the near plane depends on both.
+    syncCameraNear() {
+        const near = cameraNearFor(this.camera.fov, this.camera.aspect);
+        if (near === this.camera.near) return;
+        this.camera.near = near;
+        this.camera.updateProjectionMatrix();
     }
 
     disposeObject3D(object) {
@@ -541,7 +559,8 @@ class Game {
         this.scene.background = skyColor;
         this.scene.fog = new THREE.Fog(0x87CEEB, 20, this.world ? 150 : 150);
 
-        this.camera = new THREE.PerspectiveCamera(this.fovSetting, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const aspect = window.innerWidth / window.innerHeight;
+        this.camera = new THREE.PerspectiveCamera(this.fovSetting, aspect, cameraNearFor(this.fovSetting, aspect), 1000);
         this.camera.position.set(0, 20, 0);
         this.scene.add(this.camera);
         this.initCelestialBodies();

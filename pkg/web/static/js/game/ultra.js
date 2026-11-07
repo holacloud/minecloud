@@ -360,6 +360,7 @@ Object.assign(Game.prototype, {
     },
 
     renderFrame(delta) {
+        this.syncCameraNear();
         this.world.animateMaterials(this.clock.elapsedTime);
         if (!this.ultraModeEnabled || !this.ultraTarget) {
             this.mirrorsRender(delta);

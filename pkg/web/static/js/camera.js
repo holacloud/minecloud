@@ -7,6 +7,24 @@ function isTextEntryTarget(target) {
     return target.tagName === 'INPUT' && !NOT_TEXT_INPUTS.includes(String(target.type || 'text').toLowerCase());
 }
 
+// What the view cuts away is everything closer than the near plane, so that plane has to stay out
+// of the walls. Its corners are the farthest part of it from the eye, and at some pitch and yaw they
+// point straight at a wall (looking down by half the vertical field of view, the top ones are level),
+// so what counts is their distance. The body keeps solid things 0.16 from the eye, on the sides
+// (collisionRadius) and above (bodyHeight - standingEyeHeight - 0.02); a seat has room for this.
+const CAMERA_CLEARANCE = 0.15;
+const CAMERA_NEAR = 0.1;
+// Only an extreme window gets here (a strip of 10:1): the depth buffer loses what the near plane does.
+const CAMERA_NEAR_MIN = 0.02;
+
+// The near plane for a field of view (vertical, in degrees) and an aspect: never farther than
+// CAMERA_NEAR, and with its corners within `clearance` of the eye.
+function cameraNearFor(fov, aspect, clearance = CAMERA_CLEARANCE) {
+    const tanY = Math.tan((fov * Math.PI) / 360);
+    const cornerAtOne = Math.hypot(1, tanY * aspect, tanY);
+    return Math.max(CAMERA_NEAR_MIN, Math.min(CAMERA_NEAR, clearance / cornerAtOne));
+}
+
 class CameraController {
     constructor(camera, domElement) {
         this.camera = camera;
@@ -239,7 +257,9 @@ class CameraController {
         return blocks;
     }
 
-    resolveHorizontalPosition(x, z, feetY) {
+    // The middle of the body in a box says nothing about the way out (feet sunk in the floor while
+    // crouching in the air, someone buried), so it only moves if `fromInside` asks for it.
+    resolveHorizontalPosition(x, z, feetY, fromInside = false) {
         let resolvedX = x;
         let resolvedZ = z;
         let collided = false;
@@ -251,25 +271,26 @@ class CameraController {
                 const { minX, maxX, minZ, maxZ } = block;
                 const closestX = Math.max(minX, Math.min(resolvedX, maxX));
                 const closestZ = Math.max(minZ, Math.min(resolvedZ, maxZ));
-                let dx = resolvedX - closestX;
-                let dz = resolvedZ - closestZ;
-                let distanceSq = dx * dx + dz * dz;
+                const dx = resolvedX - closestX;
+                const dz = resolvedZ - closestZ;
+                const distanceSq = dx * dx + dz * dz;
 
                 if (distanceSq === 0) {
+                    if (!fromInside) continue;
                     const pushLeft = Math.abs(resolvedX - minX);
                     const pushRight = Math.abs(maxX - resolvedX);
                     const pushBack = Math.abs(resolvedZ - minZ);
                     const pushForward = Math.abs(maxZ - resolvedZ);
                     const minPush = Math.min(pushLeft, pushRight, pushBack, pushForward);
+                    const push = minPush + this.collisionRadius + 0.001;
 
-                    if (minPush === pushLeft) dx = -1;
-                    else if (minPush === pushRight) dx = 1;
-                    else if (minPush === pushBack) dz = -1;
-                    else dz = 1;
-                    distanceSq = 1;
-                }
-
-                if (distanceSq < this.collisionRadius * this.collisionRadius) {
+                    if (minPush === pushLeft) resolvedX -= push;
+                    else if (minPush === pushRight) resolvedX += push;
+                    else if (minPush === pushBack) resolvedZ -= push;
+                    else resolvedZ += push;
+                    collided = true;
+                    moved = true;
+                } else if (distanceSq < this.collisionRadius * this.collisionRadius) {
                     const distance = Math.sqrt(distanceSq);
                     const push = this.collisionRadius - distance + 0.001;
                     resolvedX += (dx / distance) * push;
@@ -283,6 +304,22 @@ class CameraController {
         }
 
         return { x: resolvedX, z: resolvedZ, collided };
+    }
+
+    // The same for a move from one place to another, in steps shorter than the body's radius. A long
+    // frame (or a fast move) must not take the body into a wall in one go, or past a thin one.
+    sweepHorizontalPosition(fromX, fromZ, toX, toZ, feetY) {
+        const steps = Math.ceil(Math.hypot(toX - fromX, toZ - fromZ) / (this.collisionRadius * 0.9)) || 1;
+        let x = fromX;
+        let z = fromZ;
+        let collided = false;
+        for (let step = 0; step < steps; step++) {
+            const resolved = this.resolveHorizontalPosition(x + (toX - fromX) / steps, z + (toZ - fromZ) / steps, feetY);
+            x = resolved.x;
+            z = resolved.z;
+            collided = collided || resolved.collided;
+        }
+        return { x, z, collided };
     }
 
     // Whether a block of the given height placed at (x, y, z) would overlap the body of a
@@ -306,6 +343,58 @@ class CameraController {
 
     canStandAt(x, z, feetY) {
         return this.getCollisionBlocks(x, z, feetY).length === 0;
+    }
+
+    // Calls fn(minX, minY, minZ, maxX, maxY, maxZ), in world coordinates, for the boxes of the cells
+    // that reach the given range. One layer lower too: fences reach into the cell above them.
+    forEachBoxAround(minX, minY, minZ, maxX, maxY, maxZ, fn) {
+        for (let by = Math.floor(minY) - 1; by <= Math.floor(maxY); by++) {
+            for (let bx = Math.floor(minX); bx <= Math.floor(maxX); bx++) {
+                for (let bz = Math.floor(minZ); bz <= Math.floor(maxZ); bz++) {
+                    for (const box of this.getCellBoxes(bx, by, bz)) {
+                        fn(bx + box[0], by + box[1], bz + box[2], bx + box[3], by + box[4], bz + box[5]);
+                    }
+                }
+            }
+        }
+    }
+
+    // How far the point (x, y, z) is from the nearest collision box, up to `within`.
+    clearanceAt(x, y, z, within = 1) {
+        let nearest = within;
+        this.forEachBoxAround(x - within, y - within, z - within, x + within, y + within, z + within, (x0, y0, z0, x1, y1, z1) => {
+            nearest = Math.min(nearest, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1), Math.max(z0 - z, 0, z - z1)));
+        });
+        return nearest;
+    }
+
+    // How far a camera can go from `origin` along the unit vector `direction`, up to `distance`,
+    // keeping `clearance` from every box (a third-person camera behind a wall sees nothing of the
+    // player). A box the origin is already that close to is the player's own (a chair's back).
+    viewDistanceAlong(origin, direction, distance, clearance = CAMERA_CLEARANCE) {
+        const axes = ['x', 'y', 'z'];
+        const ends = axes.map((axis) => origin[axis] + direction[axis] * distance);
+        const low = axes.map((axis, i) => Math.min(origin[axis], ends[i]) - clearance);
+        const high = axes.map((axis, i) => Math.max(origin[axis], ends[i]) + clearance);
+        let limit = distance;
+        this.forEachBoxAround(low[0], low[1], low[2], high[0], high[1], high[2], (...box) => {
+            let enter = -Infinity;
+            let exit = Infinity;
+            axes.forEach((axis, i) => {
+                const from = box[i] - clearance - origin[axis];
+                const to = box[i + 3] + clearance - origin[axis];
+                if (direction[axis] === 0) {
+                    if (from > 0 || to < 0) exit = -Infinity;
+                    return;
+                }
+                const a = from / direction[axis];
+                const b = to / direction[axis];
+                enter = Math.max(enter, Math.min(a, b));
+                exit = Math.min(exit, Math.max(a, b));
+            });
+            if (enter >= 0 && enter <= exit) limit = Math.min(limit, enter);
+        });
+        return limit;
     }
 
     applyStepUp(targetFeetY) {
@@ -497,16 +586,16 @@ class CameraController {
                 else blockedByLedge = true;
             }
             if (!blockedByLedge) {
-                const resolved = this.resolveHorizontalPosition(targetX, targetZ, py);
+                const resolved = this.sweepHorizontalPosition(px, pz, targetX, targetZ, py);
                 // A mount hops up one-block steps by itself.
                 if (this.mount && resolved.collided && this.onGround && !this.isInWater &&
-                    !this.resolveHorizontalPosition(targetX, targetZ, py + 1.05).collided && this.canStandAt(px, pz, py + 1.05)) {
+                    !this.sweepHorizontalPosition(px, pz, targetX, targetZ, py + 1.05).collided && this.canStandAt(px, pz, py + 1.05)) {
                     this.velocityY = this.mount.autoJump;
                     this.onGround = false;
                 }
                 if (resolved.collided && this.onGround) {
                     const stepFeetY = py + this.stepHeight;
-                    const stepped = this.resolveHorizontalPosition(targetX, targetZ, stepFeetY);
+                    const stepped = this.sweepHorizontalPosition(px, pz, targetX, targetZ, stepFeetY);
                     const steppedFloorY = this.getSupportFloorY(stepped.x, stepped.z, stepFeetY);
                     if (steppedFloorY > currentFloorY + 0.001 && steppedFloorY <= currentFloorY + this.stepHeight + 0.001 && this.canStandAt(stepped.x, stepped.z, steppedFloorY)) {
                         this.applyStepUp(steppedFloorY);
@@ -521,10 +610,21 @@ class CameraController {
                     this.camera.position.z = resolved.z;
                 }
             }
+        } else {
+            // Standing still: what closed on them (a door, a block someone placed) moves them out, as
+            // the first step would, if there is somewhere to go. Otherwise the eye stays in it.
+            const py = this.camera.position.y - this.eyeHeight;
+            const resolved = this.resolveHorizontalPosition(startX, startZ, py, true);
+            if (resolved.collided && this.canStandAt(resolved.x, resolved.z, py)) {
+                this.camera.position.x = resolved.x;
+                this.camera.position.z = resolved.z;
+            }
         }
-        
+
         if (this.knockbackX !== 0 || this.knockbackZ !== 0) {
-            const resolved = this.resolveHorizontalPosition(
+            const resolved = this.sweepHorizontalPosition(
+                this.camera.position.x,
+                this.camera.position.z,
                 this.camera.position.x + this.knockbackX * delta,
                 this.camera.position.z + this.knockbackZ * delta,
                 this.camera.position.y - this.eyeHeight
