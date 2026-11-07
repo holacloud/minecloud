@@ -14,7 +14,16 @@ var allOres = []string{"coal_ore", "iron_ore", "copper_ore", "tin_ore", "zinc_or
 // oreFingerprint is the SHA-1 of every terrain cell of oreRegion, bottom to top, one name per line,
 // ores and all. test/js/ores.test.js reads this constant and gets the same from js/terrainGen.js:
 // this is what holds the two generators together now that the older fingerprints look past ores.
-const oreFingerprint = "721f90e49adb295a235467992b1bdae137d166c2"
+//
+// It was 721f90e4... until bedrock went from y=-5 to y=-14 and veins into the new rock: it hashes from
+// BedrockY up, so it had to change. oreAboveFingerprint says what did not.
+const oreFingerprint = "cd2220f3ea9e00b8d46a86d62f68d0dfb501c439"
+
+// oreAboveFingerprint is the same from y=2 up. It was taken on the generator with bedrock still at
+// y=-5 (commit 0467458) and never needs to change for depth: from there up, not a block has moved,
+// ores included. test/js/ores.test.js checks it too.
+const oreAboveFingerprint = "bdfdfc7a02de83d29a329bef55044ed7eefb7feb"
+const oreAboveY = 2
 
 // oreRegion holds plains, forest, desert and mountain ground, with every ore of the game.
 var oreRegion = [4]int{-260, -100, -100, 60} // x0, z0, x1, z1
@@ -42,6 +51,152 @@ func TestOresMatchJavaScript(t *testing.T) {
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != oreFingerprint {
 		t.Fatalf("ores diverged: got %s, want %s (%v)", got, oreFingerprint, seen)
+	}
+}
+
+func TestNothingMovedAboveTheDeepRock(t *testing.T) {
+	h := sha1.New()
+	for x := oreRegion[0]; x < oreRegion[2]; x++ {
+		for z := oreRegion[1]; z < oreRegion[3]; z++ {
+			s := ColumnSurface(x, z)
+			soil := soilDepthAt(x, z, s)
+			for y := oreAboveY; y <= s.Height; y++ {
+				h.Write([]byte(blockAt(x, y, z, s, soil) + "\n"))
+			}
+		}
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != oreAboveFingerprint {
+		t.Fatalf("something moved at y=%d or above: got %s, want %s", oreAboveY, got, oreAboveFingerprint)
+	}
+}
+
+// The floor of the world: all of y=-14, about half of y=-13, nothing under it and no ore in it.
+func TestBedrockLayer(t *testing.T) {
+	if BedrockY != -14 || WorldMinY != -16 {
+		t.Fatalf("bedrock at %d in a world from %d", BedrockY, WorldMinY)
+	}
+	rough, cells := 0, 0
+	for _, at := range [][2]int{{0, 0}, {-11, -8}, {30, -40}, {-17, 25}} {
+		c := Generate(at[0], at[1])
+		for lx := range ChunkSize {
+			for lz := range ChunkSize {
+				if got := c.Get(lx, BedrockY, lz); got != "bedrock" {
+					t.Fatalf("%v: %s at y=%d", at, got, BedrockY)
+				}
+				for y := WorldMinY; y < BedrockY; y++ {
+					if got := c.Get(lx, y, lz); got != "air" {
+						t.Fatalf("%v: %s under bedrock", at, got)
+					}
+				}
+				cells++
+				x, z := c.X*ChunkSize+lx, c.Z*ChunkSize+lz
+				got := c.Get(lx, BedrockY+1, lz)
+				if want := hash3(x, BedrockY+1, z, 5) < 0.5; want != (got == "bedrock") {
+					t.Fatalf("%d,%d: %s at y=%d", x, z, got, BedrockY+1)
+				}
+				if got == "bedrock" {
+					rough++
+				} else if got != "stone" && !IsNaturalOre(got) {
+					t.Fatalf("%d,%d: %s in the rough layer", x, z, got)
+				}
+				if got := c.Get(lx, BedrockY+2, lz); got != "stone" && !IsNaturalOre(got) {
+					t.Fatalf("%d,%d: %s at y=%d", x, z, got, BedrockY+2)
+				}
+			}
+		}
+	}
+	if rough < cells*2/5 || rough > cells*3/5 {
+		t.Fatalf("%d of %d rough bedrock cells", rough, cells)
+	}
+}
+
+// oresInChunks counts each ore in a square of chunks.
+func oresInChunks(from, to, step int) map[string]int {
+	found := map[string]int{}
+	for cx := from; cx < to; cx += step {
+		for cz := from; cz < to; cz += step {
+			c := Generate(cx, cz)
+			for _, id := range c.Blocks {
+				if name := c.Palette[id]; IsNaturalOre(name) {
+					found[name]++
+				}
+			}
+		}
+	}
+	return found
+}
+
+// Going deeper nearly doubled the rock, and gold must not grow with it. The counts of today's gold
+// are from the generator with bedrock at y=-5 (commit 0467458): about 0.3 blocks per chunk over a
+// large area, a little less around the origin. Samples much smaller than these wander by 15 % or so
+// on their own, as a vein is a dozen blocks. Gold stays the rarest ore, silver the next.
+func TestGoldStaysAsScarceAsItWas(t *testing.T) {
+	const margin = 0.1
+	for _, sample := range []struct {
+		name           string
+		from, to, step int
+		today          int
+	}{
+		{"1600 chunks around the origin", -20, 20, 1, 373},
+		{"6400 chunks spread over 800x800", -400, 400, 10, 1860},
+	} {
+		found := oresInChunks(sample.from, sample.to, sample.step)
+		gold := float64(found["gold_ore"])
+		if low, high := float64(sample.today)*(1-margin), float64(sample.today)*(1+margin); gold < low || gold > high {
+			t.Errorf("%s: %v gold blocks, it must stay between %v and %v", sample.name, gold, low, high)
+		}
+		for _, ore := range allOres {
+			if ore != "gold_ore" && found[ore] <= found["gold_ore"] {
+				t.Errorf("%s: %s is rarer than gold: %v", sample.name, ore, found)
+			}
+			if ore != "gold_ore" && ore != "silver_ore" && found[ore] <= found["silver_ore"] {
+				t.Errorf("%s: %s is rarer than silver: %v", sample.name, ore, found)
+			}
+		}
+	}
+}
+
+// The deep rock is worth going down for: metal all the way to the rough layer, more of it than higher
+// up, and most of the gold in the lower half.
+func TestDeepRockRewardsGoingDown(t *testing.T) {
+	gold := map[string]int{}
+	metals := map[int]int{}
+	for cx := -100; cx < 100; cx += 5 {
+		for cz := -100; cz < 100; cz += 5 {
+			c := Generate(cx, cz)
+			for i, id := range c.Blocks {
+				name := c.Palette[id]
+				if !IsNaturalOre(name) || name == "coal_ore" {
+					continue
+				}
+				_, y, _ := chunkCell(i)
+				metals[y]++
+				if name == "gold_ore" {
+					switch {
+					case y < -6:
+						gold["bottom"]++
+					case y < 0:
+						gold["upper"]++
+					}
+				}
+			}
+		}
+	}
+	if metals[BedrockY] != 0 {
+		t.Errorf("%d metal blocks in the last layer of bedrock", metals[BedrockY])
+	}
+	for y := BedrockY + 1; y < -5; y++ {
+		if metals[y] == 0 {
+			t.Errorf("no metal at y=%d", y)
+		}
+	}
+	shallow := metals[0] + metals[1] + metals[2] + metals[3]
+	deep := metals[-11] + metals[-10] + metals[-9] + metals[-8]
+	if deep <= shallow {
+		t.Errorf("metal blocks at y=-11..-8: %d, at y=0..3: %d", deep, shallow)
+	}
+	if gold["bottom"] <= gold["upper"] {
+		t.Errorf("gold does not gather towards the bottom: %v", gold)
 	}
 }
 
@@ -172,7 +327,7 @@ func TestAVeinIsTheSameFromEitherChunk(t *testing.T) {
 			}
 			border := (floorDiv(minX, ChunkSize) + 1) * ChunkSize
 			shift := int(hash2(cellX, cellZ, 3100) * veinCellY)
-			for cellY := -1; cellY < 2; cellY++ {
+			for cellY := -3; cellY < 2; cellY++ {
 				cell := veinCellOf(cellX, cellY, cellZ, shift)
 				if cell.roll >= veinMaxTotal || veinOre(cell) == "" {
 					continue

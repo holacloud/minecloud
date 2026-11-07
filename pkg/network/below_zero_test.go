@@ -51,6 +51,46 @@ func TestBlocksBelowZeroAreSavedAndSentLikeAnyOther(t *testing.T) {
 	}
 }
 
+// Down to the rough layer of bedrock the rock is as good as any: it breaks, and takes blocks.
+func TestTheDeepRockDigsAndBuildsDownToBedrock(t *testing.T) {
+	_, send := weatherStationWorld(t)
+	alice := weatherStationClient(t, "alice")
+
+	const lx, lz = 6, 6
+	if name, _ := chunkStore.Block(lx, -10, lz); name == "air" || name == "bedrock" {
+		t.Fatalf("y=-10 holds %q", name)
+	}
+	send(alice, "blockBreak", Block{X: lx, Y: -10, Z: lz})
+	if name, _ := chunkStore.Block(lx, -10, lz); name != "air" {
+		t.Fatalf("the rock at y=-10 leaves %q", name)
+	}
+
+	// The last layer that is not bedrock, and whichever of the two y=-13 turned out to be here.
+	above := terrain.BedrockY + 2
+	send(alice, "blockBreak", Block{X: lx, Y: above, Z: lz})
+	send(alice, "blockPlace", Block{X: lx, Y: above, Z: lz, BlockType: "oak_planks"})
+	if name, _ := chunkStore.Block(lx, above, lz); name != "oak_planks" {
+		t.Fatalf("y=%d holds %q", above, name)
+	}
+	rough := 0
+	for x := range terrain.ChunkSize {
+		name, _ := chunkStore.Block(x, terrain.BedrockY+1, lz)
+		send(alice, "blockBreak", Block{X: x, Y: terrain.BedrockY + 1, Z: lz})
+		after, _ := chunkStore.Block(x, terrain.BedrockY+1, lz)
+		if name == "bedrock" {
+			rough++
+			if after != "bedrock" {
+				t.Fatalf("rough bedrock at x=%d became %q", x, after)
+			}
+		} else if after != "air" {
+			t.Fatalf("%s at x=%d, y=%d did not break", name, x, terrain.BedrockY+1)
+		}
+	}
+	if rough == 0 || rough == terrain.ChunkSize {
+		t.Fatalf("%d of %d cells of the rough layer are bedrock", rough, terrain.ChunkSize)
+	}
+}
+
 func TestLaddersBelowZeroKeepTheirFacing(t *testing.T) {
 	_, send := weatherStationWorld(t)
 	alice := weatherStationClient(t, "alice")

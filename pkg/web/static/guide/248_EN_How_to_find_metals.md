@@ -43,7 +43,7 @@ Silver and zinc also turn up **inside lead veins**, in small pockets. If you fin
 
 ## At what depth
 
-Check your height, the **y**. The water is at y = 5 and the bottom of the world at y = −5.
+Check your height, the **y**. The water is at y = 5 and the bottom of the world at **y = −14**. The further down you go, the less coal and the more metal.
 
 | | In plains, forest and desert | In the mountains |
 |---|---|---|
@@ -53,7 +53,7 @@ Check your height, the **y**. The water is at y = 5 and the bottom of the world 
 | Tin | – | at any height |
 | Zinc and lead | below y = 4 | at any height |
 | Silver | very little, below y = 4 | little, at any height |
-| Gold | very little, below y = 0 | little, and **more below y = 0** |
+| Gold | very little, below y = 0, and **more the deeper you go** | little, at any height; below y = 0, **more the deeper you go** |
 
 A vein never starts right under the grass: it needs a few blocks of soil and stone above it.
 
@@ -67,7 +67,7 @@ A vein never starts right under the grass: it needs a few blocks of soil and sto
 
 The metals you find are good at the [lab bench](117) too, copper, iron and gold included: [How metals are smelted](249) explains how.
 
-A piece of the world you have already explored stays as it was, with its old ores. The new outcrops and veins only appear in land **nobody has visited yet**.
+A piece of the world you have already explored stays as it was, with its old ores and its bottom at y = −5. The new outcrops and veins, and the deeper rock, only appear in land **nobody has visited yet**.
 
 ## Why there, in the real world
 

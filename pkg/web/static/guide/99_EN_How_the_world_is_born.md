@@ -9,7 +9,7 @@ The world is split into **chunks**, columns **16 × 16 blocks** wide and **256 b
 239). A chunk is only generated when someone comes near, and the ones closest to the player come first.
 
 - **Water** fills everything below height **5**.
-- **Bedrock** lies at height **−5** (and sometimes one block higher).
+- **Bedrock** lies at height **−14** (and sometimes one block higher). A chunk saved before the world got deeper stays as it was, with it at −5.
 - Under the soil there is **stone** with **veins of ore**, and on mountains and steep slopes they also **crop out in
   the open**. How much of each there is and at what height depends on the biome: outside the mountains, **iron** is
   found below height 4 and **gold** below height 0. See [How to find metals](248).

@@ -4,7 +4,7 @@ import "math"
 
 const (
 	WaterLevel = 5
-	BedrockY   = -5
+	BedrockY   = -14
 )
 
 // Climate holds the continuous biome weights of a column; heights blend between biomes

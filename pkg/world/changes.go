@@ -249,6 +249,10 @@ func (ix *ChangeIndex) compactLocked() {
 	ix.log = kept
 }
 
+// savedFloorY is where bedrock lay until the world went deeper: at this height, in half of the cells
+// of the next one up, and with nothing under it. Chunks saved back then keep that floor.
+const savedFloorY = -5
+
 // oreHostGround is what terrain.Generate may put an ore in place of.
 var oreHostGround = map[string]bool{"stone": true, "cobblestone": true, "grass": true, "dirt": true, "sand": true}
 
@@ -267,13 +271,20 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 		}
 	}
 	// A chunk saved before the generator changed its ores differs from today's in all of them, and
-	// nobody touched it. So ores, in either chunk, count as the ground they lie in. The columns below
-	// still say what is really on top of a chunk that has changed.
+	// nobody touched it. So ores, in either chunk, count as the ground they lie in, and so does the
+	// old floor of the world (see onSavedFloor). The columns below still say what is really on top of
+	// a chunk that has changed.
 	storedOre := make([]bool, len(stored.Palette))
 	storedGround := make([]bool, len(stored.Palette))
 	for i, name := range stored.Palette {
 		storedOre[i] = terrain.IsNaturalOre(name)
 		storedGround[i] = oreHostGround[name]
+	}
+	storedBedrock := int32(-1)
+	for i, name := range stored.Palette {
+		if name == "bedrock" {
+			storedBedrock = int32(i)
+		}
 	}
 	generatedOre := make([]bool, len(generated.Palette))
 	generatedStone := make([]bool, len(generated.Palette))
@@ -290,6 +301,9 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 			continue
 		}
 		if storedOre[id] && generatedStone[gen] {
+			continue
+		}
+		if onSavedFloor(stored, i, id, storedBedrock) {
 			continue
 		}
 		changed = true
@@ -319,6 +333,27 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 		}
 	}
 	return true, columns, summarize(raisedColumns), summarize(loweredColumns)
+}
+
+// onSavedFloor says whether a stored block is the old floor of the world and not a player's work:
+// its column has bedrock at savedFloorY, and the block is that bedrock, the rough layer over it, or
+// the air under it. A column dug in today's deeper rock has no bedrock there, so digging it counts.
+func onSavedFloor(stored *terrain.Chunk, i int, id uint16, bedrock int32) bool {
+	if bedrock < 0 {
+		return false
+	}
+	y := i/(terrain.ChunkSize*terrain.ChunkSize) + terrain.WorldMinY
+	if y > savedFloorY+1 {
+		return false
+	}
+	column := i % (terrain.ChunkSize * terrain.ChunkSize)
+	if int32(stored.Blocks[terrain.ChunkIndex(0, savedFloorY, 0)+column]) != bedrock {
+		return false
+	}
+	if y < savedFloorY {
+		return id == 0
+	}
+	return int32(id) == bedrock
 }
 
 func skipFlags(palette []string, skip func(string) bool) []bool {

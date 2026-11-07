@@ -9,7 +9,7 @@ El mundo se reparte en **chunks**, columnas de **16 × 16 bloques** de planta y 
 −16 a la 239). Solo se genera un chunk cuando alguien se acerca a él, y los más cercanos al jugador van primero.
 
 - El **agua** llena todo lo que queda por debajo de la altura **5**.
-- La **roca madre** está en la altura **−5** (y a veces un bloque más arriba).
+- La **roca madre** está en la altura **−14** (y a veces un bloque más arriba). Un chunk guardado antes de que el mundo se hiciera más hondo se queda como estaba, con ella en la −5.
 - Debajo de la tierra hay **piedra** con **vetas de minerales**, y en las montañas y las cuestas empinadas también
   **afloran al aire libre**. Cuánto hay de cada uno y a qué altura depende del bioma: fuera de las montañas, el
   **hierro** sale por debajo de la altura 4 y el **oro** por debajo de la 0. Ver [Cómo encontrar metales](248).

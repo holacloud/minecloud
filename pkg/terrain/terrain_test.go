@@ -13,6 +13,9 @@ import (
 // block; veins and outcrops rightly changed it. This one was computed on the generator as it stood
 // before them (commit 64b1b50), with its coal, iron and gold mapped to stone: that it still matches
 // says heights, biomes, soil, water, trees, plants and moss did not move by a single block.
+//
+// The value did not change when bedrock went from y=-5 to y=-14: TestOnlyOresMoved puts the old floor
+// back under each column before hashing, and everything else still has to match.
 const worldWithoutOresFingerprint = "4ff0416f0b9bb99d0352bbf5b1a057fde98982b0"
 
 func jsBlockIDs() map[string]uint16 {
@@ -57,6 +60,10 @@ func TestOnlyOresMoved(t *testing.T) {
 					s := ColumnSurface(x, z)
 					name = groundBlockAt(x, y, z, s, soilDepthAt(x, z, s))
 				}
+				// The fingerprint is older than the deep rock: the world's floor as it was then.
+				if lx, y, lz := chunkCell(i); y <= oldBedrockY+1 {
+					name = oldFloorBlock(c.X*ChunkSize+lx, y, c.Z*ChunkSize+lz)
+				}
 				id, ok := ids[name]
 				if !ok {
 					t.Fatalf("unexpected block %q", name)
@@ -69,6 +76,20 @@ func TestOnlyOresMoved(t *testing.T) {
 	if got := hex.EncodeToString(h.Sum(nil)); got != worldWithoutOresFingerprint {
 		t.Fatalf("something other than ores moved: got %s, want %s", got, worldWithoutOresFingerprint)
 	}
+}
+
+// oldBedrockY is where bedrock lay when worldWithoutOresFingerprint was taken.
+const oldBedrockY = -5
+
+// oldFloorBlock is what lay at this height, at or below oldBedrockY+1, before the world went deeper.
+func oldFloorBlock(x, y, z int) string {
+	switch {
+	case y < oldBedrockY:
+		return "air"
+	case y == oldBedrockY || hash3(x, y, z, 5) < 0.5:
+		return "bedrock"
+	}
+	return "stone"
 }
 
 // chunkCell undoes ChunkIndex.

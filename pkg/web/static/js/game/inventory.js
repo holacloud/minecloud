@@ -434,12 +434,12 @@ Object.assign(Game.prototype, {
     getDropLandingY(x, z, startY) {
         const ix = Math.floor(x);
         const iz = Math.floor(z);
-        for (let y = Math.floor(startY); y >= -5; y--) {
+        for (let y = Math.floor(startY); y >= WORLD_MIN_Y; y--) {
             if (this.world.hasSolidBlock(ix, y, iz)) {
                 return y + 1;
             }
         }
-        return -4;
+        return WORLD_MIN_Y;
     },
 
     spawnFallingBlockDrop(type, position) {

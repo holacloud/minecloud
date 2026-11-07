@@ -15,7 +15,7 @@ puede romper.
 
 - **Piedra:** debajo de las capas de tierra o arena, en todas partes. Esconde los [minerales](53).
 - **Adoquín:** en la roca (montañas), la superficie mezcla adoquín y piedra.
-- **Roca madre:** el suelo del mundo, en la altura **y = −5** (y en la mitad de las casillas de y = −4).
+- **Roca madre:** el suelo del mundo, en la altura **y = −14** (y en la mitad de las casillas de y = −13). En los trozos de mundo que ya se habían explorado antes de que el mundo se hiciera más hondo, sigue en y = −5.
 
 ## Cómo conseguirlos
 
@@ -49,7 +49,7 @@ Varias recetas piden **piedra lisa** (`stone`): los [bloques de metal y la obsid
 ## Trucos
 
 - Un [pico](68) es la herramienta de la piedra: uno de hierro rompe la piedra en 0,35 s.
-- Si caes por debajo de la roca madre (por un agujero del mundo) y pasas de y = −35, **mueres en el vacío**.
+- Si caes por debajo de la roca madre (por un agujero del mundo) y pasas de y = −35, **mueres en el vacío**. Cuidado al cavar de lado por debajo de y = −5: bajo un trozo de mundo explorado hace tiempo no hay roca, solo ese vacío.
 - El adoquín es el material de construcción más abundante: muros, torres y caminos.
 
 ## Curiosidades

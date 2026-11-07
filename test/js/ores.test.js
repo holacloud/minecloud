@@ -20,7 +20,7 @@ const METALS = { copper_ore: 'copper_block', tin_ore: 'element_sn', zinc_ore: 'e
 function loadGenerator() {
     const context = vm.createContext({ Math });
     vm.runInContext(fs.readFileSync(path.join(JS, 'terrainGen.js'), 'utf8'), context);
-    vm.runInContext('Object.assign(this, { columnSurface, blockAt, soilDepthAt, groundBlockAt, oreAt, treeAt, WATER_LEVEL, BEDROCK_Y })', context);
+    vm.runInContext('Object.assign(this, { columnSurface, blockAt, soilDepthAt, groundBlockAt, oreAt, treeAt, WATER_LEVEL, BEDROCK_Y, hash3 })', context);
     return context;
 }
 
@@ -46,6 +46,48 @@ test('terrainGen.js makes the same ores as terrain.Generate, block for block', (
     }
     for (const ore of ORES) assert.ok(seen[ore] > 0, `no ${ore} in the region`);
     assert.equal(hash.digest('hex'), fingerprint);
+});
+
+test('from y = 2 up nothing moved when the world went deeper, on this side too', () => {
+    const generator = loadGenerator();
+    const go = read(ROOT, 'pkg', 'terrain', 'ores_test.go');
+    const fingerprint = go.match(/const oreAboveFingerprint = "([0-9a-f]{40})"/)[1];
+    const from = Number(go.match(/const oreAboveY = (\d+)/)[1]);
+    const [x0, z0, x1, z1] = go.match(/var oreRegion = \[4\]int\{(-?\d+), (-?\d+), (-?\d+), (-?\d+)\}/).slice(1).map(Number);
+    const hash = crypto.createHash('sha1');
+    for (let x = x0; x < x1; x++) {
+        for (let z = z0; z < z1; z++) {
+            const surface = generator.columnSurface(x, z);
+            const soil = generator.soilDepthAt(x, z, surface);
+            for (let y = from; y <= surface.height; y++) hash.update(`${generator.blockAt(x, y, z, surface, soil)}\n`);
+        }
+    }
+    assert.equal(hash.digest('hex'), fingerprint);
+});
+
+test('bedrock is all of y = -14 and about half of y = -13, with no ore in it', () => {
+    const generator = loadGenerator();
+    assert.equal(generator.BEDROCK_Y, -14);
+    assert.match(read(ROOT, 'pkg', 'terrain', 'climate.go'), /BedrockY\s+= -14\b/);
+    assert.match(read(JS, 'terrainGen.js'), /const VEIN_FLOOR = -12;/);
+    assert.match(read(ROOT, 'pkg', 'terrain', 'ores.go'), /veinFloor\s+= -12\b/);
+    let rough = 0;
+    let cells = 0;
+    for (let x = -40; x < 40; x++) {
+        for (let z = -40; z < 40; z++) {
+            const surface = generator.columnSurface(x, z);
+            const soil = generator.soilDepthAt(x, z, surface);
+            assert.equal(generator.blockAt(x, -14, z, surface, soil), 'bedrock');
+            const above = generator.blockAt(x, -13, z, surface, soil);
+            assert.equal(above === 'bedrock', generator.hash3(x, -13, z, 5) < 0.5, `${x},${z}`);
+            if (above === 'bedrock') rough++;
+            else assert.ok(above === 'stone' || above.endsWith('_ore'), above);
+            const next = generator.blockAt(x, -12, z, surface, soil);
+            assert.ok(next === 'stone' || next.endsWith('_ore'), next);
+            cells++;
+        }
+    }
+    assert.ok(rough > cells * 0.4 && rough < cells * 0.6, `${rough} of ${cells}`);
 });
 
 test('the rock under the ores is what it always was, on this side too', () => {
@@ -162,6 +204,20 @@ test('the guide: 248 and 249 in both languages, in the indexes and the catalogue
         assert.match(page(249, lang), /\(248\)/);
     }
     assert.match(read(ROOT, 'GUIA.md'), /248/);
+});
+
+test('the guide puts the bottom of the world where the generator does', () => {
+    const { BEDROCK_Y } = loadGenerator();
+    const height = `−${-BEDROCK_Y}`;
+    for (const lang of ['ES', 'EN']) {
+        for (const id of [50, 99, 248]) {
+            const text = page(id, lang);
+            assert.ok(text.includes(`**y = ${height}**`) || text.includes(`**${height}**`), `${id} ${lang}`);
+            assert.ok(text.includes('−5'), `${id} ${lang}: land already explored keeps the old floor`);
+            assert.ok(!text.includes('**y = −5**') && !text.includes('**−5**'), `${id} ${lang}: the old floor as if it were the floor`);
+        }
+    }
+    assert.ok(read(ROOT, 'GUIA.md').includes(`y = ${height}`));
 });
 
 test('the guide says what the generator and the foundry do', () => {

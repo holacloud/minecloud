@@ -111,6 +111,97 @@ function place(world, item, target, normal) {
     }
 }
 
+// As generated today: bedrock at y = -14, stone up to y = 0, and a shaft at (8, 8) to the bedrock.
+function makeDeepWorld() {
+    const world = new ctx.WorldRenderer({ add() {}, remove() {} });
+    const stone = world.registry.id('stone');
+    const bedrock = world.registry.id('bedrock');
+    for (const [cx, cz] of [[-1, -1], [-1, 0], [0, -1], [0, 0]]) {
+        const column = new ctx.ChunkColumn(cx, cz);
+        for (let lx = 0; lx < 16; lx++) {
+            for (let lz = 0; lz < 16; lz++) {
+                column.set(lx, -14, lz, bedrock);
+                for (let y = -13; y <= 0; y++) column.set(lx, y, lz, stone);
+            }
+        }
+        world.columns.set(world.chunkKey(cx, cz), column);
+    }
+    const shaft = world.columns.get(world.chunkKey(0, 0));
+    for (let y = -13; y <= 0; y++) shaft.set(8, y, 8, 0);
+    return world;
+}
+
+test('a block goes on bedrock at the bottom of the deep rock, and against its walls', () => {
+    const world = makeDeepWorld();
+    const { sent } = place(world, 'cobblestone', { x: 8, y: -14, z: 8 }, UP);
+    assert.equal(world.getBlockTypeAt(8, -13, 8), 'cobblestone');
+    assert.equal(sent[0].payload.y, -13);
+    for (const y of [-12, -9, -6]) {
+        const wall = makeDeepWorld();
+        const made = place(wall, 'cobblestone', { x: 7, y, z: 8 }, EAST);
+        assert.equal(wall.getBlockTypeAt(8, y, 8), 'cobblestone', `y=${y}`);
+        assert.equal(made.sent[0].payload.y, y);
+    }
+});
+
+test('bedrock at y = -14 breaks for nobody, and a block does not take its place', () => {
+    const world = makeDeepWorld();
+    assert.equal(world.getBreakDurationForType(world.getBlockTypeAt(3, -14, 3)), null);
+    const { sent } = place(world, 'cobblestone', { x: 8, y: -13, z: 8 }, DOWN);
+    assert.equal(world.getBlockTypeAt(8, -14, 8), 'bedrock');
+    assert.equal(sent.length, 0);
+});
+
+test('a drop lands on what is under it at any depth, not at the old floor', () => {
+    const landing = (world, y) => {
+        const game = new ctx.Game();
+        game.world = world;
+        return game.getDropLandingY(8.5, 8.5, y);
+    };
+    const shaft = makeDeepWorld();
+    assert.equal(landing(shaft, 0), -13, 'all the way down the shaft');
+    assert.equal(landing(shaft, -7), -13, 'mined below the old floor: it used to come back up to y = -4');
+    assert.equal(landing(shaft, -13), -13);
+    shaft.addBlock({ x: 8, y: -9, z: 8, blockType: 'cobblestone' });
+    assert.equal(landing(shaft, -3), -8, 'on the first thing in its way');
+    assert.equal(landing(shaft, -10), -13, 'and from under it, on what is below');
+
+    // In a column with no floor at all, it stays inside the world.
+    const empty = makeDeepWorld();
+    for (let y = -14; y <= 0; y++) empty.columns.get(empty.chunkKey(0, 0)).set(8, y, 8, 0);
+    assert.equal(landing(empty, 0), ctx.WORLD_MIN_Y);
+});
+
+test('a saved chunk with the old floor next to a new one meshes, walled where the rock ends', () => {
+    const world = makeDeepWorld();
+    const stone = world.registry.id('stone');
+    const bedrock = world.registry.id('bedrock');
+    // Chunk (-1, 0) was saved when bedrock lay at y = -5: nothing under it.
+    const old = world.columns.get(world.chunkKey(-1, 0));
+    for (let lx = 0; lx < 16; lx++) {
+        for (let lz = 0; lz < 16; lz++) {
+            for (let y = ctx.WORLD_MIN_Y; y < -5; y++) old.set(lx, y, lz, 0);
+            old.set(lx, -5, lz, bedrock);
+            old.set(lx, -4, lz, (lx + lz) % 2 ? bedrock : stone);
+        }
+    }
+    const westFacesAt = (y) => {
+        let count = 0;
+        for (const bucket of world.mesher.build(0, 0).buckets) {
+            for (let t = 0; t < bucket.indices.length / 3; t++) {
+                if (bucket.blocks[t * 3] !== 0 || bucket.blocks[t * 3 + 1] !== y) continue;
+                if (bucket.normals[bucket.indices[t * 3] * 3] === -1) count++;
+            }
+        }
+        return count;
+    };
+    assert.doesNotThrow(() => { world.mesher.build(0, 0); world.mesher.build(-1, 0); });
+    assert.ok(westFacesAt(-9) > 0, 'the new rock shows a wall to the empty space under the old floor');
+    assert.equal(westFacesAt(-3), 0, 'above the old floor the two sides meet as ever');
+    assert.equal(world.getBlockTypeAt(-1, -5, 0), 'bedrock');
+    assert.equal(world.getBlockTypeAt(-1, -6, 0), null, 'the old chunk is left as it was saved');
+});
+
 test('a block goes on the bottom of a hole, on top of bedrock, under height 0', () => {
     const world = makeWorld();
     const { sent, counts } = place(world, 'cobblestone', { x: 8, y: -5, z: 8 }, UP);

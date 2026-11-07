@@ -490,7 +490,7 @@ Páginas 246 y 247 de la guía del juego.
 
 Páginas 248 y 249 de la guía del juego. Lo decide `pkg/terrain/ores.go`, y `js/terrainGen.js` hace lo mismo.
 
-Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los chunks) y **afloramientos** al aire libre: en la roca de las montañas y, muy de vez en cuando, en una cuesta de 45 grados o más de cualquier otro bioma. No sustituyen al agua, a la arena de playa, al musgo ni a la tierra donde crece algo.
+El fondo del mundo es la roca madre, en y = −14 y en la mitad de las casillas de y = −13 (y = −5 y −4 en los chunks guardados antes de que el mundo se hiciera más hondo). Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los chunks) y **afloramientos** al aire libre: en la roca de las montañas y, muy de vez en cuando, en una cuesta de 45 grados o más de cualquier otro bioma. No sustituyen al agua, a la arena de playa, al musgo ni a la tierra donde crece algo.
 
 | Mineral | Sobre todo en | Profundidad | En la fundición | A mano (C) |
 |---|---|---|---|---|
@@ -501,7 +501,7 @@ Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los 
 | `zinc_ore` | llanura y bosque, y en bolsas dentro del plomo | y < 4; en la montaña, cualquiera | **2** `element_zn` | 1 `zinc_ore` + 1 `coal_ore` → 1 |
 | `lead_ore` | montaña; llanura y bosque | y < 4; en la montaña, cualquiera | **2** `element_pb` | 1 `lead_ore` + 1 `coal_ore` → 1 |
 | `silver_ore` | montaña, y en bolsas dentro del plomo | y < 4; en la montaña, cualquiera | **2** `element_ag` | 1 `silver_ore` + 1 `coal_ore` → 1 |
-| `gold_ore` | montaña; muy poco en otros sitios | y < 0; en la montaña, más por debajo de y = 0 | 1 `gold_block` | se usa tal cual |
+| `gold_ore` | montaña; muy poco en otros sitios | y < 0, más cuanto más hondo; en la montaña, cualquiera | 1 `gold_block` | se usa tal cual |
 
 Del metal de construir a la mesa de laboratorio (tecla C, y solo en este sentido):
 

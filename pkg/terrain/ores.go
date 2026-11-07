@@ -32,7 +32,7 @@ const (
 	// starts, or it would be cut down to crumbs. Bare rock has hardly any soil to cut it.
 	veinCoverSoil = 5
 	veinCoverRock = 3
-	veinFloor     = -3
+	veinFloor     = -12
 )
 
 // The depth of a vein, from the height of the cell it was born in.
@@ -91,6 +91,13 @@ var veinTable = map[string][3][]oreChance{
 		{{"coal_ore", 0.12}, {"iron_ore", 0.1}, {"tin_ore", 0.08}, {"copper_ore", 0.06}, {"lead_ore", 0.04}, {"silver_ore", 0.01}, {"gold_ore", 0.005}},
 	},
 }
+
+// There is far more rock below y = 0 than above it, and gold must stay as scarce as it is (the bound is
+// in ores_test.go). So below y = 0 a gold vein is there only with a chance of depth/goldDepthScale:
+// the few that are left lie towards the bottom of the world, where going down pays. It is a roll of
+// its own, so no other ore moves; and veins this deep never reach the open air, so what shows on the
+// surface stays as it was.
+const goldDepthScale = 30
 
 // A lead vein is galena, and some of it holds what galena so often comes with. The shares are of the
 // pockets of the vein, each galenaPocket blocks across, so they are small lumps and not loose crumbs.
@@ -229,6 +236,9 @@ func veinOre(c veinCell) string {
 	biome := dominantBiome(climate)
 	ore := pickOre(veinTable[biome][veinZone(c.y0)], c.roll)
 	if ore == "" {
+		return ""
+	}
+	if ore == "gold_ore" && c.y0 < 0 && hash3(c.cellX, c.cellY, c.cellZ, 3110) >= float64(-c.y0)/goldDepthScale {
 		return ""
 	}
 	cover := veinCoverSoil

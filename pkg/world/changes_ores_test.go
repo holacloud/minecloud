@@ -74,6 +74,81 @@ func TestSavedOresAreNotChanges(t *testing.T) {
 	}
 }
 
+// savedWithTheOldFloor is a chunk as it was saved when bedrock lay at y=-5: that, half of y=-4, and
+// nothing under it.
+func savedWithTheOldFloor(gen *terrain.Chunk) *terrain.Chunk {
+	saved := gen.Clone()
+	stone, bedrock := saved.PaletteID("stone"), saved.PaletteID("bedrock")
+	for lx := range terrain.ChunkSize {
+		for lz := range terrain.ChunkSize {
+			for y := terrain.WorldMinY; y < -5; y++ {
+				saved.Blocks[terrain.ChunkIndex(lx, y, lz)] = 0
+			}
+			saved.Blocks[terrain.ChunkIndex(lx, -5, lz)] = bedrock
+			top := stone
+			if (lx+lz)%2 == 0 {
+				top = bedrock
+			}
+			saved.Blocks[terrain.ChunkIndex(lx, -4, lz)] = top
+		}
+	}
+	return saved
+}
+
+// A chunk saved with the old floor has nothing a player did in it, whatever the rock under it looks
+// like today. Without this every chunk of a saved world would go on the viewer's list of changes.
+func TestTheOldFloorIsNotAChange(t *testing.T) {
+	gen := terrain.Generate(3, -7)
+	saved := savedWithTheOldFloor(gen)
+	changed, columns, _, _ := diffSurface(saved, gen, nil)
+	if changed || len(columns) != 0 {
+		t.Fatalf("an untouched old chunk: changed %v, columns %v", changed, columns)
+	}
+
+	// What a player does to one still counts: on top, in the rock, and under the old floor.
+	const x, z = 4, 9
+	var top int
+	for y := terrain.WorldMaxY; y >= terrain.WorldMinY; y-- {
+		if gen.Get(x, y, z) != "air" {
+			top = y
+			break
+		}
+	}
+	built := saved.Clone()
+	built.Set(x, top+1, z, "planks")
+	if changed, columns, raised, _ := diffSurface(built, gen, nil); !changed || len(columns) != 1 || raised.Count != 1 {
+		t.Fatalf("a block on top: changed %v, columns %v", changed, columns)
+	}
+	mined := saved.Clone()
+	mined.Set(x, -2, z, "air")
+	if changed, columns, _, _ := diffSurface(mined, gen, nil); !changed || len(columns) != 0 {
+		t.Fatalf("a block mined underground: changed %v, columns %v", changed, columns)
+	}
+	under := saved.Clone()
+	under.Set(x, -9, z, "planks")
+	if changed, _, _, _ := diffSurface(under, gen, nil); !changed {
+		t.Fatal("a block built under the old floor is not a change")
+	}
+}
+
+// In today's deep rock, digging is digging: no old floor to mistake it for.
+func TestDiggingTheDeepRockIsAChange(t *testing.T) {
+	gen := terrain.Generate(3, -7)
+	for _, y := range []int{-4, -5, -6, -13} {
+		for lx := range terrain.ChunkSize {
+			if gen.Get(lx, y, 9) == "bedrock" {
+				continue
+			}
+			dug := gen.Clone()
+			dug.Set(lx, y, 9, "air")
+			if changed, columns, _, _ := diffSurface(dug, gen, nil); !changed || len(columns) != 0 {
+				t.Fatalf("digging at y=%d: changed %v, columns %v", y, changed, columns)
+			}
+			break
+		}
+	}
+}
+
 // Once a chunk has really changed, its columns say what is really on top of it, even an old top
 // where today's generator would show an outcrop.
 func TestColumnsOfAChangedChunkTellTheTruth(t *testing.T) {

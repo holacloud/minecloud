@@ -15,7 +15,7 @@ can break.
 
 - **Stone:** under the layers of dirt or sand, everywhere. It hides the [ores](53).
 - **Cobblestone:** in the rocky lands (mountains), the surface mixes cobblestone and stone.
-- **Bedrock:** the floor of the world, at height **y = −5** (and in half of the cells at y = −4).
+- **Bedrock:** the floor of the world, at height **y = −14** (and in half of the cells at y = −13). In land that was already explored before the world got deeper, it is still at y = −5.
 
 ## How to get them
 
@@ -49,7 +49,7 @@ Several recipes ask for **smooth stone** (`stone`): the [metal blocks and obsidi
 ## Tips
 
 - A [pickaxe](68) is the tool for stone: an iron one breaks stone in 0.35 s.
-- If you fall below the bedrock (through a hole in the world) and pass y = −35, **you die in the void**.
+- If you fall below the bedrock (through a hole in the world) and pass y = −35, **you die in the void**. Take care digging sideways below y = −5: under land explored long ago there is no rock, only that void.
 - Cobblestone is the most plentiful building material: walls, towers and roads.
 
 ## Trivia

@@ -5,7 +5,7 @@
 
 const WORLD_SEED = 20240611;
 const WATER_LEVEL = 5;
-const BEDROCK_Y = -5;
+const BEDROCK_Y = -14;
 
 function hash2(x, z, seed) {
     let h = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263) ^ Math.imul((seed + WORLD_SEED) | 0, 1274126177);
@@ -183,7 +183,7 @@ const VEIN_SKIN_CHANCE = 0.65;
 const VEIN_MAX_RADIUS2 = 3.61;
 const VEIN_COVER_SOIL = 5;
 const VEIN_COVER_ROCK = 3;
-const VEIN_FLOOR = -3;
+const VEIN_FLOOR = -12;
 const VEIN_ZONE_HIGH = 4;
 const VEIN_ZONE_MID = 0;
 const VEIN_KINDS = {
@@ -219,6 +219,8 @@ const VEIN_TABLE = {
         [['coal_ore', 0.12], ['iron_ore', 0.1], ['tin_ore', 0.08], ['copper_ore', 0.06], ['lead_ore', 0.04], ['silver_ore', 0.01], ['gold_ore', 0.005]]
     ]
 };
+// Below y = 0 a gold vein is there only with a chance of depth / GOLD_DEPTH_SCALE.
+const GOLD_DEPTH_SCALE = 30;
 const GALENA_SILVER = 0.1;
 const GALENA_ZINC = 0.14;
 const GALENA_POCKET = 3;
@@ -280,13 +282,14 @@ function galenaMix(ore, x, y, z) {
 
 // What a whole vein is, decided from its first end; none if the floor of the world or the soil would
 // cut it down to crumbs.
-function veinOre(x0, y0, z0, x1, y1, z1, roll) {
+function veinOre(cellX, cellY, cellZ, x0, y0, z0, x1, y1, z1, roll) {
     if (y0 < VEIN_FLOOR) return '';
     const climate = sampleClimate(x0, z0);
     const biome = dominantBiome(climate);
     const zone = y0 >= VEIN_ZONE_HIGH ? 2 : y0 >= VEIN_ZONE_MID ? 1 : 0;
     const ore = pickOre(VEIN_TABLE[biome][zone], roll);
     if (!ore) return '';
+    if (ore === 'gold_ore' && y0 < 0 && hash3(cellX, cellY, cellZ, 3110) >= -y0 / GOLD_DEPTH_SCALE) return '';
     const cover = biome === 'rocky' ? VEIN_COVER_ROCK : VEIN_COVER_SOIL;
     if (y1 > terrainHeight(x0, z0, climate) - cover) return '';
     if (y1 > terrainHeight(x1, z1, sampleClimate(x1, z1)) - cover) return '';
@@ -308,7 +311,7 @@ function veinOreAt(x, y, z) {
     const z1 = cellZ * VEIN_CELL_XZ + VEIN_MARGIN + Math.floor(hash3(cellX, cellY, cellZ, 3106) * span);
     const y1 = y0 + Math.floor(hash3(cellX, cellY, cellZ, 3107) * (VEIN_MAX_RISE + 1));
     if (segmentDistance2(x - x0, y - y0, z - z0, x1 - x0, y1 - y0, z1 - z0, 1) > VEIN_MAX_RADIUS2) return '';
-    const ore = veinOre(x0, y0, z0, x1, y1, z1, roll);
+    const ore = veinOre(cellX, cellY, cellZ, x0, y0, z0, x1, y1, z1, roll);
     if (!ore) return '';
     const [radius, length] = VEIN_KINDS[ore];
     const d2 = segmentDistance2(x - x0, y - y0, z - z0, x1 - x0, y1 - y0, z1 - z0, length);

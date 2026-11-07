@@ -43,7 +43,7 @@ La plata y el zinc salen también **dentro de las vetas de plomo**, en bolsitas.
 
 ## A qué profundidad
 
-Mira tu altura, la **y**. El agua está en y = 5 y el fondo del mundo en y = −5.
+Mira tu altura, la **y**. El agua está en y = 5 y el fondo del mundo en **y = −14**. Cuanto más bajas, menos carbón y más metal.
 
 | | En llanura, bosque y desierto | En la montaña |
 |---|---|---|
@@ -53,7 +53,7 @@ Mira tu altura, la **y**. El agua está en y = 5 y el fondo del mundo en y = −
 | Estaño | – | a cualquier altura |
 | Zinc y plomo | por debajo de y = 4 | a cualquier altura |
 | Plata | muy poco, por debajo de y = 4 | poco, a cualquier altura |
-| Oro | muy poco, por debajo de y = 0 | poco, y **más por debajo de y = 0** |
+| Oro | muy poco, por debajo de y = 0, y **más cuanto más hondo** | poco, a cualquier altura; por debajo de y = 0, **más cuanto más hondo** |
 
 Una veta nunca empieza justo bajo la hierba: necesita unos bloques de tierra y piedra encima.
 
@@ -67,7 +67,7 @@ Una veta nunca empieza justo bajo la hierba: necesita unos bloques de tierra y p
 
 Los metales que encuentres también sirven en la [mesa de laboratorio](117), el cobre, el hierro y el oro incluidos: [Cómo se funden los metales](249) explica cómo.
 
-Un trozo de mundo que ya exploraste antes se queda como estaba, con sus minerales de antes. Los afloramientos y las vetas nuevas solo salen en la tierra **que nadie ha visitado aún**.
+Un trozo de mundo que ya exploraste antes se queda como estaba, con sus minerales de antes y su fondo en y = −5. Los afloramientos, las vetas nuevas y la roca más honda solo salen en la tierra **que nadie ha visitado aún**.
 
 ## Por qué aquí, en el mundo real
 
