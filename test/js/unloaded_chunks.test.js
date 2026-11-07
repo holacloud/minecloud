@@ -95,15 +95,18 @@ function makeGame({ renderDistance = 4 } = {}) {
     const grass = world.registry.id('grass');
     const requested = [];
     const removedByServer = new Set();
+    const serverBlocks = new Map();
     world.setChunkSource({ connected: () => true, request: (chunks) => requested.push(...chunks), focus() {} });
 
     const camera = { position: new Vector3(0.5, EYE + 0.01, 0.5), rotation: {} };
     const cameraController = new ctx.CameraController(camera, { addEventListener() {} });
     cameraController.setGameplayCheck(() => true);
+    cameraController.isLocked = true;
     cameraController.setBlockChecker((x, y, z) => world.hasSolidBlock(x, y, z));
     cameraController.setBlockTypeGetter((x, y, z) => world.getBlockTypeAt(x, y, z));
     cameraController.setBlockHeightGetter((x, y, z) => world.getCollisionHeight(x, y, z));
     cameraController.setCollisionBoxGetter((x, y, z) => world.getCollisionBoxes(x, y, z));
+    cameraController.setColumnChecker((x, z) => world.getColumnAt(x, z));
 
     const messages = [];
     const game = new ctx.Game();
@@ -116,6 +119,9 @@ function makeGame({ renderDistance = 4 } = {}) {
         buildRabbitBurrowModel(burrow) { burrow.object = new Object3D(); scene.add(burrow.object); },
         disposeRabbitBurrowModel(burrow) { scene.remove(burrow.object); burrow.object = null; },
         isNightTime: () => false, playTone() {}, playNoiseBurst() {}, playPlaceSound() {},
+        maxHealth: 20, health: 20, wasOnGroundForDamage: false, lastSafePosition: null, lastSafePositionSaveTimer: 0,
+        hitIndicator: { style: {} }, showHitIndicator() {}, stopMining() {}, resetMiningBlockVisual() {}, closeChatInput() {}, closeSignReader() {},
+        renderer: { domElement: {} }, getInventoryCount: () => 0, getSelectedHeldItemType: () => null,
         antsRender() {}, antsRenderTrails() {}, antsFarmRender() {},
         receiveSystemMessage: ({ text }) => messages.push(text),
         // Natural spawning decides the chunks; of what a chunk spawns, only this test's species.
@@ -129,6 +135,12 @@ function makeGame({ renderDistance = 4 } = {}) {
                 for (let y = -16; y <= -1; y++) {
                     if (!removedByServer.has(`${chunkX * 16 + lx},${y},${chunkZ * 16 + lz}`)) column.set(lx, y, lz, grass);
                 }
+            }
+        }
+        for (const [cell, type] of serverBlocks) {
+            const [x, y, z] = cell.split(',').map(Number);
+            if (world.chunkKey(chunkX, chunkZ) === world.chunkKey(Math.floor(x / 16), Math.floor(z / 16))) {
+                column.set(((x % 16) + 16) % 16, y, ((z % 16) + 16) % 16, world.registry.id(type));
             }
         }
         return column;
@@ -169,7 +181,17 @@ function makeGame({ renderDistance = 4 } = {}) {
             if (onStep) onStep();
         }
     }
-    return { game, world, camera, cameraController, messages, deliver, frame, run, walkTo, requested, removedByServer };
+    // The player's part of a frame, in the game's order (game.js): physics, survival, then the chunks.
+    function playerFrame(delta, { chunksArrive = true } = {}) {
+        cameraController.update(delta);
+        game.updateSurvival(delta);
+        world.update(camera.position.x, camera.position.z);
+        if (chunksArrive) deliver();
+    }
+    function playerRun(seconds, options) {
+        for (let t = 0; t < seconds - 1e-9; t += 1 / 60) playerFrame(1 / 60, options);
+    }
+    return { game, world, camera, cameraController, messages, deliver, frame, run, walkTo, requested, removedByServer, serverBlocks, playerFrame, playerRun };
 }
 
 function colonies(game) {
@@ -470,4 +492,588 @@ test('a rabbit burrow does not collapse because its chunk is away, and does when
     game.rabbitCheckBurrows(1);
     assert.ok(!game.rabbitBurrows.includes(burrow));
     assert.equal(surfaced, 1);
+});
+
+// ---- The player, while the ground is not there ----
+//
+// On reconnecting, resetFromServer empties every chunk. getBlockId reads air there, and gravity goes on.
+
+// A player standing on the flat ground, once the page has loaded.
+function standingGame(options) {
+    const g = makeGame(options);
+    g.playerRun(2);
+    assert.equal(g.cameraController.spawnSettling, false, 'landed after the page load');
+    assert.equal(g.cameraController.onGround, true);
+    return g;
+}
+const feet = ({ camera, cameraController }) => camera.position.y - cameraController.eyeHeight;
+const near = (a, b, within = 0.01) => Math.abs(a - b) < within;
+
+test('reconnection: however long the chunks take, the player stays on their feet', () => {
+    log('[fall] delay until the chunks are back -> lowest feet, health, cause of death (ground at y = 0)');
+    for (const seconds of [0.5, 1, 1.5, 3, 10]) {
+        const g = standingGame();
+        const { game, world } = g;
+        world.resetFromServer();
+        let lowest = feet(g);
+        for (let t = 0; t < seconds; t += 1 / 60) {
+            g.playerFrame(1 / 60, { chunksArrive: false });
+            lowest = Math.min(lowest, feet(g));
+        }
+        g.deliver();
+        for (let t = 0; t < 8; t += 1 / 60) {
+            g.playerFrame(1 / 60);
+            lowest = Math.min(lowest, feet(g));
+        }
+        log(`[fall] ${String(seconds).padStart(4)} s -> lowest ${lowest.toFixed(2)}, health ${game.health}/20, ${game.respawnPending ? `DEAD: ${game.deathReason}` : 'alive'}, standing at ${feet(g).toFixed(2)}`);
+        assert.ok(near(lowest, 0), `${seconds} s: never left the ground, went down to ${lowest}`);
+        assert.equal(game.health, 20, `${seconds} s`);
+        assert.equal(game.respawnPending, false, `${seconds} s`);
+        assert.ok(near(feet(g), 0), `${seconds} s`);
+        assert.equal(g.cameraController.onGround, true, `${seconds} s`);
+    }
+});
+
+test('reconnection: caught in the air, nothing builds up while waiting, and the rest of the jump is an ordinary short fall', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    cc.velocityY = cc.jumpVelocity;
+    cc.onGround = false;
+    for (let t = 0; t < 0.2; t += 1 / 60) g.playerFrame(1 / 60);
+    assert.equal(cc.onGround, false);
+    const height = feet(g);
+    assert.ok(height > 0.5, `in the air, at ${height}`);
+    world.resetFromServer();
+    const waitedFrom = camera.position.y;
+    g.playerRun(5, { chunksArrive: false });
+    log(`[air] 5 s without chunks from ${height.toFixed(2)} high: moved ${(camera.position.y - waitedFrom).toFixed(3)}, velocityY ${cc.velocityY}, landingSpeed ${cc.landingSpeed}`);
+    assert.equal(camera.position.y, waitedFrom, 'it hangs there');
+    assert.equal(cc.velocityY, 0, 'no speed gathered');
+    assert.equal(cc.landingSpeed, 0, 'no landing owed');
+    assert.equal(cc.onGround, false, 'it is not standing on anything');
+    g.playerRun(3);
+    assert.ok(near(feet(g), 0));
+    assert.equal(game.health, 20);
+});
+
+test('reconnection: the fall that was going on starts over, from where it was, and the real drop still counts', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    camera.position.y = 20 + cc.eyeHeight;
+    cc.onGround = false;
+    world.resetFromServer();
+    g.playerRun(3, { chunksArrive: false });
+    assert.ok(near(feet(g), 20));
+    g.playerRun(4);
+    log(`[high] 20 blocks above the ground when the chunks went: health ${game.health}/20`);
+    assert.ok(near(feet(g), 0));
+    assert.equal(game.respawnPending, true, 'twenty blocks are twenty blocks');
+    assert.equal(game.deathReason, 'You died from fall damage');
+});
+
+// ---- It cannot be used to cheat: with the chunk loaded, nothing changes ----
+
+test('a loaded column with nothing under the player still falls and kills', () => {
+    const g = standingGame();
+    const { game, world } = g;
+    for (let y = -16; y <= -1; y++) {
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) world.removeBlockAt(dx, y, dz);
+    }
+    assert.ok(world.getColumnAt(0, 0));
+    g.playerRun(4);
+    log(`[void] dug out with the chunk loaded: feet ${feet(g).toFixed(1)}, ${game.respawnPending ? game.deathReason : 'alive'}`);
+    assert.equal(game.respawnPending, true);
+    assert.equal(game.deathReason, 'You fell into the void');
+});
+
+test('ground dug out while the chunk was away: the player waits, and falls for real when the chunk says so', () => {
+    const g = standingGame();
+    const { game, world, removedByServer } = g;
+    for (let y = -16; y <= -1; y++) {
+        for (let x = -16; x < 32; x++) for (let z = -16; z < 32; z++) removedByServer.add(`${x},${y},${z}`);
+    }
+    world.resetFromServer();
+    g.playerRun(5, { chunksArrive: false });
+    assert.ok(near(feet(g), 0), 'no chunk yet: no decision');
+    assert.equal(game.respawnPending, false);
+    g.playerRun(4);
+    assert.equal(game.respawnPending, true);
+    assert.equal(game.deathReason, 'You fell into the void');
+});
+
+test('already deep in the void when the chunks go: no death without a chunk, and no escape once it is back', () => {
+    const g = standingGame();
+    const { game, world, camera, removedByServer } = g;
+    camera.position.y = -40;
+    for (let y = -16; y <= -1; y++) removedByServer.add(`0,${y},0`);
+    world.resetFromServer();
+    g.playerRun(3, { chunksArrive: false });
+    assert.equal(game.respawnPending, false);
+    g.playerRun(0.2);
+    assert.equal(game.respawnPending, true);
+    assert.equal(game.deathReason, 'You fell into the void');
+});
+
+// ---- The last safe position ----
+
+test('the last safe position never records a place in the air, and goes on once on the ground', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    g.playerRun(1.5);
+    const before = storage.get('minecloud-last-safe-position');
+    assert.ok(before, 'standing, it was saved');
+    camera.position.y += 6;
+    cc.onGround = false;
+    world.resetFromServer();
+    g.playerRun(5, { chunksArrive: false });
+    log('[safe] after 5 s hanging 6 blocks up:', storage.get('minecloud-last-safe-position') === before ? 'unchanged' : storage.get('minecloud-last-safe-position'));
+    assert.equal(storage.get('minecloud-last-safe-position'), before);
+    assert.equal(game.lastSafePosition.y, JSON.parse(before).y);
+    g.playerRun(3);
+    assert.ok(near(JSON.parse(storage.get('minecloud-last-safe-position')).y, cc.eyeHeight), 'and on the ground again it is the ground');
+});
+
+test('standing still through a reconnection does not record anything either', () => {
+    const g = standingGame();
+    g.playerRun(1.5);
+    const before = storage.get('minecloud-last-safe-position');
+    g.world.resetFromServer();
+    g.playerRun(5, { chunksArrive: false });
+    assert.equal(storage.get('minecloud-last-safe-position'), before);
+});
+
+// ---- Moving ----
+
+test('reconnection: the player cannot walk or jump while nothing is loaded around them', () => {
+    const g = standingGame();
+    const { world, camera, cameraController: cc } = g;
+    world.resetFromServer();
+    const { x, y, z } = camera.position;
+    cc.keys.forward = true;
+    cc.keys.right = true;
+    cc.keys.jump = true;
+    g.playerRun(3, { chunksArrive: false });
+    cc.keys.forward = cc.keys.right = cc.keys.jump = false;
+    log(`[hold] 3 s pushing forward and jumping: moved ${Math.hypot(camera.position.x - x, camera.position.z - z).toFixed(3)} sideways, ${(camera.position.y - y).toFixed(3)} up`);
+    assert.deepEqual([camera.position.x, camera.position.y, camera.position.z], [x, y, z]);
+});
+
+test('touch controls too: the joystick and the Jump button do nothing while waiting, and work again after', () => {
+    const g = standingGame();
+    const { world, camera, cameraController: cc } = g;
+    cc.setTouchControlsEnabled(true);
+    world.resetFromServer();
+    const { x, y, z } = camera.position;
+    cc.setMoveInput(0.7, 0.7);
+    cc.setTouchJump(true);
+    g.playerRun(2, { chunksArrive: false });
+    assert.deepEqual([camera.position.x, camera.position.y, camera.position.z], [x, y, z]);
+    cc.setTouchJump(false);
+    g.playerRun(1);
+    assert.ok(Math.hypot(camera.position.x - x, camera.position.z - z) > 1, 'the same joystick walks once the ground is there');
+    cc.setMoveInput(0, 0);
+    assert.ok(near(feet(g), 0));
+});
+
+test('reconnection: the look still works while waiting', () => {
+    const g = standingGame();
+    const { world, cameraController: cc } = g;
+    world.resetFromServer();
+    cc.addLookDelta(100, 0);
+    const yaw = cc.yaw;
+    g.playerRun(0.1, { chunksArrive: false });
+    assert.notEqual(cc.yaw, yaw);
+    assert.equal(g.camera.rotation.y, cc.yaw);
+});
+
+test('crouching while waiting moves the view, not the feet', () => {
+    const g = standingGame();
+    const { world, camera, cameraController: cc } = g;
+    world.resetFromServer();
+    g.playerRun(0.2, { chunksArrive: false });
+    const before = feet(g);
+    cc.keys.crouch = true;
+    g.playerRun(0.2, { chunksArrive: false });
+    assert.ok(near(feet(g), before));
+    assert.ok(near(camera.position.y, before + cc.crouchingEyeHeight));
+    cc.keys.crouch = false;
+    g.playerRun(0.2, { chunksArrive: false });
+    assert.ok(near(feet(g), before));
+});
+
+test('the edge of the loaded area: the player stops at it, slides along it, and goes on when the chunk comes', () => {
+    const g = standingGame({ renderDistance: 1 });
+    const { game, world, camera, cameraController: cc } = g;
+    // Forward is -z here: the next chunk that way has not come yet.
+    camera.position.set(8.5, cc.eyeHeight, -14.5);
+    g.playerRun(0.2);
+    world.columns.delete(world.chunkKey(0, -2));
+    world.columns.delete(world.chunkKey(1, -2));
+    world.columns.delete(world.chunkKey(-1, -2));
+    world.generatedChunks.delete(world.chunkKey(0, -2));
+    cc.keys.forward = true;
+    for (let t = 0; t < 2; t += 1 / 60) {
+        cc.update(1 / 60);
+        game.updateSurvival(1 / 60);
+    }
+    log(`[edge] walking at the unloaded chunk (it starts at z = -16): stopped at z = ${camera.position.z.toFixed(3)}, feet ${feet(g).toFixed(2)}`);
+    assert.ok(camera.position.z >= -16, 'still on the loaded side');
+    assert.ok(camera.position.z < -15.9, 'right up to the border');
+    assert.ok(near(feet(g), 0));
+    assert.equal(cc.onGround, true, 'and standing on the loaded column');
+    assert.equal(game.health, 20);
+
+    cc.keys.right = true;
+    const x = camera.position.x;
+    for (let t = 0; t < 0.5; t += 1 / 60) cc.update(1 / 60);
+    assert.ok(camera.position.x > x + 1, 'a diagonal slides along the border');
+    cc.keys.right = false;
+
+    world.columns.set(world.chunkKey(0, -2), new ctx.ChunkColumn(0, -2));
+    const grass = world.registry.id('grass');
+    for (let lx = 0; lx < 16; lx++) for (let lz = 0; lz < 16; lz++) world.columns.get(world.chunkKey(0, -2)).set(lx, -1, lz, grass);
+    for (let t = 0; t < 0.5; t += 1 / 60) cc.update(1 / 60);
+    assert.ok(camera.position.z < -16.5, 'the chunk came: the walk goes on');
+    assert.ok(near(feet(g), 0));
+    cc.keys.forward = false;
+});
+
+test('a shove does not push the player off the loaded area, nor stay stored while waiting', () => {
+    const g = standingGame({ renderDistance: 1 });
+    const { world, camera, cameraController: cc } = g;
+    camera.position.set(8.5, cc.eyeHeight, -15.95);
+    g.playerRun(0.1);
+    world.columns.delete(world.chunkKey(0, -2));
+    cc.onGround = true;
+    cc.applyKnockback(0, -1, 9, 0);
+    for (let t = 0; t < 0.5; t += 1 / 60) cc.update(1 / 60);
+    assert.ok(camera.position.z >= -16, `held at ${camera.position.z}`);
+    world.resetFromServer();
+    cc.applyKnockback(1, 0, 9, 5);
+    const { x, y } = camera.position;
+    for (let t = 0; t < 0.5; t += 1 / 60) cc.update(1 / 60);
+    assert.equal(camera.position.x, x);
+    assert.equal(camera.position.y, y);
+    assert.equal(cc.knockbackX, 0);
+    assert.equal(cc.velocityY, 0);
+});
+
+test('waiting, the player does not wander over the unknown, but a step onto a loaded chunk is always good', () => {
+    const g = standingGame({ renderDistance: 1 });
+    const { game, world, camera, cameraController: cc } = g;
+    camera.position.set(14.5, cc.eyeHeight, 8.5);
+    g.playerRun(0.1);
+    world.columns.delete(world.chunkKey(0, 0));
+    const before = camera.position.x;
+    cc.keys.right = true;
+    for (let t = 0; t < 1; t += 1 / 60) cc.update(1 / 60);
+    assert.equal(camera.position.x, before, '1.5 blocks from the loaded chunk: it waits');
+    camera.position.x = 15.98;
+    for (let t = 0; t < 1; t += 1 / 60) {
+        cc.update(1 / 60);
+        game.updateSurvival(1 / 60);
+    }
+    cc.keys.right = false;
+    assert.ok(camera.position.x > 16, 'out, on the loaded chunk next door');
+    assert.ok(near(feet(g), 0));
+    assert.equal(cc.onGround, true);
+    assert.equal(game.health, 20);
+});
+
+// ---- Other ways of being in the world ----
+
+test('page load: the spawn still waits for its chunk and floats down, with no damage', () => {
+    const g = makeGame();
+    const { game, camera, cameraController: cc } = g;
+    camera.position.set(0.5, 40, 0.5);
+    g.playerRun(5, { chunksArrive: false });
+    assert.equal(camera.position.y, 40);
+    assert.equal(cc.spawnSettling, true);
+    g.playerRun(6);
+    assert.equal(cc.spawnSettling, false);
+    assert.ok(near(feet(g), 0));
+    assert.equal(game.health, 20);
+});
+
+test('flying: a flyer goes on flying through a reconnection, and over what is not loaded', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    cc.flightAllowed = true;
+    cc.flying = true;
+    camera.position.y = 30;
+    world.resetFromServer();
+    const { x, z } = camera.position;
+    g.playerRun(1, { chunksArrive: false });
+    assert.equal(cc.flying, true, 'not brought down');
+    assert.equal(camera.position.y, 30);
+    cc.keys.forward = true;
+    cc.keys.jump = true;
+    g.playerRun(1, { chunksArrive: false });
+    cc.keys.forward = cc.keys.jump = false;
+    log(`[fly] 1 s up and ahead with no chunks: ${(z - camera.position.z).toFixed(1)} ahead, y ${camera.position.y.toFixed(1)}`);
+    assert.ok(z - camera.position.z > 5, 'it moves');
+    assert.equal(camera.position.x, x);
+    assert.ok(camera.position.y > 30);
+
+    cc.flying = false;
+    const y = camera.position.y;
+    g.playerRun(2, { chunksArrive: false });
+    assert.equal(camera.position.y, y, 'stopping flying over nothing known hangs there, too');
+    assert.equal(game.respawnPending, false);
+});
+
+test('flying down past the void depth with no chunk: no death until the chunk says so', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    cc.flightAllowed = true;
+    cc.flying = true;
+    world.resetFromServer();
+    camera.position.y = -40;
+    g.playerRun(2, { chunksArrive: false });
+    assert.equal(game.respawnPending, false);
+});
+
+test('seated: a reconnection does not stand the player up, and the seat stays where it was', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc, serverBlocks } = g;
+    world.addBlock({ x: 3, y: 0, z: 3, blockType: 'planks' });
+    serverBlocks.set('3,0,3', 'planks');
+    const seat = { x: 3.5, y: 1.2, z: 3.5 };
+    game.seated = { x: 3, y: 0, z: 3, base: 'planks', facing: 'n', avatarYaw: 0 };
+    cc.setSeat(seat);
+    const frame = (options) => {
+        cc.update(1 / 60);
+        game.seatUpdate();
+        game.updateSurvival(1 / 60);
+        world.update(camera.position.x, camera.position.z);
+        if (options.chunksArrive) g.deliver();
+    };
+    frame({ chunksArrive: true });
+    assert.ok(game.seated);
+    world.resetFromServer();
+    for (let i = 0; i < 180; i++) frame({ chunksArrive: false });
+    log('[seat] 3 s with no chunks: still seated:', Boolean(game.seated), ', eye at y', camera.position.y);
+    assert.ok(game.seated, 'still sitting');
+    assert.equal(cc.seat, seat);
+    assert.equal(camera.position.y, seat.y);
+    assert.equal(game.health, 20);
+    for (let i = 0; i < 60; i++) frame({ chunksArrive: true });
+    assert.ok(game.seated, 'and the same seat came back');
+    assert.equal(camera.position.y, seat.y);
+});
+
+test('seated: a seat really gone while away ends the sitting once its chunk says so', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    world.addBlock({ x: 3, y: 0, z: 3, blockType: 'planks' });
+    game.seated = { x: 3, y: 0, z: 3, base: 'planks', facing: 'n', avatarYaw: 0 };
+    cc.setSeat({ x: 3.5, y: 1.2, z: 3.5 });
+    world.resetFromServer();
+    game.seatUpdate();
+    assert.ok(game.seated);
+    g.playerRun(0.1);
+    assert.ok(world.getColumnAt(3, 3));
+    game.seatUpdate();
+    assert.equal(game.seated, null, 'the server sends no seat there');
+    assert.equal(cc.seat, null);
+});
+
+test('riding: horse and rider wait together and go on after', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    const horse = game.createMob('horse', new Vector3(0.5, 0, 0.5));
+    game.ambientMobs.push(horse);
+    game.animateMount = () => {};
+    camera.position.set(0.5, 0 + cc.eyeHeight, 0.5);
+    assert.equal(game.tryMountMob === undefined, false);
+    cc.setMount(ctx.getMobSpecies('horse').mount);
+    camera.position.y = cc.eyeHeight;
+    game.ridingMob = horse;
+    horse.userData.rider = true;
+    horse.userData.clop = 0;
+    g.playerRun(0.2);
+    const frame = (chunksArrive) => {
+        g.playerFrame(1 / 60, { chunksArrive });
+        game.updateRiddenMob(horse, 1 / 60);
+    };
+    world.resetFromServer();
+    const { x, y, z } = camera.position;
+    cc.keys.forward = true;
+    for (let i = 0; i < 180; i++) frame(false);
+    log(`[ride] 3 s galloping with no chunks: moved ${Math.hypot(camera.position.x - x, camera.position.z - z).toFixed(3)}, horse at y ${horse.position.y.toFixed(2)}`);
+    assert.deepEqual([camera.position.x, camera.position.y, camera.position.z], [x, y, z]);
+    assert.ok(near(horse.position.y, 0), 'the horse does not fall');
+    for (let i = 0; i < 60; i++) frame(true);
+    cc.keys.forward = false;
+    assert.ok(z - camera.position.z > 2, 'and it gallops on');
+    assert.ok(near(horse.position.y, 0));
+    assert.equal(game.health, 20);
+});
+
+test('in water: a swimmer waits at the same depth, and swims again when the water is back', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc, serverBlocks } = g;
+    for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) for (let y = 0; y < 4; y++) serverBlocks.set(`${x},${y},${z}`, 'water');
+    world.resetFromServer();
+    g.deliver();
+    world.update(camera.position.x, camera.position.z);
+    g.deliver();
+    camera.position.y = 2 + cc.eyeHeight;
+    cc.velocityY = -1;
+    g.playerRun(0.1);
+    assert.equal(cc.isInWater, true);
+    world.resetFromServer();
+    const y = camera.position.y;
+    g.playerRun(3, { chunksArrive: false });
+    assert.equal(camera.position.y, y);
+    assert.equal(cc.isInWater, false, 'no water known around it');
+    g.playerRun(0.1);
+    assert.equal(cc.isInWater, true);
+    assert.ok(y - camera.position.y < 0.5, 'and it goes on sinking slowly');
+    assert.equal(game.health, 20);
+});
+
+test('on a ladder: it waits, and holds on again when the ladder is back', () => {
+    const g = standingGame();
+    const { world, camera, cameraController: cc, serverBlocks } = g;
+    for (let y = 0; y < 8; y++) serverBlocks.set(`0,${y},0`, 'ladder');
+    world.resetFromServer();
+    g.deliver();
+    world.update(camera.position.x, camera.position.z);
+    g.deliver();
+    camera.position.y = 5 + cc.eyeHeight;
+    g.playerRun(0.1);
+    assert.equal(cc.isOnLadder, true);
+    world.resetFromServer();
+    const y = camera.position.y;
+    g.playerRun(3, { chunksArrive: false });
+    assert.equal(camera.position.y, y);
+    g.playerRun(0.5);
+    assert.equal(camera.position.y, y, 'a ladder holds whoever does not press anything');
+    assert.equal(cc.isOnLadder, true);
+});
+
+test('on a lift platform high up: the player waits on it, and stands on it again', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc, serverBlocks } = g;
+    serverBlocks.set('0,9,0', 'lift_platform');
+    world.resetFromServer();
+    g.deliver();
+    world.update(camera.position.x, camera.position.z);
+    g.deliver();
+    camera.position.y = 10 + cc.eyeHeight;
+    g.playerRun(0.2);
+    assert.ok(near(feet(g), 10), 'standing on it');
+    world.resetFromServer();
+    g.playerRun(3, { chunksArrive: false });
+    assert.ok(near(feet(g), 10), 'waiting at its height');
+    g.playerRun(1);
+    assert.ok(near(feet(g), 10), 'and on it again');
+    assert.equal(cc.onGround, true);
+    assert.equal(game.health, 20);
+});
+
+test('the connection drops again: a minute with no chunks costs nothing, and the next connection brings them', () => {
+    const g = standingGame();
+    const { game, world, camera, cameraController: cc } = g;
+    g.playerRun(1.5);
+    const safe = storage.get('minecloud-last-safe-position');
+    world.resetFromServer();
+    for (let t = 0; t < 60; t += 0.05) {
+        cc.update(0.05);
+        game.updateSurvival(0.05);
+        world.update(camera.position.x, camera.position.z);
+    }
+    log(`[drop] 60 s: feet ${feet(g).toFixed(2)}, health ${game.health}/20, safe position ${storage.get('minecloud-last-safe-position') === safe ? 'unchanged' : 'CHANGED'}`);
+    assert.ok(near(feet(g), 0));
+    assert.equal(game.health, 20);
+    assert.equal(game.respawnPending, false);
+    assert.equal(storage.get('minecloud-last-safe-position'), safe);
+    g.requested.length = 0;
+    world.resetFromServer();
+    g.playerRun(1);
+    assert.ok(world.getColumnAt(0, 0));
+    assert.equal(cc.onGround, true);
+    assert.ok(near(feet(g), 0));
+});
+
+test('the game tells its controller about the chunks (this harness replaces that part of game.js)', () => {
+    const source = fs.readFileSync(path.join(STATIC, 'js', 'game.js'), 'utf8');
+    assert.match(source, /cameraController\.setColumnChecker\(\(x, z\) => this\.world\.getColumnAt\(x, z\)\)/);
+});
+
+test('with no way to know about chunks (a controller on its own), physics is what it always was', () => {
+    const camera = { position: new Vector3(0.5, 10, 0.5), rotation: {} };
+    const cc = new ctx.CameraController(camera, { addEventListener() {} });
+    cc.setGameplayCheck(() => true);
+    cc.spawnSettling = false;
+    for (let t = 0; t < 0.5; t += 1 / 60) cc.update(1 / 60);
+    assert.ok(camera.position.y < 9);
+});
+
+// ---- What else stands on the world ----
+
+// A creature on the flat ground, its animations left out: only where it is matters here. What runs after the
+// creatures in updateAmbientMobs needs a whole game, so a failure there is not this test's business.
+function creature(species, { tamed = false } = {}) {
+    const g = makeGame();
+    const { game, world, camera } = g;
+    game.spawnMobsForChunk = () => {};
+    g.run(1);
+    const mob = game.createMob(species, new Vector3(4.5, 0, 4.5));
+    mob.userData.natural = !tamed;
+    if (tamed) {
+        mob.userData.tamed = true;
+        mob.userData.owner = 'me';
+    }
+    game.ambientMobs.push(mob);
+    const step = (seconds, chunksArrive) => {
+        for (let t = 0; t < seconds; t += 0.05) {
+            try {
+                game.updateAmbientMobs(0.05);
+            } catch (_error) { /* see above */ }
+            world.update(camera.position.x, camera.position.z);
+            if (chunksArrive) g.deliver();
+        }
+    };
+    return { ...g, mob, step };
+}
+
+for (const [species, tamed] of [['goat', true], ['goat', false], ['frog', false], ['turtle', false], ['lizard', false], ['eel', false], ['sheep', true], ['rabbit', false], ['snake', false]]) {
+    test(`reconnection: a ${tamed ? 'tamed' : 'wild'} ${species} does not fall through the world`, () => {
+        const { mob, step, world, game } = creature(species, { tamed });
+        step(1, true);
+        const before = mob.position.y;
+        world.resetFromServer();
+        step(4, false);
+        log(`[mobs] ${tamed ? 'tamed' : 'wild '} ${species.padEnd(7)}: y ${before.toFixed(2)} -> ${mob.position.y.toFixed(2)} after 4 s with no chunks`);
+        assert.ok(game.ambientMobs.includes(mob), 'still in the game');
+        assert.ok(mob.position.y > before - 0.5, `at y ${mob.position.y}`);
+        step(4, true);
+        assert.ok(mob.position.y > -2, `after the chunks, at y ${mob.position.y}`);
+    });
+}
+
+test('the copper golem: no gravity without a floor, and its own update still runs to catch up with its builder', () => {
+    const { game, world, mob, step } = creature('copper_golem', { tamed: true });
+    world.resetFromServer();
+    mob.userData.copper = { velocityY: 0 };
+    mob.position.y = 3;
+    game.copperGolemFall(mob, 1);
+    assert.equal(mob.position.y, 3, 'it stays');
+    let updates = 0;
+    game.copperGolemUpdate = () => { updates++; };
+    step(0.5, false);
+    assert.ok(updates > 0, 'it can still come to the player: copperGolemCatchUp lives there');
+});
+
+test('a robot: it does not move into what is not loaded, and has no gravity to fall by', () => {
+    const { game, world } = creature('sheep');
+    world.resetFromServer();
+    const robot = { x: 2, y: 5, z: 2, dir: 0 };
+    const result = game.robotMove(robot, 'ahead', 0.3);
+    log('[robot] moving with no chunk:', result);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /not loaded/);
+    assert.equal(robot.y, 5);
 });

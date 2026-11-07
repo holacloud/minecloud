@@ -730,6 +730,7 @@ class Game {
         this.cameraController.setBlockHeightGetter((x, y, z) => this.world.getCollisionHeight(x, y, z));
         // Box collisions: stairs, doors, fences and panes are not whole cubes.
         this.cameraController.setCollisionBoxGetter((x, y, z) => this.world.getCollisionBoxes(x, y, z));
+        this.cameraController.setColumnChecker((x, z) => this.world.getColumnAt(x, z));
         this.applyLookSensitivity();
     }
 

@@ -231,8 +231,9 @@ Object.assign(Game.prototype, {
     updateSurvival(delta) {
         this.lastSafePositionSaveTimer += delta;
 
-        if (this.cameraController.spawnSettling) {
-            // The join/respawn descent never counts as a fall.
+        // The join/respawn descent never counts as a fall. With no chunk under the player nothing can
+        // be concluded either: no fall, no void, and no safe position in the middle of the air.
+        if (this.cameraController.spawnSettling || this.cameraController.isOverUnloadedColumn()) {
             this.cameraController.consumeLandingSpeed();
             this.wasOnGroundForDamage = true;
             return;

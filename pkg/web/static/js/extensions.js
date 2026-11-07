@@ -8,6 +8,8 @@
 //   spawnEgg(species, position)          egg used on block `position`; return true if handled
 //                                        (it must consume the egg itself)
 //   spawnForChunk(chunkX, chunkZ, biome) natural spawning, once per chunk
+//   worksWithoutChunk                    true: update also runs over a chunk that is not loaded,
+//                                        where a mob otherwise just waits for it
 const MOB_BEHAVIOURS = {};
 function registerMobBehaviour(movement, behaviour) {
     MOB_BEHAVIOURS[movement] = behaviour;

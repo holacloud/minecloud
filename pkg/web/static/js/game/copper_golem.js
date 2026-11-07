@@ -269,6 +269,8 @@ if (typeof registerItemType === 'function' && typeof Game !== 'undefined') {
     });
 
     registerMobBehaviour('copper_helper', {
+        // It does not fall without a floor (copperGolemFall), and left behind it has to catch up.
+        worksWithoutChunk: true,
         update(mob, delta, player) {
             this.copperGolemUpdate(mob, delta, player);
         },

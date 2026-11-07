@@ -491,6 +491,10 @@ Object.assign(Game.prototype, {
             }
             const movement = getMobSpecies(mob.userData.species).movement;
             const behaviour = MOB_BEHAVIOURS[movement];
+            // With no chunk under it (a reconnection) a mob waits as it is: to gravity, an unloaded
+            // chunk is a bottomless hole, and nothing brings back what fell below the world.
+            const worksWithoutChunk = behaviour && behaviour.worksWithoutChunk;
+            if (!worksWithoutChunk && !this.world.getColumnAt(Math.floor(mob.position.x), Math.floor(mob.position.z))) continue;
             if (behaviour && behaviour.update) {
                 behaviour.update.call(this, mob, delta, player);
                 continue;

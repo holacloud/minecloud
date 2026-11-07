@@ -150,10 +150,16 @@ Object.assign(Game.prototype, {
             this.seated = null;
             return;
         }
+        if (this.respawnPending) {
+            this.seatStandUp();
+            return;
+        }
+        // A chunk that is not loaded says nothing about the seat: wait for it (a reconnection).
+        if (!this.world.getColumnAt(seat.x, seat.z) || (seat.foot && !this.world.getColumnAt(seat.foot.x, seat.foot.z))) return;
         const type = this.world.getBlockTypeAt(seat.x, seat.y, seat.z);
         const def = type && this.world.blockTypes[type];
         const footGone = seat.foot && !isBedBlockType(this.world.getBlockTypeAt(seat.foot.x, seat.foot.y, seat.foot.z));
-        if (this.respawnPending || !def || (def.variantOf || type) !== seat.base || footGone) this.seatStandUp();
+        if (!def || (def.variantOf || type) !== seat.base || footGone) this.seatStandUp();
     },
 
     // The avatar has no knees, so the legs reach forward and slightly down from the hips, and

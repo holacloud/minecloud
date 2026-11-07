@@ -87,6 +87,11 @@ class CameraController {
     // fn(x, y, z) returns the boxes [x0, y0, z0, x1, y1, z1] (relative to the cell's minimum
     // corner, y up to 1.5) that block movement in that cell; it replaces the height getter.
     setCollisionBoxGetter(fn) { this.collisionBoxGetter = fn; }
+    // fn(x, z) says whether the column of the block (x, z) is loaded. Blocks read as air where it
+    // is not, which says nothing about the ground; without fn everything counts as loaded.
+    setColumnChecker(fn) { this.columnChecker = fn; }
+    isColumnLoaded(x, z) { return !this.columnChecker || Boolean(this.columnChecker(Math.floor(x), Math.floor(z))); }
+    isOverUnloadedColumn() { return !this.isColumnLoaded(this.camera.position.x, this.camera.position.z); }
     setTouchControlsEnabled(enabled) { this.touchControlsEnabled = enabled; }
     setMoveInput(x, y) { this.moveInput.x = x; this.moveInput.y = y; }
     // -1..1 from the touch joystick: turns the body left or right at TOUCH_TURN_RATE.
@@ -402,7 +407,8 @@ class CameraController {
         if (wasCrouching !== this.isCrouching) {
             const previousEyeHeight = this.eyeHeight;
             this.eyeHeight = this.isCrouching ? this.crouchingEyeHeight : this.standingEyeHeight;
-            if (this.onGround) {
+            // Waiting for the ground (see waitForGround) the feet stay put too, whatever is under them.
+            if (this.onGround || (!this.flying && !this.spawnSettling && !this.seat && this.isOverUnloadedColumn())) {
                 this.camera.position.y += this.eyeHeight - previousEyeHeight;
             }
         }
@@ -436,6 +442,8 @@ class CameraController {
             return;
         }
 
+        const startX = this.camera.position.x;
+        const startZ = this.camera.position.z;
         const isSprinting = this.keys.sprint || this.touchSprint || (this.sprintLatch && this.keys.forward && !this.keys.backward);
         const torsoBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y - this.eyeHeight + 1), Math.floor(this.camera.position.z));
         const eyeBlockType = this.getBlockType(Math.floor(this.camera.position.x), Math.floor(this.camera.position.y), Math.floor(this.camera.position.z));
@@ -474,6 +482,13 @@ class CameraController {
 
             let targetX = px + moveX;
             let targetZ = pz + moveZ;
+            // On foot or riding, nobody walks onto ground that is not known yet: they stop at the
+            // border (sliding along it) until its chunk comes. Flying needs no ground.
+            if (!this.flying && !this.isColumnLoaded(targetX, targetZ)) {
+                if (this.isColumnLoaded(targetX, pz)) targetZ = pz;
+                else if (this.isColumnLoaded(px, targetZ)) targetX = px;
+                else { targetX = px; targetZ = pz; }
+            }
             let blockedByLedge = false;
             if (this.isCrouching && this.onGround && this.wouldStepOffLedge(targetX, targetZ, currentFloorY)) {
                 // Sneaking never walks off a ledge; slide along it on whichever axis stays supported.
@@ -520,6 +535,19 @@ class CameraController {
             this.knockbackX *= decay;
             this.knockbackZ *= decay;
             if (Math.hypot(this.knockbackX, this.knockbackZ) < 0.05) this.knockbackX = this.knockbackZ = 0;
+        }
+
+        if (!this.flying && this.isOverUnloadedColumn()) {
+            // A shove (or a wall's push) does not take anybody over unknown ground either.
+            this.camera.position.x = startX;
+            this.camera.position.z = startZ;
+            if (!this.isColumnLoaded(startX, startZ)) {
+                this.waitForGround();
+                this.camera.rotation.order = 'YXZ';
+                this.camera.rotation.y = this.yaw;
+                this.camera.rotation.x = this.pitch;
+                return;
+            }
         }
 
         const feetY = this.camera.position.y - this.eyeHeight;
@@ -592,6 +620,19 @@ class CameraController {
         this.camera.rotation.order = 'YXZ';
         this.camera.rotation.y = this.yaw;
         this.camera.rotation.x = this.pitch;
+    }
+
+    // The chunk under the player is not loaded (a reconnection empties them all, or it is still on
+    // its way): nothing says what is below, so they hang where they are, without gathering speed,
+    // until it comes. Not spawnSettling: that one would bring down flyers and stand up whoever sits.
+    waitForGround() {
+        this.velocityY = 0;
+        this.landingSpeed = 0;
+        this.onGround = false;
+        this.knockbackX = 0;
+        this.knockbackZ = 0;
+        this.isInWater = false;
+        this.isOnLadder = false;
     }
 
     // Returns true once normal physics should take over. Until then the player hangs in place
