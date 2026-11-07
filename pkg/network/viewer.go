@@ -21,12 +21,14 @@ import (
 
 // The terrain viewer's read-only endpoints, mounted at /viewer-api/. Nothing here joins the game:
 // no websocket client, no player, nothing in a player list, and no way to change the world. What
-// goes out is block types and their colours and nothing else: signs' text, chat, storage, players
-// and sessions live elsewhere and are never read. As viewer.html, they need no login.
+// goes out is block types and their colours and, from players alone, who is connected and where:
+// signs' text, chat, storage and sessions live elsewhere and are never read. As viewer.html, they
+// need no login.
 //
 //	GET changes?since=V[&limit=N]  chunks changed after version V, oldest first (JSON)
 //	GET surface?x0=&z0=&x1=&z1=    the changed columns of the chunks in a rectangle (binary)
 //	GET chunks?c=x,z,x,z...        whole chunks, as the game receives them (binary)
+//	GET players                    each connected player's name and position (JSON, viewer_players.go)
 //
 // The first two read only the index in memory (world.ChangeIndex); chunks reads the store through
 // Peek, which never creates anything. See js/viewer/builtBlocks.js for the reader.
@@ -109,6 +111,7 @@ func ViewerAPI() http.Handler {
 	mux.HandleFunc("/viewer-api/changes", handleViewerChanges)
 	mux.HandleFunc("/viewer-api/surface", handleViewerSurface)
 	mux.HandleFunc("/viewer-api/chunks", handleViewerChunks)
+	mux.HandleFunc("/viewer-api/players", handleViewerPlayers)
 	withSession := SessionMiddleware(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {

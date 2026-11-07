@@ -102,6 +102,8 @@ type Player struct {
 	// Mount is "species:variant" while riding (e.g. "horse:2"), MountYaw its facing.
 	Mount    string  `json:"mount,omitempty"`
 	MountYaw float64 `json:"mountYaw,omitempty"`
+	// Whether X, Y, Z come from the player: until their first move they are playerJoin's placeholder.
+	Located bool `json:"-"`
 }
 
 type GameState struct {
@@ -558,8 +560,15 @@ func handleMessage(client *Client, msg Message) {
 		var payload Player
 		json.Unmarshal(msg.Payload, &payload)
 
+		payload.Located = true
 		stateMu.Lock()
-		if existing, ok := gameState.Players[payload.ID]; ok {
+		existing, ok := gameState.Players[payload.ID]
+		// A connection that died unnoticed takes the player's entry with it when it finally
+		// closes, after they are back on a new one; their next move brings the entry back.
+		if !ok && payload.ID != "" && payload.ID == client.ID {
+			existing, ok = Player{ID: client.ID, Username: client.username}, true
+		}
+		if ok {
 			if payload.Username == "" {
 				payload.Username = existing.Username
 			}

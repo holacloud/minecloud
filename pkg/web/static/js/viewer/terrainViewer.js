@@ -10,7 +10,8 @@
 // What players changed comes from the server (js/viewer/builtBlocks.js) and goes into the tiles
 // (js/viewer/builtOverlay.js, in the workers). Only tiles showing a changed chunk are built again,
 // and a tile keeps drawing the old mesh until the new one is there. Up close, the real blocks of
-// those chunks replace the tile (js/viewer/nearBlocks.js).
+// those chunks replace the tile (js/viewer/nearBlocks.js). Where the players are, only if asked
+// for, goes over all of it (js/viewer/playerMarkers.js).
 
 const TILE_SAMPLES = 64;
 const MAX_LOD = 9;
@@ -38,6 +39,7 @@ class TerrainViewer {
         this.near = new NearBlocks({ scene: this.scene, built: this.built });
         nearApplyMask(this.landMaterial, this.near.uniforms);
         nearApplyMask(this.waterMaterial, this.near.uniforms);
+        this.players = new PlayerMarkers({ layer: document.getElementById('player-markers') });
         this.initWorkers();
         this.initUI();
         this.built.start();
@@ -352,6 +354,9 @@ class TerrainViewer {
         });
         $('built').addEventListener('change', (e) => this.built.setEnabled(e.target.checked));
         $('near').addEventListener('change', (e) => this.near.setEnabled(e.target.checked));
+        // Off on every load, whatever the browser restores of the form.
+        $('players').checked = false;
+        $('players').addEventListener('change', (e) => this.players.setEnabled(e.target.checked));
         $('goto').addEventListener('submit', (e) => {
             e.preventDefault();
             const x = Number($('goto-x').value) || 0;
@@ -419,6 +424,7 @@ class TerrainViewer {
             `<b>${this.queue.size + busy}</b> tiles pending (${this.workers.length} workers)`,
             this.built.statusLine(),
             this.near.statusLine(),
+            this.players.statusLine(),
             `${this.fps} fps · ${this.renderer.info.render.calls} draw calls`,
             `centre x ${Math.round(target.x)} z ${Math.round(target.z)}`
         ].filter(Boolean).join('<br>');
@@ -442,6 +448,8 @@ class TerrainViewer {
         }
         this.updateProbe(now);
         this.renderer.render(this.scene, this.camera);
+        // After rendering: the camera's matrices are this frame's.
+        this.players.update(this.camera, window.innerWidth, window.innerHeight);
     }
 }
 

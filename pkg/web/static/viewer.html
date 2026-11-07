@@ -44,6 +44,20 @@
             padding: 6px 12px; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 8px;
             font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap;
         }
+        /* Above the 3D view and under the panel, and every pointer event goes through to the view. */
+        #player-markers { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+        .player-marker {
+            position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+            white-space: nowrap;
+        }
+        .player-marker-name {
+            max-width: 180px; padding: 1px 6px; overflow: hidden; text-overflow: ellipsis; font-size: 12px;
+            background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 6px;
+        }
+        .player-marker-dot {
+            width: 12px; height: 12px; background: #e0483e; border: 2px solid #fff; border-radius: 50%;
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+        }
         .help { position: fixed; right: 16px; bottom: 16px; color: rgba(16, 32, 48, 0.75); font-size: 12px; text-align: right; }
         @media (max-width: 640px) {
             .panel { left: 16px; right: 16px; width: auto; }
@@ -53,6 +67,7 @@
 </head>
 <body>
     <div id="viewport"></div>
+    <div id="player-markers"></div>
 
     <div class="panel">
         <h1>Terrain viewer</h1>
@@ -79,6 +94,9 @@
             <label><input id="built" type="checkbox" checked> Show built blocks</label>
             <label><input id="near" type="checkbox" checked> Near detail</label>
         </div>
+        <div class="row">
+            <label><input id="players" type="checkbox" autocomplete="off"> Show players</label>
+        </div>
 
         <label>Go to</label>
         <form id="goto">
@@ -99,6 +117,7 @@
     <script src="js/viewer/builtOverlay.js"></script>
     <script src="js/viewer/builtBlocks.js"></script>
     <script src="js/viewer/nearBlocks.js"></script>
+    <script src="js/viewer/playerMarkers.js"></script>
     <script src="js/viewer/terrainViewer.js"></script>
 </body>
 </html>
