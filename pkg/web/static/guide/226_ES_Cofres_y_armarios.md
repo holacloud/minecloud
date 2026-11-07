@@ -14,7 +14,7 @@ Cada hueco guarda hasta 999 de un mismo objeto. El armario mide dos bloques de a
 
 ## Cómo se usan
 
-El **clic derecho** abre el panel, con lo de dentro arriba y tus objetos debajo. Haz clic o toca un objeto para moverlo. Encima eliges cuánto se mueve con cada clic: **x1**, **x10** o **All**. Para cerrarlo, pulsa **E** o **Esc**, haz clic fuera o usa su **✕**.
+El **clic derecho** abre el panel, con lo de dentro arriba y tus objetos debajo. Haz clic o toca un objeto para moverlo. Encima eliges cuánto se mueve con cada clic: **x1**, **x10** o **All**. Cada vez que abres un panel empieza en **x1**. Para cerrarlo, pulsa **E** o **Esc**, haz clic fuera o usa su **✕**.
 
 - **Lo de dentro es del mundo, no tuyo.** Todos los jugadores ven lo mismo, y lo que mueve otro aparece mientras miras.
 - **Al romperlo cae todo lo que tenía**, para quien lo rompió, así que cuidado con un armario lleno. Da igual un pico o un [robot](193): cae al suelo, no al cofre de al lado.

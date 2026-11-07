@@ -37,6 +37,8 @@ const STORAGE_LIST_MAX = 120;
 const STORAGE_PENDING_KEY = 'minecloud-storage-pending';
 // The amounts one click can move; 0 means the whole stack.
 const STORAGE_AMOUNTS = [1, 10, 0];
+// What every panel starts with: nothing moves by the stack unless it was asked for in that panel.
+const STORAGE_DEFAULT_AMOUNT = STORAGE_AMOUNTS[0];
 
 const STORAGE_CSS = `
 #storage-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 16px));max-height:calc(100% - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:none;flex-direction:column;gap:10px;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(8,12,20,.94);color:#fff;font-family:'Consolas',monospace;z-index:275;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
@@ -165,6 +167,7 @@ Object.assign(Game.prototype, {
         this.storageTitle = this.getBlockDisplayName(def.variantOf || type);
         this.storageKind = storageBaseName(type);
         this.storageTab = '';
+        this.storageMode = STORAGE_DEFAULT_AMOUNT;
         this.storageContents = null;
         this.storageSlots = null;
         this.storageRev = -1;
@@ -195,7 +198,7 @@ Object.assign(Game.prototype, {
 
     storagePut(type) {
         const at = this.storageAt;
-        const amount = storageClickAmount(this.storageMode ?? 0, this.getInventoryCount(type));
+        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, this.getInventoryCount(type));
         if (!at || amount <= 0 || !this.network.connected) return;
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
         const reqId = this.storageNewRequestId();
@@ -217,7 +220,7 @@ Object.assign(Game.prototype, {
             this.storageRender();
             return;
         }
-        const amount = storageClickAmount(this.storageMode ?? 0, slot.count);
+        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, slot.count);
         if (amount <= 0) return;
         const reqId = this.storageNewRequestId();
         this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now() });
@@ -405,7 +408,7 @@ Object.assign(Game.prototype, {
     storageRender() {
         const panel = this.storagePanel;
         if (!panel || !this.storageAt) return;
-        const mode = this.storageMode ?? 0;
+        const mode = this.storageMode ?? STORAGE_DEFAULT_AMOUNT;
         panel.querySelector('#storage-title').textContent = this.storageTitle;
         panel.querySelectorAll('.storage-amount').forEach((button) => button.classList.toggle('active', Number(button.dataset.amount) === mode));
         panel.querySelector('#storage-note').textContent = this.storageNote || '';

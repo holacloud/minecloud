@@ -14,7 +14,7 @@ Each slot holds up to 999 of one item. The wardrobe stands two blocks tall and n
 
 ## How to use them
 
-**Right click** opens the panel, with what is inside at the top and your items below. Click or tap an item to move it. Above them you choose how much moves with each click: **x1**, **x10** or **All**. To close it, press **E** or **Esc**, click outside, or use its **✕**.
+**Right click** opens the panel, with what is inside at the top and your items below. Click or tap an item to move it. Above them you choose how much moves with each click: **x1**, **x10** or **All**. Every panel starts at **x1** each time you open it. To close it, press **E** or **Esc**, click outside, or use its **✕**.
 
 - **What is inside belongs to the world, not to you.** Everyone playing sees the same contents, and the moves of another player show up while you watch.
 - **Breaking one drops everything it held**, for whoever broke it, so be careful with a full wardrobe. A pickaxe or a [robot](193), it is all the same: it lands on the ground, not in the next chest.
