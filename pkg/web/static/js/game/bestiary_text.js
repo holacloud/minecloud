@@ -36,6 +36,7 @@ const BESTIARY_TEXT = {
     factDiet: { ES: 'Dieta', EN: 'Diet' },
     factDrops: { ES: 'Botín', EN: 'Drops' },
     factLures: { ES: 'Cebos', EN: 'Lured by' },
+    factHookBait: { ES: 'Cebo de anzuelo', EN: 'Hook bait' },
     factEncounters: { ES: 'Encuentros', EN: 'Encounters' },
     factDefeated: { ES: 'Derrotados', EN: 'Defeated' },
     factFirstSeen: { ES: 'Primer avistamiento', EN: 'First seen' },

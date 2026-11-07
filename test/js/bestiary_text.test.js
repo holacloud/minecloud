@@ -39,7 +39,7 @@ function loadGame() {
     }
     vm.runInContext(`Object.assign(this, { gameLang, setGameLang, Game, ITEM_TYPES, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, BESTIARY_TEMPERAMENTS,
         BESTIARY_ACTIVITIES, BESTIARY_BIOMES, BESTIARY_ORGANISM_HINTS_ES, BESTIARY_ITEMS_ES, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
-        TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, bestiarySay, bestiaryItemNameEs });`, context);
+        TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, TRAPS_HOOK_BAITS, trapsIsLured, bestiarySay, bestiaryItemNameEs });`, context);
     // The species other files add join the table here, without loading those files.
     for (const id of mobIdsInTheCode()) if (!context.MOB_SPECIES[id]) context.MOB_SPECIES[id] = ownSpeciesFacts(id);
     return context;
@@ -663,4 +663,66 @@ test('offering food to a species that cannot be tamed is still turned down, and 
         assert.equal(game.tamingUse(mob, food), false, id);
         assert.equal(spent, 0, id);
     }
+});
+
+const NEVER_COME = ['fox', 'rabbit', 'owl', 'vulture', 'eagle', 'snake', 'mole', 'fish'];
+
+test('a sheet shows baits only on species that come to them, and fish theirs as hook bait', () => {
+    const game = installed;
+    assert.deepEqual(Object.keys(ctx.TRAPS_SPECIES).filter((id) => ctx.TRAPS_SPECIES[id].baits.length && !ctx.trapsIsLured(id)).sort(), NEVER_COME.slice().sort());
+    for (const [lang, hookLabel, worms, fishBait] of [['ES', 'Cebo de anzuelo', 'Cebo de gusanos', 'Cebo de pescado'], ['EN', 'Hook bait', 'Worm Bait', 'Fish Bait']]) {
+        inLang(ctx, lang, () => {
+            for (const id of Object.keys(ctx.BESTIARY_ENTRIES)) {
+                const lines = sheetOf(game, id);
+                const baits = ctx.TRAPS_SPECIES[id].baits;
+                assert.equal(lines.includes(ctx.bestiarySay('factLures')), ctx.trapsIsLured(id), `${lang} ${id}`);
+                assert.equal(lines.includes(hookLabel), id === 'fish', `${lang} ${id}`);
+                if (ctx.trapsIsLured(id)) assert.ok(baits.length > 0, id);
+            }
+            const fish = sheetOf(game, 'fish').join(' | ');
+            assert.ok(fish.includes(hookLabel), lang);
+            assert.ok(fish.includes(worms), `${lang}: ${worms}`);
+            assert.ok(fish.includes(fishBait), `${lang}: ${fishBait}`);
+        });
+    }
+    assert.deepEqual([...ctx.TRAPS_HOOK_BAITS], ['bait_worms', 'bait_fish']);
+});
+
+test('the table stays as it was: those who never come still have their bait, and nibble it in passing', () => {
+    assert.deepEqual([...ctx.TRAPS_SPECIES.fox.baits], ['bait_meat']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.rabbit.baits], ['bait_seeds']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.owl.baits], ['bait_meat']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.vulture.baits], ['bait_meat']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.eagle.baits], ['bait_fish']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.snake.baits], ['bait_meat']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.mole.baits], ['bait_worms']);
+    assert.deepEqual([...ctx.TRAPS_SPECIES.fish.baits], ['bait_worms']);
+    const bait = { type: 'bait_meat', amount: 1, position: { x: 1, y: 0, z: 0, clone() { return this; } }, group: { parent: {} }, biteTimer: 1 };
+    const fox = { position: { x: 0, y: 0, z: 0 }, userData: { species: 'fox', home: { copy() {} }, stepPhase: 0 } };
+    const game = Object.create(ctx.Game.prototype);
+    Object.assign(game, { ambientMobs: [fox], trapsBaits: [bait], camera: { position: { x: 0, z: 0 } }, playNoiseBurst() {} });
+    game.trapsUpdateLures(1);
+    assert.ok(bait.amount < 1, 'within 1.4 blocks the fox nibbles');
+    assert.ok(fox.userData.trapsLinger, 'and stays around');
+});
+
+test('the chat notice names only those who come to the bait', () => {
+    const said = [];
+    const spot = { x: 0, y: 0, z: 0, clone() { return this; } };
+    const game = Object.create(ctx.Game.prototype);
+    Object.assign(game, {
+        trapsBaits: [], trapsJars: [], trapsCages: [], trapsGroundSpot: () => spot, trapsCreateBait() {}, consumeSelectedBlock() {}, playPlaceSound() {},
+        trapsAfterUse() {}, trapsItemName: (type) => type, receiveSystemMessage: ({ text }) => said.push(text),
+        formatItemName: (id) => id.replace(/_/g, ' ')
+    });
+    const lures = (type) => {
+        said.length = 0;
+        game.trapsPlaceBait(type, {});
+        return /Lures: (.*)$/.exec(said[0])[1].split(', ').sort();
+    };
+    assert.deepEqual(lures('bait_meat'), ['ant', 'cat', 'cave monster', 'dog', 'spider']);
+    assert.deepEqual(lures('bait_worms'), ['duck', 'frog', 'lizard', 'pig', 'scorpion', 'turtle']);
+    assert.deepEqual(lures('bait_fish'), ['cat', 'crab', 'turtle']);
+    assert.deepEqual(lures('bait_seeds'), ['ant', 'beaver', 'camel', 'duck', 'giraffe', 'goat', 'horse', 'macaw', 'pig', 'sheep']);
+    assert.deepEqual(lures('bait_honey'), ['ant', 'bee']);
 });

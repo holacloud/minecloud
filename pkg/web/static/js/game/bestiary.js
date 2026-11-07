@@ -885,9 +885,12 @@ Object.assign(Game.prototype, {
         if (this.tamingCanTame && this.tamingCanTame(species)) addFact(bestiarySay('factDiet'), this.bestiaryLookup(TAMING_DIET, species));
         // Drops are [item, min, max, chance] rows; lures come from the trap table's baits.
         const drops = typeof RESOURCE_DROPS !== 'undefined' && RESOURCE_DROPS[species] ? { [species]: RESOURCE_DROPS[species].map(([item]) => item) } : null;
-        const lures = typeof TRAPS_SPECIES !== 'undefined' && TRAPS_SPECIES[species] ? { [species]: TRAPS_SPECIES[species].baits } : null;
+        // Only what brings it over: the table also has baits for species that never come to them.
+        const lures = typeof TRAPS_SPECIES !== 'undefined' && trapsIsLured(species) ? { [species]: TRAPS_SPECIES[species].baits } : null;
+        const hooked = typeof TRAPS_HOOKED_SPECIES !== 'undefined' && TRAPS_HOOKED_SPECIES.includes(species) ? { [species]: TRAPS_HOOK_BAITS } : null;
         addFact(bestiarySay('factDrops'), this.bestiaryLookup(drops, species));
         addFact(bestiarySay('factLures'), this.bestiaryLookup(lures, species));
+        addFact(bestiarySay('factHookBait'), this.bestiaryLookup(hooked, species));
         addFact(bestiarySay('factEncounters'), String(record.encounters || 1));
         addFact(bestiarySay('factDefeated'), String(record.defeated || 0));
         addFact(bestiarySay('factFirstSeen'), this.bestiaryFormatDate(record.firstSeen));

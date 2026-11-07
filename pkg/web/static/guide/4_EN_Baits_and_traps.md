@@ -32,8 +32,8 @@ With a bait in your hand, right click the ground to leave a small pile.
 | `bait_fish` | cat, turtle, crab |
 | `bait_honey` | bee (they sip the bait instead of flowers), ant |
 
-Wild animals with a will of their own (fox, rabbit, owl, vulture, eagle, snake, giant mole) **do not walk to baits**, even
-though their sheet in the [bestiary](5) and the chat's "Lures: …" name them: `bait_meat` the fox, owl, vulture and snake; `bait_seeds` the rabbit; `bait_fish` the eagle; `bait_worms` the mole. Only if one happens to pass within 1.4 blocks does it nibble. Pets that follow you ignore them too.
+Wild animals with a will of their own (fox, rabbit, owl, vulture, eagle, snake, giant mole) **do not walk to baits**, so
+neither their sheet in the [bestiary](5) nor the chat's "Lures: …" name them. Only if one happens to pass within 1.4 blocks does it nibble its own: `bait_meat` the fox, owl, vulture and snake; `bait_seeds` the rabbit; `bait_fish` the eagle; `bait_worms` the mole. Pets that follow you ignore them too.
 
 Ants do not come one by one: if the bait is near their anthill, they open a trail to it ([Ant](135)).
 

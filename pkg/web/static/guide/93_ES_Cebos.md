@@ -26,7 +26,7 @@ Montoncitos de comida que **atraen a los animales** hacia un punto. Sirven para 
 | `bait_fish` | ![Gato](mob:cat) gato, ![Tortuga](mob:turtle) tortuga, ![Cangrejo](mob:crab) cangrejo |
 | `bait_honey` | ![Abeja](mob:bee) abeja, ![Hormiga](mob:ant) hormiga |
 
-Al colocarlo, el chat te da una lista más larga («Lures: …»), la misma de la casilla **Cebos** del [bestiario](5). Pero el zorro, el búho, el buitre y la serpiente (carne), el conejo (semillas), el águila (pescado) y el topo gigante (gusanos) salen en ella y **no van hacia el cebo**: siguen a lo suyo. Los peces (gusanos) tampoco salen del agua: ese cebo solo les sirve en el [anzuelo](94).
+Al colocarlo, el chat te da esta misma lista («Lures: …»), y la casilla **Cebos** del [bestiario](5) dice lo mismo. El zorro, el búho, el buitre y la serpiente (carne), el conejo (semillas), el águila (pescado) y el topo gigante (gusanos) **no van hacia el cebo**: siguen a lo suyo. Los peces tampoco salen del agua: para ellos está el cebo del [anzuelo](94), que en su ficha sale como **Cebo de anzuelo**.
 
 ## Paso a paso
 
@@ -48,7 +48,7 @@ se pierde.
   poco hacia él; el cebo de dentro de una [jaula](96) los lleva hasta su centro.
 - **Abejas:** el cebo de miel tiene que estar a menos de unos 20 bloques de su colmena. Las abejas que iban a una
   flor van al cebo y lo liban, más despacio que un animal que come.
-- **Animales con voluntad propia:** los de la lista larga de arriba no acuden. Solo si uno pasa por casualidad a menos de 1,4 bloques del cebo lo mordisquea, y se queda por la zona.
+- **Animales con voluntad propia:** los que no están en la tabla de arriba no acuden. Solo si uno pasa por casualidad a menos de 1,4 bloques del cebo lo mordisquea, y se queda por la zona.
 - **Hormigas:** no vienen sueltas: si el cebo está cerca del hormiguero, abren un camino hasta él. Ver [Hormiga](135).
 - Las mascotas que te siguen y los animales con jinete lo ignoran.
 - **Dentro de una [jaula](96):** solo acuden los animales que caben en ella.

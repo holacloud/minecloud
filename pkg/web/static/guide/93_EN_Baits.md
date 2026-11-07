@@ -26,7 +26,7 @@ make fish bite sooner on the [rod](94). There are five.
 | `bait_fish` | ![Cat](mob:cat) cat, ![Turtle](mob:turtle) turtle, ![Crab](mob:crab) crab |
 | `bait_honey` | ![Bee](mob:bee) bee, ![Ant](mob:ant) ant |
 
-When you set it down, the chat gives you a longer list ("Lures: …"), the same as the **Lured by** line of the [bestiary](5). But the fox, the owl, the vulture and the snake (meat), the rabbit (seeds), the eagle (fish) and the giant mole (worms) are on it and **do not walk to the bait**: they go about their business. Fish (worms) do not leave the water either: that bait only works for them on the [hook](94).
+When you set it down, the chat gives you this same list ("Lures: …"), and the **Lured by** line of the [bestiary](5) says the same. The fox, the owl, the vulture and the snake (meat), the rabbit (seeds), the eagle (fish) and the giant mole (worms) **do not walk to the bait**: they go about their business. Fish do not leave the water either: theirs is the bait on the [hook](94), which their sheet shows as **Hook bait**.
 
 ## Step by step
 
@@ -48,7 +48,7 @@ is lost.
   little by little; a bait inside a [cage](96) draws them right to its middle.
 - **Bees:** the honey bait must be within about 20 blocks of their hive. Bees on their way to a flower go to the bait
   instead and sip it, more slowly than an animal eats.
-- **Animals with a will of their own:** the ones on the longer list above do not come. Only if one happens to pass within 1.4 blocks of the bait does it nibble, and it stays around.
+- **Animals with a will of their own:** the ones not in the table above do not come. Only if one happens to pass within 1.4 blocks of the bait does it nibble, and it stays around.
 - **Ants:** they do not come one by one: if the bait is near the anthill, they open a trail to it. See [Ant](135).
 - Pets following you and animals with a rider ignore it.
 - **Inside a [cage trap](96):** only the animals that fit in it come.

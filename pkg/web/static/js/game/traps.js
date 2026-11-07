@@ -73,8 +73,25 @@ const TRAPS_EAT_SECONDS = 14;
 const TRAPS_CAST_RANGE = 9;
 const TRAPS_NET_RANGE = 4.5;
 const TRAPS_NUDGE_MODES = ['hop', 'dart', 'amphibious'];
+// Who really goes to a pile of bait, by movement: the default AI, and the behaviours whose update
+// asks getMobGoal; TRAPS_NUDGE_MODES are pushed to it; bees (trapsLureBee) and ants (ants.js) have
+// their own way. The rest only nibble if they happen to pass by, whatever TRAPS_SPECIES says.
+const TRAPS_GOAL_MOVEMENTS = ['ground', 'climb', 'scuttle', 'lodge'];
+const TRAPS_OWN_WAY_MOVEMENTS = ['swarm', 'anthill'];
+// What goes on the hook of a fishing rod, the first one carried (for fish, never a pile: see trapsCast).
+const TRAPS_HOOK_BAITS = ['bait_worms', 'bait_fish'];
+const TRAPS_HOOKED_SPECIES = ['fish'];
 const _trapsVec = new THREE.Vector3();
 const _trapsVec2 = new THREE.Vector3();
+
+// Whether a pile of one of its baits brings this species over: what a card or a notice may promise.
+function trapsIsLured(species) {
+    const entry = TRAPS_SPECIES[species];
+    const info = MOB_SPECIES[species];
+    if (!entry || !info || entry.baits.length === 0) return false;
+    const movement = info.movement;
+    return !movement || TRAPS_GOAL_MOVEMENTS.includes(movement) || TRAPS_NUDGE_MODES.includes(movement) || TRAPS_OWN_WAY_MOVEMENTS.includes(movement);
+}
 
 Object.entries(TRAPS_BAITS).forEach(([id, bait]) => registerItemType(id, { color: bait.color, name: bait.name }));
 registerItemType('fishing_rod', { color: 0x8b6a3e, name: 'Fishing Rod' });
@@ -342,7 +359,7 @@ Object.assign(Game.prototype, {
         this.trapsCreateBait(type, cage ? cage.position.clone() : spot, cage);
         this.consumeSelectedBlock();
         this.playPlaceSound('grass');
-        const lured = Object.keys(TRAPS_SPECIES).filter((species) => MOB_SPECIES[species] && TRAPS_SPECIES[species].baits.includes(type)).map((species) => this.formatItemName(species).toLowerCase());
+        const lured = Object.keys(TRAPS_SPECIES).filter((species) => trapsIsLured(species) && TRAPS_SPECIES[species].baits.includes(type)).map((species) => this.formatItemName(species).toLowerCase());
         this.receiveSystemMessage({ text: `${this.trapsItemName(type)} placed${cage ? ' in the cage' : ''}. Lures: ${lured.join(', ') || 'nothing'}` });
         this.trapsAfterUse();
     },
@@ -644,7 +661,7 @@ Object.assign(Game.prototype, {
             this.receiveSystemMessage({ text: `Aim at water within ${TRAPS_CAST_RANGE} blocks to cast your line` });
             return;
         }
-        const baited = ['bait_worms', 'bait_fish'].find((type) => this.trapsTakeItem(type)) || null;
+        const baited = TRAPS_HOOK_BAITS.find((type) => this.trapsTakeItem(type)) || null;
         const bobber = new THREE.Group();
         this.trapsBox(bobber, 0xd8382c, 0, 0, 0, 0.13, 0.1, 0.13);
         this.trapsBox(bobber, 0xf2f0ea, 0, 0.08, 0, 0.11, 0.06, 0.11);

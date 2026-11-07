@@ -233,7 +233,7 @@ Con un cebo en la mano, haz clic derecho en el suelo para dejar un montoncito.
 | `bait_honey` | abeja (liban el cebo en lugar de las flores), hormiga |
 
 Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo gigante) no van
-hacia los cebos, aunque su ficha del bestiario y el aviso «Lures: …» del chat los nombren (`TRAPS_SPECIES`): su
+hacia los cebos, y por eso ni su ficha del bestiario ni el aviso «Lures: …» del chat los nombran: su
 movimiento no atiende a `getMobGoal`. Solo si uno pasa por casualidad a menos de 1,4 bloques lo mordisquea. Las mascotas
 que te siguen también los ignoran. Las hormigas no vienen sueltas: si el cebo está cerca, abren un camino hasta él.
 
@@ -322,8 +322,8 @@ Derrotar a una criatura que aún no conocías también la descubre.
   - Etiquetas de temperamento (pasivo, amistoso, neutral u hostil) y de actividad ("Actividad: de día"…).
   - Hábitat.
   - Las tablas de las otras mecánicas: **Dieta** (con qué se domestica; solo sale en los que se pueden domesticar),
-    **Botín** (qué recursos da) y **Cebos** (los de `TRAPS_SPECIES`; el zorro, el
-    conejo, el búho, el buitre, el águila, la serpiente y el topo gigante los enseñan pero no van hacia ellos).
+    **Botín** (qué recursos da) y **Cebos** (los que le hacen acudir; solo sale en los que van hacia un cebo;
+    en los peces, **Cebo de anzuelo**: lo que se pone en la caña).
   - Número de encuentros, criaturas derrotadas y fecha del primer avistamiento.
 
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso

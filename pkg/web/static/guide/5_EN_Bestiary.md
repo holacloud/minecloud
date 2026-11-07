@@ -25,7 +25,8 @@ a creature you had not met yet also discovers it.
   - The tables of the other mechanics, with their limits:
     - **Diet:** what tames it, see [Taming and breeding](3). Only those that can be tamed show it.
     - **Drops:** what resources it gives, see [Mob resources](2).
-    - **Lured by:** the baits written down for it, see [Baits and traps](4). The fox, the rabbit, the owl, the vulture, the eagle, the snake and the giant mole show them too, but they **do not walk to them**.
+    - **Lured by:** the baits that bring it over, see [Baits and traps](4). Only those that walk to a bait show it.
+    - **Hook bait:** on fish, what goes on the [fishing rod](94) to make them bite sooner.
   - **Encounters**, **Defeated** and **First seen**.
 
 Only creatures defeated by the player count as defeated, not those hunted by other animals. Your progress is

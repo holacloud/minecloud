@@ -41,7 +41,7 @@ function loadGame() {
         vm.runInContext(read(`game/${file}`), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
-        TAMING_DIET, TAMING_GOAL_MOVEMENTS, TRAPS_SPECIES, TRAPS_NUDGE_MODES });`, context);
+        TAMING_DIET, TAMING_GOAL_MOVEMENTS, TRAPS_SPECIES, TRAPS_NUDGE_MODES, trapsIsLured });`, context);
     return context;
 }
 
@@ -113,7 +113,7 @@ test('the ways of moving of page 104 are the ones in the code', () => {
 test('page 5 quotes the panel in its own language, and not in the other', () => {
     const said = (lang) => {
         const text = ctx.BESTIARY_TEXT;
-        return [text.pauseButton, text.close, text.factHabitat, text.factDiet, text.factDrops, text.factLures, text.factEncounters, text.factDefeated, text.factFirstSeen,
+        return [text.pauseButton, text.close, text.factHabitat, text.factDiet, text.factDrops, text.factLures, text.factHookBait, text.factEncounters, text.factDefeated, text.factFirstSeen,
             text.factSize, text.factGroup, text.factIdentified, text.complete].map((line) => line[lang])
             .concat(text.newEntry[lang].trim(), text.discovered[lang](12, 51).replace(/<\/?b>/g, ''), text.seenFrom[lang](40));
     };
@@ -180,7 +180,7 @@ test('page 3 says who has food written down but cannot be tamed; their cards no 
         assert.doesNotMatch(page(3, lang), /Ojo con la Dieta|Careful with the Diet/, `3 ${lang}`);
         assert.doesNotMatch(page(5, lang), /también la enseñan|show one too/, `5 ${lang}`);
     }
-    assert.doesNotMatch(read('../../../../GUIA.md'), /la enseñan/);
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8'), /la enseñan/);
 });
 
 // ---- Baits ----
@@ -200,6 +200,24 @@ const LISTED_ONLY = ['eagle', 'fish', 'fox', 'mole', 'owl', 'rabbit', 'snake', '
 
 test('the species that have a bait written down but never walk to it are the ones the guide says', () => {
     assert.deepEqual(sorted(mobIds.filter((id) => ctx.TRAPS_SPECIES[id].baits.length && !walksToBait(id))), LISTED_ONLY);
+});
+
+test('what cards and notices promise (trapsIsLured) is what the code does: read from each behaviour', () => {
+    for (const id of mobIds) {
+        // The species other files add are not loaded here: they join the table with what their file says.
+        if (!ctx.MOB_SPECIES[id]) ctx.MOB_SPECIES[id] = info(id);
+        assert.equal(ctx.trapsIsLured(id), ctx.TRAPS_SPECIES[id].baits.length > 0 && walksToBait(id), id);
+    }
+});
+
+test('pages 4, 5, 93 and GUIA.md no longer say that cards or notices name those who do not come', () => {
+    for (const lang of ['ES', 'EN']) {
+        assert.doesNotMatch(page(4, lang), /aunque su ficha|even\s+though their sheet/, `4 ${lang}`);
+        assert.doesNotMatch(page(5, lang), /también los enseñan|show them too/, `5 ${lang}`);
+        assert.doesNotMatch(page(93, lang), /lista más larga|lista larga|longer list/, `93 ${lang}`);
+    }
+    const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
+    assert.doesNotMatch(guia, /aunque su ficha|los enseñan pero/);
 });
 
 test('pages 4, 93 and 96 list who really walks to each bait', () => {

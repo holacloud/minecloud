@@ -25,7 +25,8 @@ Derrotar a una criatura que aún no conocías también la descubre.
   - Las tablas de las otras mecánicas, con sus límites:
     - **Dieta:** con qué se domestica, ver [Domesticar y criar](3). Solo sale en los que se pueden domesticar.
     - **Botín:** qué recursos da, ver [Recursos de los mobs](2).
-    - **Cebos:** los que tiene apuntados, ver [Cebos y trampas](4). El zorro, el conejo, el búho, el buitre, el águila, la serpiente y el topo gigante también los enseñan, pero **no van hacia ellos**.
+    - **Cebos:** los que le hacen acudir, ver [Cebos y trampas](4). Solo sale en los que van hacia un cebo.
+    - **Cebo de anzuelo:** en los peces, lo que se pone en la [caña](94) para que piquen antes.
   - **Encuentros**, **Derrotados** y **Primer avistamiento**.
 
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso

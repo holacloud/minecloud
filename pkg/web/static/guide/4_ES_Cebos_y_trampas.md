@@ -33,7 +33,7 @@ Con un cebo en la mano, haz clic derecho en el suelo para dejar un montoncito.
 | `bait_honey` | abeja (liban el cebo en lugar de las flores), hormiga |
 
 Los animales salvajes con comportamiento propio (zorro, conejo, búho, buitre, águila, serpiente, topo gigante) **no van
-hacia los cebos**, aunque su ficha del [bestiario](5) y el aviso «Lures: …» del chat los nombren: `bait_meat` al zorro, al búho, al buitre y a la serpiente; `bait_seeds` al conejo; `bait_fish` al águila; `bait_worms` al topo. Solo si uno pasa por casualidad a menos de 1,4 bloques lo mordisquea. Las mascotas que te siguen también los ignoran.
+hacia los cebos**, y por eso ni su ficha del [bestiario](5) ni el aviso «Lures: …» del chat los nombran. Solo si uno pasa por casualidad a menos de 1,4 bloques mordisquea el suyo: `bait_meat` el zorro, el búho, el buitre y la serpiente; `bait_seeds` el conejo; `bait_fish` el águila; `bait_worms` el topo. Las mascotas que te siguen también los ignoran.
 
 Las hormigas no vienen sueltas: si el cebo está cerca de su hormiguero, abren un camino hasta él ([Hormiga](135)).
 
