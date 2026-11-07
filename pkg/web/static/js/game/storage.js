@@ -168,6 +168,10 @@ Object.assign(Game.prototype, {
         this.storageKind = storageBaseName(type);
         this.storageTab = '';
         this.storageMode = STORAGE_DEFAULT_AMOUNT;
+        // Like the inventory and crafting panels: every panel starts with the whole list.
+        this.storageSearch = '';
+        const search = this.storagePanel.querySelector('#storage-search');
+        if (search) search.value = '';
         this.storageContents = null;
         this.storageSlots = null;
         this.storageRev = -1;

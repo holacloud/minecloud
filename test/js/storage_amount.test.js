@@ -119,3 +119,23 @@ test('with no amount set at all a click still moves one', () => {
     game.storagePut('stone');
     assert.equal(sent.find((entry) => entry.type === 'storagePut').payload.amount, 1);
 });
+
+test('every panel opens with an empty search, in the state and in the field', () => {
+    const { game, panel, open } = makeGame();
+    const field = { value: '' };
+    const find = panel.querySelector;
+    panel.querySelector = (selector) => (selector === '#storage-search' ? field : find.call(panel, selector));
+    open();
+    game.storageSearch = 'sto';
+    field.value = 'sto';
+    game.storageClose();
+    open();
+    assert.equal(game.storageSearch, '', 'the same chest');
+    assert.equal(field.value, '', 'the same chest, its field');
+    game.storageSearch = 'sto';
+    field.value = 'sto';
+    game.storageClose();
+    open(1);
+    assert.equal(game.storageSearch, '', 'another chest');
+    assert.equal(field.value, '', 'another chest, its field');
+});
