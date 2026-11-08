@@ -90,7 +90,7 @@ function loadModules() {
     context.document = { createElement: (tag) => fakeElement(tag), head: fakeElement(), body: fakeElement(), addEventListener() {}, getElementById: () => null, querySelector: () => null, pointerLockElement: null };
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
-    for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'smelters.js', 'electricity.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js']) {
+    for (const file of ['inventory.js', 'bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'smelters.js', 'electricity.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { CULTURE_SPECIES, CULTURE_PLATES, CULTURE_ORDER, CULTURE_MODEL, CULTURE_TEXT, CULTURE_ITEMS, CULTURE_ITEMS_ES, CULTURE_KIT, CULTURE_GUIDE_PAGE,
@@ -386,7 +386,8 @@ test('the panel opens on an incubator, shows its plates, and speaks the language
 });
 
 test('the panel: load, inoculate, harvest and the dial go through requests that settle the inventory', () => {
-    const { game, sent } = panelGame();
+    const { game, sent, said } = panelGame();
+    game.cultureHold = () => {};
     game.cultureTryOpen({ x: 0, y: 0, z: 0 });
     game.cultureOnContents(plain(CONTENTS));
     // The chooser lists only what fits.
@@ -406,7 +407,10 @@ test('the panel: load, inoculate, harvest and the dial go through requests that 
     game.cultureOnOutcome({ reqId: harvest.reqId, type: 'culture_yeast', amount: 1 });
     assert.equal(game.getInventoryCount('culture_yeast'), 1);
     assert.equal(game.getInventoryCount('used_dish'), 0);
-    assert.equal(game.cultureNote, ctx.cultureSay('gotCulture', 'Yeast Plate'), 'it says how to look at it');
+    assert.ok(said.includes(ctx.cultureSay('gotCulture', 'Yeast Plate')), 'it says how to look at it');
+    // Taking out closed the panel; the rest happens with it open again.
+    game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+    game.cultureOnContents(plain({ ...CONTENTS, rev: 9 }));
     // Someone else's answer is not ours.
     game.cultureOnOutcome({ reqId: 'not-mine-123', type: 'stone', amount: 1 });
     assert.equal(game.getInventoryCount('stone'), 9);
@@ -518,35 +522,186 @@ test('the lens shows what lives on a plate now, from its numbers', () => {
     }
 });
 
-test('the panel: "Look" opens the lens on the plate picked, and it follows the plate', () => {
+function lookButton(game, slot) {
+    const card = game.culturePanel.querySelectorAll('.culture-card')[slot];
+    return card.querySelector('.culture-buttons').children.find((element) => element.textContent === ctx.cultureSay('look'));
+}
+
+test('the panel: "Look" opens the lens in its own window over the panel, live, and Escape closes it first', () => {
     for (const lang of ['EN', 'ES']) {
         inLang(lang, () => {
             const { game } = panelGame();
             game.cultureTryOpen({ x: 0, y: 0, z: 0 });
             game.cultureOnContents(plain(CONTENTS));
-            const box = game.culturePanel.querySelector('#culture-lens-box');
-            assert.ok(!box.classList.contains('visible'), 'shut until asked');
-            const card = game.culturePanel.querySelectorAll('.culture-card')[1];
-            const look = card.querySelector('.culture-buttons').children.find((button) => button.textContent === ctx.cultureSay('look'));
-            assert.ok(look, `${lang}: every plate has its Look button`);
-            look.listeners.click[0]();
-            assert.ok(box.classList.contains('visible'));
-            const text = allText(game.culturePanel);
-            assert.ok(text.includes(ctx.cultureSay('lensTitle', 2)), text);
-            assert.ok(text.includes(ctx.cultureSay('lensRing', game.cultureSpeciesName('lactobacillus'))), `${lang}: the ring round the mould is said`);
-            assert.ok(game.culturePanel.querySelector('#culture-lens').getContext().calls.some(([name]) => name === 'arc'), 'the lens was drawn');
-            // An empty slot has no Look; the plate taken out, the lens goes.
-            const empty = game.culturePanel.querySelectorAll('.culture-card')[2];
-            assert.ok(!empty.querySelector('.culture-buttons').children.some((button) => button.textContent === ctx.cultureSay('look')));
+            const look = game.cultureLookBox;
+            assert.ok(look && look.id === 'culture-look', 'a window of its own');
+            assert.ok(ctx.document.body.children.includes(look) && !all(game.culturePanel).includes(look), 'on the page, not inside the panel');
+            assert.ok(!look.classList.contains('visible'), 'shut until asked');
+            assert.ok(lookButton(game, 1), `${lang}: every plate has its Look button`);
+            lookButton(game, 1).listeners.click[0]();
+            assert.ok(look.classList.contains('visible'));
+            assert.ok(game.culturePanel.classList.contains('visible'), 'the panel stays under it');
+            const plateName = game.cultureName('agar_plate_unsterile');
+            assert.equal(look.querySelector('#culture-look-title').textContent, ctx.cultureSay('lensTitle', 2, plateName), 'its title names the plate');
+            assert.ok(look.querySelector('#culture-look-title').textContent.includes(plateName));
+            assert.equal(look.querySelector('.culture-look-close').title, ctx.cultureSay('lensClose'));
+            assert.ok(allText(look).includes(ctx.cultureSay('lensRing', game.cultureSpeciesName('lactobacillus'))), `${lang}: the ring round the mould is said`);
+            const lens = look.querySelector('#culture-lens').getContext();
+            assert.ok(lens.calls.some(([name]) => name === 'arc'), 'the lens was drawn');
+            // It keeps up with the server while open.
+            const drawn = lens.calls.length;
+            const later = plain(CONTENTS);
+            later.rev = 5;
+            later.incubator.plates[1].main.logN = 8.3;
+            game.cultureOnContents(later);
+            assert.ok(lens.calls.length > drawn, 'redrawn');
+            assert.ok(allText(look).includes(ctx.cultureSay('lensMain', game.cultureSpeciesName('lactobacillus'), '8.3')), 'the new numbers are said');
+            // Escape: the window first, the panel on the second press (as the modal panels ask it).
+            const modal = ctx.MODAL_PANELS.find((panel) => String(panel.close).includes('cultureClose'));
+            assert.equal(modal.escape.call(game), true);
+            assert.ok(!look.classList.contains('visible'));
+            assert.ok(game.cultureAt && game.culturePanel.classList.contains('visible'), 'the panel is still open');
+            assert.equal(modal.escape.call(game), false, 'the next Escape closes the panel');
+            // Its ✕ and the shade round it close it too; a click inside the window does not.
+            lookButton(game, 1).listeners.click[0]();
+            look.querySelector('.culture-look-close').listeners.click[0]();
+            assert.ok(!look.classList.contains('visible'));
+            lookButton(game, 1).listeners.click[0]();
+            look.listeners.click[0]({ target: look });
+            assert.ok(!look.classList.contains('visible'));
+            lookButton(game, 1).listeners.click[0]();
+            look.listeners.click[0]({ target: look.querySelector('#culture-lens') });
+            assert.ok(look.classList.contains('visible'), 'a click inside the window leaves it');
+            // A press in it does not reach the page (which would close the panel).
+            let stopped = 0;
+            look.listeners.mousedown[0]({ stopPropagation: () => stopped++ });
+            assert.equal(stopped, 1);
+            // The plate taken out, the lens goes.
             const gone = plain(CONTENTS);
-            gone.rev = 5;
+            gone.rev = 6;
             gone.slots[1] = {};
             gone.incubator.plates[1] = null;
             game.cultureOnContents(gone);
-            assert.ok(!box.classList.contains('visible'));
+            assert.ok(!look.classList.contains('visible'));
+            // An empty slot has no Look.
+            assert.ok(!lookButton(game, 2));
+            // Closing the panel closes it.
+            lookButton(game, 0).listeners.click[0]();
+            assert.ok(look.classList.contains('visible'));
+            game.cultureClose();
+            assert.ok(!look.classList.contains('visible'), 'closing the panel closes it');
         });
     }
+    // It fits a phone: a fixed window that scrolls inside, never the page.
+    const source = fs.readFileSync(path.join(JS, 'game', 'cultures.js'), 'utf8');
+    assert.match(source, /#culture-look\{position:fixed;inset:0/);
+    assert.match(source, /\.culture-look-window\{[^}]*width:min\(340px,100%\);max-height:100%;overflow-y:auto/);
 });
+
+// A game with the real hotbar of js/game/inventory.js: only what draws is left out.
+function handGame() {
+    const made = panelGame();
+    const { game } = made;
+    for (const key of ['getInventoryCount', 'addInventory', 'updateHotbarCounts', 'saveInventoryState']) delete game[key];
+    // The hotbar paints each slot in its item's colour.
+    for (const [type, def] of Object.entries(game.world.blockTypes)) if (def.color === undefined) game.world.blockTypes[type] = { ...def, color: 0x808080 };
+    made.relocks = 0;
+    Object.assign(game, {
+        hotbarSize: 9, selectedSlot: 4, hotbarPrimaryType: 'stone', hotbarPinnedTypes: ['stone', 'agar_plate', 'milk'], hotbarSlotElements: [], hotbarCountElements: [],
+        getItemTagIndex() {}, recapturePointerLock() { made.relocks++; }
+    });
+    return made;
+}
+
+function withHotbarElement(work) {
+    const before = ctx.document.getElementById;
+    const hotbar = fakeElement();
+    ctx.document.getElementById = (id) => (id === 'hotbar' ? hotbar : null);
+    try {
+        return work();
+    } finally {
+        ctx.document.getElementById = before;
+    }
+}
+
+function takeOut(game, slot) {
+    const card = game.culturePanel.querySelectorAll('.culture-card')[slot];
+    const button = card.querySelector('.culture-buttons').children.find((element) => element.textContent === ctx.cultureSay('harvest'));
+    assert.ok(button, 'the plate has its Take out button');
+    button.listeners.click[0]();
+}
+
+test('"Take out": once the plate has arrived the panel closes, the pointer is taken again, and the plate is in the hand', () => {
+    for (const lang of ['EN', 'ES']) {
+        inLang(lang, () => withHotbarElement(() => {
+            const made = handGame();
+            const { game, sent, said } = made;
+            game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+            game.cultureOnContents(plain(CONTENTS));
+            takeOut(game, 0);
+            const [type, payload] = sent[sent.length - 1];
+            assert.equal(type, 'cultureHarvest');
+            assert.equal(payload.slot, 0);
+            // Nothing happens before the server answers.
+            assert.ok(game.cultureAt && game.culturePanel.classList.contains('visible'), 'the panel waits for the answer');
+            assert.equal(game.getSelectedBlockType(), 'stone');
+            assert.equal(made.relocks, 0);
+            // It arrives: a new item, into the hotbar and selected.
+            game.cultureOnOutcome({ reqId: payload.reqId, type: 'culture_yeast', amount: 1 });
+            assert.equal(game.cultureAt, null);
+            assert.ok(!game.culturePanel.classList.contains('visible'));
+            assert.equal(made.relocks, 1, 'the pointer is taken again, as other panels do');
+            assert.ok(game.suppressPointerLockPauseUntil > 0, 'losing the pointer meanwhile opens no pause menu');
+            assert.equal(sent[sent.length - 1][0], 'storageClose');
+            assert.equal(game.getInventoryCount('culture_yeast'), 1);
+            assert.equal(game.getSelectedBlockType(), 'culture_yeast', 'in the hand');
+            const hotbar = plain(game.getHotbarInventoryIndexes().map((index) => game.inventory[index]));
+            assert.ok(hotbar.includes('culture_yeast'), 'in the hotbar');
+            assert.ok(hotbar.includes('stone') && hotbar.includes('agar_plate'), 'nothing pushed out of a hotbar with room');
+            assert.ok(said.includes(ctx.cultureSay('gotCulture', game.cultureName('culture_yeast'))), 'it says how to look at it under a microscope');
+            const state = JSON.parse(ctx.window.localStorage.getItem('minecloud-inventory-state'));
+            assert.equal(state.inventory[state.selectedSlot], 'culture_yeast', 'saved selected');
+        }));
+    }
+});
+
+test('"Take out": what is already in the hotbar is selected where it is; a refusal leaves the panel and says why', () => withHotbarElement(() => {
+    const made = handGame();
+    const { game, sent } = made;
+    game.inventory.push('used_dish');
+    game.inventoryCounts.used_dish = 2;
+    game.hotbarPinnedTypes = ['stone', 'used_dish', 'agar_plate'];
+    game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+    game.cultureOnContents(plain(CONTENTS));
+    const order = plain(game.getHotbarInventoryIndexes());
+    takeOut(game, 1);
+    game.cultureOnOutcome({ reqId: sent[sent.length - 1][1].reqId, type: 'used_dish', amount: 1 });
+    assert.equal(game.getInventoryCount('used_dish'), 3);
+    assert.equal(game.getSelectedBlockType(), 'used_dish');
+    assert.deepEqual(plain(game.getHotbarInventoryIndexes()), order, 'its slot, the hotbar as it was');
+    assert.equal(game.cultureAt, null);
+
+    // Refused: nothing comes, the panel stays, the reason is said, the hand is as it was.
+    game.selectSlot(game.inventory.indexOf('stone'));
+    game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+    game.cultureOnContents(plain({ ...CONTENTS, rev: 7 }));
+    const relocks = made.relocks;
+    takeOut(game, 0);
+    game.cultureOnOutcome({ reqId: sent[sent.length - 1][1].reqId, type: '', amount: 0, reason: 'gone' });
+    assert.ok(game.cultureAt && game.culturePanel.classList.contains('visible'), 'the panel stays');
+    assert.equal(game.culturePanel.querySelector('#culture-note').textContent, ctx.CULTURE_TEXT.refused.EN.gone);
+    assert.equal(game.getSelectedBlockType(), 'stone');
+    assert.equal(made.relocks, relocks, 'the pointer stays free');
+
+    // An answer resumed after a reload settles the inventory, but does not take the hand.
+    ctx.window.localStorage.setItem('minecloud-culture-pending', JSON.stringify([{ reqId: 'request-old-abcdef', took: {}, gives: { result: 1 }, op: 'harvest' }]));
+    game.cultureLoadPending();
+    game.cultureOnOutcome({ reqId: 'request-old-abcdef', type: 'culture_yeast', amount: 1 });
+    assert.equal(game.getInventoryCount('culture_yeast'), 1);
+    assert.equal(game.getSelectedBlockType(), 'stone');
+    assert.ok(game.cultureAt, 'the panel is left alone');
+    ctx.window.localStorage.removeItem('minecloud-culture-pending');
+}));
 
 test('dishes and culture plates look and are called differently, and every one goes on a microscope', () => {
     const dishes = ['petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', ...Object.values(ctx.CULTURE_SPECIES).map((kind) => kind.item)];

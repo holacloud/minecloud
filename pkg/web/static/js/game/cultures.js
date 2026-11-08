@@ -11,9 +11,13 @@
 //   dish with its colonies: a "Yeast Plate") once it reached 10^6 cells, where colonies can be seen, or as
 //   a used dish if nothing could. Nothing ever changes in the inventory. Below 10^6 a plate draws no
 //   colony, so what shows is what comes out.
-// - "Look" on a plate opens a lens under the plates: what lives on it now, drawn from the server's numbers
-//   (cultureLensView): its cells, more as log N climbs, pale as they die, the mould's brushes and the clear
-//   ring round them where penicillin holds bacteria back.
+// - "Look" on a plate opens a lens in a small window over the panel (#culture-look): what lives on it now,
+//   drawn from the server's numbers (cultureLensView) and redrawn as they come: its cells, more as log N
+//   climbs, pale as they die, the mould's brushes and the clear ring round them where penicillin holds
+//   bacteria back. Escape closes that window first, then the panel.
+// - "Take out" asks the server; once the plate has really come back the panel closes, the pointer is
+//   taken again, and what came out is in the player's hand (cultureHold), ready for a microscope. A
+//   refusal leaves the panel open and says why.
 // - A culture plate, like any dish, goes on a microscope by itself, with no slide, and comes back as it
 //   went (js/game/microscope.js, MICRO_PLATES).
 // - Items move in two steps, like a chest's (js/game/storage.js): out of the inventory first, and what the
@@ -787,14 +791,14 @@ const CULTURE_CSS = `
 #culture-graph{width:100%;height:150px;display:block}
 #culture-note{font-size:12px;color:#ffe9a8;min-height:15px}
 #culture-hint{font-size:12px;opacity:.7;line-height:1.35}
-#culture-lens-box{display:none;gap:10px;align-items:flex-start;padding:8px;border-radius:10px;border:1px solid rgba(160,210,255,.4);background:rgba(16,22,34,.98)}
-#culture-lens-box.visible{display:flex}
-#culture-lens{width:min(240px,42vw);aspect-ratio:1;height:auto;flex:0 0 auto;border-radius:50%}
-.culture-lens-side{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
-.culture-lens-head{display:flex;align-items:center;gap:8px}
-#culture-lens-title{font-weight:700;font-size:13px;flex:1}
+#culture-look{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(0,0,0,.45);z-index:276;box-sizing:border-box;overscroll-behavior:contain;touch-action:none}
+#culture-look.visible{display:flex}
+.culture-look-window{display:flex;flex-direction:column;gap:8px;width:min(340px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:12px;border-radius:14px;border:1px solid rgba(160,210,255,.45);background:rgba(16,22,34,.98);color:#fff;font-family:'Consolas',monospace;box-sizing:border-box}
+.culture-look-head{display:flex;align-items:center;gap:8px}
+#culture-look-title{font-weight:700;font-size:14px;flex:1;min-width:0;overflow-wrap:anywhere}
+.culture-look-window button{min-height:40px;min-width:40px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
+#culture-lens{width:min(300px,100%,55vh);aspect-ratio:1;height:auto;flex:0 0 auto;align-self:center;border-radius:50%}
 #culture-lens-lines{font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:3px}
-@media (max-width:420px){#culture-lens-box{flex-direction:column;align-items:center}#culture-lens{width:min(240px,80vw)}}
 #culture-pop{display:none;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(16,22,34,.98);font-size:12px;line-height:1.32}
 #culture-pop.visible{display:flex}
 #culture-pop .culture-choice{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-weight:400;font-size:12px}
@@ -837,8 +841,10 @@ Object.assign(Game.prototype, {
 
     // ---- Requests ----
 
-    // Sends a request: what it uses leaves the inventory now, and the answer settles the rest.
-    cultureRequest(message, op, payload, source) {
+    // Sends a request: what it uses leaves the inventory now, and the answer settles the rest. Returns its
+    // id, or false if it could not be sent. `hold`: what comes back goes to the player's hand, with the panel
+    // closed (only for this session's requests: one resumed after a reload does not take the hand).
+    cultureRequest(message, op, payload, source, hold = false) {
         if (!this.network || !this.network.connected) {
             this.receiveSystemMessage({ text: cultureSay('notConnected') });
             return false;
@@ -849,11 +855,11 @@ Object.assign(Game.prototype, {
         }
         for (const [type, count] of Object.entries(took)) this.inventoryCounts[type] = this.getInventoryCount(type) - count;
         const reqId = this.storageNewRequestId();
-        this.culturePending.set(reqId, { took, gives, op, at: performance.now() });
+        this.culturePending.set(reqId, { took, gives, op, at: performance.now(), ...(hold ? { hold: true } : {}) });
         this.cultureSavePending();
         this.cultureInventoryChanged();
         this.network.send(message, { ...payload, reqId });
-        return true;
+        return reqId;
     },
 
     cultureInventoryChanged() {
@@ -881,7 +887,14 @@ Object.assign(Game.prototype, {
             if (pending.op === 'harvest') {
                 const culture = CULTURE_ORDER.some((id) => CULTURE_SPECIES[id].item === outcome.type);
                 const line = culture ? cultureSay('gotCulture', this.cultureName(outcome.type)) : outcome.type === 'used_dish' ? cultureSay('gotDish') : '';
-                if (line) this.cultureSetNote(line);
+                if (pending.hold) {
+                    // It has arrived: the panel goes, and the plate is in the hand.
+                    this.cultureClose();
+                    this.cultureHold(outcome.type);
+                    if (line) this.receiveSystemMessage({ text: line });
+                } else if (line) {
+                    this.cultureSetNote(line);
+                }
             }
         } else if (outcome.reason) {
             const lines = CULTURE_TEXT.refused[gameLang()];
@@ -889,6 +902,12 @@ Object.assign(Game.prototype, {
             if (this.cultureAt) this.cultureSetNote(line);
             else this.receiveSystemMessage({ text: line });
         }
+    },
+
+    // Puts what came out in the hand: its hotbar slot if it has one, or onto the hotbar as a crafted item
+    // goes (js/game/inventory.js, selectInventoryType).
+    cultureHold(type) {
+        this.selectInventoryType(type);
     },
 
     cultureSetNote(line) {
@@ -934,15 +953,21 @@ Object.assign(Game.prototype, {
         this.cultureAt = null;
         this.cultureContents = null;
         this.cultureChoosing = null;
+        this.cultureLooking = null;
         this.culturePanel.classList.remove('visible');
+        this.cultureRenderLens();
         if (this.network && this.network.connected) this.network.send('storageClose', {});
         this.suppressPointerLockPauseUntil = performance.now() + 250;
         this.recapturePointerLock();
         this.updatePointerLockHint();
     },
 
-    // Escape closes the chooser first, then the panel.
+    // Escape closes the lens's window first, then the chooser, then the panel.
     cultureEscape() {
+        if (this.cultureLooking !== null && this.cultureLooking !== undefined) {
+            this.cultureLookClose();
+            return true;
+        }
         if (this.cultureChoosing) {
             this.cultureChoosing = null;
             this.cultureRenderPop();
@@ -1038,7 +1063,7 @@ Object.assign(Game.prototype, {
     cultureApply(op, slot, source) {
         this.cultureChoosing = null;
         const messages = { load: 'cultureLoad', inoculate: 'cultureInoculate', harvest: 'cultureHarvest' };
-        this.cultureRequest(messages[op], op, { ...this.cultureAt, slot, ...(source ? { source } : {}) }, source);
+        this.cultureRequest(messages[op], op, { ...this.cultureAt, slot, ...(source ? { source } : {}) }, source, op === 'harvest');
         this.cultureRender();
     },
 
@@ -1081,23 +1106,12 @@ Object.assign(Game.prototype, {
             <div class="culture-lines" id="culture-lines"></div>
             <div class="culture-plates" id="culture-plates"></div>
             <div id="culture-pop"></div>
-            <div id="culture-lens-box">
-                <canvas id="culture-lens" width="300" height="300"></canvas>
-                <div class="culture-lens-side">
-                    <div class="culture-lens-head"><div id="culture-lens-title"></div><button class="culture-lens-close" type="button">✕</button></div>
-                    <div id="culture-lens-lines"></div>
-                </div>
-            </div>
             <div id="culture-note"></div>
             <div id="culture-graph-title"></div>
             <canvas id="culture-graph" width="760" height="150"></canvas>
             <div id="culture-hint"></div>`;
         panel.querySelector('.culture-close').addEventListener('click', () => this.cultureClose());
         panel.querySelector('.culture-guide').addEventListener('click', () => this.cultureOpenGuide());
-        panel.querySelector('.culture-lens-close').addEventListener('click', () => {
-            this.cultureLooking = null;
-            this.cultureRenderLens();
-        });
         panel.querySelector('.culture-colder').addEventListener('click', () => this.cultureSetTarget(this.cultureTarget() - 1));
         panel.querySelector('.culture-warmer').addEventListener('click', () => this.cultureSetTarget(this.cultureTarget() + 1));
         panel.querySelector('#culture-target').addEventListener('input', (event) => this.cultureSetTarget(Number(event.target.value)));
@@ -1120,6 +1134,23 @@ Object.assign(Game.prototype, {
         panel.addEventListener('pointerdown', (event) => event.stopPropagation());
         document.body.appendChild(panel);
         this.culturePanel = panel;
+        // The lens: its own small window over the panel. A click on the shade round it closes only it.
+        const look = document.createElement('div');
+        look.id = 'culture-look';
+        look.innerHTML = `
+            <div class="culture-look-window" role="dialog" aria-modal="true">
+                <div class="culture-look-head"><div id="culture-look-title"></div><button class="culture-look-close" type="button">✕</button></div>
+                <canvas id="culture-lens" width="300" height="300"></canvas>
+                <div id="culture-lens-lines"></div>
+            </div>`;
+        look.querySelector('.culture-look-close').addEventListener('click', () => this.cultureLookClose());
+        look.addEventListener('click', (event) => {
+            if (event.target === look) this.cultureLookClose();
+        });
+        look.addEventListener('mousedown', (event) => event.stopPropagation());
+        look.addEventListener('pointerdown', (event) => event.stopPropagation());
+        document.body.appendChild(look);
+        this.cultureLookBox = look;
         // Clicking outside closes it, like the other panels; not the click that opened it, nor the mouse
         // event a phone makes up after a tap (phones close it with its ✕).
         document.addEventListener('mousedown', (event) => {
@@ -1297,30 +1328,38 @@ Object.assign(Game.prototype, {
         pop.appendChild(cancel);
     },
 
-    // The lens on a plate: what lives on it now. Pressed again, or on an empty slot, it goes.
+    // The lens on a plate, in its own window: what lives on it now. It follows the plate while it is open,
+    // and goes when the plate does.
     cultureLook(slot) {
         this.culturePicked = slot;
-        this.cultureLooking = this.cultureLooking === slot ? null : slot;
+        this.cultureLooking = slot;
         this.cultureRender();
     },
 
+    cultureLookClose() {
+        this.cultureLooking = null;
+        this.cultureRenderLens();
+    },
+
     cultureRenderLens() {
-        const panel = this.culturePanel;
-        if (!panel || !this.cultureAt) return;
-        const box = panel.querySelector('#culture-lens-box');
-        const contents = this.cultureContents;
+        const look = this.cultureLookBox;
+        if (!look) return;
+        const contents = this.cultureAt ? this.cultureContents : null;
         const slot = this.cultureLooking;
         const filled = slot !== null && slot !== undefined && contents && contents.slots[slot] && contents.slots[slot].count > 0;
-        box.classList.toggle('visible', Boolean(filled));
-        if (!filled) return;
+        look.classList.toggle('visible', Boolean(filled));
+        if (!filled) {
+            this.cultureLooking = null;
+            return;
+        }
         const view = contents.incubator;
         const plate = view && view.plates ? view.plates[slot] : null;
-        panel.querySelector('#culture-lens-title').textContent = cultureSay('lensTitle', slot + 1);
-        panel.querySelector('.culture-lens-close').title = cultureSay('close');
-        const canvas = panel.querySelector('#culture-lens');
+        look.querySelector('#culture-look-title').textContent = cultureSay('lensTitle', slot + 1, this.cultureName(contents.slots[slot].type));
+        look.querySelector('.culture-look-close').title = cultureSay('lensClose');
+        const canvas = look.querySelector('#culture-lens');
         const seed = ((this.cultureAt.x * 73856093) ^ (this.cultureAt.z * 19349663) ^ (slot * 83492791)) >>> 0;
         cultureDrawLens(canvas.getContext('2d'), canvas.width, canvas.height, plate, seed);
-        const lines = panel.querySelector('#culture-lens-lines');
+        const lines = look.querySelector('#culture-lens-lines');
         lines.innerHTML = '';
         for (const { key, args } of cultureLensLines(plate || { nutrient: 1 }, (id) => this.cultureSpeciesName(id))) {
             const line = document.createElement('div');

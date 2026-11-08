@@ -642,6 +642,15 @@ Object.assign(Game.prototype, {
         this.saveInventoryState();
     },
 
+    // Puts an item the player carries in the hand: its hotbar slot if it has one (the hotbar keeps its
+    // order), or onto the hotbar first, as a crafted item goes. Says whether it could.
+    selectInventoryType(type) {
+        const index = this.inventory.indexOf(type);
+        if (index < 0 || this.getInventoryCount(type) <= 0) return false;
+        this.selectSlot(index, { promoteToHotbar: !this.getHotbarInventoryIndexes().includes(index) });
+        return true;
+    },
+
     canCraftRecipe(recipe) {
         return recipe.inputs.every((input) => this.getInventoryCount(input.type) >= input.amount);
     },
