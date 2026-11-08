@@ -287,7 +287,9 @@ Object.assign(Game.prototype, {
     // What was in a chest that this client broke or replaced: pickups, like its own drop.
     storageOnDrop(drop) {
         if (!drop || !Array.isArray(drop.items)) return;
-        for (const item of drop.items) {
+        // What a build put in a chest that /build undo now takes away is not spawned (constructions.js).
+        const items = this.constructionStockedDrop ? this.constructionStockedDrop(drop) : drop.items;
+        for (const item of items) {
             if (item && item.count > 0 && this.world.blockTypes[item.type]) {
                 this.spawnPickup(item.type, { x: drop.x, y: drop.y, z: drop.z }, item.count);
             }

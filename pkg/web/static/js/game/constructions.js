@@ -11,8 +11,8 @@
 // - Every block goes through the normal path (world.addBlock / removeBlockAt + blockPlace /
 //   blockBreak), so all players see it and the server saves it with the chunk. Those messages are
 //   open to any client already (it is what the robot and the beaver use), so this adds no server
-//   power; the server has no notion of a creative client, and this file does not add one. The
-//   creative check is therefore the client's, as it is for /give and "Build all" in blueprints.js.
+//   power. The creative check of the blocks is therefore the client's, as it is for /give and "Build
+//   all" in blueprints.js. Filling storage is the one thing the server checks itself (below).
 // - At most CONSTRUCTION_RATE blocks per second go out, in small batches every frame, holding back
 //   while the socket has a backlog or is down. Nothing starts until every chunk of the box is
 //   loaded, since what is there has to be read for the undo.
@@ -20,6 +20,15 @@
 //   the distance (WorldRenderer.keptChunks), only until what is there has been read. A design with
 //   `rate` reads in slices over the frames too. After that the build needs no chunk: the blocks and
 //   what they replaced are in the ops, and the server loads what it has to change.
+// - Storage comes empty from the blocks alone: what it holds lives on the server (storage.go). A design
+//   says what its chests, barrels, fridges and ovens hold with b.stock(x, y, z, items, freezer), and once
+//   its last block is out the build sends that in one or two constructionStock messages
+//   (pkg/network/construction_stock.go). The server takes them only from a session that passed creative
+//   auth, only for storage that is there and empty, only items it knows, in stacks of at most
+//   CONSTRUCTION_STOCK_MAX: never a way to make items without creative. A build stopped half way sends none.
+//   "/build undo" breaks those chests like any block, and the server spills what they hold to this client;
+//   the drops of what the build itself put in are not spawned (constructionStockedDrop), anything a player
+//   added since still drops. Only the lab (construction_lab.js) has a stock now.
 // - "/build undo" puts back what the last build replaced (it lasts until the page reloads);
 //   "/build stop" stops one half way, keeping what is done and undoable. After a reconnection a
 //   build sends the last CONSTRUCTION_RESEND blocks again, as they may have died with the socket.
@@ -43,6 +52,11 @@ const CONSTRUCTION_MESH_EVERY = 2;
 const CONSTRUCTION_FACINGS = ['n', 'e', 's', 'w'];
 // Quarter turns of the box that bring its local 's' (the way the player looks) to each facing.
 const CONSTRUCTION_TURNS = { s: 0, w: 1, n: 2, e: 3 };
+// What one constructionStock message carries at most, and the largest stack and total of one block (the
+// server's stockMaxFills is twice the first; stockMaxStack and stockMaxItems are the others).
+const CONSTRUCTION_STOCK_FILLS = 16;
+const CONSTRUCTION_STOCK_MAX = 64;
+const CONSTRUCTION_STOCK_TOTAL = 256;
 
 // ---------------------------------------------------------------------------------------
 // Drawing tools for the designs (no Game needed).
@@ -51,7 +65,18 @@ class ConstructionBuilder {
     constructor(size) {
         this.size = size;
         this.cells = new Map();
+        // What storage holds once built: { x, y, z, items, freezer } by cell (see the header).
+        this.stocks = new Map();
         this.flipped = false;
+    }
+
+    // What the storage block at this cell (the lower one of a piece of two) holds: items and freezer are
+    // [[type, count], ...], one stack a slot; freezer is a fridge's second compartment.
+    stock(x, y, z, items, freezer = []) {
+        const fx = this.flipped ? this.size[0] - 1 - x : x;
+        const key = (y * this.size[2] + z) * this.size[0] + fx;
+        if (this.stocks.has(key)) throw new Error(`Stocked twice: ${fx},${y},${z}`);
+        this.stocks.set(key, { x: fx, y, z, items, freezer });
     }
 
     // Draws `draw` and then its mirror image across the middle of the box.
@@ -163,8 +188,9 @@ class ConstructionBuilder {
 // gives { top, type, keep, soil } and that column follows it: see constructionDiffColumn).
 
 // The pieces of js/game/furniture.js, decor.js and mirrors.js the way the designs place them, with
-// the states their block names want, and turned by b.sym like the rest. Storage and ovens are
-// empty and unlit: what they hold and their fire live on the server, and a build only places blocks.
+// the states their block names want, and turned by b.sym like the rest. Storage and ovens are placed
+// empty and unlit: what they hold and their fire live on the server. b.stock says what goes in them
+// once the build is done (see the header).
 function constructionFurnisher(b) {
     const lantern = (x, y, z, mount = 'hanging') => b.shaped(x, y, z, 'lantern', 'lantern', { mount });
     return {
@@ -1308,7 +1334,7 @@ function constructionPlan(name) {
     if (!design) return null;
     const builder = new ConstructionBuilder(design.size);
     design.generate(builder);
-    return { ...design, name, cells: Array.from(builder.cells.values()) };
+    return { ...design, name, cells: Array.from(builder.cells.values()), stocks: Array.from(builder.stocks.values()) };
 }
 
 // The block name after `turns` quarter turns: only names with a compass facing in their state change.
@@ -1327,8 +1353,10 @@ function constructionLayout(plan, turns, anchor, baseY, blockTypes) {
     const { size, cells } = blueprintRotate(plan.size, plan.cells, turns);
     const [mark] = blueprintRotate(plan.size, [{ x: plan.anchorX, y: 0, z: 0 }], turns).cells;
     const min = { x: anchor.x - mark.x, y: baseY, z: anchor.z - mark.z };
+    const stocks = blueprintRotate(plan.size, plan.stocks || [], turns).cells;
     return {
         min,
+        stocks: stocks.map((stock) => ({ ...stock, x: min.x + stock.x, y: baseY + stock.y, z: min.z + stock.z })),
         size,
         foundation: plan.foundation,
         groundY: plan.groundY,
@@ -1577,7 +1605,7 @@ Object.assign(Game.prototype, {
         layout.grade = grade;
         const ops = [];
         yield* constructionDiffSteps(layout, (x, y, z) => this.constructionRead(x, y, z), blockTypes, ops);
-        return { ops: constructionOrder(ops) };
+        return { ops: constructionOrder(ops), stocks: layout.stocks };
     },
 
     // One frame's slice of the reading. A reconnection empties the world under it: then it starts again.
@@ -1599,7 +1627,7 @@ Object.assign(Game.prototype, {
         }
     },
 
-    constructionScanDone(waiting, { refuse, ops }) {
+    constructionScanDone(waiting, { refuse, ops, stocks }) {
         this.constructionScan = null;
         this.world.keptChunks = null;
         if (refuse) {
@@ -1608,8 +1636,9 @@ Object.assign(Game.prototype, {
         }
         const { label, rate = CONSTRUCTION_RATE } = waiting.plan;
         // Only the last build can be undone; it grows as blocks go out.
-        this.constructionUndo = { label, rate, applied: [] };
+        this.constructionUndo = { label, rate, applied: [], stocked: new Map() };
         this.constructionJob = this.constructionNewJob(label, 'Building', ops, rate, false);
+        this.constructionJob.stocks = stocks || [];
         this.receiveSystemMessage({ text: `Building ${label}: ${ops.length} block changes...` });
         if (waiting.plan.rate) {
             this.receiveSystemMessage({ text: `That is about ${Math.ceil(ops.length / rate / 60)} minutes, from the ground up, with no need to walk. Keep this tab open: /build undo lives in it. /build stop stops it` });
@@ -1629,6 +1658,11 @@ Object.assign(Game.prototype, {
         }
         const ops = constructionUndoOps(undo.applied);
         this.constructionJob = this.constructionNewJob(undo.label, 'Undoing', ops, undo.rate || CONSTRUCTION_RATE, true);
+        // What the build put in its storage: when the server spills it, it is not spawned.
+        if (undo.stocked && undo.stocked.size) {
+            this.constructionUnstocking = this.constructionUnstocking || new Map();
+            for (const [key, items] of undo.stocked) this.constructionUnstocking.set(key, items);
+        }
         this.constructionUndo = null;
         this.receiveSystemMessage({ text: `Undoing ${undo.label}: ${ops.length} block changes...` });
     },
@@ -1652,7 +1686,7 @@ Object.assign(Game.prototype, {
         // An undo stopped half way can still be finished: what it has not put back stays undoable.
         if (job.undoing) {
             const left = job.ops.slice(job.done).map((op) => ({ ...op, type: op.prev.type, meta: op.prev.meta, prev: { type: op.type, meta: op.meta } }));
-            this.constructionUndo = left.length ? { label: job.label, rate: job.rate, applied: left } : null;
+            this.constructionUndo = left.length ? { label: job.label, rate: job.rate, applied: left, stocked: new Map() } : null;
         }
         this.receiveSystemMessage({ text: `Stopped after ${job.done} of ${job.ops.length} block changes${job.undoing ? '' : '. /build undo takes them back'}` });
     },
@@ -1762,6 +1796,7 @@ Object.assign(Game.prototype, {
         if (lumps && (job.done >= job.ops.length || job.meshed > CONSTRUCTION_MESH_EVERY)) this.constructionMeshHeld(job);
         if (job.done >= job.ops.length) {
             this.constructionJob = null;
+            if (!job.undoing) this.constructionSendStock(job.stocks);
             this.receiveSystemMessage({
                 text: job.undoing
                     ? `${job.label}: undone, ${job.done} blocks put back`
@@ -1774,6 +1809,82 @@ Object.assign(Game.prototype, {
             job.nextReport += 0.1;
             this.receiveSystemMessage({ text: `${job.verb} ${job.label}: ${Math.round(progress * 100)} % (${job.done} / ${job.ops.length})` });
         }
+    }
+});
+
+// ---------------------------------------------------------------------------------------
+// What the storage of a build holds (see the header)
+
+// A stock's stacks as the server reads them.
+function constructionStockStacks(list) {
+    return (list || []).filter(([type, count]) => type && count > 0).map(([type, count]) => ({ type, count }));
+}
+
+function constructionStockKey(x, y, z) {
+    return `${x},${y},${z}`;
+}
+
+Object.assign(Game.prototype, {
+    // After the last block: the fills, a few to a message. The blocks went first on the same socket.
+    constructionSendStock(stocks) {
+        if (!stocks || !stocks.length || !this.network || !this.network.connected) return;
+        const fills = stocks.map(({ x, y, z, items, freezer }) => {
+            const fill = { x, y, z, items: constructionStockStacks(items) };
+            const cold = constructionStockStacks(freezer);
+            if (cold.length) fill.freezer = cold;
+            return fill;
+        });
+        this.constructionStockListen();
+        this.constructionStockSent = new Map(fills.map((fill) => [constructionStockKey(fill.x, fill.y, fill.z), fill]));
+        this.constructionStockUndo = this.constructionUndo;
+        this.constructionStockTally = { filled: 0, refused: 0, left: Math.ceil(fills.length / CONSTRUCTION_STOCK_FILLS) };
+        for (let i = 0; i < fills.length; i += CONSTRUCTION_STOCK_FILLS) {
+            this.network.send('constructionStock', { fills: fills.slice(i, i + CONSTRUCTION_STOCK_FILLS) });
+        }
+    },
+
+    constructionStockListen() {
+        if (this.constructionStockListening || !this.network || !this.network.on) return;
+        this.constructionStockListening = true;
+        this.network.on('constructionStockResult', (result) => this.constructionOnStockResult(result || {}));
+    },
+
+    // What landed is remembered with the undo, so that undoing does not spawn it.
+    constructionOnStockResult({ filled, refused }) {
+        const sent = this.constructionStockSent;
+        const tally = this.constructionStockTally;
+        if (!sent || !tally) return;
+        const undo = this.constructionStockUndo;
+        for (const at of Array.isArray(filled) ? filled : []) {
+            const key = constructionStockKey(at[0], at[1], at[2]);
+            const fill = sent.get(key);
+            if (!fill) continue;
+            if (undo && undo.stocked) undo.stocked.set(key, [...fill.items, ...(fill.freezer || [])]);
+            tally.filled++;
+        }
+        tally.refused += Array.isArray(refused) ? refused.length : 0;
+        if (--tally.left > 0) return;
+        this.constructionStockSent = null;
+        this.constructionStockTally = null;
+        this.receiveSystemMessage({ text: `Stocked ${tally.filled} storage blocks${tally.refused ? `; ${tally.refused} refused (not empty, or not there)` : ''}` });
+    },
+
+    // A storage block that an undo broke: what the build put in it is not spawned again.
+    constructionStockedDrop(drop) {
+        const unstocking = this.constructionUnstocking;
+        if (!unstocking || !unstocking.size) return drop.items;
+        const key = [constructionStockKey(drop.x, drop.y, drop.z), constructionStockKey(drop.x, drop.y - 1, drop.z)].find((k) => unstocking.has(k));
+        if (!key) return drop.items;
+        const owed = new Map();
+        for (const { type, count } of unstocking.get(key)) owed.set(type, (owed.get(type) || 0) + count);
+        unstocking.delete(key);
+        const left = [];
+        for (const item of drop.items) {
+            const take = Math.min(item.count, owed.get(item.type) || 0);
+            if (take) owed.set(item.type, owed.get(item.type) - take);
+            if (item.count > take) left.push({ ...item, count: item.count - take });
+        }
+        return left;
     }
 });
 

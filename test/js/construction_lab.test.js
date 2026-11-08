@@ -1,7 +1,9 @@
 // Node tests for /build lab (js/game/construction_lab.js): registration, all 4 turns, nothing overlapping or
 // floating, the walk to every room, light at night, the microscopes' real light, signs, the lift, what the sky
 // and the water have to give the generators, that the data the Go test runs on the real grid
-// (pkg/network/testdata/lab_power.json) is this design, and the command on flat land, a slope and water.
+// (pkg/network/testdata/lab_power.json) is this design, and the command on flat land, a slope and water. Its stock:
+// where each entry lands in the 4 turns, that it goes out after the last block, and what undo leaves unspawned
+// (what the items are and the server's limits: construction_stock.test.js).
 // To write that data again: LAB_WRITE=1 node --test test/js/construction_lab.test.js
 // Run with: node --test test/js/construction_lab.test.js
 
@@ -40,7 +42,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS, ConstructionBuilder, constructionPlan, constructionLayout, chunkIndex,
-        SHAPE_DIRECTIONS, ELECTRIC_KINDS, LOGIC_KINDS, seatStandOffsets, signBoardLayoutFor, microscopeOpenToSky, microscopeLightFrom, labPlanMarks, LAB_SHAFT, LAB_WINCH_Y, LAB_STEP, LAB_ROOF_Y, LAB_ELEMENTS });`, context);
+        SHAPE_DIRECTIONS, ELECTRIC_KINDS, LOGIC_KINDS, seatStandOffsets, signBoardLayoutFor, microscopeOpenToSky, microscopeLightFrom, labPlanMarks, LAB_SHAFT, LAB_WINCH_Y, LAB_STEP, LAB_ROOF_Y, LAB_ELEMENTS, STORAGE_KINDS });`, context);
     return context;
 }
 
@@ -221,8 +223,11 @@ test('it has what was asked for', () => {
     }
     // No telescope as a block: it is not one, and nothing pretends. A weather station is one: see below.
     assert.ok(!count.telescope);
-    for (const type of ['telescope', 'weather_station', 'multimeter', 'test_tube', 'glass_slide', 'micropipette', 'iodine_tincture', 'methylene_blue', 'darkfield_stop']) {
-        assert.ok(PLAN.cells.some((cell) => cell.meta && cell.meta.t && cell.meta.t.includes(type)), `a sign says how to get ${type}`);
+    assert.ok(PLAN.cells.some((cell) => cell.meta && cell.meta.t && cell.meta.t.includes('weather_station')), 'a sign says how to get another weather station');
+    // What is not a block is in the chests (LAB_STOCK, below).
+    const stocked = new Set(PLAN.stocks.flatMap(({ items, freezer }) => [...items, ...freezer].map(([type]) => type)));
+    for (const type of ['telescope', 'star_chart', 'multimeter', 'test_tube', 'glass_slide', 'micropipette', 'iodine_tincture', 'methylene_blue', 'darkfield_stop', 'agar_plate', 'petri_dish']) {
+        assert.ok(stocked.has(type), `a chest holds ${type}`);
     }
 });
 
@@ -625,6 +630,39 @@ test('the names it places: consumers bare, ovens unlit, logic off but for the le
     assert.ok(on.length >= 8);
 });
 
+// ---- What the storage holds ----
+
+const plainOf = (value) => JSON.parse(JSON.stringify(value));
+
+test('the stock: every entry is a storage block of the plan, in all 4 turns on the cell it was drawn on', () => {
+    assert.ok(PLAN.stocks.length >= 30, `${PLAN.stocks.length}`);
+    for (const turns of TURNS) {
+        const { layout, typeAt } = layoutOf(turns);
+        PLAN.stocks.forEach((stock, i) => {
+            const local = planAt(stock.x, stock.y, stock.z);
+            assert.ok(local && ctx.STORAGE_KINDS[baseOf(local)] && stateOf(local).half !== 'upper', `not storage: ${stock.x},${stock.y},${stock.z} ${local}`);
+            const [wx, wz] = turned(turns, stock.x, stock.z);
+            const at = layout.stocks[i];
+            assert.deepEqual([at.x, at.y, at.z], [wx, stock.y, wz], `turn ${turns}`);
+            assert.equal(baseOf(typeAt(at.x, at.y, at.z)), baseOf(local), `turn ${turns}`);
+            assert.deepEqual(plainOf(at.items), plainOf(stock.items));
+        });
+    }
+});
+
+test('a build stopped half way stocks nothing, and a build out of creative mode never starts', () => {
+    const world = makeWorld(6);
+    const { game, sent } = makeGame(world);
+    game.constructionCommand('build', [NAME]);
+    for (let i = 0; i < 200; i++) game.constructionUpdate(1 / 60);
+    game.constructionCommand('build', ['stop']);
+    assert.ok(sent.length > 0 && sent.every(({ type }) => type !== 'constructionStock'));
+    const other = makeGame(makeWorld(1));
+    other.game.creativeMode = false;
+    other.game.constructionCommand('build', [NAME]);
+    assert.equal(other.sent.length, 0);
+});
+
 // ---- The real grid ----
 
 function powerData() {
@@ -669,7 +707,11 @@ function makeGame(world, look = { x: 0, z: 1 }, at = { x: 0.5, y: 2.62, z: 0.5 }
         receiveSystemMessage: ({ text }) => messages.push(text),
         cameraController: { eyeHeight: 1.62, getPosition: () => at },
         getInteractionRay: () => ({ direction: new Vector3(look.x, 0, look.z) }),
-        network: { connected: true, ws: { bufferedAmount: 0 }, send: (type, payload) => sent.push({ type, payload }) }
+        network: {
+            connected: true, ws: { bufferedAmount: 0 }, handlers: {},
+            send: (type, payload) => sent.push({ type, payload }),
+            on(type, handler) { this.handlers[type] = handler; }
+        }
     });
     return { game, sent, messages };
 }
@@ -702,8 +744,23 @@ test('/build lab: it ends as planned in every turn, by blockPlace, the signs wit
         game.constructionCommand('build', [NAME]);
         run(game);
         assert.ok(messages.some((text) => text.includes('finished')), messages.join(' | '));
-        assert.ok(sent.every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks and nothing else');
+        // Blocks, and once they are all out the stock of the storage, and nothing else.
+        const first = sent.findIndex(({ type }) => type === 'constructionStock');
+        assert.ok(first > 0, 'the storage is stocked');
+        assert.ok(sent.slice(0, first).every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks first');
+        const stockMessages = sent.slice(first);
+        assert.ok(stockMessages.every(({ type }) => type === 'constructionStock'), 'then the stock and nothing else');
         const layout = ctx.constructionLayout(PLAN, turns, { x: fx * 3, z: fz * 3 }, 0, world.blockTypes);
+        const fills = stockMessages.flatMap(({ payload }) => payload.fills);
+        assert.ok(stockMessages.every(({ payload }) => payload.fills.length <= 16));
+        assert.equal(fills.length, PLAN.stocks.length);
+        fills.forEach((fill, i) => {
+            const want = layout.stocks[i];
+            assert.deepEqual([fill.x, fill.y, fill.z], [want.x, want.y, want.z]);
+            const type = world.getBlockTypeAt(fill.x, fill.y, fill.z);
+            assert.ok(ctx.STORAGE_KINDS[baseOf(type)] && stateOf(type).half !== 'upper', `storage at ${fill.x},${fill.y},${fill.z}: ${type}`);
+            assert.deepEqual(plainOf(fill.items.map(({ type: item, count }) => [item, count])), plainOf(PLAN.stocks[i].items));
+        });
         for (const cell of layout.cells) {
             assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type, `${cell.x},${cell.y},${cell.z}`);
             if (cell.meta && cell.meta.t) assert.equal(world.getSignTextAt(cell.x, cell.y, cell.z), cell.meta.t);
@@ -714,9 +771,23 @@ test('/build lab: it ends as planned in every turn, by blockPlace, the signs wit
             assert.ok(placed.has(type), type);
         }
         if (turns > 0) continue;
+        // The server takes all of it; then undo breaks those chests, and of what each spills only what a
+        // player added since is spawned, wherever the spill comes from (a fridge spills from its upper cell first).
+        const answer = game.network.handlers.constructionStockResult;
+        for (const { payload } of stockMessages) answer({ filled: payload.fills.map(({ x, y, z }) => [x, y, z]), refused: [] });
+        assert.ok(messages.some((text) => text === `Stocked ${fills.length} storage blocks`), messages.join(' | '));
         game.constructionCommand('build', ['undo']);
         run(game);
         assert.deepEqual(snapshot(world), before);
+        const fridge = fills.find(({ freezer }) => freezer && freezer.length);
+        const spill = [...fridge.items, ...fridge.freezer].map((item) => ({ ...item }));
+        spill[0].count += 3;
+        spill.push({ type: 'dirt', count: 2 });
+        assert.deepEqual(plainOf(game.constructionStockedDrop({ x: fridge.x, y: fridge.y + 1, z: fridge.z, items: spill })),
+            [{ type: fridge.items[0].type, count: 3 }, { type: 'dirt', count: 2 }]);
+        // Only once, and a chest the build did not stock spills whole.
+        assert.equal(game.constructionStockedDrop({ x: fridge.x, y: fridge.y, z: fridge.z, items: spill }).length, spill.length);
+        assert.equal(game.constructionStockedDrop({ x: 999, y: 0, z: 0, items: spill }).length, spill.length);
     }
 });
 

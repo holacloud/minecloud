@@ -34,6 +34,21 @@ A network is **all or nothing**: if it cannot feed every consumer, all of them g
 - The telescope in the dome is a **model** made of blocks. A real [telescope](133) is an item you raise by hand: the dome has an open slit to use one through.
 - The transformers in the power hall, the double helix in the atrium and the lecture hall's screen do nothing.
 
-## Why the chests are empty
+## What the chests hold
 
-A build places blocks and nothing else: no plan can fill a chest. In creative mode, `/microkit` gives everything for the microscopes, and `/give` the rest; the signs say which.
+Once it is built, every room's chests hold what that room needs to work: a well-stocked lab, not a bottomless pantry.
+
+| Room | What it keeps |
+|---|---|
+| Microscopes and samples | Test tubes, glass slides, micropipettes, iodine, methylene blue, dark-field stops, water and moss samples, agar plates and Petri dishes |
+| Chemistry | The elements of the known reactions (water, salt, glass, steel), glass, water flasks, baking soda, copper sulfate, quicklime |
+| Fridges and freezer | Cold water, milk and soda, cheese, agar plates; ice, frozen fish and bread |
+| Hot bay | Coal in the foundry, the arc and the oven; sand, ore and cobblestone in the chests by the door |
+| Electrical workshop and power hall | Copper wire, multimeters, bulbs, lamps, batteries, levers, buttons and logic gates |
+| Experiments | Multimeters, logic gates, sensors, levers, bulbs and wire |
+| Canteen | Coal in the oven; bread, fish, cheese, honey, mushrooms and wheat in the barrel |
+| Library and offices | Blueprints, breeding notebooks, star charts, a measuring tape, rocks for the geologist, a telescope for the astronomer |
+| Greenhouse | Wheat seeds, fertilizer, a water bucket and a hoe |
+| Observatory and deck | Telescopes, star charts, a thermometer, a barometer and an anemometer |
+
+The furnaces hold only fuel, so none lights until you give it something to work on. The fridges keep only what does not change in them. A build only places blocks: what the chests hold is put in by the server, only for a player in creative mode and only into empty chests. `/build undo` takes away what it put in without dropping it on the floor; anything you stored there since does drop.

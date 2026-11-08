@@ -49,6 +49,8 @@ Object.assign(Game.prototype, {
         if (this.creativeMode && normalized === this.creativeKey) {
             this.creativeMode = false;
             this.creativeSaveKey('');
+            // The server forgets it too: it lets only a creative session stock a build's chests.
+            if (this.network && this.network.connected) this.network.send('creativeOff', {});
             this.receiveSystemMessage({ text: 'Creative mode off' });
             return;
         }

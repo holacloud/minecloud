@@ -39,8 +39,11 @@ func handleCreativeAuth(client *Client, payload json.RawMessage) {
 	if err := json.Unmarshal(payload, &request); err != nil {
 		return
 	}
+	ok := checkCreativeKey(request.Key)
+	// The session is creative from now on, or no longer: a wrong key also ends what an earlier one began.
+	client.creative.Store(ok)
 	reply := createMessage("creativeAuth", map[string]interface{}{
-		"ok":      checkCreativeKey(request.Key),
+		"ok":      ok,
 		"command": request.Command,
 		"silent":  request.Silent,
 	})

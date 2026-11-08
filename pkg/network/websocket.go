@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -36,6 +37,9 @@ type Client struct {
 	sessionID    string
 	ip           string
 	userAgent    string
+	// Whether this session passed creative auth (creative.go): set by each creativeAuth answer, cleared by
+	// creativeOff. Only constructionStock reads it.
+	creative atomic.Bool
 }
 
 type Message struct {
@@ -874,6 +878,10 @@ func handleMessage(client *Client, msg Message) {
 
 	case "creativeAuth":
 		handleCreativeAuth(client, msg.Payload)
+	case "creativeOff":
+		client.creative.Store(false)
+	case "constructionStock":
+		handleConstructionStock(client, msg.Payload)
 
 	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
 		handleStorageMessage(client, msg)

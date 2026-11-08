@@ -28,8 +28,13 @@
 // - A lever in a line: the supply comes down a wall to it and the room's line goes back up 2 cells along,
 //   so the two never touch (labSwitch). Levers start on (`lever:on`, which the grid takes as it is), and
 //   every consumer starts under its bare name: the server renames it `:on` when it has power.
-// - A build sends blocks and nothing else (constructionApply), so chests, barrels and fridges are EMPTY:
-//   nothing in the game lets a plan fill them. The signs say what to get with /microkit and /give.
+// - Its storage is stocked once the last block is out (LAB_STOCK, sent by constructions.js as
+//   constructionStock, which the server takes only from a creative session and only into empty storage):
+//   each room's chests hold what that room is for, enough to work with and no more. Ovens and furnaces get
+//   only their fuel, so nothing lights until a player brings food or ore; the incubator, the autoclave and
+//   the microscopes get nothing (a plate or a slide only moves with what lies on it). Fridges and freezers
+//   hold only what stays as it is in them (cold drinks, ice, frozen food), so /build undo knows what it
+//   put in and does not spawn it again.
 // - A telescope is not a block: it is an item raised by hand (astronomy.js). So: an open slit in the dome
 //   and an open deck to use it from, and a telescope of blocks that says it is a model. A weather station
 //   is a block (weather.js), so a real one stands on the terrace, in the open.
@@ -466,8 +471,8 @@ function labDrawCupboard(b, t, F, n) {
     t.wire([33, F + 4, 35], [33, F + 5, 35], [33, F + 5, 28]);
     piece(35, F + 1, 33, 'chest', 'chest', 'w');
     b.set(33, F + 1, 32, 'flower_pot');
-    t.sign(35, F + 1, 35, 'w', `Cuadro: planta ${n}`, 'Seis RTG de 80 W, de día y de noche. La palanca alta corta la planta. Multímetro: /give multimeter, clic derecho en algo eléctrico.',
-        `Floor ${n}'s board. 6 rtg of 80 W, day and night. The high lever cuts the floor. /give multimeter, right click anything electric.`);
+    t.sign(35, F + 1, 35, 'w', `Cuadro: planta ${n}`, 'Seis RTG de 80 W, de día y de noche. La palanca alta corta la planta. Multímetro en el cofre: clic derecho en algo eléctrico.',
+        `Floor ${n}'s board. 6 rtg of 80 W, day and night. The high lever cuts the floor. A multimeter in the chest: right click anything electric.`);
     b.set(35, F + 2, 33, 'table_lamp');
 }
 
@@ -611,7 +616,7 @@ function labDrawCanteen(b, t) {
     piece(5, 2, 34, 'wall_clock', 'wall_clock', 's');
     piece(9, 2, 34, 'painting_meadow', 'painting', 's');
     b.set(2, 1, 34, 'flower_pot');
-    sign(13, 1, 37, 'w', 'Comedor', 'Horno y fregadero de verdad. El horno necesita carbón y comida: un plano solo pone bloques.', 'Canteen. A real oven and sink. The oven wants coal and food: a build only places blocks.');
+    sign(13, 1, 37, 'w', 'Comedor', 'Horno y fregadero de verdad. El horno trae carbón; pon trigo o pescado y cocina. Comida en el barril.', 'Canteen. A real oven and sink. The oven has coal: add wheat or fish and it cooks. Food in the barrel.');
 }
 
 function labDrawWorkshop(b, t) {
@@ -864,8 +869,8 @@ function labDrawMicroscopy(b, t) {
     b.set(48, y + 1, 25, 'vase');
     piece(50, y + 1, 25, 'chest', 'chest', 'n');
     piece(51, y + 1, 25, 'chest', 'chest', 'n');
-    sign(43, y, 24, 'e', 'Material: /microkit', 'Un plano no puede llenar un cofre: los cofres vienen vacíos. En modo creativo, /microkit trae tubos, portaobjetos, muestras y tinciones.',
-        'A build cannot fill a chest: these are empty. In creative mode, /microkit gives tubes, slides, samples and stains.');
+    sign(43, y, 24, 'e', 'Material: en los cofres', 'Tubos, portaobjetos, pipeta, tinciones y muestras en uno; placas de agar en el otro. Más: /microkit.',
+        'Tubes, slides, a pipette, stains and samples in one chest; agar plates in the other. More: /microkit.');
 }
 
 function labDrawDarkroom(b, t) {
@@ -917,23 +922,24 @@ function labDrawSamples(b, t) {
     t.mark('moss', 44, y, 47);
     sign(48, y, 43, 'n', 'Agua y musgo reales', 'Tubo de ensayo en el agua o en el musgo: una muestra. Lo que traiga depende del sitio exacto.', 'Real water and moss. A test tube on either takes a sample, and what it holds depends on the exact spot.');
     // The store: a chest for each thing, shelves over.
+    // What each chest holds (LAB_STOCK), and what its sign says.
     const kept = [
-        ['Tubos: test_tube', 'Test tubes: /give test_tube.'], ['Portaobjetos: glass_slide', 'Slides: /give glass_slide.'],
-        ['Pipeta: micropipette', 'Micropipette: /give micropipette.'], ['Yodo: iodine_tincture', 'Iodine: /give iodine_tincture. Guide 246.'],
-        ['Azul: methylene_blue', 'Methylene blue: /give methylene_blue. Guide 246.'], ['Campo oscuro: darkfield_stop', 'Dark-field stop: /give darkfield_stop. Guide 247.']
+        ['Tubos de ensayo', 'Test tubes in the chest.'], ['Portaobjetos', 'Glass slides in the chest.'],
+        ['Micropipetas', 'Micropipettes in the chest.'], ['Yodo', 'Iodine tincture in the chest. Guide 246.'],
+        ['Azul de metileno', 'Methylene blue in the chest. Guide 246.'], ['Campo oscuro', 'Dark-field stops in the chest. Guide 247.']
     ];
     kept.forEach(([es, en], i) => {
         const z = 37 + i;
         if (z === 40 || z === 41 || z === 42) return;
         piece(53, y, z, 'chest', 'chest', 'w');
-        sign(52, y, z, 'w', es, `Cofre vacío: un plano no llena cofres. ${en}`, `An empty chest: a build cannot fill one. ${en}`);
+        sign(52, y, z, 'w', es, 'En el cofre, para llevar.', en);
         piece(53, y + 2, z, 'wall_shelf', 'wall_shelf', 'w');
     });
     // The other three by the door side.
     kept.slice(3).forEach(([es, en], i) => {
         const x = 43 + i * 2;
         piece(x, y, 36, 'chest', 'chest', 's');
-        sign(x + 1, y, 37, 's', es, `Cofre vacío: un plano no llena cofres. ${en}`, `An empty chest: a build cannot fill one. ${en}`);
+        sign(x + 1, y, 37, 's', es, 'En el cofre, para llevar.', en);
         piece(x, y + 2, 36, 'wall_shelf', 'wall_shelf', 's');
     });
     b.box(42, y, 42, 46, y, 42, 'lab_bench');
@@ -997,6 +1003,8 @@ function labDrawLibrary(b, t) {
     b.set(5, y + 1, 40, 'table_lamp');
     b.set(8, y + 1, 41, 'table_lamp');
     piece(2, y + 1, 40, 'painting_night', 'painting', 'e');
+    // Plans and notebooks: the game has no books to read but the guide.
+    piece(2, y, 45, 'chest', 'chest', 'e');
     b.set(13, y, 35, 'flower_pot');
     b.set(2, y, 36, 'flower_pot');
 }
@@ -1152,7 +1160,7 @@ function labDrawExperiments(b, t) {
     t.chair(8, y, 23, 'n');
     piece(7, y + 1, 21, 'chest', 'chest', 's');
     b.set(9, y + 1, 22, 'table_lamp');
-    sign(6, y, 20, 'n', 'Multímetro: /give multimeter', 'El cofre viene vacío. Con /give multimeter y clic derecho lees generación, demanda y baterías de una red.', 'The chest comes empty. /give multimeter, then right click to read a network: generation, demand and batteries.');
+    sign(6, y, 20, 'n', 'Multímetro: en el cofre', 'Y puertas lógicas, sensores y cable. Clic derecho con él en algo eléctrico: generación, demanda y baterías.', 'A multimeter, logic gates, sensors and wire in the chest. Right click something electric: generation, demand, batteries.');
 }
 
 function labDrawOffices(b, t) {
@@ -1174,6 +1182,7 @@ function labDrawOffices(b, t) {
     [[4, 'peaks', 'Geología'], [8, 'night', 'Astronomía'], [13, 'fish', 'Biología']].forEach(([x, painting, name], i) => {
         t.door(x, y, 36, 'oak_door', 's');
         piece(x, y, 46, 'desk', 'desk', 'n');
+        piece(x + 1, y, 46, 'chest', 'chest', 'n');
         t.chair(x, y, 45, 's');
         b.set(x, y + 1, 46, 'table_lamp');
         const shelfX = i === 2 ? 12 : x - 1;
@@ -1207,7 +1216,7 @@ function labDrawChemistry(b, t) {
     }
     piece(48, y, 22, 'sink', 'sink', 's');
     piece(48, y, 15, 'sink', 'sink', 's');
-    sign(45, y, 14, 'n', 'Mesa de laboratorio', 'Clic derecho: la tabla, el matraz y 30 reacciones de verdad. Frascos: /give water_flask. Guía 117.', 'Right click: the table, the flask and 30 real reactions. Flasks: /give water_flask. Guide 117.');
+    sign(45, y, 14, 'n', 'Mesa de laboratorio', 'Clic derecho: la tabla, el matraz y 30 reacciones de verdad. Elementos y frascos en el cofre del fondo. Guía 117.', 'Right click: the table, the flask and 30 real reactions. Elements and flasks in the chest at the back. Guide 117.');
     sign(50, y, 14, 'n', 'Elementos: en el atrio', 'La tabla periódica está en el muro del atrio, visible desde el puente. Guía 116.', 'The periodic table is on the wall of the atrium, seen from the bridge. Guide 116.');
 
     // The cold chain against the back: 2 rtg, 2 fridges, a freezer, all touching and nothing else.
@@ -1226,7 +1235,7 @@ function labDrawChemistry(b, t) {
     t.mark('incubator', 47, y, 32);
     b.shaped(48, y, 32, 'autoclave', 'autoclave', { facing: 'n', fire: 'off' });
     t.mark('autoclave', 48, y, 32);
-    sign(49, y, 31, 'n', 'Frío y cultivos', 'Neveras, congelador, incubadora y autoclave con su RTG: hasta 150 W de 160. Placas: /culturekit. Guía 253.', 'Cold and cultures: fridges, a freezer, an incubator and an autoclave on their rtgs, up to 150 W of 160. Plates: /culturekit. Guide 253.');
+    sign(49, y, 31, 'n', 'Frío y cultivos', 'Neveras, congelador, incubadora y autoclave con su RTG: hasta 150 W de 160. Placas en la nevera. Guía 253.', 'Cold and cultures: fridges, a freezer, an incubator and an autoclave on their rtgs, up to 150 W of 160. Agar plates in a fridge. Guide 253.');
     piece(50, y, 32, 'chest', 'chest', 'n');
     piece(51, y, 32, 'barrel', 'barrel', 'n');
     for (const x of [50, 51, 52]) piece(x, y + 2, 32, 'wall_shelf', 'wall_shelf', 'n');
@@ -1254,7 +1263,7 @@ function labDrawChemistry(b, t) {
         b.box(x, y + 2, 47, x, F + 4, 47, 'brick');
         b.set(x, y + 1, 47, 'brick');
     }
-    sign(43, y, 45, 'n', 'Fundición', 'Quema carbón. Viene vacía y apagada.', 'Foundry: it burns coal. It comes empty and cold.');
+    sign(43, y, 45, 'n', 'Fundición', 'Quema carbón: trae algo, y apagada. Arena, mena y piedra en los cofres de la entrada.', 'Foundry: it burns coal, and has some, cold. Sand, ore and cobblestone in the chests by the door.');
     sign(51, y, 45, 'n', 'Horno', 'Con comida y carbón cocina de verdad: solo el servidor lo enciende.', 'Oven: with food and coal it really cooks, and only the server lights it.');
     piece(42, y, 42, 'chest', 'chest', 'e');
     piece(42, y, 43, 'chest', 'chest', 'e');
@@ -1317,20 +1326,20 @@ function labDrawObservatory(b, t) {
         }
     });
     t.mark('model:telescope', 28, R + 5, 41);
-    sign(29, R + 1, 44, 's', 'Telescopio: maqueta', 'Decoración de bloques, no funciona. El de verdad es un objeto: /give telescope, clic derecho lo levanta, desde aquí o la terraza.',
-        'A model, in blocks: it does not work. The real one is an item: /give telescope, right click raises it, here or on the deck.');
+    sign(29, R + 1, 44, 's', 'Telescopio: maqueta', 'Decoración de bloques, no funciona. El de verdad es un objeto, en el cofre: clic derecho lo levanta, desde aquí o la terraza.',
+        'A model, in blocks: it does not work. The real one is an item, in the chest: right click raises it, here or on the deck.');
     // Standing here the sky is open: this is where to use the real one.
     b.box(26, R, 40, 29, R, 41, 'glow_block:rgb200');
     t.mark('open:slit', 26, R + 1, 41);
-    sign(30, R + 1, 41, 'w', 'Mira arriba: cielo abierto', 'La rendija deja el cielo a la vista. Con /give star_chart, un telescopio y una noche clara dibujas constelaciones. Guía 133.',
-        'Look up: open sky through the slit. With /give star_chart, a telescope and a clear night you chart the constellations. Guide 133.');
+    sign(30, R + 1, 41, 'w', 'Mira arriba: cielo abierto', 'La rendija deja ver el cielo. Carta celeste y telescopio del cofre, y una noche clara: constelaciones. Guía 133.',
+        'Open sky through the slit. A star chart and a telescope from the chest, a clear night: constellations. Guide 133.');
 
     // Desks round the wall, a chest for telescopes and charts, books, a red light kind to night eyes.
     piece(32, R + 1, 44, 'desk', 'desk', 'w');
     t.chair(31, R + 1, 44, 'e');
     b.set(32, R + 2, 44, 'candle');
     piece(21, R + 1, 44, 'chest', 'chest', 'e');
-    sign(22, R + 1, 43, 's', 'Telescopios: /give telescope', 'Cofre vacío: un plano no llena cofres, y un telescopio no es un bloque. También /give star_chart.', 'An empty chest: a build cannot fill one, and a telescope is not a block. Also /give star_chart.');
+    sign(22, R + 1, 43, 's', 'Telescopios: en el cofre', 'Un telescopio no es un bloque: es un objeto, y en el cofre hay dos, con cartas celestes. Clic derecho lo levanta.', 'A telescope is not a block but a hand item: the chest holds two, and star charts. Right click raises it.');
     for (const z of [40, 41, 42]) {
         for (let k = 0; k < 2; k++) piece(20, R + 1 + k, z, 'bookshelf', 'bookshelf', 'e');
     }
@@ -1424,7 +1433,7 @@ function labDrawTerrace(b, t) {
     for (let x = 20; x <= 25; x++) piece(x, y, 28, 'bench', 'bench', 'n');
     for (let x = 30; x <= 35; x++) piece(x, y, 28, 'bench', 'bench', 'n');
     piece(31, y, 29, 'chest', 'chest', 'n');
-    sign(29, y, 27, 'n', 'Mirador de estrellas', 'Cielo abierto en todas direcciones. El telescopio es un objeto de la mano: /give telescope.', 'A deck for the stars: open sky all round. The telescope is a hand item: /give telescope.');
+    sign(29, y, 27, 'n', 'Mirador de estrellas', 'Cielo abierto en todas direcciones. Telescopios, cartas e instrumentos del tiempo en el cofre.', 'A deck for the stars: open sky all round. Telescopes, charts and weather instruments in the chest.');
     // A real weather station on its pad, under the open sky so that the gauge fills.
     b.box(38, R, 17, 39, R, 18, 'marble');
     b.shaped(39, y, 17, 'weather_station', 'weather_station', { half: 'lower' });
@@ -1453,6 +1462,77 @@ function labDrawTerrace(b, t) {
     for (const [x, z] of [[43, 31], [43, 46]]) b.lampPost(x, y, z, 'dark_oak_fence', 2);
     b.lampPost(39, y, 45, 'dark_oak_fence', 2);
     b.lampPost(16, y, 13, 'dark_oak_fence', 2);
+}
+
+// ---------------------------------------------------------------------------------------
+// What the storage holds (see the header): [x, y, z, room, items, freezer]. Every name is a real item and in
+// the server's list (stockItems in pkg/network/construction_stock.go), stacks of at most CONSTRUCTION_STOCK_MAX.
+
+const LAB_STOCK = [
+    // Ground floor. The store: what a building runs on.
+    [29, 1, 40, 'store', [['coal_ore', 32], ['torch', 16], ['candle', 8]]],
+    [29, 1, 41, 'store', [['sand', 32], ['glass', 16], ['bucket', 2]]],
+    [30, 1, 47, 'store', [['planks', 48]]],
+    [31, 1, 47, 'store', [['cobblestone', 48]]],
+    [32, 1, 47, 'store', [['coal_ore', 32]]],
+    // The archive in the ground floor's cupboard.
+    [35, 1, 33, 'archive', [['blueprint', 6], ['measuring_tape', 2]]],
+    [35, 1, 34, 'archive', [['candle', 6], ['lantern', 2]]],
+    // The canteen: coal in the oven (it lights only with food in it), food in the barrel.
+    [4, 1, 47, 'canteen', [['coal_ore', 8]]],
+    [10, 1, 47, 'canteen', [['bread', 8], ['cooked_fish', 6], ['cheese', 4], ['honey_bottle', 3], ['roast_mushroom', 4], ['wheat', 9], ['raw_fish', 4]]],
+    // The electrical workshop.
+    [50, 1, 25, 'workshop', [['copper_wire', 64], ['wire_post', 16], ['light_bulb', 6], ['electric_lamp', 4], ['battery', 4], ['solar_cell', 4], ['multimeter', 2], ['copper_wrench', 1]]],
+    [51, 1, 25, 'workshop', [['lever', 6], ['push_button', 4], ['pressure_plate', 2], ['and_gate', 2], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 1], ['delay_gate', 2], ['latch', 2], ['daylight_sensor', 1], ['proximity_sensor', 1], ['hand_crank', 1]]],
+    [53, 1, 12, 'workshop', [['iron_block', 8], ['copper_block', 8]]],
+    [53, 1, 13, 'workshop', [['planks', 32], ['glass', 16]]],
+    // The power hall: the meter and spares for the grid.
+    [47, 1, 27, 'power hall', [['multimeter', 2], ['copper_wire', 32], ['wire_post', 8]]],
+    [48, 1, 27, 'power hall', [['battery_block', 2], ['light_bulb', 4], ['electric_lamp', 2]]],
+    // Floor 1. The microscopes.
+    [50, 8, 25, 'microscopy', [['test_tube', 12], ['glass_slide', 16], ['micropipette', 2], ['iodine_tincture', 4], ['methylene_blue', 4], ['darkfield_stop', 2],
+        ['sample_forest_lake_b', 2], ['sample_plains_lake_a', 2], ['sample_mountain_lake_d', 2], ['sample_oasis_a', 2], ['sample_moss_a', 2], ['sample_still_water', 2], ['tardigrade_tube', 2]]],
+    [51, 8, 25, 'microscopy', [['agar_plate', 6], ['petri_dish', 6], ['water_filter', 2], ['water_flask', 6], ['candle', 4]]],
+    [46, 7, 28, 'darkroom', [['candle', 6], ['glass_slide', 4]]],
+    // The sample room: each chest what its sign says.
+    [53, 7, 37, 'samples', [['test_tube', 16]]],
+    [53, 7, 38, 'samples', [['glass_slide', 24]]],
+    [53, 7, 39, 'samples', [['micropipette', 3]]],
+    [43, 7, 36, 'samples', [['iodine_tincture', 6]]],
+    [45, 7, 36, 'samples', [['methylene_blue', 6]]],
+    [47, 7, 36, 'samples', [['darkfield_stop', 3]]],
+    [35, 7, 33, 'floor 1 cupboard', [['multimeter', 1], ['copper_wire', 16], ['light_bulb', 2]]],
+    [2, 7, 45, 'library', [['blueprint', 8], ['breeding_notebook', 2], ['star_chart', 2], ['measuring_tape', 1]]],
+    // Floor 2. The experiments: what the logic benches are made of.
+    [7, 14, 21, 'experiments', [['multimeter', 2], ['and_gate', 2], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 2], ['delay_gate', 2], ['latch', 2], ['lever', 4], ['push_button', 4],
+        ['pressure_plate', 2], ['daylight_sensor', 1], ['proximity_sensor', 1], ['light_bulb', 6], ['battery_block', 1], ['copper_wire', 32]]],
+    [35, 13, 33, 'floor 2 cupboard', [['multimeter', 1], ['copper_wire', 16], ['light_bulb', 2]]],
+    // The offices: geology, astronomy, biology.
+    [5, 13, 46, 'office', [['basalt', 2], ['granite', 2], ['marble', 2], ['obsidian', 1], ['pyrite', 2], ['fluorite', 2], ['measuring_tape', 1], ['blueprint', 2]]],
+    [9, 13, 46, 'office', [['star_chart', 2], ['telescope', 1], ['candle', 2], ['blueprint', 2]]],
+    [14, 13, 46, 'office', [['breeding_notebook', 1], ['bug_net', 1], ['ant_farm', 1], ['test_tube', 4], ['blueprint', 2]]],
+    // Chemistry: the elements of the reactions the bench knows (water, salt, glass, steel, ammonia, bronze), and what they need.
+    [50, 13, 32, 'chemistry', [['element_h', 12], ['element_o', 8], ['element_na', 4], ['element_cl', 4], ['element_si', 4], ['element_fe', 4], ['element_c', 6],
+        ['element_n', 2], ['element_cu', 3], ['element_sn', 1], ['glass', 8], ['water_flask', 6], ['bucket', 1]]],
+    [51, 13, 32, 'chemistry', [['glass', 16], ['test_tube', 8], ['baking_soda', 4], ['copper_sulfate', 2], ['quicklime', 4], ['salt', 4], ['sand', 16]]],
+    // The cold chain: what stays as it is in there. Agar plates keep in a fridge, as in any lab.
+    [44, 13, 32, 'chemistry', [['cold_water', 6], ['cold_milk', 4], ['cold_soda', 4], ['cheese', 2]], [['ice', 8], ['frozen_fish', 4]]],
+    [45, 13, 32, 'chemistry', [['agar_plate', 9], ['petri_dish', 6], ['cold_water', 2]], [['tardigrade_tun', 2], ['ice', 4]]],
+    [46, 13, 32, 'chemistry', [['frozen_fish', 6], ['frozen_cooked_fish', 4], ['frozen_bread', 4], ['ice', 16]]],
+    // The hot bay: fuel in the furnaces (nothing to work on, so nothing lights), what to work on by the door.
+    [43, 13, 47, 'hot bay', [['coal_ore', 16]]],
+    [47, 13, 47, 'hot bay', [['coal_ore', 16]]],
+    [51, 13, 47, 'hot bay', [['coal_ore', 8]]],
+    [42, 13, 42, 'hot bay', [['sand', 24], ['cobblestone', 16], ['limestone', 8]]],
+    [42, 13, 43, 'hot bay', [['iron_ore', 8], ['copper_ore', 8], ['tin_ore', 4], ['coal_ore', 16]]],
+    // The roof.
+    [21, 19, 44, 'observatory', [['telescope', 2], ['star_chart', 3], ['candle', 4]]],
+    [31, 19, 29, 'deck', [['telescope', 2], ['star_chart', 2], ['thermometer', 1], ['barometer', 1], ['anemometer', 1]]],
+    [10, 19, 27, 'greenhouse', [['wheat_seeds', 24], ['fertilizer', 8], ['wheat', 6], ['water_bucket', 1], ['iron_hoe', 1]]]
+];
+
+function labStock(b) {
+    for (const [x, y, z, , items, freezer] of LAB_STOCK) b.stock(x, y, z, items, freezer);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1485,6 +1565,7 @@ function constructionLab(b) {
     labDrawPlaza(b, t);
     // The riser, on a post from the corner of the batteries to the roof, through the floors it passes.
     b.box(53, 1, 47, 53, 19, 47, 'wire_post');
+    labStock(b);
     b.labTools = t;
 }
 

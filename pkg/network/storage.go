@@ -30,6 +30,8 @@ import (
 //   - storageContents goes to everyone watching after each change, storageClosed when the block
 //     is gone, and storageDrop {x, y, z, items} to the one client that broke or replaced a chest
 //     (drops are client-side pickups: sent to everyone, everyone could collect a copy).
+//   - constructionStock fills empty storage once a /build is done, for a creative session only
+//     (construction_stock.go).
 //
 // A move is applied, saved, and only then answered. The log of answers is saved in the same
 // file as the contents, so after a crash they still agree. Ovens, foundries, arc furnaces and cold

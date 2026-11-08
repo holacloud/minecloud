@@ -34,6 +34,21 @@ Una red es **todo o nada**: si no puede alimentar a todos sus consumidores, se a
 - El telescopio de la cúpula es una **maqueta** de bloques. Un [telescopio](133) de verdad es un objeto que levantas con la mano: la cúpula tiene una rendija abierta para usarlo.
 - Los transformadores de la central, la doble hélice del atrio y la pantalla del aula no hacen nada.
 
-## Por qué los cofres vienen vacíos
+## Qué hay en los cofres
 
-Una construcción coloca bloques y nada más: ningún plano puede llenar un cofre. En modo creativo, `/microkit` da todo lo de los microscopios, y `/give` lo demás; los carteles dicen qué.
+Cuando termina de construirse, cada sala tiene en sus cofres lo que necesita para trabajar: un laboratorio bien surtido, no una despensa sin fondo.
+
+| Sala | Qué guarda |
+|---|---|
+| Microscopios y muestras | Tubos de ensayo, portaobjetos, micropipetas, yodo, azul de metileno, campo oscuro, muestras de agua y musgo, placas de agar y placas de Petri |
+| Química | Los elementos de las reacciones conocidas (agua, sal, vidrio, acero), vidrio, frascos de agua, bicarbonato, sulfato de cobre, cal viva |
+| Neveras y congelador | Agua, leche y soda frías, queso, placas de agar; hielo, pescado y pan congelados |
+| Zona caliente | Carbón en la fundición, el arco y el horno; arena, mena y piedra en los cofres de la puerta |
+| Taller eléctrico y central | Cable de cobre, multímetros, bombillas, lámparas, pilas, baterías, palancas, botones y puertas lógicas |
+| Experimentos | Multímetros, puertas lógicas, sensores, palancas, bombillas y cable |
+| Comedor | Carbón en el horno; pan, pescado, queso, miel, setas y trigo en el barril |
+| Biblioteca y despachos | Planos, libretas de cría, cartas celestes, cinta métrica, rocas para el geólogo, un telescopio para el astrónomo |
+| Invernadero | Semillas de trigo, fertilizante, un cubo de agua y una azada |
+| Observatorio y mirador | Telescopios, cartas celestes, termómetro, barómetro y anemómetro |
+
+Los hornos llevan solo combustible, así que no se encienden hasta que les pones algo que cocinar. Las neveras guardan solo lo que no cambia dentro. Un plano solo coloca bloques: lo que guardan los cofres lo pone el servidor, y solo para un jugador en modo creativo y en cofres vacíos. `/build undo` se lleva lo que puso sin dejarlo caer al suelo; lo que hayas guardado tú después, sí cae.
