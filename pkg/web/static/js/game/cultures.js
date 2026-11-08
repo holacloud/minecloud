@@ -15,6 +15,9 @@
 //   drawn from the server's numbers (cultureLensView) and redrawn as they come: its cells, more as log N
 //   climbs, pale as they die, the mould's brushes and the clear ring round them where penicillin holds
 //   bacteria back. Escape closes that window first, then the panel.
+// - "Inoculate" (and "Put a plate") opens a small dialog over the panel (#culture-sow), like the lens's: only
+//   what the player carries that fits, each culture plate on its own with its colonies. Picking one sends it;
+//   its ✕, Cancel, a click on the shade or Escape close only the dialog, and the panel keeps its size.
 // - "Take out" asks the server; once the plate has really come back the panel closes, the pointer is
 //   taken again, and what came out is in the player's hand (cultureHold), ready for a microscope. A
 //   refusal leaves the panel open and says why.
@@ -831,8 +834,13 @@ const CULTURE_CSS = `
 .culture-look-window button{min-height:40px;min-width:40px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
 #culture-lens{width:min(300px,100%,55vh);aspect-ratio:1;height:auto;flex:0 0 auto;align-self:center;border-radius:50%}
 #culture-lens-lines{font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:3px}
-#culture-pop{display:none;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(16,22,34,.98);font-size:12px;line-height:1.32}
-#culture-pop.visible{display:flex}
+#culture-sow{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(0,0,0,.45);z-index:276;box-sizing:border-box;overscroll-behavior:contain;touch-action:none}
+#culture-sow.visible{display:flex}
+.culture-sow-window{display:flex;flex-direction:column;gap:8px;width:min(360px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:12px;border-radius:14px;border:1px solid rgba(160,210,255,.45);background:rgba(16,22,34,.98);color:#fff;font-family:'Consolas',monospace;box-sizing:border-box}
+.culture-sow-head{display:flex;align-items:center;gap:8px}
+#culture-sow-title{font-weight:700;font-size:14px;flex:1;min-width:0;overflow-wrap:anywhere}
+.culture-sow-window button{min-height:40px;min-width:40px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
+#culture-pop{display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.32}
 #culture-pop .culture-choice{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-weight:400;font-size:12px}
 #culture-pop .culture-choice i{flex:0 0 26px;width:26px;height:26px;background:center/contain no-repeat;image-rendering:pixelated}
 @media (max-width:420px){.culture-card .culture-info{font-size:10px}.culture-big{font-size:22px;min-width:80px}}
@@ -1001,21 +1009,21 @@ Object.assign(Game.prototype, {
         this.cultureLooking = null;
         this.culturePanel.classList.remove('visible');
         this.cultureRenderLens();
+        this.cultureRenderPop();
         if (this.network && this.network.connected) this.network.send('storageClose', {});
         this.suppressPointerLockPauseUntil = performance.now() + 250;
         this.recapturePointerLock();
         this.updatePointerLockHint();
     },
 
-    // Escape closes the lens's window first, then the chooser, then the panel.
+    // Escape closes the lens's window first, then the dialog of what to sow, then the panel.
     cultureEscape() {
         if (this.cultureLooking !== null && this.cultureLooking !== undefined) {
             this.cultureLookClose();
             return true;
         }
         if (this.cultureChoosing) {
-            this.cultureChoosing = null;
-            this.cultureRenderPop();
+            this.cultureChooseClose();
             return true;
         }
         return false;
@@ -1150,7 +1158,6 @@ Object.assign(Game.prototype, {
             </div>
             <div class="culture-lines" id="culture-lines"></div>
             <div class="culture-plates" id="culture-plates"></div>
-            <div id="culture-pop"></div>
             <div id="culture-note"></div>
             <div id="culture-graph-title"></div>
             <canvas id="culture-graph" width="760" height="150"></canvas>
@@ -1196,6 +1203,23 @@ Object.assign(Game.prototype, {
         look.addEventListener('pointerdown', (event) => event.stopPropagation());
         document.body.appendChild(look);
         this.cultureLookBox = look;
+        // Sowing, or putting a plate in: a small dialog of its own over the panel, which keeps its size. Only what
+        // the player carries is listed; a click on the shade round it, its ✕ or Escape close only it.
+        const sow = document.createElement('div');
+        sow.id = 'culture-sow';
+        sow.innerHTML = `
+            <div class="culture-sow-window" role="dialog" aria-modal="true">
+                <div class="culture-sow-head"><div id="culture-sow-title"></div><button class="culture-sow-close" type="button">✕</button></div>
+                <div id="culture-pop"></div>
+            </div>`;
+        sow.querySelector('.culture-sow-close').addEventListener('click', () => this.cultureChooseClose());
+        sow.addEventListener('click', (event) => {
+            if (event.target === sow) this.cultureChooseClose();
+        });
+        sow.addEventListener('mousedown', (event) => event.stopPropagation());
+        sow.addEventListener('pointerdown', (event) => event.stopPropagation());
+        document.body.appendChild(sow);
+        this.cultureSowBox = sow;
         // Clicking outside closes it, like the other panels; not the click that opened it, nor the mouse
         // event a phone makes up after a tap (phones close it with its ✕).
         document.addEventListener('mousedown', (event) => {
@@ -1338,14 +1362,17 @@ Object.assign(Game.prototype, {
         return lines.join(' · ');
     },
 
+    // The dialog of what to sow (or which plate to put in): its own window over the panel.
     cultureRenderPop() {
-        const panel = this.culturePanel;
-        if (!panel) return;
-        const pop = panel.querySelector('#culture-pop');
+        const box = this.cultureSowBox;
+        if (!box) return;
+        const pop = box.querySelector('#culture-pop');
         const choosing = this.cultureChoosing;
-        pop.classList.toggle('visible', Boolean(choosing && this.cultureAt));
+        box.classList.toggle('visible', Boolean(choosing && this.cultureAt));
         pop.innerHTML = '';
         if (!choosing || !this.cultureAt) return;
+        box.querySelector('#culture-sow-title').textContent = cultureSay(choosing.op === 'load' ? 'loadTitle' : 'sowTitle', choosing.slot + 1);
+        box.querySelector('.culture-sow-close').title = cultureSay('sowClose');
         const title = document.createElement('div');
         const choices = this.cultureChoices(choosing.op);
         title.textContent = choices.length === 0 ? cultureSay(choosing.op === 'load' ? 'noPlates' : 'noInocula') : cultureSay(choosing.op === 'load' ? 'chooseLoad' : 'chooseInoculum');
@@ -1371,11 +1398,13 @@ Object.assign(Game.prototype, {
         const cancel = document.createElement('button');
         cancel.type = 'button';
         cancel.textContent = cultureSay('cancel');
-        cancel.addEventListener('click', () => {
-            this.cultureChoosing = null;
-            this.cultureRenderPop();
-        });
+        cancel.addEventListener('click', () => this.cultureChooseClose());
         pop.appendChild(cancel);
+    },
+
+    cultureChooseClose() {
+        this.cultureChoosing = null;
+        this.cultureRenderPop();
     },
 
     // The lens on a plate, in its own window: what lives on it now. It follows the plate while it is open,

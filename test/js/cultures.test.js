@@ -448,6 +448,69 @@ test('the incubator opens before a chest would, is a modal panel, and listens wi
     assert.equal(offline.said.length, 1);
 });
 
+test('sowing is a small dialog over the panel: only what is carried, in the game\'s language, and Escape closes it first', () => {
+    for (const lang of ['EN', 'ES']) {
+        inLang(lang, () => {
+            const { game, sent } = panelGame();
+            const say = (key, ...args) => ctx.cultureSay(key, ...args);
+            game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+            game.cultureOnContents(plain(CONTENTS));
+            const box = game.cultureSowBox;
+            assert.ok(box && box.id === 'culture-sow', 'a window of its own, not a part of the panel');
+            assert.ok(!game.culturePanel.innerHTML.includes('culture-pop') && box.innerHTML.includes('culture-pop'), 'the panel holds no chooser to stretch it');
+            assert.equal(box.classList.contains('visible'), false);
+            game.cultureChoose('inoculate', 2);
+            assert.equal(box.classList.contains('visible'), true);
+            const text = allText(box);
+            for (const line of [say('sowTitle', 3), say('chooseInoculum'), say('cancel'), say('sowClose')]) assert.ok(text.includes(line), `${lang}: ${line}`);
+            assert.ok(!allText(game.culturePanel).includes(say('chooseInoculum')), 'the panel did not grow a list');
+            if (lang === 'ES') {
+                for (const value of Object.values(ctx.CULTURE_TEXT)) {
+                    if (typeof value.EN === 'string' && value.EN !== value.ES && value.EN.length > 8) assert.ok(!text.includes(value.EN), `English left: ${value.EN}`);
+                }
+            }
+            // Only what the player carries that grows: milk and the flower, not the stone or the lake sample.
+            const choices = () => box.querySelector('#culture-pop').children.filter((child) => child.className === 'culture-choice');
+            assert.equal(choices().length, 2);
+            assert.ok(!text.includes('Stone'));
+            // Escape closes the dialog first, and the panel stays.
+            assert.equal(game.cultureEscape(), true);
+            assert.equal(box.classList.contains('visible'), false);
+            assert.ok(game.cultureAt);
+            assert.equal(game.cultureEscape(), false);
+            // The shade round it closes it; a click inside does not.
+            game.cultureChoose('load', 2);
+            assert.ok(allText(box).includes(say('loadTitle', 3)));
+            box.listeners.click[0]({ target: {} });
+            assert.equal(box.classList.contains('visible'), true);
+            box.listeners.click[0]({ target: box });
+            assert.equal(box.classList.contains('visible'), false);
+            // Its ✕ closes it too.
+            game.cultureChoose('load', 2);
+            box.querySelector('.culture-sow-close').listeners.click[0]();
+            assert.equal(box.classList.contains('visible'), false);
+            // Picking one sends it and closes the dialog, with the panel still open.
+            game.cultureChoose('inoculate', 2);
+            const [first] = choices();
+            first.listeners.click[0]();
+            const [type, payload] = sent[sent.length - 1];
+            assert.equal(type, 'cultureInoculate');
+            assert.equal(payload.slot, 2);
+            assert.equal(box.classList.contains('visible'), false);
+            assert.ok(game.cultureAt);
+            // With nothing to sow, it says what would do.
+            game.inventoryCounts.milk = 0;
+            game.inventoryCounts.flower_red = 0;
+            game.cultureChoose('inoculate', 2);
+            assert.equal(choices().length, 0);
+            assert.ok(allText(box).includes(say('noInocula')));
+            // Closing the panel takes the dialog with it.
+            game.cultureClose();
+            assert.equal(box.classList.contains('visible'), false);
+        });
+    }
+});
+
 test('a plate draws what grows on it: nothing, colonies, a lawn, and the clear ring round the mould', () => {
     assert.equal(ctx.cultureColonies(3).count, 0);
     assert.ok(ctx.cultureColonies(6).count > 0 && ctx.cultureColonies(6).lawn === 0);

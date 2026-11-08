@@ -47,6 +47,9 @@ const CULTURE_TEXT = {
     },
     lensNoRing: { ES: (name) => `Sin anillo: la penicilina no frena a ${name}, que también es un hongo`, EN: (name) => `No ring: penicillin does not hold back ${name}, a fungus too` },
     lensEmpty: { ES: 'Agar limpio: no vive nada en ella', EN: 'Clean agar: nothing lives on it' },
+    sowTitle: { ES: (n) => `Sembrar la placa ${n}`, EN: (n) => `Inoculate plate ${n}` },
+    loadTitle: { ES: (n) => `Poner una placa en el hueco ${n}`, EN: (n) => `Put a plate in slot ${n}` },
+    sowClose: { ES: 'Cerrar sin elegir', EN: 'Close without choosing' },
     chooseLoad: { ES: 'Elige una placa de tu inventario:', EN: 'Pick a plate from your inventory:' },
     chooseInoculum: { ES: 'Elige qué sembrar. Cada cosa lleva sus microbios:', EN: 'Pick what to inoculate it with. Each carries its own microbes:' },
     noPlates: {
