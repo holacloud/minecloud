@@ -25,6 +25,9 @@ import (
 //     the coal its recipes use up as an ingredient, and it runs on electricity (power.go, OnDemand:
 //     it asks for its watts only while it has work, by wantPower). Without power it holds still and
 //     keeps what it had done. Its name shows the arc (arc_furnace:e:on) only while it really runs.
+//     The autoclave is an electric machine too, and its name shows its steam the same way: every machine's
+//     block has `fire` in its name on the client, or a name settled here would be one it does not know
+//     and the block would vanish (machineSettledNames in appliances_test.go, checked from both sides).
 //   - Cold furniture is a consumer on the power grid (power.go, 30 W). While its network runs, every
 //     stack in a compartment with a change in the table counts up, and all of it changes at once
 //     when its time is up. A network in a blackout counts nothing: the block is a plain cupboard
@@ -154,11 +157,18 @@ type machine struct {
 }
 
 // What the autoclave does: steam under pressure, about 121 C, kills every microbe and spore. A dish comes
-// out sterile, and an unsterile plate a sterile one (labs sterilise their media before they pour them).
-// Its water is its own, and its second slot takes nothing (microbes.go).
+// out sterile, and an unsterile plate a sterile one (labs sterilise their media before they pour them). A
+// culture plate is a dish with its colonies, so it comes out an empty sterile dish too, as a lab's used
+// cultures are autoclaved before anything else. Its water is its own, and its second slot takes nothing
+// (microbes.go).
 var autoclaveRecipes = map[string]ovenRecipe{
-	"used_dish":            {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
-	"agar_plate_unsterile": {Out: "agar_plate", In: 1, Yield: 1, Seconds: 15},
+	"used_dish":             {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"agar_plate_unsterile":  {Out: "agar_plate", In: 1, Yield: 1, Seconds: 15},
+	"culture_yeast":         {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"culture_lactobacillus": {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"culture_soil":          {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"culture_cyano":         {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
+	"culture_mould":         {Out: "petri_dish", In: 1, Yield: 1, Seconds: 10},
 }
 
 var machines = map[string]*machine{

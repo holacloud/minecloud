@@ -7,8 +7,15 @@
 //   growth curve of the plate picked. Closing it leaves everything growing, for anyone.
 // - A plate goes in from the inventory (an agar plate, or one poured on a dish that skipped the autoclave),
 //   is inoculated with something that carries microbes (flowers carry yeast, milk lactobacilli, dirt soil
-//   bacteria, a lake sample cyanobacteria, a culture its own kind), and comes out as a culture and a dirty
-//   dish once it reached 10^6 cells, or as the dirty dish alone. Nothing ever changes in the inventory.
+//   bacteria, a lake sample cyanobacteria, a culture its own kind), and comes out as a culture plate (the
+//   dish with its colonies: a "Yeast Plate") once it reached 10^6 cells, where colonies can be seen, or as
+//   a used dish if nothing could. Nothing ever changes in the inventory. Below 10^6 a plate draws no
+//   colony, so what shows is what comes out.
+// - "Look" on a plate opens a lens under the plates: what lives on it now, drawn from the server's numbers
+//   (cultureLensView): its cells, more as log N climbs, pale as they die, the mould's brushes and the clear
+//   ring round them where penicillin holds bacteria back.
+// - A culture plate, like any dish, goes on a microscope by itself, with no slide, and comes back as it
+//   went (js/game/microscope.js, MICRO_PLATES).
 // - Items move in two steps, like a chest's (js/game/storage.js): out of the inventory first, and what the
 //   answer says comes back. `culturePending` survives a reload, and storageSync settles it.
 // - The autoclave is a machine like the arc furnace (js/game/appliances.js, APPLIANCE_MACHINES.autoclave):
@@ -70,8 +77,10 @@ function cultureGamma(t, kind) {
     return den === 0 ? 0 : Math.max(0, Math.min(1, num / den));
 }
 
-// The species a source puts on a plate, or null if nothing it holds grows on agar.
+// The species a source puts on a plate, or null if nothing it holds grows on agar. A clean or dirty dish is
+// no inoculum, though it goes on a microscope.
 function cultureInoculum(source) {
+    if (Object.prototype.hasOwnProperty.call(CULTURE_PLATES, source) || source === 'used_dish') return null;
     const species = microSpeciesOf(source);
     if (!species) return null;
     return CULTURE_ORDER.find((id) => species.includes(id)) || null;
@@ -82,16 +91,17 @@ function cultureTouched(plate) {
     return Boolean(plate && (plate.main || (plate.mould && (plate.mould.logN > CULTURE_MODEL.logSpores + 0.01 || plate.mould.lag < CULTURE_MODEL.lagWork))));
 }
 
-// What a plate gives if it comes out now: { item, also } (cultureHarvestOf).
+// What a plate gives if it comes out now (cultureHarvestOf): the plate itself if nothing happened on it, the
+// culture plate of what can be seen on it, or the used dish.
 function cultureHarvestOf(plateType, plate) {
-    if (!cultureTouched(plate)) return { item: plateType, also: '' };
-    if (plate.mould && plate.mould.logN >= CULTURE_MODEL.logHarvest) return { item: CULTURE_SPECIES.mould.item, also: 'used_dish' };
-    if (plate.main && plate.main.logN >= CULTURE_MODEL.logHarvest) return { item: CULTURE_SPECIES[plate.main.species].item, also: 'used_dish' };
-    return { item: 'used_dish', also: '' };
+    if (!cultureTouched(plate)) return plateType;
+    if (plate.mould && plate.mould.logN >= CULTURE_MODEL.logHarvest) return CULTURE_SPECIES.mould.item;
+    if (plate.main && plate.main.logN >= CULTURE_MODEL.logHarvest) return CULTURE_SPECIES[plate.main.species].item;
+    return 'used_dish';
 }
 
 // What each request takes out of the inventory and gives on success. `result` stands for the item the
-// server names, and `also` for the second one it may add.
+// server names (`also`, a second one, is only in requests saved before a culture was its own dish).
 function cultureRequestItems(op, source) {
     switch (op) {
         case 'load': return { took: { [source]: 1 }, gives: {} };
@@ -100,7 +110,7 @@ function cultureRequestItems(op, source) {
             const gives = microSourceInTube(source) ? { test_tube: 1 } : source === 'milk' ? { glass: 1 } : {};
             return { took: { [source]: 1 }, gives };
         }
-        case 'harvest': return { took: {}, gives: { result: 1, also: 1 } };
+        case 'harvest': return { took: {}, gives: { result: 1 } };
         default: return { took: {}, gives: {} };
     }
 }
@@ -162,11 +172,13 @@ function cultureColonySpots(seed, count, radius) {
     return spots;
 }
 
-// How a population shows on a plate: nothing below 10^4.5, then colonies that grow and multiply, and from
-// 10^8.7 a lawn over the whole agar.
+// How a population shows on a plate: nothing below 10^6 (CULTURE_MODEL.logHarvest: a colony seen by eye
+// holds about a million cells, and a plate that shows one gives a culture), then colonies that grow and
+// multiply, and from 10^9 a lawn over the whole agar.
 function cultureColonies(logN) {
-    if (!(logN > 4.5)) return { count: 0, grow: 0, lawn: 0 };
-    const grow = Math.min(1, (logN - 4.5) / 4.2);
+    const from = CULTURE_MODEL.logHarvest;
+    if (!(logN >= from)) return { count: 0, grow: 0, lawn: 0 };
+    const grow = Math.min(1, (logN - from + 0.3) / 2.7);
     return { count: Math.min(36, Math.floor(3 + grow * 33)), grow, lawn: Math.max(0, Math.min(1, (logN - 8.2) / 0.8)) };
 }
 
@@ -196,7 +208,7 @@ function cultureDrawPlate(ctx, size, plateType, plate, seed) {
     if (!plate) return;
     const main = plate.main;
     const mould = plate.mould;
-    const mouldShow = mould ? cultureColonies(mould.logN + 1) : { count: 0 };
+    const mouldShow = mould ? cultureColonies(mould.logN) : { count: 0 };
     const mouldSpots = mould ? cultureColonySpots(seed + 7, Math.min(4, Math.max(1, Math.floor(mould.logN / 2.5))), inner * 0.6) : [];
     if (main) {
         const kind = CULTURE_SPECIES[main.species];
@@ -218,7 +230,7 @@ function cultureDrawPlate(ctx, size, plateType, plate, seed) {
             ctx.stroke();
         }
         // Where penicillin seeps out of the mould, bacteria do not grow: a clear ring of agar.
-        if (kind && kind.penicillin && mould && mould.logN > CULTURE_MODEL.mouldFrom && show.count > 0) {
+        if (kind && kind.penicillin && mould && mould.logN > CULTURE_MODEL.mouldFrom && show.count > 0 && mouldShow.count > 0) {
             const reach = size * 0.05 * Math.min(1, (mould.logN - CULTURE_MODEL.mouldFrom) / 4);
             for (const spot of mouldSpots) {
                 ctx.beginPath();
@@ -316,50 +328,262 @@ function cultureDrawGraph(ctx, w, h, plate, labels) {
     ctx.setLineDash([]);
 }
 
+// How big each looks under the lens, as a share of the field's radius.
+const CULTURE_LENS_SIZE = { yeast: 0.17, lactobacillus: 0.16, soil_bacteria: 0.09, cyanobacteria: 0.11, mould: 0.42 };
+
+// What the lens shows of a plate now, from the server's numbers alone, in a field of radius 1: { cells,
+// brushes, rings }. Cells of what was sown, more as log N climbs (a few at 10^3, dozens at 10^9), most of
+// them pale when they are dying; the mould's brushes, more and bigger as it grows; and round each brush,
+// once the mould gives off penicillin, a clear ring where the bacteria it holds back are not (yeast, a
+// fungus, stays). The same plate gives the same field every time.
+function cultureLensView(plate, seed) {
+    const view = { cells: [], brushes: [], rings: [] };
+    if (!plate) return view;
+    const random = cultureRng((seed ^ 0x51ed27) >>> 0);
+    const mould = plate.mould && plate.mould.logN > 0 ? plate.mould : null;
+    const main = plate.main && plate.main.logN > 0 ? plate.main : null;
+    if (mould) {
+        const count = Math.max(1, Math.min(4, 1 + Math.floor((mould.logN - CULTURE_MODEL.logSpores) / 2)));
+        const size = CULTURE_LENS_SIZE.mould * (0.45 + 0.55 * Math.min(1, mould.logN / CULTURE_MODEL.logMax));
+        for (let i = 0; i < count; i++) {
+            const angle = random() * Math.PI * 2;
+            const r = Math.sqrt(random()) * 0.6;
+            view.brushes.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r, size, rot: random() * Math.PI * 2, dead: mould.phase === 'death', seed: Math.floor(random() * 1000) });
+        }
+    }
+    const kind = main && CULTURE_SPECIES[main.species];
+    if (kind && kind.penicillin && mould && mould.logN > CULTURE_MODEL.mouldFrom) {
+        const reach = 0.14 + 0.22 * Math.min(1, (mould.logN - CULTURE_MODEL.mouldFrom) / 4);
+        for (const brush of view.brushes) view.rings.push({ x: brush.x, y: brush.y, r: reach });
+    }
+    if (kind) {
+        const count = Math.round(Math.min(70, 3 * Math.pow(1.6, Math.max(0, main.logN - CULTURE_MODEL.logInoculum))));
+        const size = CULTURE_LENS_SIZE[main.species] || 0.1;
+        for (let i = 0; i < count; i++) {
+            const angle = random() * Math.PI * 2;
+            const r = Math.sqrt(random()) * 0.92;
+            const cell = {
+                species: main.species, x: Math.cos(angle) * r, y: Math.sin(angle) * r, size: size * (0.85 + random() * 0.3), rot: random() * Math.PI * 2,
+                dead: main.phase === 'death' && random() < 0.7, seed: Math.floor(random() * 1000), variant: Math.floor(random() * 6)
+            };
+            if (view.rings.some((ring) => Math.hypot(cell.x - ring.x, cell.y - ring.y) < ring.r)) continue;
+            view.cells.push(cell);
+        }
+    }
+    return view;
+}
+
+// Draws the lens on a canvas of w x h: a round field on the pale ground of a microscope, and on it what
+// cultureLensView says, with js/game/microbes.js's own drawings. Returns the view it drew.
+function cultureDrawLens(ctx, w, h, plate, seed) {
+    const view = cultureLensView(plate, seed);
+    const R = Math.min(w, h) * 0.47;
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#05070b';
+    ctx.fillRect(0, 0, w, h);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+    const ground = ctx.createRadialGradient(cx, cy, 2, cx, cy, R);
+    ground.addColorStop(0, '#f4f0dc');
+    ground.addColorStop(1, '#d6c9a0');
+    ctx.fillStyle = ground;
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    const draw = typeof microDrawOrganism === 'function' ? microDrawOrganism : null;
+    const blob = (x, y, r, color) => {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+    };
+    for (const ring of view.rings) {
+        blob(cx + ring.x * R, cy + ring.y * R, ring.r * R, 'rgba(255,252,236,0.55)');
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(120,100,60,0.45)';
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    for (const cell of view.cells) {
+        const x = cx + cell.x * R;
+        const y = cy + cell.y * R;
+        if (draw) draw(ctx, cell.species, x, y, cell.size * R, cell.rot, 1.3, { seed: cell.seed, variant: cell.variant, still: true, ...(cell.dead ? { fate: 'dead' } : {}) });
+        else blob(x, y, cell.size * R * 0.3, cultureRgba(CULTURE_COLORS[cell.species], cell.dead ? 0.4 : 0.9));
+    }
+    for (const brush of view.brushes) {
+        const x = cx + brush.x * R;
+        const y = cy + brush.y * R;
+        if (draw) draw(ctx, 'mould', x, y, brush.size * R, brush.rot, 1.3, { seed: brush.seed, still: true, ...(brush.dead ? { fate: 'dead' } : {}) });
+        else blob(x, y, brush.size * R * 0.3, cultureRgba(CULTURE_COLORS.mould, 0.9));
+    }
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(40,44,52,0.95)';
+    ctx.stroke();
+    return view;
+}
+
+// The words under the lens, for a plate in a slot: { key, args } entries for cultureSay.
+function cultureLensLines(plate, speciesName) {
+    if (!plate) return [];
+    const lines = [];
+    const main = plate.main && plate.main.logN > 0 ? plate.main : null;
+    const mould = plate.mould && plate.mould.logN > 0 ? plate.mould : null;
+    if (plate.main && !main) lines.push({ key: 'lensGone', args: [speciesName(plate.main.species)] });
+    if (main) {
+        lines.push({ key: main.phase === 'death' ? 'lensDying' : 'lensMain', args: [speciesName(main.species), main.logN.toFixed(1)] });
+        lines.push({ key: main.logN >= CULTURE_MODEL.logHarvest ? 'lensSeen' : 'lensUnseen', args: [] });
+    }
+    if (mould) {
+        const spores = mould.logN <= CULTURE_MODEL.logSpores + 0.01 && mould.lag >= CULTURE_MODEL.lagWork;
+        lines.push({ key: spores ? 'lensSpores' : 'lensMould', args: [mould.logN.toFixed(1)] });
+        const kind = main && CULTURE_SPECIES[main.species];
+        if (kind && mould.logN > CULTURE_MODEL.mouldFrom) lines.push({ key: kind.penicillin ? 'lensRing' : 'lensNoRing', args: [speciesName(main.species)] });
+    }
+    if (!main && !mould && !plate.main) lines.push({ key: 'lensEmpty', args: [] });
+    return lines;
+}
+
 // ---------------------------------------------------------------------------------------
 // Items (12x12 sprites; '.' is transparent)
+//
+// Every dish is a Petri dish seen from above, and each kind looks different at a glance: an empty one is
+// clear glass; a sterile agar plate is clean amber with the striped tape an autoclave leaves; an unsterile
+// one has a dull rim, a few specks and a red tape; a used one is dried, brown and cracked. A culture plate
+// is the dish with its colonies, in the colour and pattern of what grew (CULTURE_COLORS): cream domes of
+// yeast, white pinpoints of lactobacilli, tan spreading soil bacteria, green cyanobacteria, and blue-green
+// velvet mould with its white fringe.
 
 const CULTURE_SPRITES = {
     dish: [
         '............',
-        '............',
         '...gggggg...',
         '..gLLLLLLg..',
+        '.gLHHLLLLLg.',
+        '.gLHLLLLLLg.',
         '.gLLLLLLLLg.',
-        '.gLLLHLLLLg.',
         '.gLLLLLLLLg.',
         '.gLLLLLLLLg.',
+        '.gLLLLLLLHg.',
         '..gLLLLLLg..',
         '...gggggg...',
-        '............',
         '............'
     ],
-    plate: [
-        '............',
+    sterile: [
         '............',
         '...gggggg...',
         '..gAAAAAAg..',
+        '.gAHHAAAAAg.',
+        '.gAHAAAAAAg.',
         '.gAAAAAAAAg.',
-        '.gAAHAAADAg.',
         '.gAAAAAAAAg.',
-        '.gADAAAAAAg.',
+        '.gAAAAAAAAg.',
+        '.gAAAAAAAAg.',
         '..gAAAAAAg..',
-        '...gggggg...',
-        '............',
+        '...TKTKTK...',
         '............'
     ],
-    vial: [
-        '....cccc....',
-        '....cccc....',
-        '....gggg....',
-        '....g..g....',
-        '....g..g....',
-        '....gLLg....',
-        '....gLHg....',
-        '....gLLg....',
-        '....gLLg....',
-        '....gLLg....',
-        '.....gg.....',
+    unsterile: [
+        '............',
+        '...gggggg...',
+        '..gAAAAAAg..',
+        '.gAHAAAASAg.',
+        '.gAAAAAAAAg.',
+        '.gAAASAAAAg.',
+        '.gAAAAAAAAg.',
+        '.gASAAAAAAg.',
+        '.gAAAAAASAg.',
+        '..gAAAAAAg..',
+        '...RRRRRR...',
+        '............'
+    ],
+    used: [
+        '............',
+        '...gggggg...',
+        '..gUUCUUUg..',
+        '.gUUUCUDDUg.',
+        '.gUDDUCUUUg.',
+        '.gUDDUUCUUg.',
+        '.gUUUUUCDUg.',
+        '.gCCUUUUDUg.',
+        '.gUUCCUUUUg.',
+        '..gUUUCCUg..',
+        '...gggggg...',
+        '............'
+    ],
+    yeast: [
+        '............',
+        '...gggggg...',
+        '..gAAAAYYg..',
+        '.gAYYAAYyAg.',
+        '.gAYyAAAAAg.',
+        '.gAAAAYYAAg.',
+        '.gAYYAYyAAg.',
+        '.gAYyAAAYYg.',
+        '.gAAAYYAYyg.',
+        '..gAAYyAAg..',
+        '...gggggg...',
+        '............'
+    ],
+    lactobacillus: [
+        '............',
+        '...gggggg...',
+        '..gAYAAAYg..',
+        '.gAAAAYAAAg.',
+        '.gAYAAAAYAg.',
+        '.gAAAYAAAAg.',
+        '.gYAAAAAYAg.',
+        '.gAAYAAYAAg.',
+        '.gAAAAAAAYg.',
+        '..gAYAYAAg..',
+        '...gggggg...',
+        '............'
+    ],
+    soil: [
+        '............',
+        '...gggggg...',
+        '..gAYYYAAg..',
+        '.gAYyyYAAAg.',
+        '.gAYyYYAYAg.',
+        '.gAAYYAYyYg.',
+        '.gAAAAAAYAg.',
+        '.gAYAAYYAAg.',
+        '.gYyYAYyYAg.',
+        '..gYAAAYAg..',
+        '...gggggg...',
+        '............'
+    ],
+    cyano: [
+        '............',
+        '...gggggg...',
+        '..gAAyYAAg..',
+        '.gAAAYYAAAg.',
+        '.gAYyAAAyYg.',
+        '.gAYYAAAYYg.',
+        '.gAAAAyYAAg.',
+        '.gAyYAAYYAg.',
+        '.gAYYAAAAAg.',
+        '..gAAAAyYg..',
+        '...gggggg...',
+        '............'
+    ],
+    mould: [
+        '............',
+        '...gggggg...',
+        '..gAWWAAAg..',
+        '.gAWMMWAAAg.',
+        '.gAWMMWAAAg.',
+        '.gAAWWAWWAg.',
+        '.gAAAAWMMWg.',
+        '.gAWWAWMMWg.',
+        '.gWMMWAWWAg.',
+        '..gWWAAAAg..',
+        '...gggggg...',
         '............'
     ],
     filter: [
@@ -378,17 +602,22 @@ const CULTURE_SPRITES = {
     ]
 };
 
+// The glass of a clean dish, and the agar of a fresh plate, shared by the plates with something on them.
+const CULTURE_GLASS = { g: 0xd6eef6, H: 0xffffff };
+const CULTURE_AGAR = 0xd8b874;
+const cultureColonyPalette = (colony, edge) => ({ ...CULTURE_GLASS, A: CULTURE_AGAR, Y: colony, y: edge });
+
 const CULTURE_ITEMS = {
-    petri_dish: { name: 'Petri Dish', sprite: CULTURE_SPRITES.dish, palette: { g: 0xcfe9f2, L: 0xeaf6fb, H: 0xffffff }, color: 0xeaf6fb },
-    agar_plate: { name: 'Agar Plate', sprite: CULTURE_SPRITES.plate, palette: { g: 0xcfe9f2, A: 0xd8b874, H: 0xf0dca8, D: 0xd8b874 }, color: 0xd8b874 },
-    agar_plate_unsterile: { name: 'Unsterile Agar Plate', sprite: CULTURE_SPRITES.plate, palette: { g: 0xb8c8cc, A: 0xc8aa70, H: 0xe2cc9c, D: 0x9aa48a }, color: 0xc8aa70 },
-    used_dish: { name: 'Used Dish', sprite: CULTURE_SPRITES.plate, palette: { g: 0xb8c4c8, A: 0xb0a890, H: 0xc8c0a8, D: 0x8a9a7a }, color: 0xb0a890 },
+    petri_dish: { name: 'Empty Petri Dish', sprite: CULTURE_SPRITES.dish, palette: { ...CULTURE_GLASS, L: 'rgba(214,236,246,0.35)' }, color: 0xeaf6fb },
+    agar_plate: { name: 'Sterile Agar Plate', sprite: CULTURE_SPRITES.sterile, palette: { ...CULTURE_GLASS, A: CULTURE_AGAR, H: 0xf4e2b0, T: 0xece4c8, K: 0x2e3a34 }, color: CULTURE_AGAR },
+    agar_plate_unsterile: { name: 'Unsterile Agar Plate', sprite: CULTURE_SPRITES.unsterile, palette: { g: 0x98a2a6, A: 0xbea06a, H: 0xd8c294, S: 0x6e7660, R: 0xd04838 }, color: 0xbea06a },
+    used_dish: { name: 'Used Dish', sprite: CULTURE_SPRITES.used, palette: { g: 0x9aa4a8, U: 0x9a8662, C: 0x5e4c34, D: 0x7c8a62 }, color: 0x9a8662 },
     water_filter: { name: 'Water Filter', sprite: CULTURE_SPRITES.filter, palette: { g: 0xcfe9f2, S: 0xe0cc98, K: 0x2a2a2e, W: 0xa8d0e8 }, color: 0x2a2a2e },
-    culture_yeast: { name: 'Yeast Culture', sprite: CULTURE_SPRITES.vial, palette: { c: 0xd8c8a0, g: 0xcfe9f2, L: 0xeee2c0, H: 0xfff8e8 }, color: 0xeee2c0 },
-    culture_lactobacillus: { name: 'Lactobacillus Culture', sprite: CULTURE_SPRITES.vial, palette: { c: 0xb8a8d0, g: 0xcfe9f2, L: 0xf4f1ea, H: 0xffffff }, color: 0xf4f1ea },
-    culture_soil: { name: 'Soil Bacteria Culture', sprite: CULTURE_SPRITES.vial, palette: { c: 0x8a6a44, g: 0xcfe9f2, L: 0xceb68c, H: 0xe8d8b8 }, color: 0xceb68c },
-    culture_cyano: { name: 'Cyanobacteria Culture', sprite: CULTURE_SPRITES.vial, palette: { c: 0x2a6a50, g: 0xcfe9f2, L: 0x3f9a72, H: 0x7cc8a2 }, color: 0x3f9a72 },
-    culture_mould: { name: 'Mould Culture', sprite: CULTURE_SPRITES.vial, palette: { c: 0x2a5a50, g: 0xcfe9f2, L: 0x3e8c7a, H: 0xf4f6f0 }, color: 0x3e8c7a }
+    culture_yeast: { name: 'Yeast Plate', sprite: CULTURE_SPRITES.yeast, palette: cultureColonyPalette(0xfaf0d4, 0xc8b480), color: 0xeee2c0 },
+    culture_lactobacillus: { name: 'Lactobacillus Plate', sprite: CULTURE_SPRITES.lactobacillus, palette: cultureColonyPalette(0xffffff, 0xffffff), color: 0xf4f1ea },
+    culture_soil: { name: 'Soil Bacteria Plate', sprite: CULTURE_SPRITES.soil, palette: cultureColonyPalette(0xa88458, 0x5e4426), color: 0xceb68c },
+    culture_cyano: { name: 'Cyanobacteria Plate', sprite: CULTURE_SPRITES.cyano, palette: cultureColonyPalette(0x2f9a62, 0x1a5a3a), color: 0x3f9a72 },
+    culture_mould: { name: 'Mould Plate', sprite: CULTURE_SPRITES.mould, palette: { ...cultureColonyPalette(0, 0), M: 0x2e7a6a, W: 0xf4f6f0 }, color: 0x3e8c7a }
 };
 
 Object.entries(CULTURE_ITEMS).forEach(([id, item]) => {
@@ -406,10 +635,18 @@ furnShape('incubator', {
     collision: [[1, 0, 1, 15, 15, 15]]
 });
 
-// The autoclave: a round steel vessel on a stand, with its lid, gauge and valve.
+// The autoclave: a round steel vessel on a stand, with its lid, gauge and valve. It is a machine like the
+// arc furnace, so its name carries `fire` as theirs does (pkg/network/appliances.go sets it, `autoclave:e:on`
+// while it really steams): its green lamp lights, the gauge needle swings into the red and steam comes off
+// the valve.
 furnShape('autoclave', {
+    states: [['facing', SHAPE_FACINGS], ['fire', ['off', 'on']]],
     boxes: [[2, 0, 2, 14, 2, 14], [3, 2, 3, 13, 11, 13], [2, 11, 2, 14, 12.5, 14], [6, 12.5, 6, 10, 13.5, 10], [7.4, 13.5, 7.4, 8.6, 15.5, 8.6], [6.5, 6, 2.2, 9.5, 9, 3]],
-    collision: [[2, 0, 2, 14, 15, 14]]
+    collision: [[2, 0, 2, 14, 15, 14]],
+    variant: (state, def) => (state.fire === 'on' ? def.lit : {}),
+    materialKey: (state) => `${state.facing}:${state.fire}`,
+    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx), fire: 'off' } }],
+    iconState: { facing: 's', fire: 'off' }
 });
 
 // White enamel, a little worn at the edges.
@@ -458,7 +695,9 @@ registerTexturePattern('autoclave_side', (f, s, tint, seed) => {
         f.put(s, x, y, c, 0.8);
     });
 }, { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
-registerTexturePattern('autoclave_front', (f, s, tint, seed) => {
+// The front: the pressure gauge, and under it the lamp that says it is working. Working, the needle
+// stands in the red (121 °C of steam) and the lamp is lit green.
+function culturePaintAutoclaveFront(f, s, on, seed) {
     f.each(s, (x, y, u, v) => {
         let c = culturePaintSteel(f, s, u, v, seed);
         if (v > 0.84 || (v > 0.2 && v < 0.24)) c = f.tone(s, c, -0.25);
@@ -466,20 +705,34 @@ registerTexturePattern('autoclave_front', (f, s, tint, seed) => {
         if (r < 0.12) {
             c = f.rgb(r > 0.1 ? 0x30343a : 0xf2f0e6);
             const angle = Math.atan2(v - 0.47, u - 0.5);
-            if (r < 0.09 && Math.abs(angle + 0.6) < 0.12) c = f.rgb(0xc0302a);
+            // The red zone of the dial, top right.
+            if (r > 0.07 && r < 0.1 && angle > -1.2 && angle < -0.2) c = f.rgb(0xe07060);
+            if (r < 0.09 && Math.abs(angle - (on ? -0.55 : -2.6)) < 0.14) c = f.rgb(on ? 0xc0302a : 0x2a2c30);
         }
+        const lamp = Math.hypot(u - 0.5, v - 0.68);
+        if (lamp < 0.045) c = on ? f.rgb(lamp < 0.025 ? 0xe8ffe0 : 0x5cf07a) : f.rgb(0x2e4a34);
+        else if (on && lamp < 0.07) c = f.tone(s, c, 0.18);
         f.put(s, x, y, c, 0.8);
     });
-}, { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
-registerTexturePattern('autoclave_top', (f, s, tint, seed) => {
+}
+registerTexturePattern('autoclave_front', (f, s, tint, seed) => culturePaintAutoclaveFront(f, s, false, seed), { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
+registerTexturePattern('autoclave_front_on', (f, s, tint, seed) => culturePaintAutoclaveFront(f, s, true, seed), { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
+// The lid, with the valve in the middle; working, a puff of steam about the valve.
+function culturePaintAutoclaveTop(f, s, on, seed) {
     f.each(s, (x, y, u, v) => {
         const r = Math.hypot(u - 0.5, v - 0.5);
         let c = culturePaintSteel(f, s, u, v, seed);
         if (r > 0.3 && r < 0.33) c = f.tone(s, c, -0.3);
         if (r < 0.06) c = f.rgb(0x2c2f34);
+        if (on && r > 0.04 && r < 0.26) {
+            const puff = f.fbm(u * 2, v * 2, 3, 2, seed + 5) - r * 1.6;
+            if (puff > 0.1) c = f.tone(s, f.rgb(0xf4f8fa), (puff - 0.3) * 0.2);
+        }
         f.put(s, x, y, c, 0.8);
     });
-}, { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
+}
+registerTexturePattern('autoclave_top', (f, s, tint, seed) => culturePaintAutoclaveTop(f, s, false, seed), { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
+registerTexturePattern('autoclave_top_on', (f, s, tint, seed) => culturePaintAutoclaveTop(f, s, true, seed), { rtx: { roughness: 0.25, metalness: 0.85, normalScale: 0.25 } });
 
 furnBlock('incubator', {
     color: 0xE4E8EA, name: 'Incubator', shape: 'incubator', breakDuration: 0.8, category: 'stone', storageSlots: 3, electric: true,
@@ -487,7 +740,8 @@ furnBlock('incubator', {
 });
 furnBlock('autoclave', {
     color: 0xB4BCC2, name: 'Autoclave', shape: 'autoclave', breakDuration: 1, category: 'stone', storageSlots: 3, electric: true,
-    faces: { top: 'autoclave_top', side: 'autoclave_side', bottom: 'autoclave_side', front: 'autoclave_front' }
+    faces: { top: 'autoclave_top', side: 'autoclave_side', bottom: 'autoclave_side', front: 'autoclave_front' },
+    lit: { lightEmission: 4, faces: { top: 'autoclave_top_on', side: 'autoclave_side', bottom: 'autoclave_side', front: { pattern: 'autoclave_front_on', glow: 0.3 } } }
 });
 
 registerGameContent(({ addItem, addRecipe }) => {
@@ -533,6 +787,14 @@ const CULTURE_CSS = `
 #culture-graph{width:100%;height:150px;display:block}
 #culture-note{font-size:12px;color:#ffe9a8;min-height:15px}
 #culture-hint{font-size:12px;opacity:.7;line-height:1.35}
+#culture-lens-box{display:none;gap:10px;align-items:flex-start;padding:8px;border-radius:10px;border:1px solid rgba(160,210,255,.4);background:rgba(16,22,34,.98)}
+#culture-lens-box.visible{display:flex}
+#culture-lens{width:min(240px,42vw);aspect-ratio:1;height:auto;flex:0 0 auto;border-radius:50%}
+.culture-lens-side{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.culture-lens-head{display:flex;align-items:center;gap:8px}
+#culture-lens-title{font-weight:700;font-size:13px;flex:1}
+#culture-lens-lines{font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:3px}
+@media (max-width:420px){#culture-lens-box{flex-direction:column;align-items:center}#culture-lens{width:min(240px,80vw)}}
 #culture-pop{display:none;flex-direction:column;gap:6px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(16,22,34,.98);font-size:12px;line-height:1.32}
 #culture-pop.visible{display:flex}
 #culture-pop .culture-choice{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-weight:400;font-size:12px}
@@ -617,7 +879,8 @@ Object.assign(Game.prototype, {
         if (outcome.amount > 0) {
             this.playPickupSound();
             if (pending.op === 'harvest') {
-                const line = outcome.also ? cultureSay('gotCulture', this.cultureName(outcome.type)) : outcome.type === 'used_dish' ? cultureSay('gotDish') : '';
+                const culture = CULTURE_ORDER.some((id) => CULTURE_SPECIES[id].item === outcome.type);
+                const line = culture ? cultureSay('gotCulture', this.cultureName(outcome.type)) : outcome.type === 'used_dish' ? cultureSay('gotDish') : '';
                 if (line) this.cultureSetNote(line);
             }
         } else if (outcome.reason) {
@@ -650,6 +913,7 @@ Object.assign(Game.prototype, {
         this.cultureRev = -1;
         this.culturePicked = this.culturePicked ?? 0;
         this.cultureChoosing = null;
+        this.cultureLooking = null;
         this.cultureDial = null;
         this.cultureNote = '';
         this.cultureOpenedAt = performance.now();
@@ -817,12 +1081,23 @@ Object.assign(Game.prototype, {
             <div class="culture-lines" id="culture-lines"></div>
             <div class="culture-plates" id="culture-plates"></div>
             <div id="culture-pop"></div>
+            <div id="culture-lens-box">
+                <canvas id="culture-lens" width="300" height="300"></canvas>
+                <div class="culture-lens-side">
+                    <div class="culture-lens-head"><div id="culture-lens-title"></div><button class="culture-lens-close" type="button">✕</button></div>
+                    <div id="culture-lens-lines"></div>
+                </div>
+            </div>
             <div id="culture-note"></div>
             <div id="culture-graph-title"></div>
             <canvas id="culture-graph" width="760" height="150"></canvas>
             <div id="culture-hint"></div>`;
         panel.querySelector('.culture-close').addEventListener('click', () => this.cultureClose());
         panel.querySelector('.culture-guide').addEventListener('click', () => this.cultureOpenGuide());
+        panel.querySelector('.culture-lens-close').addEventListener('click', () => {
+            this.cultureLooking = null;
+            this.cultureRenderLens();
+        });
         panel.querySelector('.culture-colder').addEventListener('click', () => this.cultureSetTarget(this.cultureTarget() - 1));
         panel.querySelector('.culture-warmer').addEventListener('click', () => this.cultureSetTarget(this.cultureTarget() + 1));
         panel.querySelector('#culture-target').addEventListener('input', (event) => this.cultureSetTarget(Number(event.target.value)));
@@ -880,6 +1155,7 @@ Object.assign(Game.prototype, {
         this.cultureRenderPlates();
         this.cultureRenderPop();
         this.cultureRenderGraph();
+        this.cultureRenderLens();
     },
 
     cultureRenderTemp() {
@@ -944,11 +1220,13 @@ Object.assign(Game.prototype, {
                 element.disabled = disabled || !contents;
                 element.addEventListener('click', action);
                 buttons.appendChild(element);
+                return element;
             };
             if (!plateType) {
                 button(cultureSay('load'), () => this.cultureChoose('load', slot));
             } else {
                 if (!plate || !plate.main) button(cultureSay('inoculate'), () => this.cultureChoose('inoculate', slot));
+                button(cultureSay('look'), () => this.cultureLook(slot)).title = cultureSay('lookTip');
                 button(cultureSay('harvest'), () => this.cultureApply('harvest', slot));
             }
         });
@@ -970,7 +1248,7 @@ Object.assign(Game.prototype, {
         if (pop) {
             const phases = CULTURE_TEXT.phase[gameLang()];
             if (plate.main) lines.push(`${phases[plate.main.phase] || phases.lag}, ${cultureSay('logN', plate.main.logN.toFixed(1))}`);
-            if (plate.mould && plate.mould.logN >= 4.5) lines.push(cultureSay('contaminated'));
+            if (plate.mould && plate.mould.logN >= CULTURE_MODEL.logHarvest) lines.push(cultureSay('contaminated'));
             if (plate.main && view) {
                 const kind = CULTURE_SPECIES[plate.main.species];
                 lines.push(cultureSay('rateAt', this.cultureSpeciesName(plate.main.species), Math.round(cultureGamma(view.inside, kind) * 100), view.inside.toFixed(0)));
@@ -978,9 +1256,9 @@ Object.assign(Game.prototype, {
             lines.push(cultureSay('nutrient', Math.round(plate.nutrient * 100)));
         }
         const out = cultureHarvestOf(plateType, plate);
-        if (out.item === plateType) lines.push(cultureSay('givesPlate', this.cultureName(plateType)));
-        else if (out.also) lines.push(cultureSay('gives', this.cultureName(out.item)));
-        else lines.push(cultureSay('givesDish'));
+        if (out === plateType) lines.push(cultureSay('givesPlate', this.cultureName(plateType)));
+        else if (out === 'used_dish') lines.push(cultureSay('givesDish'));
+        else lines.push(cultureSay('gives', this.cultureName(out)));
         return lines.join(' · ');
     },
 
@@ -1017,6 +1295,38 @@ Object.assign(Game.prototype, {
             this.cultureRenderPop();
         });
         pop.appendChild(cancel);
+    },
+
+    // The lens on a plate: what lives on it now. Pressed again, or on an empty slot, it goes.
+    cultureLook(slot) {
+        this.culturePicked = slot;
+        this.cultureLooking = this.cultureLooking === slot ? null : slot;
+        this.cultureRender();
+    },
+
+    cultureRenderLens() {
+        const panel = this.culturePanel;
+        if (!panel || !this.cultureAt) return;
+        const box = panel.querySelector('#culture-lens-box');
+        const contents = this.cultureContents;
+        const slot = this.cultureLooking;
+        const filled = slot !== null && slot !== undefined && contents && contents.slots[slot] && contents.slots[slot].count > 0;
+        box.classList.toggle('visible', Boolean(filled));
+        if (!filled) return;
+        const view = contents.incubator;
+        const plate = view && view.plates ? view.plates[slot] : null;
+        panel.querySelector('#culture-lens-title').textContent = cultureSay('lensTitle', slot + 1);
+        panel.querySelector('.culture-lens-close').title = cultureSay('close');
+        const canvas = panel.querySelector('#culture-lens');
+        const seed = ((this.cultureAt.x * 73856093) ^ (this.cultureAt.z * 19349663) ^ (slot * 83492791)) >>> 0;
+        cultureDrawLens(canvas.getContext('2d'), canvas.width, canvas.height, plate, seed);
+        const lines = panel.querySelector('#culture-lens-lines');
+        lines.innerHTML = '';
+        for (const { key, args } of cultureLensLines(plate || { nutrient: 1 }, (id) => this.cultureSpeciesName(id))) {
+            const line = document.createElement('div');
+            line.textContent = cultureSay(key, ...args);
+            lines.appendChild(line);
+        }
     },
 
     cultureRenderGraph() {

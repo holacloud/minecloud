@@ -1224,7 +1224,7 @@ function labDrawChemistry(b, t) {
     // everything at once it is 90 + 20 + 40 = 150 W of 160 (guide 253).
     piece(47, y, 32, 'incubator', 'incubator', 'n');
     t.mark('incubator', 47, y, 32);
-    piece(48, y, 32, 'autoclave', 'autoclave', 'n');
+    b.shaped(48, y, 32, 'autoclave', 'autoclave', { facing: 'n', fire: 'off' });
     t.mark('autoclave', 48, y, 32);
     sign(49, y, 31, 'n', 'Frío y cultivos', 'Neveras, congelador, incubadora y autoclave con su RTG: hasta 150 W de 160. Placas: /culturekit. Guía 253.', 'Cold and cultures: fridges, a freezer, an incubator and an autoclave on their rtgs, up to 150 W of 160. Plates: /culturekit. Guide 253.');
     piece(50, y, 32, 'chest', 'chest', 'n');

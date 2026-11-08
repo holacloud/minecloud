@@ -22,7 +22,7 @@ Al [microscopio](238) ves unos pocos microbios. En una **placa de agar** puedes 
 2. **Poner placa:** elige una `agar_plate` de tu inventario.
 3. **Sembrar:** elige qué le pones encima. Cada cosa lleva sus microbios:
 
-| Siembras | Lleva | Te da |
+| Siembras | Lleva | Te da (una placa de cultivo) |
 |---|---|---|
 | ![](item:flower_red) flores, ![](item:honeycomb) `honeycomb` | ![](mob:yeast) levadura | ![](item:culture_yeast) `culture_yeast` |
 | ![](item:milk) `milk`, ![](item:cheese) `cheese` | ![](mob:lactobacillus) lactobacilos | ![](item:culture_lactobacillus) `culture_lactobacillus` |
@@ -34,9 +34,12 @@ Al [microscopio](238) ves unos pocos microbios. En una **placa de agar** puedes 
 
 4. **Elige la temperatura** con la barra o con **−** y **+**, de 5 a 45 °C.
 5. **Espera** y mira la [curva de crecimiento](254). A la mejor temperatura, en unos tres minutos la placa pasa de mil células a mil millones.
-6. **Sacar:** si la placa ha llegado a **un millón de células** (10⁶, la línea amarilla de la gráfica), te da el cultivo y una `used_dish`, la placa sucia. Si no llegó, solo la placa sucia. Una placa en la que no ha pasado nada vuelve tal cual.
+6. **Mirar:** el botón **🔍 Mirar** de una placa enseña lo que vive en ella ahora, como a la lupa: sus células, más cuantas más hay y pálidas si se mueren, el moho y el anillo limpio a su alrededor. También dice si ya se ve algo a simple vista.
+7. **Sacar:** si la placa ha llegado a **un millón de células** (10⁶, la línea amarilla de la gráfica), sus colonias se ven y sale como **placa de cultivo**: la misma placa con sus colonias, como una ![](item:culture_yeast) *Placa de levadura*. Si no se veía nada, sale como `used_dish`, la placa sucia. Una placa en la que no ha pasado nada vuelve tal cual.
 
-La placa sucia se limpia en el [autoclave](255): vuelve a ser una `petri_dish` estéril.
+Una placa de cultivo va **directa al [microscopio](238)**: con la placa en la mano, clic derecho en el microscopio. No necesita portaobjetos, no se seca, y al retirarla vuelve tal cual. También puedes sembrar otra placa con ella.
+
+La placa sucia, y una placa de cultivo que ya no quieras, se limpian en el [autoclave](255): vuelven a ser una `petri_dish` estéril.
 
 ## La corriente y el sitio
 
@@ -50,7 +53,8 @@ Las **cianobacterias** fabrican su comida con la luz: solo crecen si a la incuba
 
 **Es verdad:**
 
-- Una colonia sale de una sola célula, y en una placa caben miles de millones.
+- Una colonia sale de una sola célula, y en una placa caben miles de millones. Una colonia que se ve a simple vista ya tiene un millón de células o más.
+- En los laboratorios las colonias se miran sobre su placa con un microscopio de poco aumento, y los cultivos usados pasan por el autoclave antes de lavar las placas.
 - La levadura vive en las flores y en la miel, los lactobacilos en la leche y el queso, y un puñado de tierra está lleno de bacterias.
 - Cada microbio tiene su temperatura: los lactobacilos del yogur prefieren unos 42 °C, la levadura unos 30 °C.
 - El **agar** es una gelatina que sale de algas rojas. Lo propuso **Fanny Hesse** en 1881: lo usaba en la cocina, y no se derrite al calor de la incubadora como la gelatina.
@@ -60,6 +64,7 @@ Las **cianobacterias** fabrican su comida con la luz: solo crecen si a la incuba
 - El trigo hace de nutriente. Una placa real lleva agar y un caldo con azúcares, proteínas y sales.
 - Todo va muchísimo más deprisa: una levadura real tarda hora y media en duplicarse, y una placa tarda uno o dos días en llenarse.
 - Un cultivo de verdad se coge con un asa estéril, y la placa se mantiene tapada. En el juego, sacar la placa basta.
+- Con una placa en el microscopio, y a la lupa de la incubadora, el juego enseña células sueltas a cualquier aumento. Un microscopio de verdad ve las colonias de una placa con poco aumento; para ver las células se extiende un poco de una colonia en un portaobjetos.
 - En una muestra real crecerían muchas especies a la vez. El juego cultiva solo una de lo que siembras, y el moho de una placa sin esterilizar.
 
 Ver también: [La curva de crecimiento](254), [Esterilizar](255), [Bacterias](244), [El mundo pequeño](237).

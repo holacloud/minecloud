@@ -96,7 +96,10 @@ const MICRO_ITEMS = {
     tardigrade_tun: ['tardigrade'],
     // Through sand and charcoal only a few bacteria get (js/game/cultures.js).
     sample_filtered: ['soil_bacteria'],
-    // What an incubator grew.
+    // What an incubator grew, and the plates: these go on the stage themselves, with no slide (MICRO_PLATES).
+    agar_plate: [],
+    agar_plate_unsterile: ['mould'],
+    used_dish: [],
     culture_yeast: ['yeast'],
     culture_lactobacillus: ['lactobacillus'],
     culture_soil: ['soil_bacteria'],
@@ -104,6 +107,13 @@ const MICRO_ITEMS = {
     culture_mould: ['mould']
 };
 const MICRO_WOOL_SPECIES = ['soil_bacteria'];
+
+// The plates, which go on the stage as they are, with no glass slide, and come back as they went: they
+// never dry, and take no drop, stain or pipette (microscopePlates in pkg/network/microscope.go).
+const MICRO_PLATES = {
+    agar_plate: true, agar_plate_unsterile: true, used_dish: true,
+    culture_yeast: true, culture_lactobacillus: true, culture_soil: true, culture_cyano: true, culture_mould: true
+};
 
 // What lies on the slide with them and is not alive: only scenery.
 const MICRO_MATERIALS = { dirt: 'grains', honeycomb: 'pollen', milk: 'fat', cheese: 'fat', wheat: 'starch' };
@@ -1742,7 +1752,9 @@ function microPopulate(source, seed, tardigrades = 0) {
     const organisms = [];
     for (const id of species) {
         const def = MICRO_SPECIES[id];
-        const few = source === 'sample_filtered' ? 2 + Math.floor(random() * 4) : source === 'sample_still_water' ? 8 + Math.floor(random() * 8) : null;
+        // An unsterile plate carries only a few spores, which have not grown.
+        const few = source === 'sample_filtered' ? 2 + Math.floor(random() * 4) : source === 'sample_still_water' ? 8 + Math.floor(random() * 8)
+            : source === 'agar_plate_unsterile' ? 1 + Math.floor(random() * 2) : null;
         const count = id === 'tardigrade' ? tardigrades : (few ?? microRange(random, def.count));
         const columns = Math.ceil(Math.sqrt(count * 1.3));
         for (let i = 0; i < count; i++) {

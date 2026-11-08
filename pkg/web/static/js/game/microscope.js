@@ -7,6 +7,9 @@
 //   to build against it) opens it if there is one: it is someone's, and is shown, never replaced. On a free
 //   microscope, something a slide takes in the hand uses a slide and goes on it (the empty tube comes back),
 //   a glass slide in the hand smears your own cheek, and anything else opens nothing and says what to do.
+//   A Petri dish (MICRO_PLATES: a culture plate from the incubator, or a clean, unsterile or used one) goes
+//   on the stage itself, with no slide: it never dries, takes no drop, stain or pipette, and comes back as
+//   it went when it is taken off.
 //   Taking the slide off gives it back washed and closes the panel. Closing it any other way leaves the
 //   slide there, drying, for whoever looks next.
 // - The field gets the room: the powers have a button each above the focus, every other tool is an icon in the
@@ -99,7 +102,7 @@ const MICROSCOPE_CAPTIONS = {
 // What each reason of the server is called in MICROSCOPE_TEXT.
 const MICROSCOPE_REFUSALS = {
     occupied: 'refusedOccupied', 'none left': 'refusedNoneLeft', gone: 'refusedGone', 'too far': 'refusedTooFar', 'not a microscope': 'refusedNotScope',
-    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not water or moss': 'sampleNeeds', 'not water': 'filterAim', 'bad request': 'refusedBadRequest', lost: 'refusedLost'
+    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not a slide': 'refusedNotSlide', 'not water or moss': 'sampleNeeds', 'not water': 'filterAim', 'bad request': 'refusedBadRequest', lost: 'refusedLost'
 };
 
 // What the panel says when the server refuses.
@@ -115,13 +118,16 @@ function microscopeRequestItems(op, source) {
         // A filter is a tube too, of sand and charcoal, and it is the filter that becomes the sample.
         case 'sample': return { took: { [source === 'water_filter' ? 'water_filter' : 'test_tube']: 1 }, gives: { result: 1 } };
         case 'prepare': {
+            // A plate goes on the stage itself, with no slide.
+            if (MICRO_PLATES[source]) return { took: { [source]: 1 }, gives: {} };
             const took = { glass_slide: 1 };
             if (source !== 'cheek') took[source] = 1;
             // A tube comes back empty, and so does the bottle of the milk.
             const gives = microSourceInTube(source) ? { test_tube: 1 } : source === 'milk' ? { glass: 1 } : {};
             return { took, gives };
         }
-        case 'clear': return { took: {}, gives: { glass_slide: 1 } };
+        // A slide comes back washed, a plate as it went: the server names which.
+        case 'clear': return { took: {}, gives: { result: 1 } };
         case 'drop': return { took: { water_flask: 1 }, gives: { glass: 1 } };
         case 'capture': return { took: { test_tube: 1 }, gives: { result: 1 } };
         // The bottle is used up and its glass comes back; refused, the whole bottle does.
@@ -294,6 +300,7 @@ function microscopePick(organisms, view, px, py) {
 // A line about how a slide is doing.
 function microscopeSlideLine(prep, age, woke = -1) {
     if (!prep) return '';
+    if (MICRO_PLATES[prep.source]) return microscopeSay('plateOnStage');
     if (prep.stain) return microscopeSay('slideStained', MICRO_STAINS[prep.stain] ? microscopeStainText(prep.stain).the : prep.stain);
     const stage = microSlideStage(age, woke);
     if (stage === 'dry') return microscopeSay('slideDry');
@@ -859,7 +866,8 @@ Object.assign(Game.prototype, {
         if (outcome.amount > 0) {
             this.playPickupSound();
             if (pending.op === 'prepare') {
-                const ready = microscopeSay('slideReady', outcome.type === 'cheek' ? microscopeSay('cheek') : this.microscopeName(outcome.type));
+                const ready = MICRO_PLATES[outcome.type] ? microscopeSay('plateReady', this.microscopeName(outcome.type))
+                    : microscopeSay('slideReady', outcome.type === 'cheek' ? microscopeSay('cheek') : this.microscopeName(outcome.type));
                 // The panel may be waiting for the news of the slide, which can come after this.
                 if (this.microscopeAsking) this.microscopeAsking.note = ready;
                 this.microscopeNote = ready;
@@ -926,7 +934,8 @@ Object.assign(Game.prototype, {
     // else there is no panel to open, only what to do.
     microscopeOnFree(asking) {
         const source = microscopeSourceHeld(asking.held);
-        if (this.getInventoryCount('glass_slide') <= 0) {
+        // A plate needs no slide: it goes on the stage itself.
+        if (!MICRO_PLATES[source] && this.getInventoryCount('glass_slide') <= 0) {
             this.microscopeStopAsking(microscopeSay('needSlide'));
             return;
         }
@@ -983,7 +992,7 @@ Object.assign(Game.prototype, {
     microscopeClose() {
         if (!this.microscopeAt) return;
         // Once, the first time: what stays on a microscope goes on drying, for anyone.
-        if (this.microscopePrep && !this.microscopeToldKept) {
+        if (this.microscopePrep && !MICRO_PLATES[this.microscopePrep.source] && !this.microscopeToldKept) {
             this.microscopeToldKept = true;
             this.receiveSystemMessage({ text: microscopeSay('slideKept') });
         }
@@ -1066,7 +1075,8 @@ Object.assign(Game.prototype, {
 
     // Seconds since the slide was last wetted, by the server's reckoning.
     microscopeAge() {
-        if (!this.microscopePrep) return 0;
+        // A plate's agar keeps it moist: it never dries on the stage.
+        if (!this.microscopePrep || MICRO_PLATES[this.microscopePrep.source]) return 0;
         if (this.microscopePrep.stain) return this.microscopePrep.age;
         return this.microscopePrep.age + (performance.now() - this.microscopeAgeAt) / 1000;
     },
@@ -1622,14 +1632,16 @@ Object.assign(Game.prototype, {
         const prep = this.microscopePrep;
         const stained = this.microscopeStain();
 
-        this.microscopeSetTool('clear', { tip: microscopeSay('takeOff'), item: 'glass_slide' });
+        // A plate on the stage is no slide: it comes back as it went, and takes no drop, stain or pipette.
+        const plate = prep && MICRO_PLATES[prep.source] ? prep.source : null;
+        this.microscopeSetTool('clear', { tip: microscopeSay(plate ? 'takeOffPlate' : 'takeOff'), item: plate || 'glass_slide' });
         const flasks = this.getInventoryCount('water_flask');
         // A drop is for a slide that is drying or dry: on a wet one it would only spend the flask.
         const stage = microSlideStage(this.microscopeAge(), this.microscopeWoke());
         this.microscopeSlideStageShown = stage;
         this.microscopeSetTool('drop', {
             tip: microscopeSay('dropReady'), item: 'water_flask',
-            reason: stained ? microscopeSay('dropStained') : stage === 'wet' || stage === 'reviving' ? microscopeSay('dropStillWet') : flasks > 0 ? '' : microscopeSay('dropNeedsFlask')
+            reason: plate ? microscopeSay('plateNoDrop') : stained ? microscopeSay('dropStained') : stage === 'wet' || stage === 'reviving' ? microscopeSay('dropStillWet') : flasks > 0 ? '' : microscopeSay('dropNeedsFlask')
         });
         // Its reason says nothing of what is on the slide: only the one in the ring can be drawn off.
         const tardigrade = Boolean(this.microscopeSelected) && this.microscopeSelected.species === 'tardigrade';
@@ -1637,13 +1649,13 @@ Object.assign(Game.prototype, {
         const tube = this.getInventoryCount('test_tube') > 0;
         this.microscopeSetTool('capture', {
             tip: microscopeSay('captureReady'), item: 'micropipette',
-            reason: !tardigrade ? microscopeSay('captureSelect') : stained ? microscopeSay('captureStained') : !pipette ? microscopeSay('captureNeedsPipette') : !tube ? microscopeSay('captureNeedsTube') : ''
+            reason: plate ? microscopeSay('plateNoCapture') : !tardigrade ? microscopeSay('captureSelect') : stained ? microscopeSay('captureStained') : !pipette ? microscopeSay('captureNeedsPipette') : !tube ? microscopeSay('captureNeedsTube') : ''
         });
         const bottles = Object.keys(MICRO_STAINS).filter((stain) => this.getInventoryCount(stain) > 0);
         this.microscopeSetTool('stain', {
             tip: microscopeSay('stainTip'), active: this.microscopePop === 'stain' || Boolean(stained),
             item: stained || this.microscopeStainAsked || bottles[0] || 'iodine_tincture',
-            reason: stained ? microscopeSay('refusedStainTwice') : bottles.length ? '' : microscopeSay('stainNoneCarried')
+            reason: plate ? microscopeSay('plateNoStain') : stained ? microscopeSay('refusedStainTwice') : bottles.length ? '' : microscopeSay('stainNoneCarried')
         });
         const choices = this.microscopeFilterChoices();
         const filter = this.microscopeFilter;
@@ -1658,7 +1670,7 @@ Object.assign(Game.prototype, {
         });
         this.microscopeSetTool('guide', { tip: microscopeSay('guideTip') });
         // A popover with nothing left to offer goes.
-        if (this.microscopePop === 'stain' && (!prep || stained || !bottles.length)) this.microscopeClosePop();
+        if (this.microscopePop === 'stain' && (!prep || plate || stained || !bottles.length)) this.microscopeClosePop();
         if (this.microscopePop === 'filter' && !choices.length && !filter) this.microscopeClosePop();
         this.microscopeRenderFilters(choices);
         this.microscopeRenderStain(bottles);

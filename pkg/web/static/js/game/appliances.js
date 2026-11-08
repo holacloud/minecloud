@@ -51,10 +51,16 @@ const APPLIANCE_ARC = {
     iron_ore: { out: 'steel_ingot', in: 1, coal: 1, yield: 2, seconds: 15 }
 };
 const APPLIANCE_ARC_REDUCER = 'coal_ore';
-// The autoclave (js/game/cultures.js has its block): steam sterilises dishes, and unsterile plates.
+// The autoclave (js/game/cultures.js has its block): steam sterilises dishes, unsterile plates, and the
+// culture plates once they are done with, which come out as empty sterile dishes.
 const APPLIANCE_AUTOCLAVE = {
     used_dish: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
-    agar_plate_unsterile: { out: 'agar_plate', in: 1, yield: 1, seconds: 15 }
+    agar_plate_unsterile: { out: 'agar_plate', in: 1, yield: 1, seconds: 15 },
+    culture_yeast: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
+    culture_lactobacillus: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
+    culture_soil: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
+    culture_cyano: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 },
+    culture_mould: { out: 'petri_dish', in: 1, yield: 1, seconds: 10 }
 };
 
 // What the autoclave's panel says is in js/game/cultures_text.js, in both languages; this falls back on
@@ -88,7 +94,7 @@ const APPLIANCE_MACHINES = {
         get captions() { return [applianceCultureLine('autoclaveIn', 'To sterilise'), applianceCultureLine('autoclaveWater', 'Water (its own)'), applianceCultureLine('autoclaveOut', 'Sterile')]; },
         get work() { return applianceCultureLine('autoclaveWork', 'Steam'); },
         get items() { return applianceCultureLine('autoclaveItems', 'What it can sterilise: click to put it in'); },
-        get refusal() { return applianceCultureLine('autoclaveRefusal', 'The autoclave only takes used dishes and unsterile plates'); },
+        get refusal() { return applianceCultureLine('autoclaveRefusal', 'The autoclave only takes used dishes, culture plates and unsterile plates'); },
         status(watts, contents) {
             if (!contents.oven || !(contents.oven.cookMax > 0)) return { text: applianceCultureLine('autoclaveIdle', `Waiting: it draws no power until it has something to sterilise (then ${watts} W)`, watts), off: false };
             if (contents.oven.starting) return { text: applianceCultureLine('autoclaveAsking', `Asking the network for ${watts} W...`, watts), off: false };

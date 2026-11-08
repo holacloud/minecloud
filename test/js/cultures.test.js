@@ -28,7 +28,7 @@ function anyStub() {
 // A 2D context that remembers what was asked of it.
 function recordingContext() {
     const calls = [];
-    const target = { calls, measureText: (text) => ({ width: String(text).length * 6 }) };
+    const target = { calls, measureText: (text) => ({ width: String(text).length * 6 }), createRadialGradient: () => ({ addColorStop() {} }) };
     return new Proxy(target, {
         get: (known, key) => (key in known ? known[key] : (...args) => { calls.push([key, ...args]); }),
         set: (known, key, value) => { calls.push(['set', key, value]); known[key] = value; return true; }
@@ -90,13 +90,13 @@ function loadModules() {
     context.document = { createElement: (tag) => fakeElement(tag), head: fakeElement(), body: fakeElement(), addEventListener() {}, getElementById: () => null, querySelector: () => null, pointerLockElement: null };
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
-    for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'electricity.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js']) {
+    for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'smelters.js', 'electricity.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { CULTURE_SPECIES, CULTURE_PLATES, CULTURE_ORDER, CULTURE_MODEL, CULTURE_TEXT, CULTURE_ITEMS, CULTURE_ITEMS_ES, CULTURE_KIT, CULTURE_GUIDE_PAGE,
         APPLIANCE_AUTOCLAVE, APPLIANCE_MACHINES, STORAGE_KINDS, ELECTRIC_KINDS, ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, GAME_CONTENT_HOOKS, MODAL_PANELS, ITEM_USE_HANDLERS, MICRO_SPECIES,
         cultureGamma, cultureInoculum, cultureHarvestOf, cultureRequestItems, cultureSettle, cultureGrowing, culturePowerLine, cultureDrawPlate, cultureDrawGraph, cultureColonies,
-        cultureSay, cultureItemName, microscopeRequestItems, setGameLang, gameLang, Game });`, context);
+        cultureSay, cultureItemName, microscopeRequestItems, microscopeSourceHeld, microscopeSlideLine, MICRO_PLATES, MICRO_ITEMS, cultureLensView, cultureLensLines, cultureDrawLens, setGameLang, gameLang, Game });`, context);
     return context;
 }
 
@@ -171,6 +171,37 @@ test('the autoclave, the storage sizes and the power match the server', () => {
     assert.match(websocket, /"cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet":/);
 });
 
+test('every machine, placed facing any way, settles on the server to a block the client registers', () => {
+    // The table of the server's names (appliances_test.go checks it against settleOvenName).
+    const goTest = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'appliances_test.go'), 'utf8');
+    const settled = {};
+    for (const [, placed, out, lit] of goTable(goTest, 'machineSettledNames').matchAll(/"([\w:]+)":\s*\{"([\w:]+)", "([\w:]+)"\}/g)) settled[placed] = [out, lit];
+    const kinds = [...goTable(goAppliances, 'machines').matchAll(/(\w+Kind):\s*\{/g)].map(([, constant]) => goAppliances.match(new RegExp(`${constant}\\s*= "(\\w+)"`))[1]);
+    assert.deepEqual(kinds.sort(), ['arc_furnace', 'autoclave', 'foundry', 'oven']);
+    // The names the client registers: every state of every shaped block, as the world expands them.
+    const types = Object.fromEntries(Object.entries(ctx.BLOCK_TYPES).map(([id, def]) => [id, { ...def }]));
+    vm.runInContext('expandBlockStates', ctx)(types);
+    const looks = { n: { x: 0, z: 1 }, e: { x: -1, z: 0 }, s: { x: 0, z: -1 }, w: { x: 1, z: 0 } };
+    for (const kind of kinds) {
+        const def = types[kind];
+        assert.ok(def && def.storageSlots === 3, `${kind} is a block of three slots`);
+        const shape = ctx.BLOCK_SHAPES[def.shape];
+        assert.ok(shape.states.some(([key, values]) => key === 'fire' && values.join() === 'off,on'), `${kind} has the fire the server writes`);
+        for (const [facing, look] of Object.entries(looks)) {
+            const [{ state }] = shape.place({ look, x: 0, y: 0, z: 0 });
+            assert.equal(state.facing, facing);
+            const placed = vm.runInContext('shapeStateName', ctx)(kind, shape, state);
+            assert.ok(types[placed], `${placed} is registered`);
+            assert.ok(settled[placed], `${placed} is in the server's table`);
+            for (const name of settled[placed]) assert.ok(types[name], `${kind} placed as ${placed} settles to ${name}, which the client knows`);
+        }
+    }
+    // The other blocks with slots are never renamed by the server: it renames machines only.
+    const chests = Object.entries(ctx.BLOCK_TYPES).filter(([, def]) => def.storageSlots).map(([id]) => id);
+    assert.ok(chests.includes('incubator') && chests.includes('microscope'));
+    for (const id of chests) assert.equal(kinds.includes(id), Boolean(ctx.APPLIANCE_MACHINES[id]), `${id}: a machine on both sides, or on neither`);
+});
+
 test('the temperature model is the one the server uses', () => {
     // Rosso's model: 1 at the optimum, 0 at the ends, and the values of a hand calculation.
     const yeast = ctx.CULTURE_SPECIES.yeast;
@@ -218,9 +249,12 @@ test('what a request takes and gives, and nothing is lost on a refusal', () => {
     const sample = ctx.cultureRequestItems('inoculate', 'sample_plains_lake_a');
     assert.deepEqual(plain(ctx.cultureSettle(sample, { amount: 1 })), { test_tube: 1 }, 'the tube comes back');
     assert.deepEqual(plain(ctx.cultureSettle(sample, { amount: 0, reason: 'nothing grows' })), { sample_plains_lake_a: 1 });
+    // A culture plate is its own dish: it comes out alone.
     const harvest = ctx.cultureRequestItems('harvest');
-    assert.deepEqual(plain(ctx.cultureSettle(harvest, { amount: 1, type: 'culture_yeast', also: 'used_dish' })), { culture_yeast: 1, used_dish: 1 });
+    assert.deepEqual(plain(ctx.cultureSettle(harvest, { amount: 1, type: 'culture_yeast' })), { culture_yeast: 1 });
     assert.deepEqual(plain(ctx.cultureSettle(harvest, { amount: 1, type: 'used_dish' })), { used_dish: 1 });
+    // A request saved before that, which still waits for an `also`, settles all the same.
+    assert.deepEqual(plain(ctx.cultureSettle({ took: {}, gives: { result: 1, also: 1 } }, { amount: 1, type: 'culture_yeast', also: 'used_dish' })), { culture_yeast: 1, used_dish: 1 });
     assert.deepEqual(plain(ctx.cultureSettle(harvest, { amount: 0, reason: 'gone' })), {});
     // The filter is the tube that becomes the sample.
     assert.deepEqual(plain(ctx.microscopeRequestItems('sample', 'water_filter').took), { water_filter: 1 });
@@ -236,11 +270,13 @@ test('what grows from what, and what a plate gives, as the server says', () => {
     assert.equal(ctx.cultureInoculum('tardigrade_tube'), null);
     assert.equal(ctx.cultureInoculum('stone'), null);
     for (const [id, kind] of Object.entries(ctx.CULTURE_SPECIES)) assert.equal(ctx.cultureInoculum(kind.item), id);
-    assert.deepEqual(plain(ctx.cultureHarvestOf('agar_plate', { nutrient: 1 })), { item: 'agar_plate', also: '' });
-    assert.deepEqual(plain(ctx.cultureHarvestOf('agar_plate', { main: { species: 'yeast', logN: 7 }, nutrient: 0.4 })), { item: 'culture_yeast', also: 'used_dish' });
-    assert.deepEqual(plain(ctx.cultureHarvestOf('agar_plate', { main: { species: 'yeast', logN: 4 }, nutrient: 0.9 })), { item: 'used_dish', also: '' });
-    assert.deepEqual(plain(ctx.cultureHarvestOf('agar_plate_unsterile', { main: { species: 'lactobacillus', logN: 8 }, mould: { species: 'mould', logN: 6.5, lag: 0 }, nutrient: 0.1 })), { item: 'culture_mould', also: 'used_dish' });
-    assert.deepEqual(plain(ctx.cultureHarvestOf('agar_plate_unsterile', { mould: { species: 'mould', logN: 1, lag: 2 }, nutrient: 1 })), { item: 'agar_plate_unsterile', also: '' });
+    assert.equal(ctx.cultureHarvestOf('agar_plate', { nutrient: 1 }), 'agar_plate');
+    assert.equal(ctx.cultureHarvestOf('agar_plate', { main: { species: 'yeast', logN: 7 }, nutrient: 0.4 }), 'culture_yeast');
+    assert.equal(ctx.cultureHarvestOf('agar_plate', { main: { species: 'yeast', logN: 4 }, nutrient: 0.9 }), 'used_dish');
+    assert.equal(ctx.cultureHarvestOf('agar_plate_unsterile', { main: { species: 'lactobacillus', logN: 8 }, mould: { species: 'mould', logN: 6.5, lag: 0 }, nutrient: 0.1 }), 'culture_mould');
+    assert.equal(ctx.cultureHarvestOf('agar_plate_unsterile', { mould: { species: 'mould', logN: 1, lag: 2 }, nutrient: 1 }), 'agar_plate_unsterile');
+    // A dish is no inoculum, though it goes on a microscope.
+    for (const dish of ['agar_plate', 'agar_plate_unsterile', 'used_dish']) assert.equal(ctx.cultureInoculum(dish), null, dish);
     // The power line follows what grows.
     assert.equal(ctx.culturePowerLine({ incubator: { plates: [null, null, null] } }).key, 'powerIdle');
     assert.equal(ctx.culturePowerLine({ powered: false, incubator: { plates: [{ main: { logN: 3 } }] } }).key, 'powerOff');
@@ -275,7 +311,8 @@ test('every line has both languages, the same shape in each, and the server\'s r
     inLang('ES', () => {
         assert.equal(ctx.APPLIANCE_MACHINES.autoclave.captions[0], 'A esterilizar');
         assert.match(ctx.APPLIANCE_MACHINES.autoclave.status(40, { oven: { cookMax: 10 }, powered: false }).text, /Sin corriente/);
-        assert.equal(ctx.cultureItemName('used_dish', 'Used Dish'), 'Placa sucia');
+        assert.equal(ctx.cultureItemName('used_dish', 'Used Dish'), 'Placa usada (sucia)');
+        assert.equal(ctx.cultureItemName('culture_yeast', 'Yeast Plate'), 'Placa de levadura');
     });
     assert.equal(ctx.APPLIANCE_MACHINES.autoclave.captions[0], 'To sterilise');
 });
@@ -329,7 +366,7 @@ test('the panel opens on an incubator, shows its plates, and speaks the language
             const text = allText(game.culturePanel);
             const say = (key, ...args) => ctx.cultureSay(key, ...args);
             for (const line of [say('title'), say('powerOn', 20), say('ambient', '14.2'), say('slot', 1), say('harvest'), say('load'), say('contaminated')]) assert.ok(text.includes(line), `${lang}: ${line}`);
-            assert.ok(text.includes(lang === 'ES' ? 'Cultivo de levadura' : 'Yeast Culture'), `${lang} names what a plate gives`);
+            assert.ok(text.includes(lang === 'ES' ? 'Placa de levadura' : 'Yeast Plate'), `${lang} names what a plate gives`);
             // Nothing of the other language is left: no English line in Spanish.
             if (lang === 'ES') {
                 for (const value of Object.values(ctx.CULTURE_TEXT)) {
@@ -363,12 +400,13 @@ test('the panel: load, inoculate, harvest and the dial go through requests that 
     assert.equal(payload.slot, 2);
     game.cultureOnOutcome({ reqId: payload.reqId, type: 'agar_plate', amount: 0, reason: 'occupied' });
     assert.equal(game.getInventoryCount('agar_plate'), 3, 'a refusal gives it back');
-    // Harvest: the culture and the dish.
+    // Harvest: the culture plate, which is its own dish.
     game.cultureApply('harvest', 0);
     const harvest = sent[sent.length - 1][1];
-    game.cultureOnOutcome({ reqId: harvest.reqId, type: 'culture_yeast', also: 'used_dish', amount: 1 });
+    game.cultureOnOutcome({ reqId: harvest.reqId, type: 'culture_yeast', amount: 1 });
     assert.equal(game.getInventoryCount('culture_yeast'), 1);
-    assert.equal(game.getInventoryCount('used_dish'), 1);
+    assert.equal(game.getInventoryCount('used_dish'), 0);
+    assert.equal(game.cultureNote, ctx.cultureSay('gotCulture', 'Yeast Plate'), 'it says how to look at it');
     // Someone else's answer is not ours.
     game.cultureOnOutcome({ reqId: 'not-mine-123', type: 'stone', amount: 1 });
     assert.equal(game.getInventoryCount('stone'), 9);
@@ -424,6 +462,122 @@ test('a plate draws what grows on it: nothing, colonies, a lawn, and the clear r
     assert.ok(arcs(spoilt) > arcs(free), 'penicillin clears a ring round the mould in bacteria, not in yeast');
     // The same plate draws the same every time.
     assert.deepEqual(draw({ main: { species: 'yeast', logN: 7 }, nutrient: 0.5 }), draw({ main: { species: 'yeast', logN: 7 }, nutrient: 0.5 }));
+});
+
+test('what a plate shows is what comes out: colonies only from 10^6, and then a culture plate', () => {
+    for (let log = 0; log <= 9; log += 0.25) {
+        const shows = ctx.cultureColonies(log).count > 0;
+        const sown = ctx.cultureHarvestOf('agar_plate', { main: { species: 'yeast', logN: log, lag: 0 }, nutrient: 0.5 });
+        assert.equal(shows, sown === 'culture_yeast', `yeast at 10^${log}`);
+        const mould = ctx.cultureHarvestOf('agar_plate_unsterile', { mould: { species: 'mould', logN: log, lag: 0 }, nutrient: 0.5 });
+        assert.equal(shows, mould === 'culture_mould', `mould at 10^${log}`);
+    }
+    // The drawing agrees: no colony of mould below 10^6 (it used to show from 10^3.5, while the plate gave a dish).
+    const arcs = (plate) => {
+        const c = recordingContext();
+        ctx.cultureDrawPlate(c, 160, 'agar_plate_unsterile', plate, 42);
+        return c.calls.filter(([name]) => name === 'arc').length;
+    };
+    assert.equal(arcs({ mould: { species: 'mould', logN: 5.5, lag: 0 }, nutrient: 0.8 }), 2, 'dish and agar, and nothing to see');
+    assert.ok(arcs({ mould: { species: 'mould', logN: 6.5, lag: 0 }, nutrient: 0.6 }) > 2);
+});
+
+test('the lens shows what lives on a plate now, from its numbers', () => {
+    const count = (plate) => ctx.cultureLensView(plate, 9).cells.length;
+    assert.equal(count({ nutrient: 1 }), 0, 'clean agar');
+    assert.ok(count({ main: { species: 'yeast', logN: 3, lag: 2 }, nutrient: 1 }) >= 2, 'a fresh inoculum: a few cells');
+    assert.ok(count({ main: { species: 'yeast', logN: 6, lag: 0 }, nutrient: 1 }) > count({ main: { species: 'yeast', logN: 3, lag: 0 }, nutrient: 1 }));
+    assert.ok(count({ main: { species: 'yeast', logN: 9, lag: 0 }, nutrient: 1 }) > count({ main: { species: 'yeast', logN: 6, lag: 0 }, nutrient: 1 }));
+    // Dying, most are pale; growing, none.
+    const dying = ctx.cultureLensView({ main: { species: 'yeast', logN: 8, phase: 'death' }, nutrient: 0 }, 9).cells;
+    assert.ok(dying.filter((cell) => cell.dead).length > dying.length / 2);
+    assert.equal(ctx.cultureLensView({ main: { species: 'yeast', logN: 8, phase: 'growth' }, nutrient: 0.4 }, 9).cells.filter((cell) => cell.dead).length, 0);
+    // The mould, and its clear ring in bacteria it holds back, not in yeast.
+    const spoilt = ctx.cultureLensView({ main: { species: 'lactobacillus', logN: 8 }, mould: { species: 'mould', logN: 7, lag: 0 }, nutrient: 0.2 }, 9);
+    assert.ok(spoilt.brushes.length >= 1 && spoilt.rings.length === spoilt.brushes.length);
+    for (const cell of spoilt.cells) for (const ring of spoilt.rings) assert.ok(Math.hypot(cell.x - ring.x, cell.y - ring.y) >= ring.r, 'no bacterium inside a ring');
+    const yeast = ctx.cultureLensView({ main: { species: 'yeast', logN: 8 }, mould: { species: 'mould', logN: 7, lag: 0 }, nutrient: 0.2 }, 9);
+    assert.equal(yeast.rings.length, 0);
+    // An unsterile plate not yet warm: its spores, waiting.
+    assert.equal(ctx.cultureLensView({ mould: { species: 'mould', logN: 1, lag: 2 }, nutrient: 1 }, 9).brushes.length, 1);
+    // The same plate, the same field; and it draws with the microscope's own organisms.
+    const plate = { main: { species: 'soil_bacteria', logN: 6.4 }, mould: { species: 'mould', logN: 5, lag: 0 }, nutrient: 0.5 };
+    assert.deepEqual(plain(ctx.cultureLensView(plate, 3)), plain(ctx.cultureLensView(plate, 3)));
+    const c = recordingContext();
+    const drawn = ctx.cultureDrawLens(c, 300, 300, plate, 3);
+    assert.ok(drawn.cells.length > 0 && c.calls.length > drawn.cells.length * 3, 'it drew the cells');
+    // The words, in both languages, say what can be seen by eye and why.
+    for (const lang of ['EN', 'ES']) {
+        inLang(lang, () => {
+            const say = (p) => ctx.cultureLensLines(p, (id) => id).map(({ key, args }) => ctx.cultureSay(key, ...args)).join(' | ');
+            assert.match(say({ main: { species: 'yeast', logN: 5.2, phase: 'growth' }, nutrient: 0.8 }), lang === 'ES' ? /placa usada/ : /used dish/);
+            assert.match(say({ main: { species: 'yeast', logN: 7, phase: 'growth' }, nutrient: 0.5 }), lang === 'ES' ? /placa de cultivo/ : /culture plate/);
+            assert.match(say({ main: { species: 'lactobacillus', logN: 7 }, mould: { species: 'mould', logN: 7, lag: 0 }, nutrient: 0.2 }), /penicil/);
+            assert.ok(say({ nutrient: 1 }).length > 5);
+        });
+    }
+});
+
+test('the panel: "Look" opens the lens on the plate picked, and it follows the plate', () => {
+    for (const lang of ['EN', 'ES']) {
+        inLang(lang, () => {
+            const { game } = panelGame();
+            game.cultureTryOpen({ x: 0, y: 0, z: 0 });
+            game.cultureOnContents(plain(CONTENTS));
+            const box = game.culturePanel.querySelector('#culture-lens-box');
+            assert.ok(!box.classList.contains('visible'), 'shut until asked');
+            const card = game.culturePanel.querySelectorAll('.culture-card')[1];
+            const look = card.querySelector('.culture-buttons').children.find((button) => button.textContent === ctx.cultureSay('look'));
+            assert.ok(look, `${lang}: every plate has its Look button`);
+            look.listeners.click[0]();
+            assert.ok(box.classList.contains('visible'));
+            const text = allText(game.culturePanel);
+            assert.ok(text.includes(ctx.cultureSay('lensTitle', 2)), text);
+            assert.ok(text.includes(ctx.cultureSay('lensRing', game.cultureSpeciesName('lactobacillus'))), `${lang}: the ring round the mould is said`);
+            assert.ok(game.culturePanel.querySelector('#culture-lens').getContext().calls.some(([name]) => name === 'arc'), 'the lens was drawn');
+            // An empty slot has no Look; the plate taken out, the lens goes.
+            const empty = game.culturePanel.querySelectorAll('.culture-card')[2];
+            assert.ok(!empty.querySelector('.culture-buttons').children.some((button) => button.textContent === ctx.cultureSay('look')));
+            const gone = plain(CONTENTS);
+            gone.rev = 5;
+            gone.slots[1] = {};
+            gone.incubator.plates[1] = null;
+            game.cultureOnContents(gone);
+            assert.ok(!box.classList.contains('visible'));
+        });
+    }
+});
+
+test('dishes and culture plates look and are called differently, and every one goes on a microscope', () => {
+    const dishes = ['petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', ...Object.values(ctx.CULTURE_SPECIES).map((kind) => kind.item)];
+    const looks = new Set(dishes.map((id) => JSON.stringify([ctx.CULTURE_ITEMS[id].sprite, ctx.CULTURE_ITEMS[id].palette])));
+    assert.equal(looks.size, dishes.length, 'no two share a look');
+    const sprites = new Set(dishes.map((id) => ctx.CULTURE_ITEMS[id].sprite.join('')));
+    assert.equal(sprites.size, dishes.length, 'no two share a drawing, only told apart by colour');
+    for (const lang of ['EN', 'ES']) {
+        inLang(lang, () => {
+            const names = dishes.map((id) => ctx.cultureItemName(id, ctx.CULTURE_ITEMS[id].name));
+            assert.equal(new Set(names).size, names.length, `${lang}: ${names.join(', ')}`);
+        });
+    }
+    for (const kind of Object.values(ctx.CULTURE_SPECIES)) {
+        assert.match(ctx.CULTURE_ITEMS[kind.item].name, / Plate$/, kind.item);
+        assert.match(ctx.CULTURE_ITEMS_ES[kind.item], /^Placa de /, kind.item);
+        // Each is drawn as a dish with colonies of its own colour, not as a vial.
+        assert.ok(ctx.CULTURE_ITEMS[kind.item].sprite.some((row) => /g[A-Za-z]+g/.test(row)));
+    }
+    // On the microscope: with the plate in the hand, no slide; it comes back as it went.
+    const goMicroscope = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'microscope.go'), 'utf8');
+    const goPlates = goTable(goMicroscope, 'microscopePlates');
+    assert.deepEqual([...goPlates.matchAll(/"(\w+)": true/g)].map((match) => match[1]).sort(), Object.keys(ctx.MICRO_PLATES).sort());
+    for (const id of dishes.filter((dish) => dish !== 'petri_dish')) {
+        assert.ok(ctx.MICRO_PLATES[id], `${id} goes on the stage`);
+        assert.equal(ctx.microscopeSourceHeld(id), id, `${id} in the hand goes on a free microscope`);
+        assert.deepEqual(plain(ctx.microscopeRequestItems('prepare', id)), { took: { [id]: 1 }, gives: {} }, `${id} needs no slide`);
+    }
+    assert.deepEqual(plain(ctx.microscopeRequestItems('prepare', 'dirt')), { took: { glass_slide: 1, dirt: 1 }, gives: {} }, 'a slide still takes its slide');
+    assert.deepEqual(plain(ctx.microscopeRequestItems('clear')), { took: {}, gives: { result: 1 } }, 'what comes off is what the server names');
+    assert.ok(ctx.microscopeSlideLine({ source: 'culture_mould' }, 9999).length > 0);
 });
 
 test('the guide has the pages of cultures, in both languages, and the indexes reach them', () => {

@@ -31,12 +31,12 @@ const MICROSCOPE_TEXT = {
     lightShortSun: { ES: 'Luz del día', EN: 'Daylight' },
     lightShortOff: { ES: 'Sin luz', EN: 'No light' },
     askHow: {
-        ES: 'Selecciona en tu inventario lo que quieras observar y haz clic derecho en el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla.',
-        EN: 'Select what you want to look at in your inventory, then right click the microscope. With a glass slide selected, it will be a smear of your cheek.'
+        ES: 'Selecciona en tu inventario lo que quieras observar y haz clic derecho en el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla. Una placa de cultivo va tal cual, sin portaobjetos.',
+        EN: 'Select what you want to look at in your inventory, then right click the microscope. With a glass slide selected, it will be a smear of your cheek. A culture plate goes on as it is, with no slide.'
     },
     askHowTouch: {
-        ES: 'Selecciona en tu inventario lo que quieras observar y toca el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla.',
-        EN: 'Select what you want to look at in your inventory, then tap the microscope. With a glass slide selected, it will be a smear of your cheek.'
+        ES: 'Selecciona en tu inventario lo que quieras observar y toca el microscopio. Con un portaobjetos seleccionado, será un frotis de tu mejilla. Una placa de cultivo va tal cual, sin portaobjetos.',
+        EN: 'Select what you want to look at in your inventory, then tap the microscope. With a glass slide selected, it will be a smear of your cheek. A culture plate goes on as it is, with no slide.'
     },
     askTimeout: { ES: 'El microscopio no responde. Prueba otra vez.', EN: 'The microscope does not answer. Try again.' },
     slideKept: {
@@ -49,6 +49,15 @@ const MICROSCOPE_TEXT = {
         EN: 'There is already a slide on it, shared with whoever is looking. Take it off first to put on yours.'
     },
     slideReady: { ES: (name) => `Portaobjetos listo: ${name}.`, EN: (name) => `Slide ready: ${name}.` },
+    plateReady: { ES: (name) => `En la platina: ${name}. Una placa no necesita portaobjetos.`, EN: (name) => `On the stage: ${name}. A plate needs no slide.` },
+    plateOnStage: {
+        ES: 'Una placa de cultivo sobre la platina: su agar la mantiene húmeda, no se seca. Al retirarla vuelve tal cual.',
+        EN: 'A culture plate on the stage: its agar keeps it moist, so it does not dry. Taken off, it comes back as it was.'
+    },
+    takeOffPlate: { ES: 'Retirar la placa: vuelve tal cual a tu inventario y se cierra el panel', EN: 'Take the plate off: it goes back to your inventory as it was, and the panel closes' },
+    plateNoDrop: { ES: 'Una placa no se seca: no necesita gotas', EN: 'A plate does not dry: it needs no drop' },
+    plateNoCapture: { ES: 'En una placa no hay animales que sacar', EN: 'There are no animals to draw off a plate' },
+    plateNoStain: { ES: 'Una placa no se tiñe: mataría lo que vive en ella', EN: 'A plate is not stained: it would kill what lives on it' },
     stainNoneCarried: {
         ES: 'No llevas tinciones: la tintura de yodo sale de una reacción de la mesa de laboratorio, y el azul de metileno, del menú C.',
         EN: 'You carry no stain: Iodine Tincture comes from a reaction at the lab bench, and Methylene Blue from the C menu.'
@@ -204,6 +213,7 @@ const MICROSCOPE_TEXT = {
     refusedTooFar: { ES: 'Ese microscopio está demasiado lejos.', EN: 'That microscope is too far away.' },
     refusedNotScope: { ES: 'Eso ya no es un microscopio.', EN: 'That is no longer a microscope.' },
     refusedNotForSlide: { ES: 'Eso no se puede poner en un portaobjetos.', EN: 'That cannot go on a slide.' },
+    refusedNotSlide: { ES: 'Eso es una placa, no un portaobjetos: no admite gotas, tinciones ni pipeta.', EN: 'That is a plate, not a slide: it takes no drop, stain or pipette.' },
     refusedNotStain: { ES: 'Eso no es una tinción.', EN: 'That is not a stain.' },
     refusedBadRequest: { ES: 'El servidor no lo ha entendido. Prueba otra vez.', EN: 'The server did not understand that. Try again.' },
     refusedLost: { ES: 'Al servidor no le ha llegado. Lo que se gastó ha vuelto.', EN: 'The server never got that. What it used has come back.' },
@@ -386,8 +396,9 @@ const MICROSCOPE_ITEMS_ES = {
     jungle_leaves: 'Hojas de jungla', dark_oak_leaves: 'Hojas de roble oscuro', acacia_leaves: 'Hojas de acacia', cherry_leaves: 'Hojas de cerezo',
     maple_leaves: 'Hojas de arce', willow_leaves: 'Hojas de sauce',
     // What the incubator grows, and the filter (js/game/cultures.js).
-    sample_filtered: 'Muestra filtrada', water_filter: 'Filtro de agua', culture_yeast: 'Cultivo de levadura', culture_lactobacillus: 'Cultivo de lactobacilos',
-    culture_soil: 'Cultivo de bacterias del suelo', culture_cyano: 'Cultivo de cianobacterias', culture_mould: 'Cultivo de moho',
+    sample_filtered: 'Muestra filtrada', water_filter: 'Filtro de agua', culture_yeast: 'Placa de levadura', culture_lactobacillus: 'Placa de lactobacilos',
+    culture_soil: 'Placa de bacterias del suelo', culture_cyano: 'Placa de cianobacterias', culture_mould: 'Placa de moho',
+    agar_plate: 'Placa de agar estéril', agar_plate_unsterile: 'Placa de agar sin esterilizar', used_dish: 'Placa usada (sucia)',
     // What can light the mirror.
     torch: 'Antorcha', candle: 'Vela', lantern: 'Farol', table_lamp: 'Lámpara de mesa', floor_lamp: 'Lámpara de pie', chandelier: 'Lámpara de araña',
     electric_lamp: 'Lámpara eléctrica', light_bulb: 'Bombilla', grow_lamp: 'Lámpara de cultivo', oven: 'Horno', foundry: 'Fundición', arc_furnace: 'Horno de arco eléctrico'

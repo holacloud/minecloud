@@ -13,6 +13,7 @@ A steel pot that heats water **under pressure**. Right click to open it, like an
 | Put in | Comes out | Time |
 |---|---|---|
 | ![](item:used_dish) `used_dish` | ![](item:petri_dish) a sterile `petri_dish` | 10 s |
+| ![](item:culture_mould) a culture plate you are done with | ![](item:petri_dish) a sterile `petri_dish` | 10 s |
 | ![](item:agar_plate_unsterile) `agar_plate_unsterile` | ![](item:agar_plate) a sterile `agar_plate` | 15 s |
 
 It draws **40 W**, and only while it has something in it, like the [arc furnace](236). Without power it waits and keeps what it has done. Its water is its own: you do not need to add any.
@@ -25,9 +26,9 @@ You can also pour agar on a dirty dish, not sterilised:
 |---|---|
 | ![](item:agar_plate_unsterile) 1 `agar_plate_unsterile` | 1 `used_dish` + 1 `wheat` + 1 `water_flask` |
 
-It looks the same, but it carries **mould spores**. In the incubator the mould grows by itself, eats the nutrient of what you sowed, and that plate gives `culture_mould`. Try it: two plates with the same milk, one sterile and one not, and compare their curves.
+Its rim is dull and its tape red, not striped as the autoclave leaves it, and it carries **mould spores**. In the incubator the mould grows by itself, eats the nutrient of what you sowed, and that plate comes out as a ![](item:culture_mould) *Mould Plate* (`culture_mould`). Try it: two plates with the same milk, one sterile and one not, and compare their curves.
 
-Lactobacilli and soil bacteria are also **held back** by the mould. Look at the plate: around each patch of mould there is a **clear ring**, where the bacteria do not grow. Yeast is not held back, as it is a fungus too.
+Lactobacilli and soil bacteria are also **held back** by the mould. Look at the plate, or press **🔍 Look** in the incubator: around each patch of mould there is a **clear ring**, where the bacteria do not grow. Yeast is not held back, as it is a fungus too.
 
 ## Fleming's story
 

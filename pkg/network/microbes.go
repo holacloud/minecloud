@@ -10,16 +10,19 @@ import (
 // appliances (appliances.go) only while it has something growing: each slot holds a plate, and
 // StorageBlock.Plates what lives on it. A plate is a few numbers, never individuals: for each population
 // its size (log10 of the cells), the work left of its lag, and the nutrient of the plate they share.
-// Nothing leaves the block but discrete items: taking a plate out gives a culture (if one grew well enough)
-// and the dirty dish, and nothing in the inventory ever changes on its own.
+// Nothing leaves the block but discrete items: taking a plate out gives a culture plate (the dish with its
+// colonies on it, if they grew big enough to be seen) or the dirty dish, and nothing in the inventory ever
+// changes on its own.
 //
 //   - cultureLoad      {x, y, z, slot, source, reqId}: a plate (culturePlates) into an empty slot.
 //   - cultureInoculate {x, y, z, slot, source, reqId}: puts on the plate what `source` holds (sampleSpecies:
 //     flowers carry yeast, milk lactobacilli, dirt soil bacteria, a lake sample cyanobacteria, a culture its
 //     own kind). One to a plate. A source with nothing that grows on agar is refused.
-//   - cultureHarvest   {x, y, z, slot, reqId}: the plate comes out. Its Type is a culture, with Also a
-//     used_dish; or only a used_dish if nothing grew to cultureLogHarvest; or the plate itself if nothing
-//     ever happened on it.
+//   - cultureHarvest   {x, y, z, slot, reqId}: the plate comes out. Its Type is a culture plate, the dish
+//     with its colonies (culture_yeast is a "Yeast Plate"), if what grew on it reached cultureLogHarvest,
+//     where colonies can be seen; a used_dish if it was sown and nothing could be seen; or the plate itself
+//     if nothing ever happened on it. A culture plate goes on a microscope's stage as it is (microscope.go,
+//     microscopePlates), and comes back from it as it went.
 //   - cultureSet       {x, y, z, target, reqId}: the temperature the incubator holds while it has power.
 //
 // All answer storageResult as the microscope's messages do, saved before they are answered, in the same log
@@ -55,7 +58,9 @@ const (
 	usedDish      = "used_dish"
 	mouldSpecies  = "mould"
 
-	// log10 of the cells: an inoculum, what a plate holds when full, and what a culture must reach.
+	// log10 of the cells: an inoculum, what a plate holds when full, and what a culture must reach. That
+	// last one is also where colonies can be seen at all (a colony seen by eye holds about a million cells),
+	// and js/game/cultures.js draws none below it: a plate that shows anything gives a culture plate.
 	cultureLogInoculum = 3.0
 	cultureLogMax      = 9.0
 	cultureLogHarvest  = 6.0
@@ -181,8 +186,12 @@ func cultureNewPlate(plate string) *CulturePlate {
 	return p
 }
 
-// cultureInoculum is the species a source puts on a plate, if any of what it holds grows on agar.
+// cultureInoculum is the species a source puts on a plate, if any of what it holds grows on agar. A clean
+// or dirty plate is no inoculum, though it goes on the microscope's stage.
 func cultureInoculum(source string) (string, bool) {
+	if _, plate := culturePlates[source]; plate || source == usedDish {
+		return "", false
+	}
 	species, ok := sampleSpecies(source)
 	if !ok {
 		return "", false
@@ -293,18 +302,19 @@ func (p *CulturePlate) touched() bool {
 	return p.Main != nil || (p.Mould != nil && (p.Mould.LogN > cultureLogSpores+0.01 || p.Mould.Lag < cultureLagWork))
 }
 
-// cultureHarvestOf is what a plate gives when it comes out: the item, and the dish that comes with it.
-func cultureHarvestOf(plateType string, p *CulturePlate) (item, also string) {
+// cultureHarvestOf is what a plate gives when it comes out. A culture plate is the dish itself, with its
+// colonies on it: nothing comes with it.
+func cultureHarvestOf(plateType string, p *CulturePlate) string {
 	if p == nil || !p.touched() {
-		return plateType, ""
+		return plateType
 	}
 	if p.Mould != nil && p.Mould.LogN >= cultureLogHarvest {
-		return cultureSpecies[mouldSpecies].Item, usedDish
+		return cultureSpecies[mouldSpecies].Item
 	}
 	if p.Main != nil && p.Main.LogN >= cultureLogHarvest {
-		return cultureSpecies[p.Main.Species].Item, usedDish
+		return cultureSpecies[p.Main.Species].Item
 	}
-	return usedDish, ""
+	return usedDish
 }
 
 // cultureClampTarget keeps a target in what the dial can be set to.
@@ -509,10 +519,10 @@ func (b *storageBook) cultureHarvest(w cropWorld, eye *[3]float64, request cultu
 	if slot.Count == 0 {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "gone"}), false
 	}
-	item, also := cultureHarvestOf(slot.Type, block.Plates[request.Slot])
+	item := cultureHarvestOf(slot.Type, block.Plates[request.Slot])
 	block.Slots[request.Slot] = StorageSlot{}
 	block.Plates[request.Slot] = nil
-	return b.finishCultureLocked(w, place, block, storageOutcome{ReqID: request.ReqID, Type: item, Amount: 1, Also: also}), true
+	return b.finishCultureLocked(w, place, block, storageOutcome{ReqID: request.ReqID, Type: item, Amount: 1}), true
 }
 
 // cultureSet sets the temperature the incubator holds.
@@ -538,11 +548,7 @@ func incubatorSpill(block *StorageBlock) []StorageSlot {
 		if i < len(block.Plates) {
 			plate = block.Plates[i]
 		}
-		item, also := cultureHarvestOf(slot.Type, plate)
-		spill = append(spill, StorageSlot{Type: item, Count: 1})
-		if also != "" {
-			spill = append(spill, StorageSlot{Type: also, Count: 1})
-		}
+		spill = append(spill, StorageSlot{Type: cultureHarvestOf(slot.Type, plate), Count: 1})
 	}
 	return spill
 }

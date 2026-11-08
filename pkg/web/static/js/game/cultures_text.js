@@ -27,6 +27,25 @@ const CULTURE_TEXT = {
     load: { ES: 'Poner placa', EN: 'Put a plate' },
     inoculate: { ES: 'Sembrar', EN: 'Inoculate' },
     harvest: { ES: 'Sacar', EN: 'Take out' },
+    look: { ES: '🔍 Mirar', EN: '🔍 Look' },
+    lookTip: { ES: 'Mirar a la lupa lo que vive en esta placa ahora', EN: 'Look at what lives on this plate now, under a lens' },
+    lensTitle: { ES: (n) => `Placa ${n}, a la lupa`, EN: (n) => `Plate ${n}, under the lens` },
+    lensMain: { ES: (name, log) => `${name}: 10^${log} células`, EN: (name, log) => `${name}: 10^${log} cells` },
+    lensDying: { ES: (name, log) => `${name}: 10^${log} células, muriendo (las pálidas están muertas)`, EN: (name, log) => `${name}: 10^${log} cells, dying (the pale ones are dead)` },
+    lensGone: { ES: (name) => `${name}: no queda nada vivo`, EN: (name) => `${name}: nothing is left alive` },
+    lensSeen: { ES: 'Se ven colonias a simple vista: al sacarla es una placa de cultivo', EN: 'Colonies can be seen by eye: taken out, it is a culture plate' },
+    lensUnseen: {
+        ES: 'Aún no se ve nada a simple vista (hace falta 10^6): si la sacas ahora será una placa usada',
+        EN: 'Nothing can be seen by eye yet (it takes 10^6): taken out now it would be a used dish'
+    },
+    lensSpores: { ES: 'Unas pocas esporas de moho, esperando', EN: 'A few mould spores, waiting' },
+    lensMould: { ES: (log) => `Moho: 10^${log} células`, EN: (log) => `Mould: 10^${log} cells` },
+    lensRing: {
+        ES: (name) => `Alrededor del moho, un anillo limpio: la penicilina frena a ${name}`,
+        EN: (name) => `Round the mould, a clear ring: penicillin holds back ${name}`
+    },
+    lensNoRing: { ES: (name) => `Sin anillo: la penicilina no frena a ${name}, que también es un hongo`, EN: (name) => `No ring: penicillin does not hold back ${name}, a fungus too` },
+    lensEmpty: { ES: 'Agar limpio: no vive nada en ella', EN: 'Clean agar: nothing lives on it' },
     chooseLoad: { ES: 'Elige una placa de tu inventario:', EN: 'Pick a plate from your inventory:' },
     chooseInoculum: { ES: 'Elige qué sembrar. Cada cosa lleva sus microbios:', EN: 'Pick what to inoculate it with. Each carries its own microbes:' },
     noPlates: {
@@ -45,7 +64,7 @@ const CULTURE_TEXT = {
     logN: { ES: (value) => `10^${value} células`, EN: (value) => `10^${value} cells` },
     nutrient: { ES: (pct) => `Nutriente: ${pct} %`, EN: (pct) => `Nutrient: ${pct} %` },
     gives: { ES: (name) => `Al sacarla: ${name}`, EN: (name) => `Taken out now: ${name}` },
-    givesDish: { ES: 'Al sacarla: solo la placa sucia (no llegó a 10^6)', EN: 'Taken out now: only the dirty dish (it did not reach 10^6)' },
+    givesDish: { ES: 'Al sacarla: una placa usada (no se ve nada: no llegó a 10^6)', EN: 'Taken out now: a used dish (nothing can be seen: it did not reach 10^6)' },
     givesPlate: { ES: (name) => `Al sacarla: ${name}, sin usar`, EN: (name) => `Taken out now: ${name}, unused` },
     contaminated: { ES: 'Contaminada: ha crecido moho', EN: 'Contaminated: mould has grown' },
     phase: {
@@ -61,14 +80,17 @@ const CULTURE_TEXT = {
     graphHarvest: { ES: 'cultivo', EN: 'culture' },
     graphTime: { ES: (s) => `${s} s`, EN: (s) => `${s} s` },
     hint: {
-        ES: 'Pon una placa, siémbrala y espera. Cada microbio tiene su temperatura: prueba la misma levadura a 10, 30 y 45 °C.',
-        EN: 'Put a plate in, inoculate it and wait. Each microbe has its temperature: try the same yeast at 10, 30 and 45 °C.'
+        ES: 'Pon una placa, siémbrala y espera; «Mirar» enseña lo que vive en ella. Cada microbio tiene su temperatura: prueba la misma levadura a 10, 30 y 45 °C.',
+        EN: 'Put a plate in, inoculate it and wait; "Look" shows what lives on it. Each microbe has its temperature: try the same yeast at 10, 30 and 45 °C.'
     },
     notConnected: { ES: 'Sin conexión: la incubadora vive en el servidor', EN: 'Not connected: the incubator lives on the server' },
     kitGiven: { ES: 'Kit de cultivos en tu inventario: incubadora, autoclave, placas, filtros y cosas que sembrar.', EN: 'Culture kit in your inventory: incubators, an autoclave, plates, filters and things to inoculate.' },
     timeout: { ES: 'La incubadora no responde. Prueba otra vez.', EN: 'The incubator does not answer. Try again.' },
-    gotCulture: { ES: (name) => `Has sacado ${name} y una placa sucia: pásala por el autoclave.`, EN: (name) => `You took out ${name} and a dirty dish: run it through the autoclave.` },
-    gotDish: { ES: 'Has sacado una placa sucia: pásala por el autoclave.', EN: 'You took out a dirty dish: run it through the autoclave.' },
+    gotCulture: {
+        ES: (name) => `Has sacado: ${name}. Míralo al microscopio (con la placa en la mano, clic derecho en él, sin portaobjetos), o siembra otra placa con ella.`,
+        EN: (name) => `You took out: ${name}. Look at it under a microscope (plate in hand, right click it, no slide needed), or sow another plate from it.`
+    },
+    gotDish: { ES: 'Has sacado una placa usada: pásala por el autoclave.', EN: 'You took out a used dish: run it through the autoclave.' },
     refused: {
         ES: {
             'not a plate': 'Eso no es una placa de agar.', occupied: 'Ese hueco ya tiene placa.', 'no plate': 'No hay placa en ese hueco.',
@@ -89,7 +111,7 @@ const CULTURE_TEXT = {
     autoclaveOut: { ES: 'Estéril', EN: 'Sterile' },
     autoclaveWork: { ES: 'Vapor', EN: 'Steam' },
     autoclaveItems: { ES: 'Lo que puede esterilizar: haz clic para meterlo', EN: 'What it can sterilise: click to put it in' },
-    autoclaveRefusal: { ES: 'El autoclave solo acepta placas sucias y placas sin esterilizar', EN: 'The autoclave only takes used dishes and unsterile plates' },
+    autoclaveRefusal: { ES: 'El autoclave solo acepta placas usadas, placas de cultivo y placas sin esterilizar', EN: 'The autoclave only takes used dishes, culture plates and unsterile plates' },
     autoclaveIdle: { ES: (w) => `En espera: no pide corriente hasta tener algo que esterilizar (entonces ${w} W)`, EN: (w) => `Waiting: it draws no power until it has something to sterilise (then ${w} W)` },
     autoclaveAsking: { ES: (w) => `Pidiendo ${w} W a la red...`, EN: (w) => `Asking the network for ${w} W...` },
     autoclaveOn: { ES: (w) => `Vapor a 121 °C, gastando ${w} W`, EN: (w) => `Steam at 121 °C, drawing ${w} W` },
@@ -99,10 +121,10 @@ const CULTURE_TEXT = {
 
 // The Spanish names of the items of cultures. Everywhere else in the game they keep their English name.
 const CULTURE_ITEMS_ES = {
-    incubator: 'Incubadora', autoclave: 'Autoclave', petri_dish: 'Placa de Petri', agar_plate: 'Placa de agar',
-    agar_plate_unsterile: 'Placa de agar sin esterilizar', used_dish: 'Placa sucia', water_filter: 'Filtro de agua',
-    sample_filtered: 'Muestra filtrada', culture_yeast: 'Cultivo de levadura', culture_lactobacillus: 'Cultivo de lactobacilos',
-    culture_soil: 'Cultivo de bacterias del suelo', culture_cyano: 'Cultivo de cianobacterias', culture_mould: 'Cultivo de moho'
+    incubator: 'Incubadora', autoclave: 'Autoclave', petri_dish: 'Placa de Petri vacía', agar_plate: 'Placa de agar estéril',
+    agar_plate_unsterile: 'Placa de agar sin esterilizar', used_dish: 'Placa usada (sucia)', water_filter: 'Filtro de agua',
+    sample_filtered: 'Muestra filtrada', culture_yeast: 'Placa de levadura', culture_lactobacillus: 'Placa de lactobacilos',
+    culture_soil: 'Placa de bacterias del suelo', culture_cyano: 'Placa de cianobacterias', culture_mould: 'Placa de moho'
 };
 
 // A line, in the language of the game.

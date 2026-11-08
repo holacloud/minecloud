@@ -1181,7 +1181,7 @@ function constructionShowroom(b) {
     // Cultures, on a generator of their own: an incubator (20 W) and an autoclave (40 W) of its 80 W.
     b.set(51, 1, 9, 'rtg');
     piece(52, 1, 9, 'incubator', 'incubator', 's');
-    piece(53, 1, 9, 'autoclave', 'autoclave', 's');
+    b.shaped(53, 1, 9, 'autoclave', 'autoclave', { facing: 's', fire: 'off' });
     sign(50, 10, 's', 'Incubadora y autoclave.', 'Incubadora: placa de agar y algo que sembrar. Autoclave: esteriliza las placas sucias. Guía 253.',
         'Incubator and autoclave. Incubator: an agar plate and something to inoculate. Autoclave: it sterilises dirty dishes. Guide 253.');
 

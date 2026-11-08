@@ -907,3 +907,78 @@ func TestApplianceThroughMessages(t *testing.T) {
 		t.Fatalf("drop: %+v", drop)
 	}
 }
+
+// machineSettledNames is what the server settles each name a client may place for a machine to: out, and
+// alight. test/js/cultures.test.js reads this table and checks that every name the client places is in it,
+// and that both names it settles to are block names the client registers: a name the client does not know
+// makes the block vanish (the autoclave did, placed facing anything but north, before it had `fire`).
+var machineSettledNames = map[string][2]string{
+	"oven":              {"oven", "oven:n:on"},
+	"oven:e":            {"oven:e:off", "oven:e:on"},
+	"oven:s":            {"oven:s:off", "oven:s:on"},
+	"oven:w":            {"oven:w:off", "oven:w:on"},
+	"oven:e:off":        {"oven:e:off", "oven:e:on"},
+	"oven:s:off":        {"oven:s:off", "oven:s:on"},
+	"oven:w:off":        {"oven:w:off", "oven:w:on"},
+	"oven:n:on":         {"oven", "oven:n:on"},
+	"oven:e:on":         {"oven:e:off", "oven:e:on"},
+	"oven:s:on":         {"oven:s:off", "oven:s:on"},
+	"oven:w:on":         {"oven:w:off", "oven:w:on"},
+	"foundry":           {"foundry", "foundry:n:on"},
+	"foundry:e":         {"foundry:e:off", "foundry:e:on"},
+	"foundry:s":         {"foundry:s:off", "foundry:s:on"},
+	"foundry:w":         {"foundry:w:off", "foundry:w:on"},
+	"foundry:e:off":     {"foundry:e:off", "foundry:e:on"},
+	"foundry:s:off":     {"foundry:s:off", "foundry:s:on"},
+	"foundry:w:off":     {"foundry:w:off", "foundry:w:on"},
+	"foundry:n:on":      {"foundry", "foundry:n:on"},
+	"foundry:e:on":      {"foundry:e:off", "foundry:e:on"},
+	"foundry:s:on":      {"foundry:s:off", "foundry:s:on"},
+	"foundry:w:on":      {"foundry:w:off", "foundry:w:on"},
+	"arc_furnace":       {"arc_furnace", "arc_furnace:n:on"},
+	"arc_furnace:e":     {"arc_furnace:e:off", "arc_furnace:e:on"},
+	"arc_furnace:s":     {"arc_furnace:s:off", "arc_furnace:s:on"},
+	"arc_furnace:w":     {"arc_furnace:w:off", "arc_furnace:w:on"},
+	"arc_furnace:e:off": {"arc_furnace:e:off", "arc_furnace:e:on"},
+	"arc_furnace:s:off": {"arc_furnace:s:off", "arc_furnace:s:on"},
+	"arc_furnace:w:off": {"arc_furnace:w:off", "arc_furnace:w:on"},
+	"arc_furnace:n:on":  {"arc_furnace", "arc_furnace:n:on"},
+	"arc_furnace:e:on":  {"arc_furnace:e:off", "arc_furnace:e:on"},
+	"arc_furnace:s:on":  {"arc_furnace:s:off", "arc_furnace:s:on"},
+	"arc_furnace:w:on":  {"arc_furnace:w:off", "arc_furnace:w:on"},
+	"autoclave":         {"autoclave", "autoclave:n:on"},
+	"autoclave:e":       {"autoclave:e:off", "autoclave:e:on"},
+	"autoclave:s":       {"autoclave:s:off", "autoclave:s:on"},
+	"autoclave:w":       {"autoclave:w:off", "autoclave:w:on"},
+	"autoclave:e:off":   {"autoclave:e:off", "autoclave:e:on"},
+	"autoclave:s:off":   {"autoclave:s:off", "autoclave:s:on"},
+	"autoclave:w:off":   {"autoclave:w:off", "autoclave:w:on"},
+	"autoclave:n:on":    {"autoclave", "autoclave:n:on"},
+	"autoclave:e:on":    {"autoclave:e:off", "autoclave:e:on"},
+	"autoclave:s:on":    {"autoclave:s:off", "autoclave:s:on"},
+	"autoclave:w:on":    {"autoclave:w:off", "autoclave:w:on"},
+}
+
+func TestMachineSettledNamesAreTheServers(t *testing.T) {
+	book, _ := newTestBook()
+	covered := map[string]bool{}
+	for placed, want := range machineSettledNames {
+		covered[storageBase(placed)] = true
+		if got := book.settleOvenName(0, 0, 0, placed); got != want[0] {
+			t.Errorf("%s settles to %s, the table says %s", placed, got, want[0])
+		}
+		if got := ovenBlockName(placed, true); got != want[1] {
+			t.Errorf("%s alight is %s, the table says %s", placed, got, want[1])
+		}
+	}
+	for kind := range machines {
+		if !covered[kind] {
+			t.Errorf("machine %s is not in machineSettledNames", kind)
+		}
+		for _, facing := range []string{"e", "s", "w"} {
+			if _, ok := machineSettledNames[kind+":"+facing+":off"]; !ok {
+				t.Errorf("%s:%s:off is not in the table", kind, facing)
+			}
+		}
+	}
+}

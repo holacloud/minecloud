@@ -199,13 +199,13 @@ func TestCultureContamination(t *testing.T) {
 	if clean.growing() || clean.touched() {
 		t.Fatal("a sterile plate with nothing on it grew something")
 	}
-	if item, also := cultureHarvestOf("agar_plate", clean); item != "agar_plate" || also != "" {
-		t.Fatalf("an untouched plate comes back: %s %s", item, also)
+	if item := cultureHarvestOf("agar_plate", clean); item != "agar_plate" {
+		t.Fatalf("an untouched plate comes back: %s", item)
 	}
 	// An unsterile one grows mould by itself, and gives a mould culture.
 	mould := runPlate("", 23, false, 600, true)
-	if item, also := cultureHarvestOf("agar_plate_unsterile", mould); item != "culture_mould" || also != usedDish {
-		t.Fatalf("mould plate gives %s %s (mould %v)", item, also, mould.Mould.LogN)
+	if item := cultureHarvestOf("agar_plate_unsterile", mould); item != "culture_mould" {
+		t.Fatalf("mould plate gives %s (mould %v)", item, mould.Mould.LogN)
 	}
 	// Lactobacilli on an unsterile plate: the mould takes nutrient and holds them back, and the plate gives mould.
 	pure := runPlate("lactobacillus", 25, false, 400, false)
@@ -213,7 +213,7 @@ func TestCultureContamination(t *testing.T) {
 	if spoilt.Main.LogN >= pure.Main.LogN {
 		t.Fatalf("the mould changed nothing: %v vs %v", spoilt.Main.LogN, pure.Main.LogN)
 	}
-	if item, _ := cultureHarvestOf("agar_plate_unsterile", runPlate("lactobacillus", 25, false, 420, true)); item != "culture_mould" {
+	if item := cultureHarvestOf("agar_plate_unsterile", runPlate("lactobacillus", 25, false, 420, true)); item != "culture_mould" {
 		t.Fatalf("a contaminated plate gives %s", item)
 	}
 	// Yeast, a fungus too, is not held back by penicillin; it only shares the food.
@@ -227,8 +227,8 @@ func TestCultureContamination(t *testing.T) {
 		t.Fatalf("nutrient alone %v, shared %v", alone.Nutrient, shared.Nutrient)
 	}
 	// A plate where nothing reached a culture gives only its dish.
-	if item, also := cultureHarvestOf("agar_plate", runPlate("yeast", 30, false, 30, false)); item != usedDish || also != "" {
-		t.Fatalf("an early plate gives %s %s", item, also)
+	if item := cultureHarvestOf("agar_plate", runPlate("yeast", 30, false, 30, false)); item != usedDish {
+		t.Fatalf("an early plate gives %s", item)
 	}
 }
 
@@ -341,7 +341,7 @@ func TestIncubatorPowerAndAmbient(t *testing.T) {
 	}
 	// Harvest: a culture and its dish; the incubator stops asking when nothing grows.
 	o := r.send(t, "harvest", 0, "", 0)
-	if o.Type != "culture_yeast" || o.Also != usedDish || o.Amount != 1 {
+	if o.Type != "culture_yeast" || o.Also != "" || o.Amount != 1 {
 		t.Fatalf("harvest: %+v", o)
 	}
 	if o := r.send(t, "harvest", 0, "", 0); o.Reason != "gone" {
@@ -408,7 +408,9 @@ func TestIncubatorSurvivesARestartAndABreak(t *testing.T) {
 	for _, slot := range spill {
 		got[slot.Type] += slot.Count
 	}
-	if got["culture_lactobacillus"] != 1 || got[usedDish] < 1 || len(got) < 2 {
+	// The culture is its own dish; the unsterile plate, whose mould never got going at 37 °C or above,
+	// comes back as it went in.
+	if got["culture_lactobacillus"] != 1 || got["agar_plate_unsterile"] != 1 || len(got) != 2 {
 		t.Fatalf("spill: %v", got)
 	}
 	if r2.book.blocks[blockKey(0, 0, 0)] != nil {
@@ -420,6 +422,13 @@ func TestAutoclaveIsAnElectricMachine(t *testing.T) {
 	m := machines[autoclaveKind]
 	if m == nil || !m.electric() || m.slotFor("used_dish") != ovenSlotFood || m.slotFor("water_flask") != -1 {
 		t.Fatal("autoclave")
+	}
+	// A culture plate is a dish with colonies: once done with, it comes out an empty sterile dish, so no
+	// dish is lost to a culture.
+	for _, kind := range cultureSpecies {
+		if recipe, ok := autoclaveRecipes[kind.Item]; !ok || recipe.Out != "petri_dish" || recipe.yield() != 1 {
+			t.Errorf("the autoclave does not take %s back to a dish", kind.Item)
+		}
 	}
 	if powerKinds[autoclaveKind].Watts <= 0 || !powerKinds[autoclaveKind].OnDemand || !powerKinds[incubatorKind].OnDemand {
 		t.Fatal("the autoclave and the incubator ask for power only while they have work")

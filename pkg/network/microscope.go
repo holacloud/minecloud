@@ -21,8 +21,11 @@ import (
 //     never changes. The block stays. With source "water_filter" it is the filter tube that was dipped,
 //     and only water gives a sample_filtered.
 //   - microscopePrepare {x, y, z, source, reqId}: puts a slide on the stage with `source` on it (a sample,
-//     another item, a tardigrade, or "cheek" for a smear of the player's own cheek).
-//   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed.
+//     another item, a tardigrade, or "cheek" for a smear of the player's own cheek). A Petri dish of any
+//     kind (microscopePlates: a culture plate, or a clean, unsterile or used one) goes on the stage itself,
+//     with no slide, as colonies are looked at on their dish.
+//   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed; a plate comes
+//     back as it went on. The answer's Type names what comes back.
 //   - microscopeDrop    {x, y, z, reqId}: a drop of water on the slide.
 //   - microscopeCapture {x, y, z, reqId}: draws a tardigrade off the slide into a tube.
 //   - microscopeStain   {x, y, z, source, reqId}: stains the slide with `source` (one of microscopeStains),
@@ -136,7 +139,12 @@ var microscopeItems = map[string][]string{
 	// Water through a filter of sand and charcoal: what was big enough to see stays in the filter, and
 	// only a few bacteria get through (microbes.go).
 	sampleFiltered: {"soil_bacteria"},
-	// What an incubator grew, each its own kind (microbes.go).
+	// What an incubator grew, each its own kind (microbes.go). These and the plates below go on the stage
+	// as they are, with no slide (microscopePlates). A sterile plate holds nothing, an unsterile one a few
+	// mould spores, and a used dish only what is left of its agar: whatever it had could not be seen.
+	"agar_plate":            {},
+	"agar_plate_unsterile":  {"mould"},
+	"used_dish":             {},
 	"culture_yeast":         {"yeast"},
 	"culture_lactobacillus": {"lactobacillus"},
 	"culture_soil":          {"soil_bacteria"},
@@ -145,6 +153,14 @@ var microscopeItems = map[string][]string{
 }
 
 var microscopeWool = []string{"soil_bacteria"}
+
+// The plates: they go on the stage themselves, with no glass slide, as one looks at colonies on their
+// dish in a real lab. A plate's agar keeps it moist, so it never dries on the stage; it takes no drop,
+// no stain (which would kill what lives on it) and no pipette, and it comes back as it went.
+var microscopePlates = map[string]bool{
+	"agar_plate": true, "agar_plate_unsterile": true, "used_dish": true,
+	"culture_yeast": true, "culture_lactobacillus": true, "culture_soil": true, "culture_cyano": true, "culture_mould": true,
+}
 
 // What can be run onto a slide. The bottle's glass comes back on the client, as with milk.
 var microscopeStains = map[string]bool{"iodine_tincture": true, "methylene_blue": true}
@@ -371,15 +387,20 @@ func (b *storageBook) prepare(w cropWorld, eye *[3]float64, request microscopeRe
 	if request.Source == tardigradeTun {
 		prep.WetAt = now - microscopeDrySeconds
 	}
+	// What lies on the stage: a slide, or the plate itself.
+	stage := glassSlide
+	if microscopePlates[request.Source] {
+		stage = request.Source
+	}
 	b.blocks[storageKeyOf(place.cell)] = &StorageBlock{
 		X: place.cell[0], Y: place.cell[1], Z: place.cell[2],
-		Slots: []StorageSlot{{Type: glassSlide, Count: 1}},
+		Slots: []StorageSlot{{Type: stage, Count: 1}},
 		Prep:  prep,
 	}
 	return b.finishMicroscopeLocked(place, request.ReqID, request.Source), true
 }
 
-// clearSlide takes the slide off the stage: what is on it goes down the sink.
+// clearSlide takes the slide off the stage: what is on it goes down the sink. A plate comes back whole.
 func (b *storageBook) clearSlide(w cropWorld, eye *[3]float64, request microscopeRequest) (storageOutcome, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -390,8 +411,9 @@ func (b *storageBook) clearSlide(w cropWorld, eye *[3]float64, request microscop
 	if block == nil || storageIsEmpty(block.Slots) {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "gone"}), false
 	}
+	item := block.Slots[0].Type
 	delete(b.blocks, storageKeyOf(place.cell))
-	return b.finishMicroscopeLocked(place, request.ReqID, glassSlide), true
+	return b.finishMicroscopeLocked(place, request.ReqID, item), true
 }
 
 // dropWater wets the slide. A slide that had dried comes back with only its tardigrades.
@@ -407,6 +429,9 @@ func (b *storageBook) dropWater(w cropWorld, eye *[3]float64, request microscope
 	}
 	if block.Prep.Stain != "" {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "stained"}), false
+	}
+	if microscopePlates[block.Prep.Source] {
+		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "not a slide"}), false
 	}
 	now := b.clock()
 	if now-block.Prep.WetAt >= microscopeDrySeconds {
@@ -427,6 +452,9 @@ func (b *storageBook) capture(w cropWorld, eye *[3]float64, request microscopeRe
 	}
 	if block != nil && block.Prep != nil && block.Prep.Stain != "" {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "stained"}), false
+	}
+	if block != nil && block.Prep != nil && microscopePlates[block.Prep.Source] {
+		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "not a slide"}), false
 	}
 	if block == nil || block.Prep == nil || block.Prep.Taken >= block.Prep.Tardigrades {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "none left"}), false
@@ -459,6 +487,9 @@ func (b *storageBook) stainSlide(w cropWorld, eye *[3]float64, request microscop
 	if block.Prep.Stain != "" {
 		return refuse("stained")
 	}
+	if microscopePlates[block.Prep.Source] {
+		return refuse("not a slide")
+	}
 	block.Prep.Stain = request.Source
 	block.Prep.StainedAt = b.clock()
 	return b.finishMicroscopeLocked(place, request.ReqID, request.Source), true
@@ -475,6 +506,10 @@ func (b *storageBook) microscopeViewOf(block *StorageBlock) *microscopeView {
 		now = block.Prep.StainedAt
 	}
 	view := &microscopeView{MicroscopePrep: *block.Prep, Age: now - block.Prep.WetAt, Woke: -1}
+	if microscopePlates[block.Prep.Source] {
+		// A plate's agar keeps what lives on it moist: it never dries on the stage.
+		view.Age = 0
+	}
 	if block.Prep.WokenAt > 0 {
 		view.Woke = now - block.Prep.WokenAt
 	}
@@ -490,6 +525,12 @@ func microscopeCleanLoaded(block *StorageBlock) {
 		block.Prep = nil
 		return
 	}
+	// What lies on the stage is a slide, or the plate the prep says.
+	want := glassSlide
+	if microscopePlates[block.Prep.Source] {
+		want = block.Prep.Source
+	}
+	block.Slots = []StorageSlot{{Type: want, Count: 1}}
 	prep := *block.Prep
 	prep.Tardigrades = microscopeTardigrades(prep.Source, prep.Seed)
 	prep.Taken = max(0, min(prep.Taken, prep.Tardigrades))

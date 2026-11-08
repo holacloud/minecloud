@@ -550,3 +550,80 @@ func TestMechanicsDoNotMoveAMicroscope(t *testing.T) {
 		t.Fatal("a ram would leave the slide behind")
 	}
 }
+
+// A plate goes on the stage itself, with no slide: it never dries, takes no drop, stain or pipette, comes
+// back as it went, and a broken microscope gives it back too.
+func TestPlatesGoOnTheStageThemselves(t *testing.T) {
+	for plate := range microscopePlates {
+		book, w, clock := newMicroBook()
+		got, changed := book.prepare(w, storageEye, microAt(plate, "on"))
+		if got.Amount != 1 || !changed {
+			t.Fatalf("%s: %+v", plate, got)
+		}
+		block := book.blocks[blockKey(0, 0, 0)]
+		if block.Slots[0].Type != plate || block.Slots[0].Count != 1 {
+			t.Fatalf("%s: the stage holds %+v", plate, block.Slots)
+		}
+		*clock = clock.Add(10 * time.Minute)
+		if view := book.microscopeViewOf(block); view.Age != 0 {
+			t.Fatalf("%s dried on the stage: %v", plate, view.Age)
+		}
+		if got, _ := book.dropWater(w, storageEye, microAt("", "drop")); got.Reason != "not a slide" {
+			t.Fatalf("%s took a drop: %+v", plate, got)
+		}
+		if got, _ := book.stainSlide(w, storageEye, microAt("methylene_blue", "stain")); got.Reason != "not a slide" {
+			t.Fatalf("%s took a stain: %+v", plate, got)
+		}
+		if got, _ := book.capture(w, storageEye, microAt("", "capture")); got.Reason != "not a slide" {
+			t.Fatalf("%s gave something to the pipette: %+v", plate, got)
+		}
+		// A saved stage that claims a slide under a plate holds the plate again.
+		saved := *block
+		saved.Slots = []StorageSlot{{Type: glassSlide, Count: 3}}
+		microscopeCleanLoaded(&saved)
+		if saved.Slots[0].Type != plate || saved.Slots[0].Count != 1 {
+			t.Fatalf("%s: a cleaned stage holds %+v", plate, saved.Slots)
+		}
+		if got, _ := book.clearSlide(w, storageEye, microAt("", "off")); got.Amount != 1 || got.Type != plate {
+			t.Fatalf("%s came back as %+v", plate, got)
+		}
+		book.prepare(w, storageEye, microAt(plate, "again"))
+		spill, _, err := book.replace(w, 0, 0, 0, "", func() (bool, error) {
+			delete(w, [3]int{0, 0, 0})
+			return true, nil
+		})
+		if err != nil || len(spill) != 1 || spill[0].Type != plate {
+			t.Fatalf("%s: a broken microscope gives %+v %v", plate, spill, err)
+		}
+	}
+	// Every culture an incubator gives, and every dish it can, is one of them: nothing a player takes out
+	// of an incubator is ever impossible to look at.
+	for _, kind := range cultureSpecies {
+		if !microscopePlates[kind.Item] {
+			t.Errorf("%s does not go on the stage", kind.Item)
+		}
+	}
+	for plate := range culturePlates {
+		if !microscopePlates[plate] {
+			t.Errorf("%s does not go on the stage", plate)
+		}
+	}
+	if !microscopePlates[usedDish] {
+		t.Error("a used dish does not go on the stage")
+	}
+	// One thing on the stage at a time.
+	book, w, _ := newMicroBook()
+	book.prepare(w, storageEye, microAt("culture_yeast", "x"))
+	if got, _ := book.prepare(w, storageEye, microAt("dirt", "y")); got.Reason != "occupied" {
+		t.Fatalf("a slide on a plate: %+v", got)
+	}
+	// A dish is no inoculum, though it goes on the stage; a culture plate is.
+	for _, dish := range []string{"agar_plate", "agar_plate_unsterile", usedDish} {
+		if species, ok := cultureInoculum(dish); ok {
+			t.Errorf("%s inoculates %s", dish, species)
+		}
+	}
+	if species, ok := cultureInoculum("culture_mould"); !ok || species != mouldSpecies {
+		t.Error("a mould plate does not inoculate mould")
+	}
+}
