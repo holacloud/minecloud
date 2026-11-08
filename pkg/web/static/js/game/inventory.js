@@ -14,6 +14,8 @@ Object.assign(Game.prototype, {
             if (parsed.counts && typeof parsed.counts === 'object') {
                 this.inventoryCounts = { ...this.inventoryCounts, ...parsed.counts };
             }
+            // Each culture plate's own record, with the counts (js/game/plates.js).
+            if (this.plateRestore) this.plateRestore(parsed.plates);
             this.offhandType = offhandFromSave(parsed.offhand, this.inventoryCounts);
             if (Number.isInteger(parsed.selectedSlot)) {
                 this.selectedSlot = Math.max(0, Math.min(parsed.selectedSlot, this.inventory.length - 1));
@@ -33,9 +35,11 @@ Object.assign(Game.prototype, {
     },
 
     saveInventoryState() {
+        if (this.plateReconcile) this.plateReconcile();
         window.localStorage.setItem('minecloud-inventory-state', JSON.stringify({
             inventory: this.inventory,
             counts: this.inventoryCounts,
+            plates: this.plateEntries || {},
             selectedSlot: this.selectedSlot,
             hotbarPrimaryType: this.hotbarPrimaryType,
             hotbarPinnedTypes: this.hotbarPinnedTypes,
@@ -161,7 +165,9 @@ Object.assign(Game.prototype, {
                 continue;
             }
 
-            slotEl.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            // A culture plate shows the one in the hand, its own colonies (js/game/plates.js).
+            const held = this.plateHeld ? this.plateHeld(type) : null;
+            slotEl.style.backgroundImage = `url(${held ? this.plateIconUrl(held) : this.world.getInventoryIconUrl(type)})`;
             slotEl.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
             countEl.textContent = count;
             slotEl.classList.remove('empty');
@@ -203,20 +209,25 @@ Object.assign(Game.prototype, {
             return;
         }
 
-        visibleItems.forEach(({ type, slot }) => {
+        // A culture plate is one item per plate, each with its own colonies (js/game/plates.js).
+        const shownItems = visibleItems.flatMap(({ type, slot }) => (this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type) }])
+            .map((shown, i) => ({ ...shown, slot, plate: this.plateInventoryItems && plateIdentified(type), first: i === 0 })));
+        shownItems.forEach(({ type, slot, entry, count: amount, plate, first }) => {
             const item = document.createElement('div');
-            item.className = 'inventory-item' + (this.selectedSlot === slot ? ' selected' : '');
+            item.className = 'inventory-item' + (this.selectedSlot === slot && first ? ' selected' : '');
             const brief = index.brief(type, ITEM_TAG_BRIEF_MAX.inventory);
             if (brief) item.dataset.tags = brief;
-            item.title = `${this.getBlockDisplayName(type)}\n${index.entry(type).tags.map((tag) => itemTagLabel(tag)).join(' ')}`;
+            const tags = index.entry(type).tags.map((tag) => itemTagLabel(tag)).join(' ');
+            item.title = plate ? `${this.plateTitle(type, entry && entry.culture)}\n${tags}` : `${this.getBlockDisplayName(type)}\n${tags}`;
             item.addEventListener('click', () => {
+                if (entry) this.plateSelect(type, entry.id);
                 this.selectSlot(slot, { promoteToHotbar: true });
                 this.closeInventoryPanel();
             });
 
             const icon = document.createElement('div');
             icon.className = 'inventory-item-icon';
-            icon.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            icon.style.backgroundImage = `url(${entry ? this.plateIconUrl(entry) : this.world.getInventoryIconUrl(type)})`;
             icon.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
 
             const name = document.createElement('div');
@@ -225,7 +236,7 @@ Object.assign(Game.prototype, {
 
             const count = document.createElement('div');
             count.className = 'inventory-item-count';
-            count.textContent = `x${this.getInventoryCount(type)}`;
+            count.textContent = `x${amount}`;
 
             item.appendChild(icon);
             item.appendChild(name);
@@ -494,6 +505,8 @@ Object.assign(Game.prototype, {
             settled: false,
             mesh: this.world.createDisplayMesh(type, 0.34)
         };
+        // A culture plate on the ground is still that plate (js/game/plates.js).
+        if (options.plate) pickup.plate = options.plate;
 
         pickup.mesh.position.copy(pickup.position);
         pickup.mesh.rotation.copy(pickup.rotation);
@@ -505,7 +518,17 @@ Object.assign(Game.prototype, {
         const type = this.getSelectedBlockType();
         if (!type || this.getInventoryCount(type) <= 0) return;
 
-        if (!this.consumeSelectedBlock()) return;
+        // A culture plate drops as the one in the hand, and is that one when picked up.
+        let plate = null;
+        if (this.plateTakeOut && plateIdentified(type)) {
+            plate = this.plateTakeOut(type);
+            if (plate === undefined) return;
+            this.updateHotbarCounts();
+            this.refreshHeldItemMesh();
+            this.renderCraftingPanel();
+            this.renderInventoryPanel();
+            this.saveInventoryState();
+        } else if (!this.consumeSelectedBlock()) return;
 
         const direction = new THREE.Vector3();
         this.camera.getWorldDirection(direction);
@@ -515,7 +538,7 @@ Object.assign(Game.prototype, {
             z: this.camera.position.z + direction.z * 1.1
         };
         const velocity = direction.multiplyScalar(2.6).add(new THREE.Vector3(0, 1.4, 0));
-        this.spawnPickup(type, dropPosition, 1, { velocity: velocity });
+        this.spawnPickup(type, dropPosition, 1, { velocity: velocity, ...(plate ? { plate } : {}) });
         this.playPlaceSound(type);
     },
 
@@ -523,7 +546,8 @@ Object.assign(Game.prototype, {
         const pickup = this.pickups.get(id);
         if (!pickup) return;
 
-        this.addInventory(pickup.type, pickup.amount);
+        if (pickup.plate && this.plateAdd) this.plateAdd(pickup.plate);
+        else this.addInventory(pickup.type, pickup.amount);
         this.playPickupSound();
         this.scene.remove(pickup.mesh);
         this.disposeObject3D(pickup.mesh);

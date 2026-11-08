@@ -20,6 +20,10 @@
 //   refusal leaves the panel open and says why.
 // - A culture plate, like any dish, goes on a microscope by itself, with no slide, and comes back as it
 //   went (js/game/microscope.js, MICRO_PLATES).
+// - Each culture plate is itself (js/game/plates.js, pkg/network/plates.go): the harvest hands over its record,
+//   what grew on it and the seed its colonies were drawn with here (plate.seed), so the inventory's icon, the
+//   microscope (cultureStagePopulation: the very cells of cultureLensView) and this lens show the same dish.
+//   Sowing a culture plate uses up the one picked.
 // - Items move in two steps, like a chest's (js/game/storage.js): out of the inventory first, and what the
 //   answer says comes back. `culturePending` survives a reload, and storageSync settles it.
 // - The autoclave is a machine like the arc furnace (js/game/appliances.js, APPLIANCE_MACHINES.autoclave):
@@ -375,6 +379,34 @@ function cultureLensView(plate, seed) {
         }
     }
     return view;
+}
+
+// What a microscope shows of a culture plate on its stage (js/game/microscope.js): the very cells and brushes
+// the lens shows of it (cultureLensView), as organisms of the stage, each where the lens puts it (scaled by
+// how far that species spreads on a slide). So a plate is the same plate under both, dead cells included.
+function cultureStagePopulation(culture, seed) {
+    const view = cultureLensView(culture, seed);
+    const random = cultureRng((seed ^ 0x2545f491) >>> 0);
+    const organisms = [];
+    const add = (species, mark) => {
+        const def = typeof MICRO_SPECIES !== 'undefined' ? MICRO_SPECIES[species] : null;
+        const spread = def && def.spread > 0 ? def.spread : 200;
+        organisms.push({
+            index: organisms.length, species, x: mark.x * spread, y: mark.y * spread,
+            depth: random(), rot: mark.rot, seed: mark.seed, variant: mark.variant || 0, scale: 0.85 + random() * 0.3,
+            phase: random() * Math.PI * 2, timer: random() * 6, moltAt: null, gut: 0, action: 'walking', cooldown: 8 + random() * 14,
+            ...(mark.dead ? { dead: true } : {})
+        });
+    };
+    for (const cell of view.cells) add(cell.species, cell);
+    for (const brush of view.brushes) add('mould', brush);
+    return organisms;
+}
+
+// The seed of a plate the server sent with none (saved before plates kept one): where it stands, as the
+// server works it out (cultureSlotSeed in pkg/network/microbes.go).
+function cultureSlotSeed(x, z, slot) {
+    return (((x * 73856093) ^ (z * 19349663) ^ (slot * 83492791)) >>> 0) || 1;
 }
 
 // Draws the lens on a canvas of w x h: a round field on the pale ground of a microscope, and on it what
@@ -813,7 +845,7 @@ Object.assign(Game.prototype, {
         try {
             const saved = JSON.parse(window.localStorage.getItem(CULTURE_PENDING_KEY) || '[]');
             for (const entry of saved) {
-                if (entry && entry.reqId && entry.took && entry.gives) this.culturePending.set(entry.reqId, { took: entry.took, gives: entry.gives, op: entry.op, at: 0 });
+                if (entry && entry.reqId && entry.took && entry.gives) this.culturePending.set(entry.reqId, { took: entry.took, gives: entry.gives, op: entry.op, at: 0, ...(entry.plate ? { plate: entry.plate } : {}) });
             }
         } catch (_error) {
             // Nothing readable: nothing to resume.
@@ -822,7 +854,7 @@ Object.assign(Game.prototype, {
 
     cultureSavePending() {
         try {
-            const entries = [...this.culturePending.entries()].map(([reqId, entry]) => ({ reqId, took: entry.took, gives: entry.gives, op: entry.op }));
+            const entries = [...this.culturePending.entries()].map(([reqId, entry]) => ({ reqId, took: entry.took, gives: entry.gives, op: entry.op, ...(entry.plate ? { plate: entry.plate } : {}) }));
             window.localStorage.setItem(CULTURE_PENDING_KEY, JSON.stringify(entries));
         } catch (_error) {
             // Blocked storage: it lasts until the page reloads.
@@ -844,7 +876,9 @@ Object.assign(Game.prototype, {
     // Sends a request: what it uses leaves the inventory now, and the answer settles the rest. Returns its
     // id, or false if it could not be sent. `hold`: what comes back goes to the player's hand, with the panel
     // closed (only for this session's requests: one resumed after a reload does not take the hand).
-    cultureRequest(message, op, payload, source, hold = false) {
+    // `plateId`: the culture plate sown, when the source is one (js/game/plates.js); the one in the hand if
+    // not said. It is used up, and comes back as itself if the server refuses.
+    cultureRequest(message, op, payload, source, hold = false, plateId = null) {
         if (!this.network || !this.network.connected) {
             this.receiveSystemMessage({ text: cultureSay('notConnected') });
             return false;
@@ -853,12 +887,19 @@ Object.assign(Game.prototype, {
         for (const [type, count] of Object.entries(took)) {
             if (this.getInventoryCount(type) < count) return false;
         }
+        const plates = op === 'inoculate' && this.platesOf && plateIdentified(source) ? this.platesOf(source) : [];
+        // false: a plain one, with no record.
+        const plate = plateId === false ? null : plates.find((entry) => entry.id === plateId) || (plateId ? null : plates[0]) || null;
+        if (plateId && !plate) return false;
+        if (plateId === false && this.plateLegacyCount(source) <= 0) return false;
+        if (plate) delete took[source];
         for (const [type, count] of Object.entries(took)) this.inventoryCounts[type] = this.getInventoryCount(type) - count;
+        if (plate) this.plateTakeOut(source, plate.id);
         const reqId = this.storageNewRequestId();
-        this.culturePending.set(reqId, { took, gives, op, at: performance.now(), ...(hold ? { hold: true } : {}) });
+        this.culturePending.set(reqId, { took, gives, op, at: performance.now(), ...(hold ? { hold: true } : {}), ...(plate ? { plate } : {}) });
         this.cultureSavePending();
         this.cultureInventoryChanged();
-        this.network.send(message, { ...payload, reqId });
+        this.network.send(message, { ...payload, reqId, ...(plate ? { plate: plate.id, token: plate.token } : {}) });
         return reqId;
     },
 
@@ -878,6 +919,10 @@ Object.assign(Game.prototype, {
         this.culturePending.delete(outcome.reqId);
         this.cultureSavePending();
         const items = cultureSettle(pending, outcome);
+        // A plate sown and refused comes back as itself; a culture plate harvested comes as itself, into the
+        // hand if it is going there (js/game/plates.js).
+        if (pending.plate && !(outcome.amount > 0) && this.plateAdd) this.plateAdd(pending.plate);
+        if (this.plateSettle) this.plateSettle(outcome.amount > 0 ? outcome : null, items, { front: Boolean(pending.hold) });
         for (const [type, count] of Object.entries(items)) {
             if (count > 0 && this.world.blockTypes[type]) this.addInventory(type, count);
         }
@@ -1060,10 +1105,10 @@ Object.assign(Game.prototype, {
         this.cultureRender();
     },
 
-    cultureApply(op, slot, source) {
+    cultureApply(op, slot, source, plateId = null) {
         this.cultureChoosing = null;
         const messages = { load: 'cultureLoad', inoculate: 'cultureInoculate', harvest: 'cultureHarvest' };
-        this.cultureRequest(messages[op], op, { ...this.cultureAt, slot, ...(source ? { source } : {}) }, source, op === 'harvest');
+        this.cultureRequest(messages[op], op, { ...this.cultureAt, slot, ...(source ? { source } : {}) }, source, op === 'harvest', plateId);
         this.cultureRender();
     },
 
@@ -1238,7 +1283,7 @@ Object.assign(Game.prototype, {
             const plate = view && view.plates ? view.plates[slot] : null;
             card.classList.toggle('picked', slot === this.culturePicked);
             card.querySelector('.culture-name').textContent = cultureSay('slot', slot + 1);
-            const seed = ((this.cultureAt.x * 73856093) ^ (this.cultureAt.z * 19349663) ^ (slot * 83492791)) >>> 0;
+            const seed = (plate && plate.seed) || cultureSlotSeed(this.cultureAt.x, this.cultureAt.z, slot);
             const canvas = card.querySelector('canvas');
             cultureDrawPlate(canvas.getContext('2d'), canvas.width, plateType, plate, seed);
             card.querySelector('.culture-info').textContent = this.cultureCardInfo(plateType, plate, view);
@@ -1305,17 +1350,22 @@ Object.assign(Game.prototype, {
         const choices = this.cultureChoices(choosing.op);
         title.textContent = choices.length === 0 ? cultureSay(choosing.op === 'load' ? 'noPlates' : 'noInocula') : cultureSay(choosing.op === 'load' ? 'chooseLoad' : 'chooseInoculum');
         pop.appendChild(title);
-        for (const type of choices) {
+        // A culture plate is a choice of its own, each with its colonies: the one picked is the one used up.
+        const rows = choices.flatMap((type) => (this.plateInventoryItems && plateIdentified(type)
+            ? [...this.platesOf(type).map((entry) => ({ type, entry, count: 1 })), ...(this.plateLegacyCount(type) > 0 ? [{ type, entry: null, count: this.plateLegacyCount(type) }] : [])]
+            : [{ type, entry: null, count: this.getInventoryCount(type) }]));
+        for (const { type, entry, count } of rows) {
             const choice = document.createElement('button');
             choice.type = 'button';
             choice.className = 'culture-choice';
             const icon = document.createElement('i');
-            icon.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+            icon.style.backgroundImage = `url(${entry ? this.plateIconUrl(entry) : this.world.getInventoryIconUrl(type)})`;
             const species = choosing.op === 'inoculate' ? cultureInoculum(type) : null;
             const words = document.createElement('span');
-            words.textContent = `${this.cultureName(type)} ×${this.getInventoryCount(type)}${species ? `: ${cultureSay('carries', this.cultureSpeciesName(species))}` : ''}`;
+            words.textContent = `${this.cultureName(type)} ×${count}${species ? `: ${cultureSay('carries', this.cultureSpeciesName(species))}` : ''}`;
+            if (entry) choice.title = this.plateTitle(type, entry.culture);
             choice.append(icon, words);
-            choice.addEventListener('click', () => this.cultureApply(choosing.op, choosing.slot, type));
+            choice.addEventListener('click', () => this.cultureApply(choosing.op, choosing.slot, type, entry ? entry.id : (this.platesOf && plateIdentified(type) ? false : null)));
             pop.appendChild(choice);
         }
         const cancel = document.createElement('button');
@@ -1357,7 +1407,7 @@ Object.assign(Game.prototype, {
         look.querySelector('#culture-look-title').textContent = cultureSay('lensTitle', slot + 1, this.cultureName(contents.slots[slot].type));
         look.querySelector('.culture-look-close').title = cultureSay('lensClose');
         const canvas = look.querySelector('#culture-lens');
-        const seed = ((this.cultureAt.x * 73856093) ^ (this.cultureAt.z * 19349663) ^ (slot * 83492791)) >>> 0;
+        const seed = (plate && plate.seed) || cultureSlotSeed(this.cultureAt.x, this.cultureAt.z, slot);
         cultureDrawLens(canvas.getContext('2d'), canvas.width, canvas.height, plate, seed);
         const lines = look.querySelector('#culture-lens-lines');
         lines.innerHTML = '';

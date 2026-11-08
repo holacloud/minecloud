@@ -217,6 +217,7 @@ const MICROSCOPE_TEXT = {
     refusedNotStain: { ES: 'Eso no es una tinción.', EN: 'That is not a stain.' },
     refusedBadRequest: { ES: 'El servidor no lo ha entendido. Prueba otra vez.', EN: 'The server did not understand that. Try again.' },
     refusedLost: { ES: 'Al servidor no le ha llegado. Lo que se gastó ha vuelto.', EN: 'The server never got that. What it used has come back.' },
+    refusedNotYours: { ES: 'Esa placa ya no está en tus manos.', EN: 'That plate is no longer in your hands.' },
     refusedOther: { ES: 'El servidor ha dicho que no.', EN: 'The server said no.' },
 
     // Messages in the chat, while taking a sample or opening the panel.

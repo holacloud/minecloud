@@ -11,6 +11,10 @@
 //   reconnection or a reload: the server answers from its log, or kills a move that never
 //   arrived so that it can no longer apply.
 // - When a chest is broken the server sends its contents to whoever broke it, as pickups.
+// - A culture plate (js/game/plates.js) is one cell in the chest and one among the player's items, each
+//   drawn from its own record; it moves alone, named by its id (and on a put its token), and the pending
+//   move keeps the plate so a refusal gives back that very plate. Plain plates with no record yet are a
+//   stack among the player's items, and the server makes each a plate as it lands.
 // - A machine (APPLIANCE_MACHINES) shows what it works on, its fuel or coal and the result, with
 //   its fire and work as bars, and lists only what fits it; a fridge has two tabs, a compartment
 //   each. Cold furniture and the arc furnace say whether they have power. All change on their own, on the
@@ -95,7 +99,7 @@ function storageBaseName(type) {
 // Whether two lists of slots hold the same stacks, whatever their progress.
 function storageSameStacks(a, b) {
     if (!a || !b || a.length !== b.length) return !a && !b;
-    return a.every((slot, i) => (slot.type || '') === (b[i].type || '') && (slot.count || 0) === (b[i].count || 0));
+    return a.every((slot, i) => (slot.type || '') === (b[i].type || '') && (slot.count || 0) === (b[i].count || 0) && (slot.plate || '') === (b[i].plate || ''));
 }
 
 // The line of status of a machine that burns, from what the server says of its fire.
@@ -127,8 +131,8 @@ Object.assign(Game.prototype, {
             const saved = JSON.parse(window.localStorage.getItem(STORAGE_PENDING_KEY) || '[]');
             for (const entry of saved) {
                 if (entry && entry.reqId && (entry.op === 'put' || entry.op === 'take') && entry.amount > 0) {
-                    // From an earlier visit: ask at the first chance.
-                    this.storagePending.set(entry.reqId, { op: entry.op, type: entry.type, amount: entry.amount, at: 0 });
+                    // From an earlier visit: ask at the first chance. A plate on its way is that plate.
+                    this.storagePending.set(entry.reqId, { op: entry.op, type: entry.type, amount: entry.amount, at: 0, ...(entry.plate ? { plate: entry.plate } : {}) });
                 }
             }
         } catch (_error) {
@@ -138,7 +142,7 @@ Object.assign(Game.prototype, {
 
     storageSavePending() {
         try {
-            const entries = [...this.storagePending.entries()].map(([reqId, entry]) => ({ reqId, op: entry.op, type: entry.type, amount: entry.amount }));
+            const entries = [...this.storagePending.entries()].map(([reqId, entry]) => ({ reqId, op: entry.op, type: entry.type, amount: entry.amount, ...(entry.plate ? { plate: entry.plate } : {}) }));
             window.localStorage.setItem(STORAGE_PENDING_KEY, JSON.stringify(entries));
         } catch (_error) {
             // Blocked storage: it lasts until the page reloads.
@@ -200,12 +204,24 @@ Object.assign(Game.prototype, {
 
     // ---- Moving items ----
 
-    storagePut(type) {
+    // `plate`: a culture plate goes in as itself, one at a time (js/game/plates.js); with null, the plain
+    // plates of that type (from before plates had records) go as any item.
+    storagePut(type, plate = null) {
         const at = this.storageAt;
-        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, this.getInventoryCount(type));
-        if (!at || amount <= 0 || !this.network.connected) return;
+        if (!at || !this.network.connected) return;
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
         const reqId = this.storageNewRequestId();
+        if (plate) {
+            if (!this.plateTakeOut(type, plate.id)) return;
+            this.storagePending.set(reqId, { op: 'put', type, amount: 1, plate, at: performance.now() });
+            this.storageSavePending();
+            this.storageInventoryChanged();
+            this.network.send('storagePut', { ...at, type, amount: 1, plate: plate.id, token: plate.token, reqId, ...tab });
+            return;
+        }
+        const plain = this.plateLegacyCount && plateIdentified(type) ? this.plateLegacyCount(type) : this.getInventoryCount(type);
+        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, plain);
+        if (amount <= 0) return;
         this.storagePending.set(reqId, { op: 'put', type, amount, at: performance.now() });
         this.storageSavePending();
         // Out of the inventory first, so the same items can never go anywhere else meanwhile.
@@ -224,13 +240,14 @@ Object.assign(Game.prototype, {
             this.storageRender();
             return;
         }
-        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, slot.count);
+        // A culture plate comes out as itself: the request names it.
+        const amount = slot.plate ? 1 : storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, slot.count);
         if (amount <= 0) return;
         const reqId = this.storageNewRequestId();
         this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now() });
         this.storageSavePending();
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
-        this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId, ...tab });
+        this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId, ...tab, ...(slot.plate ? { plate: slot.plate } : {}) });
     },
 
     // The slots of the tab on show.
@@ -257,8 +274,16 @@ Object.assign(Game.prototype, {
         this.storageSavePending();
         const { give } = storageApplyOutcome(pending, outcome.amount);
         if (pending.op === 'put' && outcome.reason === 'full') this.storageNote = 'It is full';
+        if (outcome.reason === 'not yours') this.storageNote = 'That plate is no longer in your hands';
         if (applianceRefusalNote(outcome.reason)) this.storageNote = applianceRefusalNote(outcome.reason);
-        if (give > 0 && this.world.blockTypes[pending.type]) this.addInventory(pending.type, give);
+        if (give > 0 && pending.plate && this.plateAdd) {
+            // The plate did not go in: it comes back as itself, its token still good.
+            this.plateAdd(pending.plate);
+        } else if (give > 0 && this.world.blockTypes[pending.type]) {
+            // What came out of a chest: each culture plate as itself, the rest as items.
+            const items = this.plateSettle ? this.plateSettle(pending.op === 'take' ? outcome : null, { [pending.type]: give }) : { [pending.type]: give };
+            if (items[pending.type] > 0) this.addInventory(pending.type, items[pending.type]);
+        }
         this.storageRender();
         if (outcome.amount > 0) this.playPickupSound();
     },
@@ -291,7 +316,9 @@ Object.assign(Game.prototype, {
         const items = this.constructionStockedDrop ? this.constructionStockedDrop(drop) : drop.items;
         for (const item of items) {
             if (item && item.count > 0 && this.world.blockTypes[item.type]) {
-                this.spawnPickup(item.type, { x: drop.x, y: drop.y, z: drop.z }, item.count);
+                // A culture plate spills as itself, handed to this client (js/game/plates.js).
+                const plate = item.grant && typeof plateEntryOf === 'function' ? plateEntryOf(item.grant) : null;
+                this.spawnPickup(item.type, { x: drop.x, y: drop.y, z: drop.z }, plate ? 1 : item.count, plate ? { plate } : {});
             }
         }
     },
@@ -399,11 +426,12 @@ Object.assign(Game.prototype, {
         }, true);
     },
 
-    storageCell(type, count, title, onClick) {
+    // `icon`: a culture plate's own drawing, instead of its type's.
+    storageCell(type, count, title, onClick, icon = null) {
         const cell = document.createElement('div');
         cell.className = 'storage-cell';
         cell.title = title;
-        if (this.world.blockTypes[type]) cell.style.backgroundImage = `url(${this.world.getInventoryIconUrl(type)})`;
+        if (icon || this.world.blockTypes[type]) cell.style.backgroundImage = `url(${icon || this.world.getInventoryIconUrl(type)})`;
         const label = document.createElement('span');
         label.textContent = count;
         cell.appendChild(label);
@@ -440,8 +468,16 @@ Object.assign(Game.prototype, {
         const query = (this.storageSearch || '').trim().toLowerCase();
         const matches = this.inventory.filter((type) => this.getInventoryCount(type) > 0 && this.world.blockTypes[type] &&
             (!machine || applianceMachineTakes(this.storageKind, type)) && (!query || `${type} ${this.getBlockDisplayName(type)}`.toLowerCase().includes(query)));
-        matches.slice(0, STORAGE_LIST_MAX).forEach((type) => {
-            items.appendChild(this.storageCell(type, this.getInventoryCount(type), this.getBlockDisplayName(type), () => this.storagePut(type)));
+        // Each culture plate is its own cell, and goes in as itself; plain ones (no record yet) are one stack.
+        const cells = matches.flatMap((type) => {
+            if (!this.plateInventoryItems || !plateIdentified(type)) return [{ type, entry: null, count: this.getInventoryCount(type) }];
+            const plates = this.platesOf(type).map((entry) => ({ type, entry, count: 1 }));
+            const plain = this.plateLegacyCount(type);
+            return plain > 0 ? [...plates, { type, entry: null, count: plain }] : plates;
+        });
+        cells.slice(0, STORAGE_LIST_MAX).forEach(({ type, entry, count }) => {
+            const title = entry || (this.plateTitle && plateIdentified(type)) ? this.plateTitle(type, entry && entry.culture) : this.getBlockDisplayName(type);
+            items.appendChild(this.storageCell(type, count, title, () => this.storagePut(type, entry), entry ? this.plateIconUrl(entry) : null));
         });
         this.storageRenderProgress();
     },
@@ -453,7 +489,11 @@ Object.assign(Game.prototype, {
             empty.className = 'storage-cell empty';
             return empty;
         }
-        const cell = this.storageCell(slot.type, slot.count, this.getBlockDisplayName(slot.type), () => this.storageTake(index));
+        // A culture plate shows what is on it, from the server's record (contents.cultures).
+        const culture = slot.plate && this.storageContents && this.storageContents.cultures ? this.storageContents.cultures[slot.plate] || null : null;
+        const plate = slot.plate && this.plateIconUrl ? { id: slot.plate, type: slot.type, culture } : null;
+        const title = plate ? this.plateTitle(slot.type, culture) : this.getBlockDisplayName(slot.type);
+        const cell = this.storageCell(slot.type, slot.count, title, () => this.storageTake(index), plate && culture ? this.plateIconUrl(plate) : null);
         if (this.storageContents && this.storageContents.cold && applianceSlotProgress(this.storageKind, this.storageTab, slot) !== null) {
             const bar = document.createElement('div');
             bar.className = 'storage-bar';

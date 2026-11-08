@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"math"
+	"reflect"
 	"testing"
 
 	"minecloud/pkg/terrain"
@@ -284,10 +285,10 @@ func TestIncubatorMessages(t *testing.T) {
 	req := cultureRequest{Slot: 1, Source: "agar_plate", ReqID: "same-request-1"}
 	first, changed := r.book.cultureLoad(r.w, storageEye, req)
 	again, changedAgain := r.book.cultureLoad(r.w, storageEye, req)
-	if first != again || !changed || changedAgain {
+	if !reflect.DeepEqual(first, again) || !changed || changedAgain {
 		t.Fatalf("repeat: %+v %+v", first, again)
 	}
-	if got := r.book.sync([]string{"same-request-1"}); len(got) != 1 || got[0] != first {
+	if got := r.book.sync([]string{"same-request-1"}); len(got) != 1 || !reflect.DeepEqual(got[0], first) {
 		t.Fatalf("sync: %+v", got)
 	}
 	// The target is clamped to the dial.

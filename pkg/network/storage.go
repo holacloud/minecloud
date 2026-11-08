@@ -37,10 +37,16 @@ import (
 // file as the contents, so after a crash they still agree. Ovens, foundries, arc furnaces and cold
 // furniture are chests that also change what they hold on their own: appliances.go.
 //
+// A culture plate is the exception: each is one plate with a record of what grew on it (plates.go).
+// It lies alone in its slot (StorageSlot.Plate), a put names it with `plate` and the `token` its holder
+// was given, and a take names the plate and answers with a new token in `plates`; storageContents
+// carries what is on each plate in `cultures`, and a break hands each out in its spilt item's `grant`.
+//
 // What this does NOT protect: the player's inventory lives in the browser and the server has no
 // way to know what it holds. A modified client can put items it never had, and the position the
 // reach check reads is reported by the client too. The server only guarantees that what is in a
-// chest stays consistent: an item is either in the chest or handed to one client, never both.
+// chest stays consistent: an item is either in the chest or handed to one client, never both. A
+// culture plate's record cannot be made up at all, nor put in two places (plates.go).
 //
 // storageKinds and storageFreezers are mirrored by STORAGE_KINDS and STORAGE_FREEZERS in
 // js/game/storage.js (test/js/furniture.test.js).
@@ -95,6 +101,10 @@ type StorageSlot struct {
 	Count int    `json:"count,omitempty"`
 	// Seconds this stack has spent turning cold (appliances.go); 0 anywhere else.
 	Chill float64 `json:"chill,omitempty"`
+	// A culture plate's id (plates.go): it is alone in its slot, and its record says what is on it.
+	Plate string `json:"plate,omitempty"`
+	// Only in what a broken block spills: the plate handed to whoever broke it. Never saved.
+	Grant *PlateGrant `json:"grant,omitempty"`
 }
 
 // StorageBlock is the contents of one chest, by the position of its base cell. Only blocks that
@@ -130,6 +140,8 @@ type storageOutcome struct {
 	Reason string `json:"reason,omitempty"`
 	// A second item that comes with the first, one of it (a culture's dirty dish: microbes.go).
 	Also string `json:"also,omitempty"`
+	// The culture plates that came out, each with the token that makes it this client's (plates.go).
+	Plates []PlateGrant `json:"plates,omitempty"`
 }
 
 // storageMove is a storagePut or storageTake message.
@@ -143,6 +155,9 @@ type storageMove struct {
 	ReqID  string `json:"reqId"`
 	// "" (the main slots) or "freezer".
 	Compartment string `json:"compartment"`
+	// A culture plate (plates.go): which one, and on a put the token that says the client holds it.
+	Plate string `json:"plate,omitempty"`
+	Token string `json:"token,omitempty"`
 }
 
 // storageSnapshot is what a storageContents message carries; Rev grows with every change, so a
@@ -164,6 +179,8 @@ type storageSnapshot struct {
 	Microscope *microscopeView `json:"microscope,omitempty"`
 	// An incubator: its temperatures, light and plates.
 	Incubator *incubatorView `json:"incubator,omitempty"`
+	// What lies on each culture plate in it, by the plate's id (plates.go).
+	Cultures map[string]*CulturePlate `json:"cultures,omitempty"`
 }
 
 // storageBase is a block name without its states.
@@ -257,6 +274,8 @@ type storageBook struct {
 	lit     func(w cropWorld, cell [3]int) bool
 	// The world the book last read, for what a panel shows of the place (nil until then).
 	world cropWorld
+	// Every culture plate, by its id (plates.go).
+	plates map[string]*PlateRecord
 }
 
 func newStorageBook() *storageBook {
@@ -268,6 +287,7 @@ func newStorageBook() *storageBook {
 		active:     make(map[string]bool),
 		asked:      make(map[string]int),
 		shownPower: make(map[[3]int]bool),
+		plates:     make(map[string]*PlateRecord),
 		deliver:    storageDeliver,
 		powered:    powerRunsAt,
 		adopt:      powerAdopt,
@@ -361,6 +381,7 @@ func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
 	if place.kind == incubatorKind {
 		snapshot.Incubator = b.incubatorViewOf(b.world, cell, block)
 	}
+	snapshot.Cultures = b.culturesOfLocked(snapshot.Slots, snapshot.Freezer)
 	return snapshot
 }
 
@@ -393,6 +414,10 @@ func storageCheckMove(move storageMove) string {
 		return "bad amount"
 	}
 	if !storageItemName.MatchString(move.Type) || move.Type == "air" {
+		return "bad item"
+	}
+	// Only culture plates are one plate each (plates.go).
+	if move.Plate != "" && !plateIdentified(move.Type) {
 		return "bad item"
 	}
 	return ""
@@ -460,10 +485,21 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 	for len(*list) < capacity {
 		*list = append(*list, StorageSlot{})
 	}
+	if plateIdentified(move.Type) {
+		moved, reason := b.putPlateLocked(list, first, last, move)
+		if moved == 0 {
+			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: reason}), false
+		}
+		b.blocks[key] = block
+		b.wakeLocked(place, block)
+		b.rev++
+		b.notifyLocked(place)
+		return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
+	}
 	slots := (*list)[first:last]
 	left := move.Amount
 	for i := range slots {
-		if slot := &slots[i]; left > 0 && slot.Type == move.Type && slot.Count < storageMaxStack {
+		if slot := &slots[i]; left > 0 && slot.Type == move.Type && slot.Plate == "" && slot.Count < storageMaxStack {
 			n := min(left, storageMaxStack-slot.Count)
 			slot.Count += n
 			left -= n
@@ -512,10 +548,19 @@ func (b *storageBook) take(w cropWorld, eye *[3]float64, move storageMove) (stor
 		return refuse("gone")
 	}
 	slot := &list[move.Slot]
-	moved := min(move.Amount, slot.Count)
-	slot.Count -= moved
-	if slot.Count == 0 {
-		*slot = StorageSlot{}
+	var grants []PlateGrant
+	moved := 0
+	if slot.Plate != "" || plateIdentified(slot.Type) {
+		var reason string
+		if moved, grants, reason = b.takePlatesLocked(slot, move); moved == 0 {
+			return refuse(reason)
+		}
+	} else {
+		moved = min(move.Amount, slot.Count)
+		slot.Count -= moved
+		if slot.Count == 0 {
+			*slot = StorageSlot{}
+		}
 	}
 	if block.holdsNothing() {
 		delete(b.blocks, key)
@@ -525,7 +570,7 @@ func (b *storageBook) take(w cropWorld, eye *[3]float64, move storageMove) (stor
 	}
 	b.rev++
 	b.notifyLocked(place)
-	return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
+	return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved, Plates: grants}), true
 }
 
 func storageIsEmpty(slots []StorageSlot) bool {
@@ -627,15 +672,9 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 	var spill []StorageSlot
 	if block := b.blocks[key]; block != nil {
 		if block.Kind == incubatorKind {
-			spill = incubatorSpill(block)
+			spill = b.incubatorSpillLocked(block)
 		} else {
-			for _, list := range [][]StorageSlot{block.Slots, block.Freezer} {
-				for _, slot := range list {
-					if slot.Count > 0 {
-						spill = append(spill, StorageSlot{Type: slot.Type, Count: slot.Count})
-					}
-				}
-			}
+			spill = append(b.spillSlotsLocked(block.Slots), b.spillSlotsLocked(block.Freezer)...)
 		}
 		delete(b.blocks, key)
 		delete(b.active, key)
@@ -655,9 +694,17 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 }
 
 // load restores the saved contents, dropping anything no valid request could have made.
-func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutcome) {
+func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutcome, savedPlates ...map[string]PlateRecord) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.plates = make(map[string]*PlateRecord)
+	for _, plates := range savedPlates {
+		for id, record := range plates {
+			if clean := plateCleanRecord(id, record); clean != nil {
+				b.plates[id] = clean
+			}
+		}
+	}
 	b.blocks = make(map[string]*StorageBlock, len(saved))
 	b.active = make(map[string]bool)
 	b.asked = make(map[string]int)
@@ -677,6 +724,7 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 			b.active[key] = true
 		}
 	}
+	b.migratePlatesLocked()
 	b.log = make(map[string]storageOutcome, len(savedLog))
 	b.logFIFO = nil
 	for _, outcome := range savedLog {
@@ -695,14 +743,24 @@ func storageCleanSlots(saved []StorageSlot) []StorageSlot {
 	for i, slot := range saved {
 		if slot.Count > 0 && slot.Count <= storageMaxStack && storageItemName.MatchString(slot.Type) {
 			slot.Chill = math.Max(0, slot.Chill)
+			slot.Grant = nil
+			if !plateIDPattern.MatchString(slot.Plate) {
+				slot.Plate = ""
+			}
 			slots[i] = slot
 		}
 	}
 	return slots
 }
 
-// snapshot copies everything for world.json.
+// snapshot copies the chests and the log for world.json.
 func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
+	blocks, outcomes, _ := b.snapshotAll()
+	return blocks, outcomes
+}
+
+// snapshotAll copies everything for world.json: the plates with the chests that hold them, in one go.
+func (b *storageBook) snapshotAll() (map[string]StorageBlock, []storageOutcome, map[string]PlateRecord) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	blocks := make(map[string]StorageBlock, len(b.blocks))
@@ -725,7 +783,13 @@ func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 	for _, id := range b.logFIFO {
 		outcomes = append(outcomes, b.log[id])
 	}
-	return blocks, outcomes
+	plates := make(map[string]PlateRecord, len(b.plates))
+	for id, record := range b.plates {
+		copied := *record
+		copied.Culture = cultureFrozen(record.Culture)
+		plates[id] = copied
+	}
+	return blocks, outcomes, plates
 }
 
 // storagePlayerEye is the position the client last reported (nil if it has not joined).

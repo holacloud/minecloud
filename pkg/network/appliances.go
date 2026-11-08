@@ -419,8 +419,16 @@ func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 				b.stopAskingLocked(cell, key)
 			}
 		} else if m := machines[block.Kind]; m != nil {
+			// A culture plate in the food slot (the autoclave's: plates.go) is used up when it is done.
+			plate := ""
+			if len(block.Slots) > ovenSlotFood {
+				plate = block.Slots[ovenSlotFood].Plate
+			}
 			// The grid has heard an electric machine only if it asked before this tick.
 			changed, work = m.step(block, dt, m.electric() && b.asked[key] > 0 && b.powered(cell))
+			if plate != "" && block.Slots[ovenSlotFood].Plate != plate {
+				delete(b.plates, plate)
+			}
 			b.showFireLocked(w, cell, name, b.litLocked(m, cell, block))
 			if m.electric() {
 				if work {

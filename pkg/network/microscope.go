@@ -23,9 +23,12 @@ import (
 //   - microscopePrepare {x, y, z, source, reqId}: puts a slide on the stage with `source` on it (a sample,
 //     another item, a tardigrade, or "cheek" for a smear of the player's own cheek). A Petri dish of any
 //     kind (microscopePlates: a culture plate, or a clean, unsterile or used one) goes on the stage itself,
-//     with no slide, as colonies are looked at on their dish.
+//     with no slide, as colonies are looked at on their dish. A culture plate is the one `plate` and
+//     `token` name (plates.go): the prep keeps its id and its seed, and the panel is told what is on it
+//     (microscopeView.Culture), so it shows that plate and no other.
 //   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed; a plate comes
-//     back as it went on. The answer's Type names what comes back.
+//     back as it went on. The answer's Type names what comes back, and `plates` hands a culture plate back
+//     with a new token.
 //   - microscopeDrop    {x, y, z, reqId}: a drop of water on the slide.
 //   - microscopeCapture {x, y, z, reqId}: draws a tardigrade off the slide into a tube.
 //   - microscopeStain   {x, y, z, source, reqId}: stains the slide with `source` (one of microscopeStains),
@@ -182,14 +185,18 @@ type MicroscopePrep struct {
 	// The stain it was given, if any, and when: what was on it stopped there.
 	Stain     string  `json:"stain,omitempty"`
 	StainedAt float64 `json:"stainedAt,omitempty"`
+	// A culture plate on the stage (plates.go): its id. Seed is then the plate's own.
+	Plate string `json:"plate,omitempty"`
 }
 
 // microscopeView is a slide in a storageContents message: Age is the seconds since it was last wetted,
-// and Woke since a drop last ended a drought (negative if none has).
+// and Woke since a drop last ended a drought (negative if none has). Culture is what lies on a culture
+// plate on the stage, from its record: the microscope draws that (js/game/cultures.js, cultureStagePopulation).
 type microscopeView struct {
 	MicroscopePrep
-	Age  float64 `json:"age"`
-	Woke float64 `json:"woke"`
+	Age     float64       `json:"age"`
+	Woke    float64       `json:"woke"`
+	Culture *CulturePlate `json:"culture,omitempty"`
 }
 
 // microscopeRequest is the payload of every message above.
@@ -199,6 +206,9 @@ type microscopeRequest struct {
 	Z      int    `json:"z"`
 	Source string `json:"source"`
 	ReqID  string `json:"reqId"`
+	// A culture plate put on the stage (plates.go): which one, and the token that says the client holds it.
+	Plate string `json:"plate,omitempty"`
+	Token string `json:"token,omitempty"`
 }
 
 // sampleRoll is a number in [0, 1) that only depends on the salt and the coordinates.
@@ -388,13 +398,30 @@ func (b *storageBook) prepare(w cropWorld, eye *[3]float64, request microscopeRe
 		prep.WetAt = now - microscopeDrySeconds
 	}
 	// What lies on the stage: a slide, or the plate itself.
-	stage := glassSlide
+	stage := StorageSlot{Type: glassSlide, Count: 1}
 	if microscopePlates[request.Source] {
-		stage = request.Source
+		stage.Type = request.Source
+	}
+	// A culture plate is the one the client holds (or a plain one from before plates had records, which
+	// gets the record its type says): what the microscope shows of it is its record's.
+	if plateIdentified(request.Source) {
+		var record *PlateRecord
+		if request.Plate != "" {
+			var reason string
+			if record, reason = b.checkClaimLocked(request.Plate, request.Token, request.Source); reason != "" {
+				return refuse(reason)
+			}
+		} else {
+			record = b.mintPlateLocked(request.Source, nil)
+		}
+		record.Token = ""
+		stage.Plate = record.ID
+		prep.Plate = record.ID
+		prep.Seed = record.Culture.Seed
 	}
 	b.blocks[storageKeyOf(place.cell)] = &StorageBlock{
 		X: place.cell[0], Y: place.cell[1], Z: place.cell[2],
-		Slots: []StorageSlot{{Type: stage, Count: 1}},
+		Slots: []StorageSlot{stage},
 		Prep:  prep,
 	}
 	return b.finishMicroscopeLocked(place, request.ReqID, request.Source), true
@@ -411,9 +438,20 @@ func (b *storageBook) clearSlide(w cropWorld, eye *[3]float64, request microscop
 	if block == nil || storageIsEmpty(block.Slots) {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "gone"}), false
 	}
-	item := block.Slots[0].Type
+	stage := block.Slots[0]
+	var grants []PlateGrant
+	if stage.Plate != "" {
+		// The plate comes back to whoever took it off, as it went on.
+		record := b.plates[stage.Plate]
+		if record == nil {
+			record = b.mintPlateLocked(stage.Type, nil)
+		}
+		grants = []PlateGrant{b.grantLocked(record)}
+	}
 	delete(b.blocks, storageKeyOf(place.cell))
-	return b.finishMicroscopeLocked(place, request.ReqID, item), true
+	b.rev++
+	b.notifyLocked(place)
+	return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Type: stage.Type, Amount: 1, Plates: grants}), true
 }
 
 // dropWater wets the slide. A slide that had dried comes back with only its tardigrades.
@@ -510,6 +548,9 @@ func (b *storageBook) microscopeViewOf(block *StorageBlock) *microscopeView {
 		// A plate's agar keeps what lives on it moist: it never dries on the stage.
 		view.Age = 0
 	}
+	if block.Prep.Plate != "" {
+		view.Culture = b.plateCultureLocked(block.Prep.Plate)
+	}
 	if block.Prep.WokenAt > 0 {
 		view.Woke = now - block.Prep.WokenAt
 	}
@@ -530,7 +571,15 @@ func microscopeCleanLoaded(block *StorageBlock) {
 	if microscopePlates[block.Prep.Source] {
 		want = block.Prep.Source
 	}
-	block.Slots = []StorageSlot{{Type: want, Count: 1}}
+	// A culture plate keeps its id (plates.go checks it against the records).
+	plate := ""
+	for _, slot := range block.Slots {
+		if plateIdentified(want) && slot.Count > 0 && slot.Type == want {
+			plate = slot.Plate
+			break
+		}
+	}
+	block.Slots = []StorageSlot{{Type: want, Count: 1, Plate: plate}}
 	prep := *block.Prep
 	prep.Tardigrades = microscopeTardigrades(prep.Source, prep.Seed)
 	prep.Taken = max(0, min(prep.Taken, prep.Tardigrades))

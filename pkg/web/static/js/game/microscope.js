@@ -7,6 +7,8 @@
 //   to build against it) opens it if there is one: it is someone's, and is shown, never replaced. On a free
 //   microscope, something a slide takes in the hand uses a slide and goes on it (the empty tube comes back),
 //   a glass slide in the hand smears your own cheek, and anything else opens nothing and says what to do.
+//   A culture plate is the one in the hand (js/game/plates.js): the server's answer carries its record
+//   (prep.culture), and the field shows what is on that plate, as the incubator's lens does.
 //   A Petri dish (MICRO_PLATES: a culture plate from the incubator, or a clean, unsterile or used one) goes
 //   on the stage itself, with no slide: it never dries, takes no drop, stain or pipette, and comes back as
 //   it went when it is taken off.
@@ -102,7 +104,7 @@ const MICROSCOPE_CAPTIONS = {
 // What each reason of the server is called in MICROSCOPE_TEXT.
 const MICROSCOPE_REFUSALS = {
     occupied: 'refusedOccupied', 'none left': 'refusedNoneLeft', gone: 'refusedGone', 'too far': 'refusedTooFar', 'not a microscope': 'refusedNotScope',
-    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not a slide': 'refusedNotSlide', 'not water or moss': 'sampleNeeds', 'not water': 'filterAim', 'bad request': 'refusedBadRequest', lost: 'refusedLost'
+    'not for the microscope': 'refusedNotForSlide', 'not a stain': 'refusedNotStain', 'not a slide': 'refusedNotSlide', 'not water or moss': 'sampleNeeds', 'not water': 'filterAim', 'bad request': 'refusedBadRequest', lost: 'refusedLost', 'not yours': 'refusedNotYours'
 };
 
 // What the panel says when the server refuses.
@@ -387,7 +389,7 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         const x = radius + (org.x - stageX) * scale;
         const y = radius + (org.y - stageY) * scale;
         if (Math.hypot(x - radius, y - radius) > radius + px) continue;
-        const fate = microFate(org.species, view.age, view.revived);
+        const fate = org.dead ? 'dead' : microFate(org.species, view.age, view.revived);
         const st = { seed: org.seed, variant: org.variant, fate, spring: org.spring, phase: org.phase, stain, dark };
         if (org.species === 'tardigrade') {
             Object.assign(st, { unfold: org.unfold ?? 1, gut: org.gut, stylet: org.stylet, still: (org.unfold ?? 1) < 0.1 });
@@ -784,7 +786,7 @@ Object.assign(Game.prototype, {
         try {
             const saved = JSON.parse(window.localStorage.getItem(MICROSCOPE_PENDING_KEY) || '[]');
             for (const entry of saved) {
-                if (entry && entry.reqId && entry.took && entry.gives) this.microscopePending.set(entry.reqId, { took: entry.took, gives: entry.gives, op: entry.op, at: 0 });
+                if (entry && entry.reqId && entry.took && entry.gives) this.microscopePending.set(entry.reqId, { took: entry.took, gives: entry.gives, op: entry.op, at: 0, ...(entry.plate ? { plate: entry.plate } : {}) });
             }
         } catch (_error) {
             // Nothing readable: nothing to resume.
@@ -794,7 +796,7 @@ Object.assign(Game.prototype, {
 
     microscopeSavePending() {
         try {
-            const entries = [...this.microscopePending.entries()].map(([reqId, entry]) => ({ reqId, took: entry.took, gives: entry.gives, op: entry.op }));
+            const entries = [...this.microscopePending.entries()].map(([reqId, entry]) => ({ reqId, took: entry.took, gives: entry.gives, op: entry.op, ...(entry.plate ? { plate: entry.plate } : {}) }));
             window.localStorage.setItem(MICROSCOPE_PENDING_KEY, JSON.stringify(entries));
         } catch (_error) {
             // Blocked storage: it lasts until the page reloads.
@@ -833,12 +835,17 @@ Object.assign(Game.prototype, {
         for (const [type, count] of Object.entries(took)) {
             if (this.getInventoryCount(type) < count) return false;
         }
+        // A culture plate goes on the stage as the one in the hand, named, and comes back as itself if refused
+        // (js/game/plates.js). A plain one (no record yet) goes as any item.
+        const plate = op === 'prepare' && this.plateHeld && plateIdentified(source) ? this.plateHeld(source) : null;
+        if (plate) delete took[source];
         for (const [type, count] of Object.entries(took)) this.inventoryCounts[type] = this.getInventoryCount(type) - count;
+        if (plate) this.plateTakeOut(source, plate.id);
         const reqId = this.storageNewRequestId();
-        this.microscopePending.set(reqId, { took, gives, op, at: performance.now() });
+        this.microscopePending.set(reqId, { took, gives, op, at: performance.now(), ...(plate ? { plate } : {}) });
         this.microscopeSavePending();
         this.microscopeInventoryChanged();
-        this.network.send(message, { ...payload, reqId });
+        this.network.send(message, { ...payload, reqId, ...(plate ? { plate: plate.id, token: plate.token } : {}) });
         return true;
     },
 
@@ -859,6 +866,9 @@ Object.assign(Game.prototype, {
         this.microscopePending.delete(outcome.reqId);
         this.microscopeSavePending();
         const items = microscopeSettle(pending, outcome);
+        // A plate refused comes back as itself; one taken off the stage comes back with its new token.
+        if (pending.plate && !(outcome.amount > 0) && this.plateAdd) this.plateAdd(pending.plate);
+        if (this.plateSettle) this.plateSettle(outcome.amount > 0 ? outcome : null, items, { front: true });
         for (const [type, count] of Object.entries(items)) {
             if (count > 0 && this.world.blockTypes[type]) this.addInventory(type, count);
         }
@@ -1039,12 +1049,15 @@ Object.assign(Game.prototype, {
             this.microscopeStainAsked = null;
             if (this.microscopePop === 'stain') this.microscopePop = null;
         }
-        const same = before && prep.source === before.source && prep.seed === before.seed;
+        const same = before && prep.source === before.source && prep.seed === before.seed && (prep.plate || '') === (before.plate || '');
         this.microscopePrep = prep;
         this.microscopeAgeAt = performance.now();
         if (!same) {
             const left = Math.max(0, (prep.tardigrades || 0) - (prep.taken || 0));
-            this.microscopeOrganisms = microPopulate(prep.source, prep.seed, left);
+            // A culture plate shows what its record says is on it, as the incubator's lens does (js/game/cultures.js).
+            this.microscopeOrganisms = prep.culture && typeof cultureStagePopulation === 'function'
+                ? cultureStagePopulation(prep.culture, prep.seed)
+                : microPopulate(prep.source, prep.seed, left);
             this.microscopeScenery = microScenery(prep.source, prep.seed);
             this.microscopeSelected = null;
             this.microscopeStage = [0, 0];

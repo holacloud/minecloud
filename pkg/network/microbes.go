@@ -17,12 +17,15 @@ import (
 //   - cultureLoad      {x, y, z, slot, source, reqId}: a plate (culturePlates) into an empty slot.
 //   - cultureInoculate {x, y, z, slot, source, reqId}: puts on the plate what `source` holds (sampleSpecies:
 //     flowers carry yeast, milk lactobacilli, dirt soil bacteria, a lake sample cyanobacteria, a culture its
-//     own kind). One to a plate. A source with nothing that grows on agar is refused.
+//     own kind). One to a plate. A source with nothing that grows on agar is refused. A culture plate sown
+//     this way is used up: `plate` and `token` name the one (plates.go), and its record goes.
 //   - cultureHarvest   {x, y, z, slot, reqId}: the plate comes out. Its Type is a culture plate, the dish
 //     with its colonies (culture_yeast is a "Yeast Plate"), if what grew on it reached cultureLogHarvest,
 //     where colonies can be seen; a used_dish if it was sown and nothing could be seen; or the plate itself
-//     if nothing ever happened on it. A culture plate goes on a microscope's stage as it is (microscope.go,
-//     microscopePlates), and comes back from it as it went.
+//     if nothing ever happened on it. A culture plate is born here with its record (plates.go): what grew
+//     on it, frozen, and the seed its colonies were drawn with; the answer's `plates` hands it to the
+//     client. It goes on a microscope's stage as it is (microscope.go, microscopePlates), and comes back
+//     from it as it went.
 //   - cultureSet       {x, y, z, target, reqId}: the temperature the incubator holds while it has power.
 //
 // All answer storageResult as the microscope's messages do, saved before they are answered, in the same log
@@ -141,6 +144,9 @@ type CulturePlate struct {
 	History [][2]float64 `json:"history,omitempty"`
 	Every   float64      `json:"every"`
 	Next    float64      `json:"next"`
+	// Where its colonies sit (js/game/cultures.js draws it from this): it goes with the plate when it comes
+	// out, so the lens, the inventory and the microscope show the same dish (plates.go).
+	Seed uint32 `json:"seed,omitempty"`
 }
 
 // incubatorView is an incubator in a storageContents message.
@@ -162,6 +168,15 @@ type cultureRequest struct {
 	Source string  `json:"source"`
 	Target float64 `json:"target"`
 	ReqID  string  `json:"reqId"`
+	// A culture plate sown onto another (plates.go): which one, and the token that says the client holds it.
+	Plate string `json:"plate,omitempty"`
+	Token string `json:"token,omitempty"`
+}
+
+// cultureSlotSeed is the seed of a plate that had none (saved before plates kept one): the one the panel
+// drew it with, from where it stands (js/game/cultures.js, cultureSlotSeed).
+func cultureSlotSeed(x, z, slot int) uint32 {
+	return plateSeed(uint32(int64(x)*73856093) ^ uint32(int64(z)*19349663) ^ uint32(int64(slot)*83492791))
 }
 
 // cultureGamma is the cardinal temperature model with inflection: 0 at and outside Tmin and Tmax, 1 at Topt.
@@ -467,6 +482,7 @@ func (b *storageBook) cultureLoad(w cropWorld, eye *[3]float64, request cultureR
 	}
 	block.Slots[request.Slot] = StorageSlot{Type: request.Source, Count: 1}
 	block.Plates[request.Slot] = cultureNewPlate(request.Source)
+	block.Plates[request.Slot].Seed = plateSeed(b.seed())
 	return b.finishCultureLocked(w, place, block, storageOutcome{ReqID: request.ReqID, Type: request.Source, Amount: 1}), true
 }
 
@@ -491,6 +507,15 @@ func (b *storageBook) cultureInoculate(w cropWorld, eye *[3]float64, request cul
 	species, ok := cultureInoculum(request.Source)
 	if !ok {
 		return refuse("nothing grows")
+	}
+	// A culture plate sown onto this one is used up: the one the client names, if it holds it. A plain one
+	// (from before plates had records) is what the client says it is, as any other item.
+	if request.Plate != "" {
+		record, reason := b.checkClaimLocked(request.Plate, request.Token, request.Source)
+		if reason != "" {
+			return refuse(reason)
+		}
+		delete(b.plates, record.ID)
 	}
 	if species == mouldSpecies {
 		if plate.Mould == nil {
@@ -519,10 +544,16 @@ func (b *storageBook) cultureHarvest(w cropWorld, eye *[3]float64, request cultu
 	if slot.Count == 0 {
 		return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Reason: "gone"}), false
 	}
-	item := cultureHarvestOf(slot.Type, block.Plates[request.Slot])
+	plate := block.Plates[request.Slot]
+	item := cultureHarvestOf(slot.Type, plate)
+	outcome := storageOutcome{ReqID: request.ReqID, Type: item, Amount: 1}
+	if plateIdentified(item) {
+		// The plate comes into being as a culture plate: what grew on it is its record from now on.
+		outcome.Plates = []PlateGrant{b.grantLocked(b.mintPlateLocked(item, cultureFrozen(plate)))}
+	}
 	block.Slots[request.Slot] = StorageSlot{}
 	block.Plates[request.Slot] = nil
-	return b.finishCultureLocked(w, place, block, storageOutcome{ReqID: request.ReqID, Type: item, Amount: 1}), true
+	return b.finishCultureLocked(w, place, block, outcome), true
 }
 
 // cultureSet sets the temperature the incubator holds.
@@ -537,8 +568,9 @@ func (b *storageBook) cultureSet(w cropWorld, eye *[3]float64, request cultureRe
 	return b.finishCultureLocked(w, place, block, storageOutcome{ReqID: request.ReqID, Amount: 1}), true
 }
 
-// incubatorSpill is what a broken incubator gives: each plate as it would come out.
-func incubatorSpill(block *StorageBlock) []StorageSlot {
+// incubatorSpillLocked is what a broken incubator gives: each plate as it would come out, a culture plate
+// with its record, handed to whoever broke it.
+func (b *storageBook) incubatorSpillLocked(block *StorageBlock) []StorageSlot {
 	var spill []StorageSlot
 	for i, slot := range block.Slots {
 		if slot.Count <= 0 {
@@ -548,7 +580,12 @@ func incubatorSpill(block *StorageBlock) []StorageSlot {
 		if i < len(block.Plates) {
 			plate = block.Plates[i]
 		}
-		spill = append(spill, StorageSlot{Type: cultureHarvestOf(slot.Type, plate), Count: 1})
+		item := StorageSlot{Type: cultureHarvestOf(slot.Type, plate), Count: 1}
+		if plateIdentified(item.Type) {
+			grant := b.grantLocked(b.mintPlateLocked(item.Type, cultureFrozen(plate)))
+			item.Grant = &grant
+		}
+		spill = append(spill, item)
 	}
 	return spill
 }
@@ -602,6 +639,9 @@ func cultureCleanLoaded(block *StorageBlock) {
 		if len(clean.History) > cultureHistoryMax {
 			clean.History = clean.History[len(clean.History)-cultureHistoryMax:]
 		}
+		if clean.Seed == 0 {
+			clean.Seed = cultureSlotSeed(block.X, block.Z, i)
+		}
 		block.Plates[i] = &clean
 	}
 	// A slot with a plate and nothing said about it starts as a new plate.
@@ -612,6 +652,7 @@ func cultureCleanLoaded(block *StorageBlock) {
 			}
 			if block.Plates[i] == nil {
 				block.Plates[i] = cultureNewPlate(slot.Type)
+				block.Plates[i].Seed = cultureSlotSeed(block.X, block.Z, i)
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -188,7 +189,7 @@ func TestTakeSample(t *testing.T) {
 		t.Fatalf("stone: %+v", stone)
 	}
 	// The same request answers the same, from the log.
-	if got := book.takeSample(w, surface, eye, microscopeRequest{Y: 3, ReqID: testMicroReq + "a"}); got != first {
+	if got := book.takeSample(w, surface, eye, microscopeRequest{Y: 3, ReqID: testMicroReq + "a"}); !reflect.DeepEqual(got, first) {
 		t.Fatalf("repeat: %+v", got)
 	}
 	if got := book.takeSample(w, surface, nil, microscopeRequest{Y: 3, ReqID: testMicroReq + "e"}); got.Reason != "too far" {

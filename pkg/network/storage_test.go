@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -178,11 +179,11 @@ func TestStorageRequestsApplyOnce(t *testing.T) {
 	book, w := newTestBook()
 	first := testPut(book, w, "request-1", "stone", 10)
 	again := testPut(book, w, "request-1", "stone", 10)
-	if first != again || book.blocks[blockKey(0, 0, 0)].Slots[0].Count != 10 {
+	if !reflect.DeepEqual(first, again) || book.blocks[blockKey(0, 0, 0)].Slots[0].Count != 10 {
 		t.Fatalf("a put applied twice: %+v %+v %+v", first, again, book.blocks)
 	}
 	took := testTake(book, w, "request-2", "stone", 0, 3)
-	if again := testTake(book, w, "request-2", "stone", 0, 3); again != took || book.blocks[blockKey(0, 0, 0)].Slots[0].Count != 7 {
+	if again := testTake(book, w, "request-2", "stone", 0, 3); !reflect.DeepEqual(again, took) || book.blocks[blockKey(0, 0, 0)].Slots[0].Count != 7 {
 		t.Fatalf("a take applied twice: %+v", again)
 	}
 }

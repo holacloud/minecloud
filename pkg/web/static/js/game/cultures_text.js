@@ -68,6 +68,11 @@ const CULTURE_TEXT = {
     givesDish: { ES: 'Al sacarla: una placa usada (no se ve nada: no llegó a 10^6)', EN: 'Taken out now: a used dish (nothing can be seen: it did not reach 10^6)' },
     givesPlate: { ES: (name) => `Al sacarla: ${name}, sin usar`, EN: (name) => `Taken out now: ${name}, unused` },
     contaminated: { ES: 'Contaminada: ha crecido moho', EN: 'Contaminated: mould has grown' },
+    // A culture plate's tooltip (js/game/plates.js): what its own record says is on it.
+    plateMain: { ES: (name, log) => `${name}: 10^${log} células`, EN: (name, log) => `${name}: 10^${log} cells` },
+    plateMould: { ES: (log) => `Moho: 10^${log} células`, EN: (log) => `Mould: 10^${log} cells` },
+    plateRing: { ES: 'Anillo limpio alrededor del moho', EN: 'A clear ring round the mould' },
+    plateUnrecorded: { ES: 'Placa antigua: el servidor le dará su registro al guardarla', EN: 'An old plate: the server gives it its record when it is stored' },
     phase: {
         ES: { lag: 'Latencia: se adapta', growth: 'Crecimiento exponencial', stationary: 'Fase estacionaria', death: 'Fase de muerte', still: 'Quieta: no puede crecer aquí' },
         EN: { lag: 'Lag: adapting', growth: 'Exponential growth', stationary: 'Stationary phase', death: 'Death phase', still: 'Still: it cannot grow here' }
@@ -97,13 +102,13 @@ const CULTURE_TEXT = {
             'not a plate': 'Eso no es una placa de agar.', occupied: 'Ese hueco ya tiene placa.', 'no plate': 'No hay placa en ese hueco.',
             inoculated: 'Esa placa ya está sembrada: una siembra por placa.', 'nothing grows': 'Ahí no hay nada que crezca en agar.',
             gone: 'Esa placa ya no está.', 'too far': 'Estás demasiado lejos.', 'not an incubator': 'Eso ya no es una incubadora.',
-            'bad slot': 'Ese hueco no existe.', lost: 'Se perdió por el camino: no ha pasado nada.', other: 'No se ha podido.'
+            'bad slot': 'Ese hueco no existe.', lost: 'Se perdió por el camino: no ha pasado nada.', 'not yours': 'Esa placa ya no está en tus manos.', other: 'No se ha podido.'
         },
         EN: {
             'not a plate': 'That is not an agar plate.', occupied: 'That slot already has a plate.', 'no plate': 'There is no plate in that slot.',
             inoculated: 'That plate is inoculated already: one to a plate.', 'nothing grows': 'Nothing in that grows on agar.',
             gone: 'That plate is no longer there.', 'too far': 'You are too far away.', 'not an incubator': 'That is no longer an incubator.',
-            'bad slot': 'There is no such slot.', lost: 'It got lost on the way: nothing happened.', other: 'That could not be done.'
+            'bad slot': 'There is no such slot.', lost: 'It got lost on the way: nothing happened.', 'not yours': 'That plate is no longer in your hands.', other: 'That could not be done.'
         }
     },
     // The autoclave's panel is a machine's (js/game/storage.js); these are its own lines.

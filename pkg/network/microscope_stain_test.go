@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func TestStainRepeatedIsNotDoneTwice(t *testing.T) {
 	book.prepare(w, storageEye, microAt("cheek", "1"))
 	first, _ := book.stainSlide(w, storageEye, microAt("iodine_tincture", "2"))
 	again, changed := book.stainSlide(w, storageEye, microAt("iodine_tincture", "2"))
-	if again != first || changed {
+	if !reflect.DeepEqual(again, first) || changed {
 		t.Fatalf("repeat: %+v, changed %v", again, changed)
 	}
 }
