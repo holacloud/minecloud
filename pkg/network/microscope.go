@@ -281,6 +281,10 @@ func sampleSpecies(source string) ([]string, bool) {
 	if species, ok := microscopeItems[source]; ok {
 		return species, true
 	}
+	// A specimen holds nothing alive (microscope_specimens.go): it is looked at for itself.
+	if microscopeSpecimens[source] {
+		return nil, true
+	}
 	// Wool of any colour: only bacteria live among its fibres.
 	if storageItemName.MatchString(source) && strings.HasSuffix(source, "_wool") {
 		return microscopeWool, true

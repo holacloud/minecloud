@@ -52,7 +52,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
   an [oven that cooks](233), and a [fridge and freezer](234) that run on electricity.
 - [How to find metals](248) and [how they are smelted](249).
 - A workshop for materials: the coal-fired [foundry](235), and the [electric arc furnace](236) that makes silicon.
-- [The small world](237): the [microscope](238), [samples](239), [tardigrades](240) and [cryptobiosis](241), [cells](242), [protozoa and algae](243) and [bacteria](244), with [stains](246), [filters and dark-field](247).
+- [The small world](237): the [microscope](238), [samples](239), [tardigrades](240) and [cryptobiosis](241), [cells](242), [protozoa and algae](243) and [bacteria](244), with [stains](246), [filters and dark-field](247); and [lifeless things](258) under it, [opaque, clear or amorphous](259).
 - [Cultures and the incubator](253): agar plates, the [growth curve](254) and temperature, and [sterilising](255) with the autoclave, the filter and Fleming's mould.
 
 ---

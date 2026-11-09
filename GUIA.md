@@ -486,6 +486,35 @@ Páginas 246 y 247 de la guía del juego.
 | 0,77 | `candle` | 0,53: flojo |
 | 0,88 o más | lámpara de mesa, `lantern`, `electric_lamp`, sol pleno | 0,87 a 1: bueno |
 
+### Lo que no vive, al microscopio
+
+Páginas 258 y 259 de la guía del juego (`js/game/specimens.js`, `js/game/specimens_text.js`,
+`pkg/network/microscope_specimens.go`). Más de 170 objetos sin nada vivo van a un portaobjetos como cualquier muestra
+(gastan un `glass_slide` y uno del objeto; la `honey_bottle` devuelve el `glass`). No se secan, no hay nada que
+identificar ni capturar, y no tienen ficha en el bestiario. Bajo el campo, una línea dice qué es y qué enseña el aumento
+actual, o qué hizo la tinción.
+
+| Familia | Objetos |
+|---|---|
+| Madera | tronco y tablones de los nueve árboles (`wood`, `planks`, `<árbol>_wood`, `<árbol>_planks`) |
+| Arena y rocas | `sand`, `stone`, `stone_bricks`, `cobblestone`, `granite`, `marble`, `basalt`, `slate`, `limestone`, `obsidian`, `concrete`, `brick` |
+| Menas | `coal_ore`, `iron_ore`, `gold_ore`, `copper_ore`, `tin_ore`, `zinc_ore`, `lead_ore`, `silver_ore` |
+| Metales | `iron_block`, `copper_block`, `gold_block`, `steel_ingot`, `bronze_ingot`, `brass_ingot`, `meteoric_iron`, `gold_leaf`, los elementos Fe, Cu, Au, Ag, Ni, Pt, Al, Zn, Mg, Ti, Co, Be, Cr, Mn, W, Sn, Pb |
+| Cristales | `salt`, `baking_soda`, `copper_sulfate`, `fluorite`, `pyrite`, `quicklime`, `rust_pigment`, `ice`, `ruby`, `sapphire`, los elementos S, I, C, Si, B |
+| Vidrio | `glass`, `glass_pane`, `cobalt_glass`, `<color>_stained_glass`, `<color>_stained_glass_pane` |
+| Fibras | `<color>_carpet`, `<color>_curtain`, `fur`, `feather`, `leather`, `scale`, `shell` |
+| Electrónica | las seis puertas lógicas, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, `mirror`, `wall_mirror` |
+| Comida y plantas | `bread`, `wheat_seeds`, `honey_bottle`, `cooked_fish`, `salted_fish`, `cactus`, `moss`, `tall_grass`, `grass` |
+| Papel | `blueprint`, `written_blueprint`, `star_chart`, `breeding_notebook` |
+
+- **Tinciones:** el yodo vuelve negro azulado el almidón (trigo, pan, radios de la albura, cloroplastos, papel encolado);
+  el azul de metileno tiñe núcleos (semilla, cactus, musgo, hierba, músculo). Minerales, metales, vidrio y gemas no toman
+  nada. La sal, el bicarbonato y el sulfato de cobre se disuelven en el agua del colorante.
+- **Lo opaco** (metales, casi todas las menas, silicio, la plata de un espejo, el cobre) es negro con la luz de abajo. A
+  40× se ve su superficie con la luz de la sala; a 100× menos; a 400× y 1000× queda oscuro.
+- No van: huevos de mobs, herramientas y armas, líquidos, bloques con forma (escaleras, losas, puertas, vallas), muebles,
+  gases y metales que reaccionan con el aire o el agua (H, He, N, O, F, Ne, Ar, Cl, Li, Na, K, Ca, Hg, P), `bedrock`.
+
 ### Cultivos de microbios: incubadora, autoclave y filtro
 
 Páginas 253 a 255 de la guía del juego (`js/game/cultures.js`, `pkg/network/microbes.go`). Ningún microbio daña al

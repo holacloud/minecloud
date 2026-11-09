@@ -326,7 +326,7 @@ func TestPrepareAndClear(t *testing.T) {
 
 func TestPrepareRefusals(t *testing.T) {
 	book, w, _ := newMicroBook()
-	for _, source := range []string{"stone", "glass", "sample_forest_lake_z", "sample_", "", "tardigrade", "ANY"} {
+	for _, source := range []string{"bedrock", "oak_door", "sample_forest_lake_z", "sample_", "", "tardigrade", "ANY"} {
 		if got, changed := book.prepare(w, storageEye, microAt(source, "bad"+strings.ToLower(source))); got.Amount != 0 || changed {
 			t.Errorf("%q: %+v", source, got)
 		}
@@ -425,7 +425,7 @@ func TestPreparationPersists(t *testing.T) {
 func TestLoadDropsImpossibleSlides(t *testing.T) {
 	book, _, _ := newMicroBook()
 	book.load(map[string]StorageBlock{
-		blockKey(0, 0, 0): {Slots: []StorageSlot{{Type: glassSlide, Count: 1}}, Prep: &MicroscopePrep{Source: "gold_block"}},
+		blockKey(0, 0, 0): {Slots: []StorageSlot{{Type: glassSlide, Count: 1}}, Prep: &MicroscopePrep{Source: "bedrock"}},
 		blockKey(1, 0, 0): {X: 1, Slots: []StorageSlot{{Type: glassSlide, Count: 1}}, Prep: &MicroscopePrep{Source: tardigradeTube, Tardigrades: 50, Taken: 50}},
 	}, nil)
 	if prep := book.blocks[blockKey(0, 0, 0)].Prep; prep != nil {

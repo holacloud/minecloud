@@ -139,6 +139,8 @@ function microSampleId(habitat, letter) {
 // The species a source holds, or null if it cannot go on a slide.
 function microSpeciesOf(source) {
     if (MICRO_ITEMS[source]) return MICRO_ITEMS[source];
+    // Things with nothing alive in them (js/game/specimens.js): they go on a slide, and hold no one.
+    if (typeof microSpecimenOf === 'function' && microSpecimenOf(source)) return [];
     if (/^[a-z_]+_wool$/.test(source)) return MICRO_WOOL_SPECIES;
     for (const [habitat, variants] of Object.entries(MICRO_SAMPLES)) {
         for (const variant of variants) {
@@ -343,6 +345,10 @@ class MicroLens {
 
     get lineCap() { return this.ctx.lineCap; }
 
+    set lineJoin(join) { this.ctx.lineJoin = join; }
+
+    get lineJoin() { return this.ctx.lineJoin; }
+
     set globalAlpha(alpha) { this.ctx.globalAlpha = alpha; }
 
     get globalAlpha() { return this.ctx.globalAlpha; }
@@ -384,6 +390,8 @@ class MicroLens {
     clip() { this.ctx.clip(); }
 
     fillRect(x, y, w, h) { this.ctx.fillRect(x, y, w, h); }
+
+    strokeRect(x, y, w, h) { this.ctx.strokeRect(x, y, w, h); }
 }
 
 const MICRO_LENS = new MicroLens();
@@ -1783,6 +1791,8 @@ function microPopulate(source, seed, tardigrades = 0) {
 // What lies about on a slide and is not alive: specks, and what the source itself is made of. Numbers
 // only, like microPopulate, and the same for everyone.
 function microScenery(source, seed) {
+    // A specimen is one sheet drawn by itself, a layer for each depth (js/game/specimens.js).
+    if (typeof microSpecimenOf === 'function' && microSpecimenOf(source)) return microSpecimenScenery(source, seed);
     const random = microRng((seed ^ 0x2f6e2b1) >>> 0);
     const kind = /_wool$/.test(source) ? 'fibre' : MICRO_MATERIALS[source] || 'speck';
     const counts = { speck: 28, grains: 26, pollen: 16, fat: 46, starch: 34, fibre: 7 };

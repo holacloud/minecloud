@@ -103,7 +103,7 @@ test('what other things show matches the server', () => {
     assert.deepEqual(list(goMicroscope.match(/var microscopeWool = \[\]string\{([^}]*)\}/)[1]), plain(ctx.microSpeciesOf('red_wool')));
     assert.ok(ctx.microSpeciesOf('white_wool'));
     assert.equal(ctx.microSpeciesOf('wool_of_nothing'), null);
-    assert.equal(ctx.microSpeciesOf('stone'), null);
+    assert.equal(ctx.microSpeciesOf('bedrock'), null);
     assert.equal(ctx.microSpeciesOf('sample_forest_lake_z'), null);
 });
 

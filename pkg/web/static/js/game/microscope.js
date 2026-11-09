@@ -124,8 +124,8 @@ function microscopeRequestItems(op, source) {
             if (MICRO_PLATES[source]) return { took: { [source]: 1 }, gives: {} };
             const took = { glass_slide: 1 };
             if (source !== 'cheek') took[source] = 1;
-            // A tube comes back empty, and so does the bottle of the milk.
-            const gives = microSourceInTube(source) ? { test_tube: 1 } : source === 'milk' ? { glass: 1 } : {};
+            // A tube comes back empty, and so does the bottle of the milk or the honey.
+            const gives = microSourceInTube(source) ? { test_tube: 1 } : source === 'milk' || source === 'honey_bottle' ? { glass: 1 } : {};
             return { took, gives };
         }
         // A slide comes back washed, a plate as it went: the server names which.
@@ -321,8 +321,10 @@ function microscopeStageText(prep, nameOf) {
 }
 
 // A line about how a slide is doing.
-function microscopeSlideLine(prep, age, woke = -1) {
+function microscopeSlideLine(prep, age, woke = -1, power = 40) {
     if (!prep) return '';
+    // Nothing on it lives or dries: what it is, and what this power shows of it (js/game/specimens_text.js).
+    if (typeof microSpecimenOf === 'function' && microSpecimenOf(prep.source)) return microSpecimenLine(prep.source, power, prep.stain);
     if (MICRO_PLATES[prep.source]) return microscopeSay('plateOnStage');
     if (prep.stain) return microscopeSay('slideStained', MICRO_STAINS[prep.stain] ? microscopeStainText(prep.stain).the : prep.stain);
     const stage = microSlideStage(age, woke);
@@ -386,6 +388,11 @@ function microscopeDrawField(ctx, soft, softer, view, organisms, scenery) {
         layers[blur < 1 ? 2 : blur < 2 ? 1 : 0].push(draw);
     };
     for (const item of scenery) {
+        // A specimen (js/game/specimens.js) fills the slide, and draws itself from its own cached sheet.
+        if (item.kind === 'specimen') {
+            place((c) => microDrawSpecimen(c, item, view), item.depth);
+            continue;
+        }
         const x = radius + (item.x - stageX) * scale;
         const y = radius + (item.y - stageY) * scale;
         if (Math.hypot(x - radius, y - radius) > radius + 700 * scale) continue;
@@ -1928,7 +1935,7 @@ Object.assign(Game.prototype, {
         // How to light it is a lesson: it stays in the middle of the black field, in full.
         panel.querySelector('#micro-dark-note').textContent = darkLine;
         const prep = this.microscopePrep;
-        panel.querySelector('#micro-slide-line').textContent = prep ? microscopeSlideLine(prep, this.microscopeAge(), this.microscopeWoke()) : '';
+        panel.querySelector('#micro-slide-line').textContent = prep ? microscopeSlideLine(prep, this.microscopeAge(), this.microscopeWoke(), this.microscopePower) : '';
         const note = this.microscopeNote || '';
         if (note !== this.microscopeNoteShown) {
             this.microscopeNoteShown = note;

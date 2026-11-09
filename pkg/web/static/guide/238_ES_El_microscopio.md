@@ -44,6 +44,8 @@ Sirve:
 | ![](item:mushroom_red) cualquier seta | [esporas](244) |
 | ![](item:white_wool) cualquier lana | fibras con escamas, y unas pocas bacterias |
 
+- **Cosas sin vida:** madera, arena, rocas, metales, cristales, vidrio, una pluma, un chip en su placa... más de 170 objetos sin nada vivo, cada uno con algo que enseñar en cada aumento: [Lo que no vive, al microscopio](258).
+
 - Un **frotis de tu mejilla**: selecciona un `glass_slide` y haz clic derecho en el microscopio libre. Solo gasta ese portaobjetos y enseña [tus propias células](242).
 
 El panel solo existe con un portaobjetos puesto:
@@ -80,6 +82,7 @@ Todas las herramientas son iconos en la barra de abajo, con su nombre debajo. Si
 
 - **[Tinciones](246):** yodo o azul de metileno en el portaobjetos, con el icono **Tinción**. Enseñan el almidón y los núcleos, y matan lo que enseñan.
 - **[Filtros y campo oscuro](247):** vidrio de color en la luz, o un campo negro donde todo brilla por los bordes, con los iconos **Filtro** y **Oscuro**. Ninguno se gasta.
+- **[Opaco, transparente y amorfo](259):** por qué los metales se ven negros, el vidrio no enseña nada y los minerales no se tiñen.
 
 El panel está en el idioma del juego: se elige en esta guía o en los ajustes del menú de pausa.
 
@@ -102,4 +105,4 @@ El panel está en el idioma del juego: se elige en esta guía o en los ajustes d
 
 > **Pruébalo de verdad:** un microscopio escolar barato, o incluso una lente de pinza para el móvil, enseña muy bien el agua de charca y la piel de cebolla.
 
-Ver también: [El mundo pequeño](237), [Cómo tomar una muestra](239), [Tinciones](246), [Filtros y campo oscuro](247), [Luces sin electricidad](228).
+Ver también: [El mundo pequeño](237), [Cómo tomar una muestra](239), [Tinciones](246), [Filtros y campo oscuro](247), [Lo que no vive, al microscopio](258), [Luces sin electricidad](228).

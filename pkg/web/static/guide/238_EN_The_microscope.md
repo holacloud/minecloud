@@ -44,6 +44,8 @@ What works:
 | ![](item:mushroom_red) either mushroom | [spores](244) |
 | ![](item:white_wool) any wool | scaly fibres, and a few bacteria |
 
+- **Lifeless things:** wood, sand, rocks, metals, crystals, glass, a feather, a chip on its board... over 170 items with nothing alive in them, each with something to show at every power: [Lifeless things under the microscope](258).
+
 - A **smear of your cheek**: select a `glass_slide` and right click the free microscope. It costs only that slide, and shows [your own cells](242).
 
 The panel only exists with a slide on:
@@ -80,6 +82,7 @@ Every tool is an icon in the bar along the bottom, with its name under it. They 
 
 - **[Stains](246):** iodine or methylene blue on the slide, with the **Stain** icon. They show starch and nuclei, and they kill what they show.
 - **[Filters and dark-field](247):** coloured glass in the light, or a black field where everything shines at its edges, with the **Filter** and **Dark** icons. Neither is used up.
+- **[Opaque, clear and amorphous](259):** why metals go black, glass shows nothing and minerals take no stain.
 
 The panel is in the game's language: pick it in this guide or in the settings of the pause menu.
 
@@ -102,4 +105,4 @@ The panel is in the game's language: pick it in this guide or in the settings of
 
 > **Try it for real:** a cheap school microscope, or even a clip-on lens for a phone, shows pond water and onion skin very well.
 
-See also: [The small world](237), [How to take a sample](239), [Stains](246), [Filters and dark-field](247), [Lights without electricity](228).
+See also: [The small world](237), [How to take a sample](239), [Stains](246), [Filters and dark-field](247), [Lifeless things under the microscope](258), [Lights without electricity](228).

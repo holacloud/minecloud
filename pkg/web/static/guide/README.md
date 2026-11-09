@@ -319,6 +319,8 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 253 | Cultivos e incubadora | Cultures and the incubator | incubator, petri_dish, agar_plate, used_dish, the `culture_*`: plates, inocula, harvest, 20 W only while growing, the place's temperature without power (pkg/network/microbes.go, temperature.go, js/game/cultures.js); agar and Fanny Hesse (items index 48, contents 0) |
 | 254 | La curva de crecimiento | The growth curve | the four phases on a log scale, cardinal temperatures (Rosso 1993) per species, the experiment at 10, 30 and 45 °C |
 | 255 | Esterilizar: autoclave, filtro y moho | Sterilising: autoclave, filter and mould | autoclave, agar_plate_unsterile, water_filter, sample_filtered, `mould` (organism), culture_mould: spores and 121 °C, contamination, penicillin's clear ring, Fleming's story |
+| 258 | Lo que no vive, al microscopio | Lifeless things under the microscope | the specimens (js/game/specimens.js, specimens_text.js, pkg/network/microscope_specimens.go): every family, what 40x and 400x show, the stains on them (microscope 238, contents 0) |
+| 259 | Opaco, transparente y amorfo | Opaque, clear and amorphous | transmitted light: edges of clear things, dissolved colour, opaque things black and lit from above only at low power, glass amorphous, alizarin red and polarised light (258, 238, contents 0) |
 
 ### Secret pages
 
