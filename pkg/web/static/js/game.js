@@ -1048,10 +1048,8 @@ class Game {
 
         const slot = parseInt(event.key) - 1;
         if (slot >= 0 && slot < this.hotbarSize) {
-            const inventoryIndex = this.getHotbarSlotInventoryIndex(slot);
-            if (inventoryIndex !== null) {
-                this.selectSlot(inventoryIndex);
-            }
+            // What that slot shows: a culture plate is that very plate (js/game/inventory.js).
+            this.selectHotbarSlot(slot);
         }
     }
 
@@ -1100,13 +1098,7 @@ class Game {
         this.wheelAccumulator = 0;
         this.lastWheelStepAt = now;
 
-        const availableSlots = this.getHotbarInventoryIndexes();
-        if (availableSlots.length === 0) return;
-
-        const currentAvailableIndex = availableSlots.indexOf(this.selectedSlot);
-        const startIndex = currentAvailableIndex === -1 ? 0 : currentAvailableIndex;
-        const nextSlot = availableSlots[(startIndex + direction + availableSlots.length) % availableSlots.length];
-        this.selectSlot(nextSlot);
+        this.stepHotbarSelection(direction);
     }
 
     onWindowResize() {

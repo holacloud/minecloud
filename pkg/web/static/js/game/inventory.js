@@ -15,7 +15,7 @@ Object.assign(Game.prototype, {
                 this.inventoryCounts = { ...this.inventoryCounts, ...parsed.counts };
             }
             // Each culture plate's own record, with the counts (js/game/plates.js).
-            if (this.plateRestore) this.plateRestore(parsed.plates);
+            if (this.plateRestore) this.plateRestore(parsed.plates, parsed.plateHand);
             this.offhandType = offhandFromSave(parsed.offhand, this.inventoryCounts);
             if (Number.isInteger(parsed.selectedSlot)) {
                 this.selectedSlot = Math.max(0, Math.min(parsed.selectedSlot, this.inventory.length - 1));
@@ -40,6 +40,7 @@ Object.assign(Game.prototype, {
             inventory: this.inventory,
             counts: this.inventoryCounts,
             plates: this.plateEntries || {},
+            plateHand: this.plateHand || {},
             selectedSlot: this.selectedSlot,
             hotbarPrimaryType: this.hotbarPrimaryType,
             hotbarPinnedTypes: this.hotbarPinnedTypes,
@@ -86,10 +87,7 @@ Object.assign(Game.prototype, {
             slot.addEventListener('pointerdown', (event) => {
                 if (!this.touchControlsEnabled) return;
                 event.preventDefault();
-                const inventoryIndex = this.getHotbarSlotInventoryIndex(visibleIndex);
-                if (inventoryIndex !== null) {
-                    this.selectSlot(inventoryIndex);
-                }
+                this.selectHotbarSlot(visibleIndex);
             });
             
             const num = document.createElement('span');
@@ -112,11 +110,10 @@ Object.assign(Game.prototype, {
         this.saveInventoryState();
     },
 
-    getHotbarInventoryIndexes() {
-        const available = this.inventory
-            .map((type, index) => ({ type, index }))
-            .filter((item) => this.getInventoryCount(item.type) > 0);
-
+    // What the hotbar shows, slot by slot: { index (in the inventory), type, entry, count, held }. Any item is
+    // one slot with its count; a culture plate is one slot per plate, as in the inventory panel, and `held`
+    // says which of a type the hand holds when that type is selected (js/game/plates.js).
+    getHotbarItems() {
         const orderedTypes = [];
         const pushType = (type) => {
             if (!type || orderedTypes.includes(type) || this.getInventoryCount(type) <= 0) return;
@@ -127,9 +124,29 @@ Object.assign(Game.prototype, {
         if (orderedTypes.length === 0) {
             pushType(this.hotbarPrimaryType);
         }
-        available.forEach((item) => pushType(item.type));
+        this.inventory.forEach(pushType);
 
-        return orderedTypes.slice(0, this.hotbarSize).map((type) => this.inventory.indexOf(type)).filter((index) => index !== -1);
+        const items = [];
+        for (const type of orderedTypes) {
+            const index = this.inventory.indexOf(type);
+            if (index === -1) continue;
+            const shown = this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type), held: true }];
+            for (const item of shown) items.push({ index, held: true, ...item });
+        }
+        // A plate in the hand past the end still gets a slot: the last one of its type on show.
+        const size = this.hotbarSize;
+        const selected = items.findIndex((item) => item.index === this.selectedSlot && item.held);
+        if (selected >= size) {
+            let at = -1;
+            for (let i = 0; i < size; i++) if (items[i].index === items[selected].index) at = i;
+            if (at >= 0) items[at] = items[selected];
+        }
+        return items.slice(0, size);
+    },
+
+    // The inventory indexes of the types on the hotbar, each once, in order.
+    getHotbarInventoryIndexes() {
+        return [...new Set(this.getHotbarItems().map((item) => item.index))];
     },
 
     promoteTypeToHotbar(type) {
@@ -142,36 +159,55 @@ Object.assign(Game.prototype, {
     },
 
     getHotbarSlotInventoryIndex(visibleIndex) {
-        const indexes = this.getHotbarInventoryIndexes();
-        return Number.isInteger(indexes[visibleIndex]) ? indexes[visibleIndex] : null;
+        const item = this.getHotbarItems()[visibleIndex];
+        return item ? item.index : null;
+    },
+
+    // Takes what a hotbar slot shows in the hand: for a culture plate, exactly that plate. Says whether it could.
+    selectHotbarSlot(visibleIndex) {
+        const item = this.getHotbarItems()[visibleIndex];
+        if (!item) return false;
+        if (this.plateSelect && plateIdentified(item.type)) this.plateSelect(item.type, item.entry ? item.entry.id : null);
+        this.selectSlot(item.index);
+        return true;
+    },
+
+    // The wheel: the next (1) or previous (-1) hotbar slot, round the end.
+    stepHotbarSelection(direction) {
+        const items = this.getHotbarItems();
+        if (items.length === 0) return;
+        const current = items.findIndex((item) => item.index === this.selectedSlot && item.held);
+        const start = current === -1 ? 0 : current;
+        this.selectHotbarSlot((start + direction + items.length) % items.length);
     },
 
     updateHotbarCounts() {
-        const hotbarIndexes = this.getHotbarInventoryIndexes();
+        const items = this.getHotbarItems();
         for (let i = 0; i < this.hotbarSize; i++) {
-            const inventoryIndex = hotbarIndexes[i];
-            const type = this.inventory[inventoryIndex];
-            const count = this.getInventoryCount(type);
+            const item = items[i];
             const slotEl = this.hotbarSlotElements[i];
             const countEl = this.hotbarCountElements[i];
             if (!slotEl || !countEl) continue;
 
-            if (!type) {
+            if (!item) {
                 slotEl.style.backgroundImage = '';
                 slotEl.style.backgroundColor = 'rgba(0,0,0,0.2)';
                 slotEl.classList.remove('selected');
                 slotEl.classList.add('empty');
                 countEl.textContent = '';
+                slotEl.title = '';
                 continue;
             }
 
-            // A culture plate shows the one in the hand, its own colonies (js/game/plates.js).
-            const held = this.plateHeld ? this.plateHeld(type) : null;
-            slotEl.style.backgroundImage = `url(${held ? this.plateIconUrl(held) : this.world.getInventoryIconUrl(type)})`;
+            const { type, entry } = item;
+            // A culture plate is its own slot, with its own colonies (js/game/plates.js).
+            const plate = Boolean(this.plateTitle) && plateIdentified(type);
+            slotEl.style.backgroundImage = `url(${entry ? this.plateIconUrl(entry) : this.world.getInventoryIconUrl(type)})`;
             slotEl.style.backgroundColor = '#' + this.world.blockTypes[type].color.toString(16).padStart(6, '0');
-            countEl.textContent = count;
+            countEl.textContent = item.count;
+            slotEl.title = plate ? this.plateTitle(type, entry && entry.culture) : '';
             slotEl.classList.remove('empty');
-            slotEl.classList.toggle('selected', inventoryIndex === this.selectedSlot);
+            slotEl.classList.toggle('selected', item.index === this.selectedSlot && item.held);
         }
     },
 
@@ -210,17 +246,17 @@ Object.assign(Game.prototype, {
         }
 
         // A culture plate is one item per plate, each with its own colonies (js/game/plates.js).
-        const shownItems = visibleItems.flatMap(({ type, slot }) => (this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type) }])
-            .map((shown, i) => ({ ...shown, slot, plate: this.plateInventoryItems && plateIdentified(type), first: i === 0 })));
-        shownItems.forEach(({ type, slot, entry, count: amount, plate, first }) => {
+        const shownItems = visibleItems.flatMap(({ type, slot }) => (this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type), held: true }])
+            .map((shown) => ({ ...shown, slot, plate: Boolean(this.plateInventoryItems) && plateIdentified(type) })));
+        shownItems.forEach(({ type, slot, entry, count: amount, plate, held }) => {
             const item = document.createElement('div');
-            item.className = 'inventory-item' + (this.selectedSlot === slot && first ? ' selected' : '');
+            item.className = 'inventory-item' + (this.selectedSlot === slot && held ? ' selected' : '');
             const brief = index.brief(type, ITEM_TAG_BRIEF_MAX.inventory);
             if (brief) item.dataset.tags = brief;
             const tags = index.entry(type).tags.map((tag) => itemTagLabel(tag)).join(' ');
             item.title = plate ? `${this.plateTitle(type, entry && entry.culture)}\n${tags}` : `${this.getBlockDisplayName(type)}\n${tags}`;
             item.addEventListener('click', () => {
-                if (entry) this.plateSelect(type, entry.id);
+                if (plate) this.plateSelect(type, entry ? entry.id : null);
                 this.selectSlot(slot, { promoteToHotbar: true });
                 this.closeInventoryPanel();
             });

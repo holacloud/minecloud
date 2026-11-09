@@ -897,7 +897,7 @@ Object.assign(Game.prototype, {
         }
         const plates = op === 'inoculate' && this.platesOf && plateIdentified(source) ? this.platesOf(source) : [];
         // false: a plain one, with no record.
-        const plate = plateId === false ? null : plates.find((entry) => entry.id === plateId) || (plateId ? null : plates[0]) || null;
+        const plate = plateId === false ? null : plates.find((entry) => entry.id === plateId) || (plateId || !plates.length ? null : this.plateHeld(source)) || null;
         if (plateId && !plate) return false;
         if (plateId === false && this.plateLegacyCount(source) <= 0) return false;
         if (plate) delete took[source];

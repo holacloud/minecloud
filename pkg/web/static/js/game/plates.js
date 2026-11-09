@@ -5,9 +5,12 @@
 //   token is the plate's key: it went to this client alone, and putting the plate anywhere (a chest, the
 //   microscope, sowing it) takes it, so a plate can never be in two places. The culture is only for drawing:
 //   the server goes by its own record.
-// - `plateEntries` maps a type to the plates of it carried, in order: the first is the one in the hand (the
-//   one Q drops, a microscope or a chest takes from the hand). They live in the same saved JSON as the counts
-//   (minecloud-inventory-state, `plates`), so a reload keeps both together.
+// - `plateEntries` maps a type to the plates of it carried, in the order they came: that order is where each
+//   one shows, in the inventory panel and in the hotbar (one slot per plate), and choosing one never moves it.
+// - `plateHand` maps a type to the plate of it in the hand (the one Q drops, a microscope or the incubator
+//   takes from the hand): its id, or null for a plain one. With nothing named, or a name that is gone, the
+//   first is in the hand. Both live in the same saved JSON as the counts (minecloud-inventory-state, `plates`
+//   and `plateHand`), so a reload keeps them together.
 // - The count stays the truth of how many: count = entries + plain ones. A plain one is a plate from before
 //   plates had records (or given by /give): it still works, draws as its type, and the server gives it a
 //   record the first time it goes into a container (as only what its type says).
@@ -65,14 +68,27 @@ Object.assign(Game.prototype, {
         return Math.max(0, this.getInventoryCount(type) - this.platesOf(type).length);
     },
 
-    // The plate in the hand of a type, if it has a record.
-    plateHeld(type) {
-        return this.platesOf(type)[0] || null;
+    // Which plate of a type is in the hand: its id, null for a plain one, undefined if there is none.
+    plateHandKey(type) {
+        const list = this.platesOf(type);
+        const named = this.plateHand && Object.prototype.hasOwnProperty.call(this.plateHand, type) ? this.plateHand[type] : undefined;
+        if (named === null && this.plateLegacyCount(type) > 0) return null;
+        if (typeof named === 'string' && list.some((entry) => entry.id === named)) return named;
+        if (list.length > 0) return list[0].id;
+        return this.plateLegacyCount(type) > 0 ? null : undefined;
     },
 
-    // Reads the saved plates, keeping only real grants and never more than the count says.
-    plateRestore(saved) {
+    // The plate in the hand of a type, if it has a record (null: a plain one, or none).
+    plateHeld(type) {
+        const key = this.plateHandKey(type);
+        return (key && this.platesOf(type).find((entry) => entry.id === key)) || null;
+    },
+
+    // Reads the saved plates, keeping only real grants and never more than the count says, and which one of
+    // each type is in the hand.
+    plateRestore(saved, hand) {
         this.plateEntries = {};
+        this.plateHand = {};
         if (!saved || typeof saved !== 'object') return;
         const seen = new Set();
         for (const [type, list] of Object.entries(saved)) {
@@ -80,16 +96,27 @@ Object.assign(Game.prototype, {
             const entries = list.map(plateEntryOf).filter((entry) => entry && entry.type === type && !seen.has(entry.id) && seen.add(entry.id));
             if (entries.length > 0) this.plateEntries[type] = entries;
         }
+        if (hand && typeof hand === 'object') {
+            for (const [type, id] of Object.entries(hand)) {
+                if (plateIdentified(type) && (id === null || PLATE_ID_PATTERN.test(id))) this.plateHand[type] = id;
+            }
+        }
         this.plateReconcile();
     },
 
     // Never more plates than the count: anything that spent a plate without saying which drops the last ones.
+    // A hand that names a plate no longer carried names none (the first is in the hand).
     plateReconcile() {
         if (!this.plateEntries) this.plateEntries = {};
+        if (!this.plateHand) this.plateHand = {};
         for (const [type, list] of Object.entries(this.plateEntries)) {
             const count = this.getInventoryCount(type);
             if (list.length > count) list.length = Math.max(0, count);
             if (list.length === 0) delete this.plateEntries[type];
+        }
+        for (const [type, id] of Object.entries(this.plateHand)) {
+            const kept = id === null ? this.plateLegacyCount(type) > 0 : this.platesOf(type).some((entry) => entry.id === id);
+            if (!kept) delete this.plateHand[type];
         }
     },
 
@@ -101,16 +128,21 @@ Object.assign(Game.prototype, {
         if (known >= 0) {
             // The same plate twice can only be a newer grant of it: it replaces the old one, and the count stays.
             this.platesOf(entry.type)[known] = entry;
+            if (options.front) this.plateSelect(entry.type, entry.id);
             this.saveInventoryState();
             return true;
         }
         this.ensureInventorySlot(entry.type);
         if (!this.plateEntries) this.plateEntries = {};
         const list = this.plateEntries[entry.type] || (this.plateEntries[entry.type] = []);
-        if (options.front) list.unshift(entry);
-        else list.push(entry);
+        // A new plate takes the next slot; the others stay where they are.
+        list.push(entry);
         // The plate and its count change together, before anything saves.
         this.inventoryCounts[entry.type] = this.getInventoryCount(entry.type) + 1;
+        if (options.front) {
+            if (!this.plateHand) this.plateHand = {};
+            this.plateHand[entry.type] = entry.id;
+        }
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
         this.renderCraftingPanel();
@@ -128,31 +160,42 @@ Object.assign(Game.prototype, {
         return items;
     },
 
-    // Takes one plate of a type out of the inventory: the one named, or the one in the hand, or a plain one.
-    // Returns its entry (null for a plain one), or undefined if there is none to take.
+    // Takes one plate of a type out of the inventory: the one named, or the one in the hand (a plain one if
+    // that is what the hand holds). Returns its entry (null for a plain one), or undefined if there is none to
+    // take. If it was the one in the hand, the hand takes the one now in its place (the next, or the last).
     plateTakeOut(type, id = null) {
         if (this.getInventoryCount(type) <= 0) return undefined;
         const list = this.platesOf(type);
+        const hand = this.plateHandKey(type);
+        const handAt = hand === null ? list.length : list.findIndex((other) => other.id === hand);
+        const wanted = id || hand;
         let entry = null;
-        if (id) {
-            const index = list.findIndex((other) => other.id === id);
+        if (wanted) {
+            const index = list.findIndex((other) => other.id === wanted);
             if (index < 0) return undefined;
             entry = list.splice(index, 1)[0];
-        } else if (list.length > 0) {
-            entry = list.shift();
         } else if (this.plateLegacyCount(type) <= 0) {
             return undefined;
         }
         if (list.length === 0 && this.plateEntries) delete this.plateEntries[type];
         this.inventoryCounts[type] = this.getInventoryCount(type) - 1;
+        if (!this.plateHand) this.plateHand = {};
+        if (entry ? entry.id !== hand : hand !== null) {
+            // Another one went: the hand keeps what it held.
+            if (hand !== undefined) this.plateHand[type] = hand;
+        } else {
+            const left = this.plateInventoryItems(type);
+            const next = left[Math.min(Math.max(0, handAt), left.length - 1)];
+            if (next) this.plateHand[type] = next.entry ? next.entry.id : null;
+            else delete this.plateHand[type];
+        }
         return entry;
     },
 
-    // Puts a plate in the hand: it goes first among those of its type.
+    // Puts a plate in the hand (null: a plain one). Where it shows does not change.
     plateSelect(type, id) {
-        const list = this.platesOf(type);
-        const index = list.findIndex((other) => other.id === id);
-        if (index > 0) list.unshift(list.splice(index, 1)[0]);
+        if (!this.plateHand) this.plateHand = {};
+        if (id === null ? this.plateLegacyCount(type) > 0 : this.platesOf(type).some((other) => other.id === id)) this.plateHand[type] = id;
         this.saveInventoryState();
     },
 
@@ -188,11 +231,13 @@ Object.assign(Game.prototype, {
         return [name, ...plateSummaryLines(culture, speciesName).map(({ key, args }) => say(key, ...args))].join('\n');
     },
 
-    // The items of a type as the inventory shows them: one per plate (with a record or plain), or one stack.
+    // The items of a type as the inventory panel and the hotbar show them: one per plate (with a record or
+    // plain), or one stack. `held`: the one in the hand when this type is selected (of plain ones, the first).
     plateInventoryItems(type) {
-        if (!plateIdentified(type)) return [{ type, entry: null, count: this.getInventoryCount(type) }];
-        const items = this.platesOf(type).map((entry) => ({ type, entry, count: 1 }));
-        for (let i = 0; i < this.plateLegacyCount(type); i++) items.push({ type, entry: null, count: 1 });
+        if (!plateIdentified(type)) return [{ type, entry: null, count: this.getInventoryCount(type), held: true }];
+        const hand = this.plateHandKey(type);
+        const items = this.platesOf(type).map((entry) => ({ type, entry, count: 1, held: entry.id === hand }));
+        for (let i = 0; i < this.plateLegacyCount(type); i++) items.push({ type, entry: null, count: 1, held: hand === null && i === 0 });
         return items;
     }
 });

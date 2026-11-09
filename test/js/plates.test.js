@@ -175,9 +175,10 @@ test('each plate is its own slot with its own icon and summary, saved with the c
     yeast[1].listeners.click[0]();
     assert.equal(game.plateHeld('culture_yeast').id, b.id);
 
-    // A reload: the same plates, the one in the hand still first.
+    // A reload: the same plates in the same order, and the same one in the hand.
     const again = loadGame(storage).game;
-    assert.deepEqual(plain(again.platesOf('culture_yeast')), plain([b, a].map((g) => ({ id: g.id, token: g.token, type: g.type, culture: g.culture }))));
+    assert.deepEqual(plain(again.platesOf('culture_yeast')), plain([a, b].map((g) => ({ id: g.id, token: g.token, type: g.type, culture: g.culture }))));
+    assert.equal(again.plateHeld('culture_yeast').id, b.id);
     assert.equal(again.getInventoryCount('culture_yeast'), 2);
     assert.equal(again.getInventoryCount('agar_plate'), 4);
     assert.ok(!again.plateEntries.agar_plate, 'agar plates have no records');
@@ -449,4 +450,153 @@ test('random moves of plates through the inventory, chests, Q, reloads and refus
             for (const entry of Object.values(game.plateEntries).flat()) assert.equal(server.tokens.get(entry.id), entry.token, 'what the client holds, the server agrees it holds');
         }
     }
+});
+
+// The hotbar of js/game/inventory.js, drawn into the stand-in page.
+function hotbarOf(game, elements) {
+    game.initHotbar();
+    return elements.get('hotbar').children.map((slot) => ({
+        icon: slot.style.backgroundImage, count: slot.children[1].textContent, selected: slot.classList.contains('selected'), empty: slot.classList.contains('empty'), title: slot.title
+    }));
+}
+
+test('the hotbar shows each plate as its own slot with its own icon, and a slot holds exactly that plate, across a reload', () => {
+    const storage = memoryStorage();
+    let { game, elements } = loadGame(storage);
+    const plates = [grant('culture_yeast', 7.2), grant('culture_yeast', 6.4), grant('culture_yeast', 5.1), grant('culture_yeast', 8.3)];
+    for (const g of plates) game.plateAdd(g);
+    game.addInventory('stone', 5);
+    game.addInventory('agar_plate', 3);
+    let bar = hotbarOf(game, elements);
+    assert.equal(bar.length, 9);
+    // Four yeast plates, four slots; the stone and the agar plates one stack each, as before.
+    const ids = plates.map((g) => g.id);
+    assert.deepEqual(bar.slice(0, 4).map((slot) => slot.icon), plates.map((g) => `url(${game.plateIconUrl(g)})`));
+    assert.equal(new Set(bar.slice(0, 4).map((slot) => slot.icon)).size, 4, 'each draws its own colonies');
+    assert.ok(bar.slice(0, 4).every((slot) => slot.count === '1' && slot.icon.startsWith('url(data:plate')));
+    assert.match(bar[1].title, /Yeast: 10\^6\.4 cells/);
+    assert.deepEqual(bar.slice(4, 6).map((slot) => [slot.icon, slot.count]), [['url(icon:stone)', '5'], ['url(icon:agar_plate)', '3']]);
+    assert.ok(bar.slice(6).every((slot) => slot.empty));
+
+    // A number key (selectHotbarSlot, as game.js calls it) holds that plate, and nothing moves.
+    for (let i = 0; i < 4; i++) {
+        assert.equal(game.selectHotbarSlot(i), true);
+        assert.equal(game.plateHeld('culture_yeast').id, ids[i]);
+        assert.equal(game.getSelectedHeldItemType(), 'culture_yeast');
+        bar = hotbarOf(game, elements);
+        assert.deepEqual(bar.map((slot) => slot.selected), bar.map((_slot, n) => n === i), `only slot ${i + 1} is selected`);
+        assert.deepEqual(bar.slice(0, 4).map((slot) => slot.icon), plates.map((g) => `url(${game.plateIconUrl(g)})`), 'the slots keep their order');
+    }
+    // The inventory panel marks the same one.
+    game.renderInventoryPanel();
+    const shown = elements.get('inventory-grid').children.filter((child) => child.className.includes('inventory-item'));
+    assert.deepEqual(shown.filter((item) => item.title.startsWith('Yeast Plate')).map((item) => item.className.includes('selected')), [false, false, false, true]);
+
+    // The third plate in the hand, and a reload: the same plate in the same slot.
+    game.selectHotbarSlot(2);
+    ({ game, elements } = loadGame(storage));
+    assert.equal(game.plateHeld('culture_yeast').id, ids[2]);
+    bar = hotbarOf(game, elements);
+    assert.deepEqual(bar.map((slot) => slot.selected), bar.map((_slot, n) => n === 2));
+    assert.deepEqual([...game.platesOf('culture_yeast')].map((entry) => entry.id), ids);
+
+    // The wheel goes plate by plate, then on to the stone, and back.
+    game.stepHotbarSelection(1);
+    assert.equal(game.plateHeld('culture_yeast').id, ids[3]);
+    game.stepHotbarSelection(1);
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
+    game.stepHotbarSelection(-1);
+    assert.deepEqual([game.getSelectedHeldItemType(), game.plateHeld('culture_yeast').id], ['culture_yeast', ids[3]]);
+    game.stepHotbarSelection(-1);
+    assert.equal(game.plateHeld('culture_yeast').id, ids[2]);
+
+    // A plate that arrives while one is held takes a new slot; the hand keeps its plate.
+    const extra = grant('culture_yeast', 4.4);
+    game.plateAdd(extra);
+    assert.equal(game.plateHeld('culture_yeast').id, ids[2]);
+    bar = hotbarOf(game, elements);
+    assert.equal(bar[4].icon, `url(${game.plateIconUrl(extra)})`);
+    assert.deepEqual(bar.map((slot) => slot.selected), bar.map((_slot, n) => n === 2));
+    // The left hand takes no plate: X refuses it, and the hand keeps it.
+    game.offhandSwapSelected();
+    assert.equal(game.offhandType || null, null);
+    assert.equal(game.plateHeld('culture_yeast').id, ids[2]);
+});
+
+test('using a plate from the hotbar takes that one only: its slot goes, the others stay, the hand takes the next', () => {
+    const { game, elements, sent } = loadGame();
+    const plates = [grant('culture_mould', 7), grant('culture_mould', 6), grant('culture_mould', 5), grant('culture_mould', 4)];
+    for (const g of plates) game.plateAdd(g);
+    hotbarOf(game, elements);
+    const icon = (g) => `url(${game.plateIconUrl(g)})`;
+    // The microscope takes the plate in the hand: the one of the slot picked.
+    game.selectHotbarSlot(1);
+    game.microscopeRequest('microscopePrepare', 'prepare', { x: 0, y: 0, z: 0, source: 'culture_mould' }, 'culture_mould');
+    assert.equal(sent.pop().payload.plate, plates[1].id);
+    let bar = hotbarOf(game, elements);
+    assert.deepEqual(bar.slice(0, 3).map((slot) => slot.icon), [plates[0], plates[2], plates[3]].map(icon));
+    assert.ok(bar[3].empty);
+    assert.equal(game.plateHeld('culture_mould').id, plates[2].id, 'the one now in that slot');
+    assert.deepEqual(bar.map((slot) => slot.selected), bar.map((_slot, n) => n === 1));
+    // Q drops the plate of the selected slot.
+    game.selectHotbarSlot(2);
+    game.dropSelectedBlock();
+    assert.equal([...game.pickups.values()][0].plate.id, plates[3].id);
+    assert.deepEqual([...game.platesOf('culture_mould')].map((entry) => entry.id), [plates[0].id, plates[2].id]);
+    assert.equal(game.plateHeld('culture_mould').id, plates[2].id, 'the last one gone: the hand takes the one before');
+    // The incubator sows the one in the hand when none is named.
+    game.cultureAt = { x: 0, y: 0, z: 0 };
+    game.culturePanel = fakeElement();
+    game.cultureLookBox = fakeElement();
+    game.selectHotbarSlot(0);
+    game.cultureApply('inoculate', 0, 'culture_mould');
+    assert.equal(sent.pop().payload.plate, plates[0].id);
+    assert.deepEqual([...game.platesOf('culture_mould')].map((entry) => entry.id), [plates[2].id]);
+    bar = hotbarOf(game, elements);
+    assert.equal(bar[0].icon, icon(plates[2]));
+    assert.ok(bar[0].selected);
+});
+
+test('a hotbar too short for the plates still shows the one in the hand; plain plates and the touch hotbar too', () => {
+    const { game, elements } = loadGame();
+    game.hotbarSize = 4;
+    const plates = Array.from({ length: 6 }, (_v, i) => grant('culture_soil', 4 + i * 0.5));
+    for (const g of plates) game.plateAdd(g);
+    game.addInventory('stone', 2);
+    // An old plain plate is a slot of its own as well.
+    game.inventoryCounts.culture_soil += 1;
+    let bar = hotbarOf(game, elements);
+    assert.deepEqual(bar.map((slot) => slot.icon), plates.slice(0, 4).map((g) => `url(${game.plateIconUrl(g)})`));
+    // The sixth picked in the inventory panel: it takes the last slot of its type.
+    game.renderInventoryPanel();
+    const soil = () => elements.get('inventory-grid').children.filter((child) => child.className.includes('inventory-item') && child.title.startsWith('Soil'));
+    assert.equal(soil().length, 7);
+    soil()[5].listeners.click[0]();
+    assert.equal(game.plateHeld('culture_soil').id, plates[5].id);
+    bar = hotbarOf(game, elements);
+    assert.deepEqual(bar.map((slot) => slot.icon), [...plates.slice(0, 3), plates[5]].map((g) => `url(${game.plateIconUrl(g)})`));
+    assert.deepEqual(bar.map((slot) => slot.selected), [false, false, false, true]);
+    // The plain one, picked in the panel: the hand holds a plain plate, and Q drops it as plain.
+    game.renderInventoryPanel();
+    soil()[6].listeners.click[0]();
+    assert.equal(game.plateHeld('culture_soil'), null);
+    assert.equal(game.plateHandKey('culture_soil'), null);
+    game.dropSelectedBlock();
+    assert.equal([...game.pickups.values()][0].plate, undefined);
+    assert.equal(game.platesOf('culture_soil').length, 6);
+    assert.equal(game.plateLegacyCount('culture_soil'), 0);
+    // A phone: tapping a slot holds that plate.
+    game.touchControlsEnabled = true;
+    hotbarOf(game, elements);
+    elements.get('hotbar').children[2].listeners.pointerdown[0]({ preventDefault() {} });
+    assert.equal(game.plateHeld('culture_soil').id, plates[2].id);
+});
+
+test('game.js sends the number keys and the wheel through the hotbar slots, not through the types', () => {
+    const source = fs.readFileSync(path.join(JS, 'game.js'), 'utf8');
+    const keys = source.slice(source.indexOf('    onKeyDown(event) {'), source.indexOf('    onWheel(event) {'));
+    const wheel = source.slice(source.indexOf('    onWheel(event) {'), source.indexOf('    onWindowResize() {'));
+    assert.match(keys, /this\.selectHotbarSlot\(slot\)/);
+    assert.match(wheel, /this\.stepHotbarSelection\(direction\)/);
+    assert.doesNotMatch(source, /getHotbarSlotInventoryIndex|getHotbarInventoryIndexes/);
 });
