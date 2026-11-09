@@ -957,10 +957,11 @@ Object.assign(Game.prototype, {
         }
     },
 
-    // Puts what came out in the hand: its hotbar slot if it has one, or onto the hotbar as a crafted item
-    // goes (js/game/inventory.js, selectInventoryType).
+    // Puts what came out in the hand and in the first hotbar slot, as the autoclave does with what it
+    // sterilised (js/game/inventory.js, holdInFirstHotbarSlot). A culture plate is the one just harvested,
+    // already in the hand (plateSettle with `front`).
     cultureHold(type) {
-        this.selectInventoryType(type);
+        this.holdInFirstHotbarSlot(type);
     },
 
     cultureSetNote(line) {

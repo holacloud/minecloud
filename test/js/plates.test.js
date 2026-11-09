@@ -695,6 +695,81 @@ test('the label over the hotbar names what the hand holds, a plate with its summ
     context.setGameLang('EN');
 });
 
+test('taking from the autoclave\'s result slot closes the panel and puts it in the hand, in the first hotbar slot; other slots and chests do not', () => {
+    const { game, elements, sent } = loadGame();
+    let relocks = 0;
+    game.recapturePointerLock = () => { relocks++; };
+    game.addInventory('stone', 5);
+    game.addInventory('agar_plate', 1);
+    game.addInventory('milk', 1);
+    game.promoteTypeToHotbar('milk');
+    game.selectSlot(game.inventory.indexOf('stone'));
+    hotbarOf(game, elements);
+    const open = (kind) => {
+        game.storageAt = { x: 0, y: 0, z: 0 };
+        game.storageKind = kind;
+        game.storageTab = '';
+        game.storageNote = '';
+        game.storageSlots = [{ type: 'used_dish', count: 1 }, null, { type: 'petri_dish', count: 2 }];
+    };
+    const take = (slot, answer) => {
+        game.storageMode = 0;
+        game.storageTake(slot);
+        const message = sent.pop();
+        assert.equal(message.type, 'storageTake');
+        game.storageOnResult({ reqId: message.payload.reqId, type: message.payload.type, ...answer });
+    };
+    // Its first slot: into the inventory only, the panel stays, the hand as it was.
+    open('autoclave');
+    take(0, { amount: 1 });
+    assert.equal(game.getInventoryCount('used_dish'), 1);
+    assert.ok(game.storageAt, 'the panel stays');
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
+    // Refused: nothing comes, the panel stays and says why, the pointer stays free.
+    take(2, { amount: 0, reason: 'gone' });
+    assert.ok(game.storageAt);
+    assert.match(game.storageNote, /no longer there/);
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
+    assert.equal(relocks, 0);
+    // Its result: on the answer the panel closes, the pointer is taken again, and the dishes are in slot 1.
+    take(2, { amount: 2 });
+    assert.equal(game.storageAt, null);
+    assert.equal(sent.pop().type, 'storageClose');
+    assert.equal(relocks, 1);
+    assert.equal(game.getInventoryCount('petri_dish'), 2);
+    assert.equal(game.getSelectedHeldItemType(), 'petri_dish');
+    const bar = hotbarOf(game, elements);
+    assert.deepEqual([bar[0].icon, bar[0].count, bar[0].selected], ['url(icon:petri_dish)', '2', true]);
+    assert.deepEqual(bar.slice(1, 3).map((slot) => slot.icon), ['url(icon:milk)', 'url(icon:stone)'], 'the others one along');
+    // A chest's third slot is only a chest's slot.
+    game.selectSlot(game.inventory.indexOf('stone'));
+    open('chest');
+    take(2, { amount: 2 });
+    assert.ok(game.storageAt);
+    assert.equal(game.getInventoryCount('petri_dish'), 4);
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
+});
+
+test('a culture plate harvested from the incubator is in the hand as itself, in the first hotbar slot', () => {
+    const { game, elements } = loadGame();
+    game.addInventory('stone', 5);
+    const old = grant('culture_yeast', 5);
+    game.plateAdd(old);
+    game.promoteTypeToHotbar('culture_yeast', old.id);
+    game.promoteTypeToHotbar('stone');
+    game.cultureAt = { x: 0, y: 0, z: 0 };
+    game.culturePanel = fakeElement();
+    game.cultureLookBox = fakeElement();
+    const fresh = grant('culture_yeast', 8.4);
+    game.culturePending.set('harvest-1', { took: {}, gives: { result: 1 }, op: 'harvest', at: 0, hold: true });
+    game.cultureOnOutcome({ reqId: 'harvest-1', type: 'culture_yeast', amount: 1, plates: [fresh] });
+    assert.equal(game.cultureAt, null, 'the panel closes');
+    assert.equal(game.plateHeld('culture_yeast').id, fresh.id);
+    const bar = hotbarOf(game, elements);
+    assert.deepEqual(bar.slice(0, 3).map((slot) => [slot.icon, slot.selected]), [[`url(${game.plateIconUrl(fresh)})`, true], ['url(icon:stone)', false], [`url(${game.plateIconUrl(old)})`, false]]);
+    assert.equal(game.hotbarLabelText(), 'Yeast Plate · 10⁸');
+});
+
 test('a hotbar saved before each plate was its own entry: a plate type becomes the plate that was in the hand', () => {
     const storage = memoryStorage();
     const a = grant('culture_yeast', 6);

@@ -11,6 +11,9 @@
 //   reconnection or a reload: the server answers from its log, or kills a move that never
 //   arrived so that it can no longer apply.
 // - When a chest is broken the server sends its contents to whoever broke it, as pickups.
+// - What is taken from the autoclave's result slot goes to the hand, as what the incubator hands over: on
+//   the server's answer the panel closes and it is in the first hotbar slot, selected; a refusal leaves
+//   the panel open with the reason. Other slots and other chests only fill the inventory.
 // - A culture plate (js/game/plates.js) is one cell in the chest and one among the player's items, each
 //   drawn from its own record; it moves alone, named by its id (and on a put its token), and the pending
 //   move keeps the plate so a refusal gives back that very plate. Plain plates with no record yet are a
@@ -90,6 +93,16 @@ function storageClickAmount(mode, available) {
 function storageApplyOutcome(pending, moved) {
     const amount = Math.max(0, Math.min(moved || 0, pending.amount));
     return { give: pending.op === 'put' ? pending.amount - amount : amount, moved: amount };
+}
+
+// The autoclave's result slot (its third): what is taken from it goes to the hand.
+const STORAGE_AUTOCLAVE_RESULT_SLOT = 2;
+
+// Why a take was refused, in the language of the game where the incubator's lines have it.
+function storageRefusalLine(reason) {
+    const lines = typeof CULTURE_TEXT !== 'undefined' && typeof gameLang === 'function' ? CULTURE_TEXT.refused[gameLang()] : null;
+    if (lines) return lines[reason] || lines.other;
+    return `Could not take it out (${reason})`;
 }
 
 function storageBaseName(type) {
@@ -244,7 +257,10 @@ Object.assign(Game.prototype, {
         const amount = slot.plate ? 1 : storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, slot.count);
         if (amount <= 0) return;
         const reqId = this.storageNewRequestId();
-        this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now() });
+        // What the autoclave has sterilised goes to the hand, as what the incubator hands over (only for this
+        // session's request: one resumed after a reload does not take the hand).
+        const hold = this.storageKind === 'autoclave' && !this.storageTab && index === STORAGE_AUTOCLAVE_RESULT_SLOT;
+        this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now(), ...(hold ? { hold: true } : {}) });
         this.storageSavePending();
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
         this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId, ...tab, ...(slot.plate ? { plate: slot.plate } : {}) });
@@ -281,8 +297,19 @@ Object.assign(Game.prototype, {
             this.plateAdd(pending.plate);
         } else if (give > 0 && this.world.blockTypes[pending.type]) {
             // What came out of a chest: each culture plate as itself, the rest as items.
-            const items = this.plateSettle ? this.plateSettle(pending.op === 'take' ? outcome : null, { [pending.type]: give }) : { [pending.type]: give };
+            const items = this.plateSettle ? this.plateSettle(pending.op === 'take' ? outcome : null, { [pending.type]: give }, { front: Boolean(pending.hold) }) : { [pending.type]: give };
             if (items[pending.type] > 0) this.addInventory(pending.type, items[pending.type]);
+        }
+        if (pending.hold && pending.op === 'take') {
+            if (outcome.amount > 0 && this.getInventoryCount(pending.type) > 0) {
+                // It has arrived: the panel goes, and it is in the hand, in the first slot.
+                this.storageClose();
+                this.holdInFirstHotbarSlot(pending.type);
+                this.playPickupSound();
+                return;
+            }
+            // Refused: the panel stays, and says why.
+            if (outcome.reason && outcome.reason !== 'not yours' && !applianceRefusalNote(outcome.reason)) this.storageNote = storageRefusalLine(outcome.reason);
         }
         this.storageRender();
         if (outcome.amount > 0) this.playPickupSound();

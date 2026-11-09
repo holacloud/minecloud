@@ -719,7 +719,8 @@ test('"Take out": once the plate has arrived the panel closes, the pointer is ta
             assert.equal(game.getInventoryCount('culture_yeast'), 1);
             assert.equal(game.getSelectedBlockType(), 'culture_yeast', 'in the hand');
             const hotbar = plain(game.getHotbarInventoryIndexes().map((index) => game.inventory[index]));
-            assert.ok(hotbar.includes('culture_yeast'), 'in the hotbar');
+            assert.equal(hotbar[0], 'culture_yeast', 'in the first hotbar slot');
+            assert.ok(game.getHotbarItems()[0].selected, 'that slot selected');
             assert.ok(hotbar.includes('stone') && hotbar.includes('agar_plate'), 'nothing pushed out of a hotbar with room');
             assert.ok(said.includes(ctx.cultureSay('gotCulture', game.cultureName('culture_yeast'))), 'it says how to look at it under a microscope');
             const state = JSON.parse(ctx.window.localStorage.getItem('minecloud-inventory-state'));
@@ -728,7 +729,7 @@ test('"Take out": once the plate has arrived the panel closes, the pointer is ta
     }
 });
 
-test('"Take out": what is already in the hotbar is selected where it is; a refusal leaves the panel and says why', () => withHotbarElement(() => {
+test('"Take out": what is already in the hotbar goes to its first slot, selected; a refusal leaves the panel and says why', () => withHotbarElement(() => {
     const made = handGame();
     const { game, sent } = made;
     game.inventory.push('used_dish');
@@ -741,7 +742,9 @@ test('"Take out": what is already in the hotbar is selected where it is; a refus
     game.cultureOnOutcome({ reqId: sent[sent.length - 1][1].reqId, type: 'used_dish', amount: 1 });
     assert.equal(game.getInventoryCount('used_dish'), 3);
     assert.equal(game.getSelectedBlockType(), 'used_dish');
-    assert.deepEqual(plain(game.getHotbarInventoryIndexes()), order, 'its slot, the hotbar as it was');
+    const dish = game.inventory.indexOf('used_dish');
+    assert.deepEqual(plain(game.getHotbarInventoryIndexes()), [dish, ...order.filter((index) => index !== dish)], 'the first slot, the others one along');
+    assert.ok(game.getHotbarItems()[0].selected);
     assert.equal(game.cultureAt, null);
 
     // Refused: nothing comes, the panel stays, the reason is said, the hand is as it was.

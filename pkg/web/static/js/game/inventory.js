@@ -828,6 +828,17 @@ Object.assign(Game.prototype, {
         return true;
     },
 
+    // What came out of a machine (the incubator, the autoclave's result) goes to the hand and to the first
+    // hotbar slot, the others moving one along: a culture plate as the plate `plateId`, or the one in the hand.
+    // Says whether it could.
+    holdInFirstHotbarSlot(type, plateId = null) {
+        const index = this.inventory.indexOf(type);
+        if (index < 0 || this.getInventoryCount(type) <= 0) return false;
+        if (plateId && this.plateSelect && plateIdentified(type)) this.plateSelect(type, plateId);
+        this.selectSlot(index, { promoteToHotbar: true });
+        return true;
+    },
+
     canCraftRecipe(recipe) {
         return recipe.inputs.every((input) => this.getInventoryCount(input.type) >= input.amount);
     },
