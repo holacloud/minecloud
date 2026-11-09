@@ -779,6 +779,7 @@ class Game {
         this.network.on('chunkData', (buffer) => this.world.receiveChunkFrame(buffer));
         this.network.on('worldInit', (blocks) => this.world.loadBlocks(blocks));
         this.network.on('blockPlace', (payload) => this.world.addBlock(payload));
+        this.network.on('curtainStrip', (payload) => this.curtainApplyStrip(payload));
         this.network.on('blockBreak', (payload) => this.world.removeBlockAt(payload.x, payload.y, payload.z));
         this.network.on('soundBlockPlay', (payload) => this.playSoundBlockAt(payload));
         this.network.on('sprayPaint', (payload) => this.world.addSprayPaint(payload));

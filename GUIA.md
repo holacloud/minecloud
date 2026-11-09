@@ -610,3 +610,19 @@ Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/
   que ya llevaba la cámara. Las luces alumbran también en la mano derecha.
 - **Microscopio:** una luz en cualquier mano cuenta si estás a 3 bloques o menos.
 - **Red:** el campo `offhandItem` de `playerMove`; los clientes antiguos lo ignoran y los que no lo mandan salen con la mano vacía.
+
+## Cortinas
+
+Las cortinas (`<color>_curtain`, página 230, `js/game/decor.js`) se corren con clic derecho, por `joineryToggle` como puertas y verjas.
+
+- **Tiras verticales:** el clic corre también las cortinas que cuelgan justo encima y debajo con la misma orientación (de cualquier
+  color), las más cercanas primero, alternando arriba y abajo, hasta 10 en total con la pulsada (`CURTAIN_STRIP_LIMIT`). Un hueco, otro
+  bloque, una cortina que mira a otro lado o un chunk sin cargar cortan la tira. Todas acaban en el estado al que va la pulsada; cada una
+  conserva su color. El alcance solo se mira en la pulsada: se tira del cordón y se corre la tira.
+- **Red:** una sola cortina va como `blockPlace`, como siempre. Una tira va en un mensaje `curtainStrip` (`pkg/network/curtains.go`) con
+  todos los bloques. El servidor la escribe entera o nada: una sola columna seguida, como mucho 10, cada celda sigue siendo esa misma
+  cortina con la misma orientación. Si algo falla (alguien rompió una, otra orientación, fuera del mundo) no cambia nada y solo el que la
+  mandó recibe un `curtainStrip` con lo que hay de verdad (`blockType` vacío es aire). Si vale, todos reciben un solo `curtainStrip`.
+  `blockPlace`, `blockBreak` y `curtainStrip` pasan por un mismo cerrojo (`blockEditMu`), así que nadie rompe una entre la comprobación y
+  la escritura.
+- **Planos y `/build`:** colocan cada cortina con su nombre y estado, con `blockPlace`; no les afecta.

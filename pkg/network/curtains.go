@@ -1,0 +1,104 @@
+package network
+
+import (
+	"encoding/json"
+	"log"
+	"strings"
+)
+
+// Curtains (js/game/decor.js) open and close in vertical strips: a click changes the curtain and the
+// ones hanging right above and below it, with the same facing, up to curtainStripLimit in all. The
+// client sends the whole strip in one curtainStrip message, and the server writes all of it or none:
+// if any cell is no longer the curtain the client thought (someone broke it, it was never there, it
+// is out of the world), nothing changes and the sender alone is told what those cells really hold.
+// Everybody else hears the strip as one message, so nobody sees it half drawn.
+
+const curtainStripLimit = 10
+
+type curtainStripPayload struct {
+	Blocks []Block `json:"blocks"`
+}
+
+// The facing of a curtain block name: red_curtain is north, red_curtain:e:open looks east.
+func curtainFacing(name string) (base, facing string, ok bool) {
+	parts := strings.Split(name, ":")
+	if !strings.HasSuffix(parts[0], "_curtain") {
+		return "", "", false
+	}
+	if len(parts) == 1 {
+		return parts[0], "n", true
+	}
+	return parts[0], parts[1], true
+}
+
+// Whether the strip is one column of contiguous cells, each a curtain now, each staying the same
+// curtain with the same facing, all of them facing the same way.
+func curtainStripValid(blocks []Block) bool {
+	if len(blocks) == 0 || len(blocks) > curtainStripLimit {
+		return false
+	}
+	minY, maxY := blocks[0].Y, blocks[0].Y
+	seen := make(map[int]bool, len(blocks))
+	facing := ""
+	for _, block := range blocks {
+		if block.X != blocks[0].X || block.Z != blocks[0].Z || seen[block.Y] || !blockEditable(block.X, block.Y, block.Z) {
+			return false
+		}
+		seen[block.Y] = true
+		minY, maxY = min(minY, block.Y), max(maxY, block.Y)
+		base, to, ok := curtainFacing(block.BlockType)
+		if !ok {
+			return false
+		}
+		current, err := chunkStore.Block(block.X, block.Y, block.Z)
+		if err != nil {
+			return false
+		}
+		was, from, ok := curtainFacing(current)
+		if !ok || was != base || from != to || (facing != "" && to != facing) {
+			return false
+		}
+		facing = to
+	}
+	return maxY-minY+1 == len(blocks)
+}
+
+func curtainStripMessage(client *Client, raw json.RawMessage) {
+	var payload curtainStripPayload
+	if json.Unmarshal(raw, &payload) != nil {
+		return
+	}
+	blockEditMu.Lock()
+	if !curtainStripValid(payload.Blocks) {
+		// Put the sender's world right: it already drew the strip it asked for.
+		truth := make([]Block, 0, len(payload.Blocks))
+		for i, block := range payload.Blocks {
+			if i >= curtainStripLimit {
+				break
+			}
+			name, err := chunkStore.Block(block.X, block.Y, block.Z)
+			if err != nil {
+				continue
+			}
+			if name == "air" {
+				name = ""
+			}
+			truth = append(truth, Block{X: block.X, Y: block.Y, Z: block.Z, BlockType: name})
+		}
+		blockEditMu.Unlock()
+		log.Printf("curtainStrip refused: %d cells", len(payload.Blocks))
+		select {
+		case client.send <- createMessage("curtainStrip", curtainStripPayload{Blocks: truth}):
+		default:
+		}
+		return
+	}
+	placed := make([]Block, 0, len(payload.Blocks))
+	for _, block := range payload.Blocks {
+		if done, ok := placeBlock(client, Block{X: block.X, Y: block.Y, Z: block.Z, BlockType: block.BlockType}); ok {
+			placed = append(placed, done)
+		}
+	}
+	blockEditMu.Unlock()
+	broadcastToAll(createMessage("curtainStrip", curtainStripPayload{Blocks: placed}))
+}

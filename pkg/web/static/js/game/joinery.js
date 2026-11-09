@@ -243,23 +243,32 @@ Object.assign(Game.prototype, {
         if (!nextType) return false;
 
         const updates = [{ ...position, blockType: nextType }];
-        // Linked cells (the other half of a door) take the same changes.
+        // Linked cells (the other half of a door) take the same changes. So does a strip (curtains
+        // hanging one above another), each in its own kind: only the changed keys are copied, so a
+        // red curtain stays red and keeps its own side.
         const changed = Object.keys(next).filter((key) => next[key] !== def.state[key]);
-        for (const [dx, dy, dz] of shape.linked ? shape.linked(def.state) : []) {
-            const cell = { x: position.x + dx, y: position.y + dy, z: position.z + dz };
-            const otherType = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
+        const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
+        const linked = (shape.linked ? shape.linked(def.state) : [])
+            .map(([dx, dy, dz]) => ({ x: position.x + dx, y: position.y + dy, z: position.z + dz, sameBase: true }));
+        const strip = shape.strip ? shape.strip(position, typeAt, this.world.blockTypes) : [];
+        for (const cell of [...linked, ...strip]) {
+            const otherType = typeAt(cell.x, cell.y, cell.z);
             const other = otherType && this.world.blockTypes[otherType];
-            if (!other || (other.variantOf || otherType) !== base) continue;
+            if (!other || !other.state) continue;
+            const otherBase = other.variantOf || otherType;
+            if (cell.sameBase ? otherBase !== base : BLOCK_SHAPES[other.shape] !== shape) continue;
             const otherNext = { ...other.state };
             changed.forEach((key) => { otherNext[key] = next[key]; });
-            const otherNextType = this.world.getShapeStateType(base, otherNext);
-            if (otherNextType) updates.push({ ...cell, blockType: otherNextType });
+            const otherNextType = this.world.getShapeStateType(otherBase, otherNext);
+            if (otherNextType) updates.push({ x: cell.x, y: cell.y, z: cell.z, blockType: otherNextType });
         }
 
-        updates.forEach((update) => {
-            this.world.addBlock(update);
-            if (this.network.connected) this.network.send('blockPlace', update);
-        });
+        updates.forEach((update) => this.world.addBlock(update));
+        if (this.network.connected) {
+            // A strip goes in one message: the server changes all of it or none.
+            if (shape.stripMessage && updates.length > 1) this.network.send(shape.stripMessage, { blocks: updates });
+            else updates.forEach((update) => this.network.send('blockPlace', update));
+        }
         const iron = def.category === 'stone';
         this.playNoiseBurst({ duration: iron ? 0.1 : 0.16, volume: 0.03, highpass: iron ? 900 : 200, lowpass: iron ? 4200 : 1300 });
         this.playTone({ frequency: iron ? 330 : 120, endFrequency: iron ? 260 : 95, duration: 0.12, type: iron ? 'square' : 'triangle', volume: 0.018 });

@@ -536,6 +536,71 @@ func blockEditable(x, y, z int) bool {
 	return err != nil || name != "bedrock"
 }
 
+// Blocks placed and broken by clients go one edit at a time, so a strip of curtains changed together
+// (curtainStrip) is checked and written with nobody breaking one of them in between.
+var blockEditMu sync.Mutex
+
+// Places what a client sent (a blockPlace) with the server's own rules, and says whether it was
+// placed and what exactly, to tell everybody. The caller holds blockEditMu.
+func placeBlock(client *Client, payload Block) (Block, bool) {
+	if !blockEditable(payload.X, payload.Y, payload.Z) {
+		return payload, false
+	}
+	sanitizeSignPayload(&payload)
+	if payload.BlockType == "sound_block" {
+		payload.Instrument = strings.TrimSpace(payload.Instrument)
+		if payload.Instrument == "" {
+			payload.Instrument = "bell"
+		}
+		if payload.Note < 0 || payload.Note > 7 {
+			payload.Note = 0
+		}
+	} else {
+		payload.Instrument = ""
+		payload.Note = 0
+	}
+	if payload.BlockType == "ladder" {
+		payload.Facing = normalizeLadderFacing(payload.Facing)
+		if payload.Facing == "" {
+			payload.Facing = "pz"
+		}
+	} else {
+		payload.Facing = ""
+	}
+
+	if payload.BlockType == "" {
+		return payload, false
+	}
+	payload.BlockType = glowSanitizeName(payload.BlockType)
+	// An oven burns when the server says so, whatever a plan or a client asks for.
+	payload.BlockType = storage.settleOvenName(payload.X, payload.Y, payload.Z, payload.BlockType)
+	spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
+		return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
+	})
+	if err != nil {
+		log.Printf("blockPlace: %v", err)
+		return payload, false
+	}
+	// Only blocks with metadata (signs, sound blocks, ladders) are kept in world.json.
+	key := blockKey(payload.X, payload.Y, payload.Z)
+	stateMu.Lock()
+	_, hadMetadata := gameState.Blocks[key]
+	if hasBlockMetadata(payload) {
+		gameState.Blocks[key] = payload
+	} else {
+		delete(gameState.Blocks, key)
+	}
+	stateMu.Unlock()
+	if hadMetadata || hasBlockMetadata(payload) || cropsChanged || len(spill) > 0 {
+		saveWorldState()
+	}
+	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
+	recordSignMessage(client, payload)
+
+	log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
+	return payload, true
+}
+
 func handleMessage(client *Client, msg Message) {
 	switch msg.Type {
 	case "ping":
@@ -609,6 +674,8 @@ func handleMessage(client *Client, msg Message) {
 		broadcastToAll(createMessage("playerMove", payload))
 
 	case "blockBreak":
+		blockEditMu.Lock()
+		defer blockEditMu.Unlock()
 		var payload struct {
 			X int `json:"x"`
 			Y int `json:"y"`
@@ -644,62 +711,15 @@ func handleMessage(client *Client, msg Message) {
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
-		if !blockEditable(payload.X, payload.Y, payload.Z) {
-			return
-		}
-		sanitizeSignPayload(&payload)
-		if payload.BlockType == "sound_block" {
-			payload.Instrument = strings.TrimSpace(payload.Instrument)
-			if payload.Instrument == "" {
-				payload.Instrument = "bell"
-			}
-			if payload.Note < 0 || payload.Note > 7 {
-				payload.Note = 0
-			}
-		} else {
-			payload.Instrument = ""
-			payload.Note = 0
-		}
-		if payload.BlockType == "ladder" {
-			payload.Facing = normalizeLadderFacing(payload.Facing)
-			if payload.Facing == "" {
-				payload.Facing = "pz"
-			}
-		} else {
-			payload.Facing = ""
+		blockEditMu.Lock()
+		placed, ok := placeBlock(client, payload)
+		blockEditMu.Unlock()
+		if ok {
+			broadcastToAll(createMessage("blockPlace", placed))
 		}
 
-		if payload.BlockType == "" {
-			return
-		}
-		payload.BlockType = glowSanitizeName(payload.BlockType)
-		// An oven burns when the server says so, whatever a plan or a client asks for.
-		payload.BlockType = storage.settleOvenName(payload.X, payload.Y, payload.Z, payload.BlockType)
-		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
-			return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
-		})
-		if err != nil {
-			log.Printf("blockPlace: %v", err)
-			return
-		}
-		// Only blocks with metadata (signs, sound blocks, ladders) are kept in world.json.
-		key := blockKey(payload.X, payload.Y, payload.Z)
-		stateMu.Lock()
-		_, hadMetadata := gameState.Blocks[key]
-		if hasBlockMetadata(payload) {
-			gameState.Blocks[key] = payload
-		} else {
-			delete(gameState.Blocks, key)
-		}
-		stateMu.Unlock()
-		if hadMetadata || hasBlockMetadata(payload) || cropsChanged || len(spill) > 0 {
-			saveWorldState()
-		}
-		storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
-		recordSignMessage(client, payload)
-
-		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
-		broadcastToAll(createMessage("blockPlace", payload))
+	case "curtainStrip":
+		curtainStripMessage(client, msg.Payload)
 
 	case "sprayPaint":
 		var payload SprayPaint

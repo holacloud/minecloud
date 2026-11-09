@@ -1188,8 +1188,8 @@ function constructionShowroom(b) {
     lantern(47, 4, 14);
 
     // ---- 12. The sample wall: every curtain and every carpet ----
-    sign(34, 4, 's', 'MUESTRAS. Cortinas y alfombras.', 'Las 16 cortinas (clic derecho: se corren, cada una por su cuenta) y las 16 alfombras, para pisarlas.',
-        'Samples. The 16 curtains (right click draws each one by itself) and the 16 carpets, to walk on.');
+    sign(34, 4, 's', 'MUESTRAS. Cortinas y alfombras.', 'Las 16 cortinas (clic derecho: se corre la columna entera) y las 16 alfombras, para pisarlas.',
+        'Samples. The 16 curtains (right click draws the whole column) and the 16 carpets, to walk on.');
     skylight(36, 9, 53, 9);
     colors.forEach((color, i) => {
         for (let y = 1; y <= 3; y++) curtain(36 + i, y, 4, color, 's');

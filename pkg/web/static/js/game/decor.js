@@ -58,7 +58,52 @@ furnShape('carpet', {
     boxes: [[0, 0, 0, 16, 1, 16]]
 });
 
-// A curtain hangs at the back of its cell, pleated. Right click draws it to one side and back.
+// Curtains hanging one above another, with the same facing, are drawn together: this many at most.
+const CURTAIN_STRIP_LIMIT = 10;
+
+// The other cells of the vertical strip the curtain at `position` hangs in: the curtains right above
+// and below it with its facing (any colour), nearest first, alternating up and down, until a gap, a
+// curtain that faces another way or the limit (the clicked one counts). typeAt(x, y, z) reads the
+// world, so a cell not loaded yet ends the strip too.
+function curtainStripCells(position, typeAt, blockTypes, limit = CURTAIN_STRIP_LIMIT) {
+    const facingAt = (y) => {
+        const type = typeAt(position.x, y, position.z);
+        const def = type && blockTypes[type];
+        return def && def.shape === 'curtain' && def.state ? def.state.facing : null;
+    };
+    const facing = facingAt(position.y);
+    if (!facing) return [];
+    const cells = [];
+    let up = position.y + 1;
+    let down = position.y - 1;
+    let goUp = true;
+    let goDown = true;
+    while (cells.length + 1 < limit && (goUp || goDown)) {
+        if (goUp) {
+            if (facingAt(up) === facing) cells.push({ x: position.x, y: up++, z: position.z });
+            else goUp = false;
+        }
+        if (goDown && cells.length + 1 < limit) {
+            if (facingAt(down) === facing) cells.push({ x: position.x, y: down--, z: position.z });
+            else goDown = false;
+        }
+    }
+    return cells;
+}
+
+Object.assign(Game.prototype, {
+    // What the server says a strip of curtains holds now (to everybody, or to the sender alone when
+    // it refused the strip): an empty blockType is air.
+    curtainApplyStrip(payload) {
+        for (const block of (payload && payload.blocks) || []) {
+            if (block.blockType) this.world.addBlock(block);
+            else this.world.removeBlockAt(block.x, block.y, block.z);
+        }
+    }
+});
+
+// A curtain hangs at the back of its cell, pleated. Right click draws it to one side and back, and
+// the curtains hanging above and below it with it (curtainStripCells).
 registerBlockShape('curtain', {
     states: [['facing', SHAPE_FACINGS], ['drawn', ['closed', 'open']]],
     boxes(state) {
@@ -73,6 +118,9 @@ registerBlockShape('curtain', {
         return [{ dx: 0, dy: 0, dz: 0, state: { facing: wall ? shapeFacingFromVector(ctx.normal.x, ctx.normal.z) : furnFacePlayer(ctx), drawn: 'closed' } }];
     },
     toggle: (state) => ({ ...state, drawn: state.drawn === 'open' ? 'closed' : 'open' }),
+    // Toggled together, sent in one curtainStrip message (joineryToggle).
+    strip: (position, typeAt, blockTypes) => curtainStripCells(position, typeAt, blockTypes),
+    stripMessage: 'curtainStrip',
     iconState: { facing: 's', drawn: 'closed' }
 });
 
