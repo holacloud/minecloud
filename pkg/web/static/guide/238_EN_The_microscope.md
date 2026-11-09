@@ -51,7 +51,13 @@ The panel only exists with a slide on:
 - **Taking it off** (the **Take off** icon) gives it back washed and closes the panel. What was on it is gone.
 - **Closing the panel** (Escape or ✕) leaves it on. It goes on drying, and whoever looks next sees it: you with another right click, or another player. That is how the [cryptobiosis](241) experiment works.
 
-If there is already a slide on it, a right click only shows that one and never replaces it, even with a sample in your hand: it belongs to everyone looking. Take it off first. And beware: with a block that works in your hand, such as `dirt` or leaves, the click uses one up. To build against the microscope, crouch.
+## Is something already on it?
+
+You can tell from afar: a microscope in use **shows it on its stage**, a pale glass slide under the lens, or a round dish of amber agar if it is a [culture plate](253). An empty stage is bare black.
+
+If there is already something on it, a right click only shows that and never replaces it, even with a sample or a plate in your hand: the panel and the chat say plainly what is there, who put it on, and that you must take it off first, then right click again to put on yours. The title of the panel always names what is on the stage, for example *On the stage: Mould Plate · 10⁸ — placed by Ana*, so it is never mistaken for what you hold. And beware: with a block that works in your hand, such as `dirt` or leaves, the click uses one up. To build against the microscope, crouch.
+
+**Who gets it when it is taken off?** Whoever presses **Take off**, whoever put it on. A slide comes back to them washed (what was on it is gone); a plate comes back as it went on, with its colonies, as theirs. The person who put it on may not even be playing any more, and a microscope is shared, so the rule is simple: the panel tells you whose it is before you press the button, the button says so too, and if it was someone else's the chat reminds you, so you can give it back.
 
 Everybody looking at the same microscope sees the same slide: the same organisms in the same places. Each one moves in its own way on each screen.
 

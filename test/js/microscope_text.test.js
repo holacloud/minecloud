@@ -273,7 +273,8 @@ test('the Spanish panel names its items in Spanish, and changes language while i
         scopeSlide(open, { source: 'dirt' });
         const panel = open.microscopePanel;
         assert.match(panel.querySelector('#micro-light').textContent, /Vela/);
-        assert.equal(panel.querySelector('h3').textContent, 'Microscopio');
+        // The header names what is on the stage, in the language of the game.
+        assert.equal(panel.querySelector('h3').textContent, 'En la platina: Portaobjetos: Tierra');
         assert.equal(panel.querySelector('.micro-stain').querySelector('.micro-cap').textContent, 'Tinción');
         open.microscopeSetFilter('red_stained_glass');
         assert.match(panel.querySelector('.micro-filter').title, /Filtro: Vidriera roja/);
@@ -283,7 +284,7 @@ test('the Spanish panel names its items in Spanish, and changes language while i
     // hook of the game's content does not run.
     game.microscopeOnLang();
     const panel = game.microscopePanel;
-    assert.equal(panel.querySelector('h3').textContent, 'Microscope');
+    assert.equal(panel.querySelector('h3').textContent, 'On the stage: Slide: dirt');
     assert.equal(panel.querySelector('.micro-stain').querySelector('.micro-cap').textContent, 'Stain');
     assert.match(panel.querySelector('#micro-light').textContent, /Candle/);
     assert.match(panel.querySelector('.micro-filter').title, /Filter: Red Stained Glass/);
@@ -385,7 +386,7 @@ test('every refusal of the server is said, in both languages', () => {
     }
     assert.equal(ctx.microscopeRefusalLine('prepare', ''), '');
     assert.equal(ctx.microscopeRefusalLine('prepare', 'something new'), ctx.MICROSCOPE_TEXT.refusedOther.EN, 'a reason to come is never shown raw');
-    inLang('ES', () => assert.match(ctx.microscopeRefusalLine('prepare', 'occupied'), /Ya hay un portaobjetos/));
+    inLang('ES', () => assert.match(ctx.microscopeRefusalLine('prepare', 'occupied'), /Ya hay algo en la platina: retíralo primero/));
 });
 
 // ---- Lines put together, in Spanish ----

@@ -51,7 +51,13 @@ El panel solo existe con un portaobjetos puesto:
 - **Retirarlo** (el icono **Retirar**) te lo devuelve lavado y cierra el panel. Lo que tenía encima se pierde.
 - **Cerrar el panel** (Escape o ✕) lo deja puesto. Sigue secándose, y lo ve quien mire después: tú mismo con otro clic derecho, u otro jugador. Así funciona el experimento de la [criptobiosis](241).
 
-Si ya hay un portaobjetos puesto, el clic derecho solo lo enseña y nunca lo cambia, aunque lleves una muestra en la mano: es de todos los que miran. Retíralo primero. Y cuidado: con un bloque que sirva en la mano, como `dirt` u hojas, el clic gasta uno. Para construir contra el microscopio, agáchate.
+## ¿Ya tiene algo?
+
+Se ve de lejos: un microscopio en uso **lo enseña en su platina**, un portaobjetos de cristal claro bajo la lente, o una placa redonda de agar ámbar si es una [placa de cultivo](253). Una platina vacía se ve negra y desnuda.
+
+Si ya hay algo puesto, el clic derecho solo lo enseña y nunca lo cambia, aunque lleves una muestra o una placa en la mano: el panel y el chat dicen claramente qué hay, quién lo puso y que hay que retirarlo primero; luego, otro clic derecho para poner lo tuyo. El título del panel siempre nombra lo que hay en la platina, por ejemplo *En la platina: Placa de moho · 10⁸ — lo puso Ana*, para que nunca lo confundas con lo que llevas. Y cuidado: con un bloque que sirva en la mano, como `dirt` u hojas, el clic gasta uno. Para construir contra el microscopio, agáchate.
+
+**¿Para quién es lo que se retira?** Para quien pulsa **Retirar**, lo pusiera quien lo pusiera. Un portaobjetos le vuelve lavado (lo que tenía encima se pierde); una placa vuelve tal cual, con sus colonias, a su inventario. Quien la puso puede que ya ni esté jugando, y el microscopio es de todos, así que la regla es sencilla: el panel te dice de quién es antes de pulsar, el botón también, y si era de otro el chat te lo recuerda para que se la devuelvas.
 
 Todos los que miren el mismo microscopio ven lo mismo: los mismos organismos en los mismos sitios. Cada uno se mueve a su manera en cada pantalla.
 

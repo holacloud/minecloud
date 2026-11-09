@@ -44,9 +44,32 @@ const MICROSCOPE_TEXT = {
         EN: 'The slide stays on the microscope and goes on drying. Use the microscope again to see it.'
     },
     slideTakenOff: { ES: 'Alguien ha retirado el portaobjetos de este microscopio.', EN: 'Someone took the slide off this microscope.' },
-    slideAlreadyOn: {
-        ES: 'Ya hay un portaobjetos puesto, y es de todos los que miran. Retíralo primero para poner el tuyo.',
-        EN: 'There is already a slide on it, shared with whoever is looking. Take it off first to put on yours.'
+    // What is on the stage (microscopeStageText) and who put it there, always in the header, so that it is never
+    // taken for what is in the hand. `by` is placedBy or placedByYou, or '' when nobody is known (a slide from
+    // before names were kept).
+    stageHeader: {
+        ES: (what, by) => `En la platina: ${what}${by ? ` — ${by}` : ''}`,
+        EN: (what, by) => `On the stage: ${what}${by ? ` — ${by}` : ''}`
+    },
+    placedBy: { ES: (who) => `lo puso ${who}`, EN: (who) => `placed by ${who}` },
+    placedByYou: { ES: 'lo pusiste tú', EN: 'placed by you' },
+    // Right click with something to look at, and the stage was not free.
+    stageOccupied: {
+        ES: (what, by, held) => `Este microscopio ya tenía algo en la platina: ${what}${by ? ` (${by})` : ''}. Lo que ves es eso, no tu ${held}. Retíralo primero con el botón de retirar y vuelve a usar el microscopio para poner lo tuyo.`,
+        EN: (what, by, held) => `This microscope already had something on its stage: ${what}${by ? ` (${by})` : ''}. What you see is that, not your ${held}. Take it off first with the take-off button, then use the microscope again to put yours on.`
+    },
+    slideOf: { ES: (name) => `Portaobjetos: ${name}`, EN: (name) => `Slide: ${name}` },
+    cheekAny: { ES: 'frotis de mejilla', EN: 'cheek smear' },
+    stainedShort: { ES: 'teñido', EN: 'stained' },
+    // Whoever takes it off gets it (pkg/network/microscope.go): the button says whose it was.
+    takeOffWhose: { ES: (who) => `Lo puso ${who}, pero vendrá a ti.`, EN: (who) => `${who} put it on, but it comes to you.` },
+    tookOffOthersPlate: {
+        ES: (who, what) => `Has retirado la placa que puso ${who} (${what}): ahora está en tu inventario. Si era suya, devuélvesela.`,
+        EN: (who, what) => `You took off the plate ${who} put on (${what}): it is in your inventory now. If it was theirs, give it back.`
+    },
+    tookOffOthersSlide: {
+        ES: (who) => `Has retirado el portaobjetos que puso ${who}: su muestra se ha lavado y el cristal limpio está en tu inventario.`,
+        EN: (who) => `You took off the slide ${who} put on: its sample was washed away and the clean glass is in your inventory.`
     },
     slideReady: { ES: (name) => `Portaobjetos listo: ${name}.`, EN: (name) => `Slide ready: ${name}.` },
     plateReady: { ES: (name) => `En la platina: ${name}. Una placa no necesita portaobjetos.`, EN: (name) => `On the stage: ${name}. A plate needs no slide.` },
@@ -202,7 +225,7 @@ const MICROSCOPE_TEXT = {
     tardigradeWalking: { ES: 'Avanza despacio con sus ocho patas con garras.', EN: 'It lumbers along on eight clawed legs.' },
 
     // What the server can refuse, by the reason it gives (pkg/network/microscope.go).
-    refusedOccupied: { ES: 'Ya hay un portaobjetos en la platina', EN: 'There is already a slide on the stage' },
+    refusedOccupied: { ES: 'Ya hay algo en la platina: retíralo primero', EN: 'There is already something on the stage: take it off first' },
     refusedNoneLeft: { ES: 'En este portaobjetos ya no queda ninguno', EN: 'There is none left on this slide' },
     refusedStainTwice: { ES: 'Este portaobjetos ya tiene su tinción: solo cabe una.', EN: 'This slide already has its stain: one to a slide.' },
     refusedStained: {

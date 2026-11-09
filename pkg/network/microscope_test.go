@@ -628,3 +628,135 @@ func TestPlatesGoOnTheStageThemselves(t *testing.T) {
 		t.Error("a mould plate does not inoculate mould")
 	}
 }
+
+// ---- What is on the stage shows on the block ----
+
+// microscopeSettledNames is what the server settles each name a client or a plan may place for a microscope
+// to, with nothing on its stage, a slide and a plate. test/js/microscope.test.js reads this table and checks
+// that every name in it is one the client registers: a name the client does not know makes the block vanish.
+var microscopeSettledNames = map[string][3]string{
+	"microscope":         {"microscope", "microscope:n:slide", "microscope:n:plate"},
+	"microscope:e":       {"microscope:e", "microscope:e:slide", "microscope:e:plate"},
+	"microscope:s":       {"microscope:s", "microscope:s:slide", "microscope:s:plate"},
+	"microscope:w":       {"microscope:w", "microscope:w:slide", "microscope:w:plate"},
+	"microscope:n:slide": {"microscope", "microscope:n:slide", "microscope:n:plate"},
+	"microscope:e:slide": {"microscope:e", "microscope:e:slide", "microscope:e:plate"},
+	"microscope:s:slide": {"microscope:s", "microscope:s:slide", "microscope:s:plate"},
+	"microscope:w:slide": {"microscope:w", "microscope:w:slide", "microscope:w:plate"},
+	"microscope:n:plate": {"microscope", "microscope:n:slide", "microscope:n:plate"},
+	"microscope:e:plate": {"microscope:e", "microscope:e:slide", "microscope:e:plate"},
+	"microscope:s:plate": {"microscope:s", "microscope:s:slide", "microscope:s:plate"},
+	"microscope:w:plate": {"microscope:w", "microscope:w:slide", "microscope:w:plate"},
+}
+
+func TestMicroscopeSettledNamesAreTheServers(t *testing.T) {
+	for placed, want := range microscopeSettledNames {
+		for i, stage := range []string{"", microscopeStageSlide, microscopeStagePlate} {
+			if got := microscopeBlockName(placed, stage); got != want[i] {
+				t.Errorf("%s with %q is %s, the table says %s", placed, stage, got, want[i])
+			}
+		}
+	}
+	// Nothing on it: whatever a client or a plan places, it shows empty.
+	book, _, _ := newMicroBook()
+	for placed, want := range microscopeSettledNames {
+		if got := book.settleOvenName(0, 0, 0, placed); got != want[0] {
+			t.Errorf("%s placed on an empty microscope settles to %s", placed, got)
+		}
+	}
+}
+
+func TestTheBlockShowsWhatIsOnTheStage(t *testing.T) {
+	book, w, _ := newMicroBook()
+	w[[3]int{0, 0, 0}] = "microscope:e"
+	if _, changed := book.prepare(w, storageEye, microscopeRequest{Source: "dirt", ReqID: testMicroReq + "1", By: "Ana"}); !changed {
+		t.Fatal("not prepared")
+	}
+	if got := w[[3]int{0, 0, 0}]; got != "microscope:e:slide" {
+		t.Fatalf("with a slide the block is %s", got)
+	}
+	changes := book.drainNameChanges()
+	if len(changes) != 1 || changes[0].BlockType != "microscope:e:slide" {
+		t.Fatalf("changes: %+v", changes)
+	}
+	// Who put it on is kept, and told to the panel.
+	block := book.blocks[blockKey(0, 0, 0)]
+	if block.Prep.PlacedBy != "Ana" {
+		t.Fatalf("placed by %q", block.Prep.PlacedBy)
+	}
+	if view := book.microscopeViewOf(block); view.PlacedBy != "Ana" {
+		t.Fatalf("the panel is told %q", view.PlacedBy)
+	}
+	// A plan or a client placing it bare gets what it really shows.
+	if got := book.settleOvenName(0, 0, 0, "microscope:e"); got != "microscope:e:slide" {
+		t.Fatalf("placed again: %s", got)
+	}
+	// Taken off by someone else: it goes to them, and the block is empty again.
+	got, changed := book.clearSlide(w, storageEye, microscopeRequest{ReqID: testMicroReq + "2", By: "Bea"})
+	if !changed || got.Amount != 1 || got.Type != glassSlide {
+		t.Fatalf("take off: %+v", got)
+	}
+	if got := w[[3]int{0, 0, 0}]; got != "microscope:e" {
+		t.Fatalf("empty again the block is %s", got)
+	}
+	if changes := book.drainNameChanges(); len(changes) != 1 || changes[0].BlockType != "microscope:e" {
+		t.Fatalf("changes: %+v", changes)
+	}
+	// A plate shows as a plate, facing north as the bare name.
+	w[[3]int{0, 0, 0}] = "microscope"
+	book.prepare(w, storageEye, microscopeRequest{Source: "culture_yeast", ReqID: testMicroReq + "3"})
+	if got := w[[3]int{0, 0, 0}]; got != "microscope:n:plate" {
+		t.Fatalf("with a plate the block is %s", got)
+	}
+	if book.blocks[blockKey(0, 0, 0)].Prep.PlacedBy != "" {
+		t.Fatal("a nameless player left a name")
+	}
+	book.clearSlide(w, storageEye, microscopeRequest{ReqID: testMicroReq + "4"})
+	if got := w[[3]int{0, 0, 0}]; got != "microscope" {
+		t.Fatalf("empty again the block is %s", got)
+	}
+	// A refusal changes no name.
+	book.prepare(w, storageEye, microAt("dirt", "5"))
+	book.drainNameChanges()
+	book.prepare(w, storageEye, microAt("culture_yeast", "6"))
+	if changes := book.drainNameChanges(); len(changes) != 0 || w[[3]int{0, 0, 0}] != "microscope:n:slide" {
+		t.Fatalf("refused, and yet: %+v %s", changes, w[[3]int{0, 0, 0}])
+	}
+}
+
+// A microscope saved before its name showed the stage says what it holds the first time it is opened.
+func TestAnOldMicroscopeShowsItsSlideWhenOpened(t *testing.T) {
+	book, w, _ := newMicroBook()
+	book.prepare(w, storageEye, microAt("dirt", "1"))
+	w[[3]int{0, 0, 0}] = "microscope:w"
+	book.drainNameChanges()
+	if _, ok := book.open(w, storageEye, nil, 0, 0, 0); !ok {
+		t.Fatal("not opened")
+	}
+	if got := w[[3]int{0, 0, 0}]; got != "microscope:w:slide" {
+		t.Fatalf("opened, it is %s", got)
+	}
+	if changes := book.drainNameChanges(); len(changes) != 1 {
+		t.Fatalf("changes: %+v", changes)
+	}
+}
+
+func TestMicroscopePlacerName(t *testing.T) {
+	cases := map[string]string{
+		"Ana":                   "Ana",
+		"  Bea \n":              "Bea",
+		"a\x00b\x1fc\x7f":       "abc",
+		strings.Repeat("ñ", 40): strings.Repeat("ñ", microscopePlacerMax),
+	}
+	for in, want := range cases {
+		if got := microscopePlacer(in); got != want {
+			t.Errorf("%q kept as %q, want %q", in, got, want)
+		}
+	}
+	// A saved prep keeps no more than that either.
+	block := &StorageBlock{Slots: []StorageSlot{{Type: glassSlide, Count: 1}}, Prep: &MicroscopePrep{Source: "dirt", PlacedBy: "x\x01" + strings.Repeat("y", 100)}}
+	microscopeCleanLoaded(block)
+	if got := block.Prep.PlacedBy; got != "x"+strings.Repeat("y", microscopePlacerMax-1) {
+		t.Fatalf("loaded: %q", got)
+	}
+}

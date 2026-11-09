@@ -64,7 +64,7 @@ function loadModules() {
         microSpeciesOf, microSampleId, microSourceInTube, microPopulate, microScenery, microSlideStage, microUnfold, microFate, microBlur, microCanIdentify,
         microStep, tardigradeLegs, microDrawOrganism, microDrawPortrait, microDrawTardigrade, microDrawTardigradeMolt, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeOpenToSky, microscopeClampStage, microscopeStepPower, microscopeScale, microscopeScaleBar,
-        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeDrawField, microscopeDarkLine, microscopeIsUnlitLamp, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
+        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeStageText, microscopeStateName, microscopeStageOfName, microscopeSuperscript, MICRO_PLATES, microscopeDrawField, microscopeDarkLine, microscopeIsUnlitLamp, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
     return context;
 }
 
@@ -910,6 +910,117 @@ test('the panel: preparing a slide, and the answers settling the inventory', () 
     assert.equal(game.microscopePrep, null);
 });
 
+// ---- What is on the stage ----
+
+test('the block shows what is on the stage, under every name the server can settle', () => {
+    // The server's table (microscope_test.go checks it against microscopeBlockName and settleOvenName).
+    const goTest = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'microscope_test.go'), 'utf8');
+    const start = goTest.indexOf('var microscopeSettledNames =');
+    assert.ok(start >= 0);
+    const table = goTest.slice(start, goTest.indexOf('\n}\n', start));
+    const settled = {};
+    for (const [, placed, empty, slideName, plate] of table.matchAll(/"([\w:]+)":\s*\{"([\w:]+)", "([\w:]+)", "([\w:]+)"\}/g)) settled[placed] = [empty, slideName, plate];
+    assert.equal(Object.keys(settled).length, 12);
+    // The names the client registers: every state of the shape, as the world expands them.
+    const types = Object.fromEntries(Object.entries(ctx.BLOCK_TYPES).map(([id, def]) => [id, { ...def }]));
+    vm.runInContext('expandBlockStates', ctx)(types);
+    for (const [placed, names] of Object.entries(settled)) {
+        assert.ok(types[placed], `${placed} is registered`);
+        names.forEach((name, i) => {
+            assert.ok(types[name], `${placed} settles to ${name}, which the client knows`);
+            assert.equal(types[name].state.stage, ['empty', 'slide', 'plate'][i]);
+            assert.equal(ctx.microscopeStageOfName(name), ['empty', 'slide', 'plate'][i]);
+        });
+    }
+    // The names a microscope always had are still the empty ones, so saved worlds load unchanged.
+    for (const name of ['microscope', 'microscope:e', 'microscope:s', 'microscope:w']) assert.equal(types[name].state.stage, 'empty');
+    // Placed facing any way, it is placed empty, under a name in the server's table.
+    const shape = ctx.BLOCK_SHAPES.microscope;
+    const looks = { n: { x: 0, z: 1 }, e: { x: -1, z: 0 }, s: { x: 0, z: -1 }, w: { x: 1, z: 0 } };
+    for (const [facing, look] of Object.entries(looks)) {
+        const [{ state }] = shape.place({ look, x: 0, y: 0, z: 0 });
+        assert.deepEqual(plain(state), { facing, stage: 'empty' });
+        assert.ok(settled[vm.runInContext('shapeStateName', ctx)('microscope', shape, state)]);
+    }
+    // Something on it shows: one box more for a slide, two for a dish, and its own painted top.
+    const empty = shape.boxes({ facing: 'e', stage: 'empty' }).length;
+    assert.equal(shape.boxes({ facing: 'e', stage: 'slide' }).length, empty + 1);
+    assert.equal(shape.boxes({ facing: 'e', stage: 'plate' }).length, empty + 2);
+    assert.equal(types['microscope:e:plate'].faces.top, 'microscope_top_plate_e');
+    assert.equal(types['microscope:e'].faces.top, 'microscope_top');
+    assert.notEqual(types['microscope:e:plate'].materialKey, types['microscope:e'].materialKey);
+    // What lies on the stage stays within it, and under the nosepiece.
+    for (const stage of ['slide', 'plate']) {
+        for (const box of shape.boxes({ facing: 'n', stage }).slice(empty)) {
+            assert.ok(box[0] >= 4.5 / 16 && box[3] <= 11.5 / 16 && box[2] >= 3.5 / 16 && box[5] <= 10 / 16, `${stage} on the stage`);
+            assert.ok(box[1] === 6.5 / 16 && box[4] < 7.5 / 16, `${stage} under the nosepiece`);
+        }
+    }
+});
+
+test('the header names what is on the stage, and whose it is', () => {
+    const name = (type) => type;
+    assert.equal(ctx.microscopeSuperscript(8), '⁸');
+    assert.equal(ctx.microscopeSuperscript(10.4), '¹⁰');
+    assert.equal(ctx.microscopeStageText({ source: 'culture_mould', culture: { main: { species: 'mould', logN: 7.8 } } }, name), 'culture_mould · 10⁸');
+    assert.equal(ctx.microscopeStageText({ source: 'culture_yeast', culture: { main: { species: 'yeast', logN: 5.1 }, mould: { species: 'mould', logN: 6.6 } } }, name), 'culture_yeast · 10⁷');
+    assert.equal(ctx.microscopeStageText({ source: 'agar_plate' }, name), 'agar_plate');
+    assert.equal(ctx.microscopeStageText({ source: 'dirt' }, name), 'Slide: dirt');
+    assert.equal(ctx.microscopeStageText({ source: 'dirt', stain: 'methylene_blue' }, name), 'Slide: dirt · stained');
+    assert.equal(ctx.microscopeStageText(null, name), '');
+    const say = vm.runInContext('microscopeSay', ctx);
+    assert.equal(say('stageHeader', 'culture_mould · 10⁸', say('placedBy', 'Ana')), 'On the stage: culture_mould · 10⁸ — placed by Ana');
+    assert.equal(say('stageHeader', 'Slide: dirt', say('placedByYou')), 'On the stage: Slide: dirt — placed by you');
+    assert.equal(say('stageHeader', 'Slide: dirt', ''), 'On the stage: Slide: dirt');
+    ctx.setGameLang('ES');
+    try {
+        assert.equal(say('stageHeader', 'Placa de moho · 10⁸', say('placedBy', 'Ana')), 'En la platina: Placa de moho · 10⁸ — lo puso Ana');
+        assert.match(say('stageOccupied', 'Placa de moho · 10⁸', say('placedBy', 'Ana'), 'Tierra'), /ya tenía algo.*Placa de moho · 10⁸ \(lo puso Ana\).*no tu Tierra.*Retíralo primero/);
+    } finally {
+        ctx.setGameLang('EN');
+    }
+});
+
+test('the panel: an occupied microscope says what is on it and that it must come off first', () => {
+    const game = panelGame();
+    game.playerName = 'Bea';
+    const counts = game.inventoryCounts;
+    rightClick(game, 'dirt');
+    slide(game, { source: 'culture_mould', placedBy: 'Ana', tardigrades: 0, culture: { main: { species: 'mould', logN: 8.1 } } });
+    const panel = game.microscopePanel;
+    assert.ok(panel.classes.has('visible'), 'the panel shows what is there');
+    assert.equal(counts.dirt, 5, 'nothing of what is in the hand was spent');
+    assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'), 'nothing was put on');
+    // Said plainly, in the panel and in the chat.
+    assert.match(game.microscopeNote, /already had something on its stage: culture_mould · 10⁸ \(placed by Ana\)\. What you see is that, not your dirt\. Take it off first/);
+    assert.ok(game.said.includes(game.microscopeNote));
+    // The header names it, and keeps naming it as the news comes.
+    assert.equal(panel.querySelector('h3').textContent, 'On the stage: culture_mould · 10⁸ — placed by Ana');
+    slide(game, { source: 'culture_mould', placedBy: 'Ana', tardigrades: 0, culture: { main: { species: 'mould', logN: 8.1 } } });
+    assert.equal(panel.querySelector('h3').textContent, 'On the stage: culture_mould · 10⁸ — placed by Ana');
+    assert.equal(game.said.filter((line) => /already had/.test(line)).length, 1, 'said once');
+    // The button says it comes to whoever takes it off, and whose it was.
+    assert.match(panel.querySelector('.micro-clear').title, /Ana put it on, but it comes to you/);
+    panel.querySelector('.micro-clear').fire('click');
+    const clear = game.network.sent[game.network.sent.length - 2];
+    assert.equal(clear[0], 'microscopeClear');
+    game.network.deliver('storageResult', { reqId: clear[1].reqId, type: 'culture_mould', amount: 1 });
+    assert.ok(game.said.some((line) => /You took off the plate Ana put on \(culture_mould · 10⁸\): it is in your inventory now/.test(line)));
+});
+
+test('the panel: your own slide says so, and nothing is said with nothing in the hand', () => {
+    const game = panelGame();
+    game.playerName = 'Bea';
+    openPanel(game, null, { source: 'dirt', placedBy: 'Bea' });
+    assert.equal(game.microscopePanel.querySelector('h3').textContent, 'On the stage: Slide: dirt — placed by you');
+    assert.equal(game.microscopeNote, '');
+    assert.doesNotMatch(game.microscopePanel.querySelector('.micro-clear').title, /comes to you/);
+    game.microscopePanel.querySelector('.micro-clear').fire('click');
+    const clear = game.network.sent[game.network.sent.length - 2];
+    game.network.deliver('storageResult', { reqId: clear[1].reqId, type: 'glass_slide', amount: 1 });
+    assert.ok(!game.said.some((line) => /You took off/.test(line)), 'your own: nothing to say');
+});
+
 test('the panel: a refused or lost request gives everything back, also after a reload', () => {
     const game = panelGame();
     const counts = game.inventoryCounts;
@@ -925,7 +1036,7 @@ test('the panel: a refused or lost request gives everything back, also after a r
     assert.ok(game.network.sent.some(([type, payload]) => type === 'storageSync' && payload.reqIds[0] === reqId));
     game.network.deliver('storageResult', { reqId, amount: 0, reason: 'occupied' });
     assert.equal(counts.glass_slide, 2);
-    assert.match(game.said[game.said.length - 1], /already a slide/);
+    assert.match(game.said[game.said.length - 1], /already something on the stage: take it off first/);
     assert.deepEqual(game.network.last(), ['storageClose', {}]);
     assert.equal(game.microscopePanel, undefined, 'no panel');
     // An answer that is not ours, a chest's, changes nothing.
@@ -1156,7 +1267,7 @@ test('a glass slide in the hand only smears on a free microscope: the slide is t
     const busy = panelGame();
     const panel = openPanel(busy, 'glass_slide');
     assert.equal(busy.getInventoryCount('glass_slide'), 2);
-    assert.match(panel.querySelector('#micro-note').textContent, /already a slide/);
+    assert.match(panel.querySelector('#micro-note').textContent, /already had something on its stage: Slide: cheek smear\. What you see is that, not your cheek smear\./);
 });
 
 test('with a slide already on it, it shows that one, never replaces it, and says so', () => {
@@ -1167,7 +1278,7 @@ test('with a slide already on it, it shows that one, never replaces it, and says
     assert.ok(!game.network.sent.some(([type]) => type === 'microscopePrepare'));
     assert.equal(game.getInventoryCount('glass_slide'), 2);
     assert.equal(game.getInventoryCount('sample_moss_a'), 1);
-    assert.match(panel.querySelector('#micro-note').textContent, /already a slide.*Take it off first/);
+    assert.match(panel.querySelector('#micro-note').textContent, /already had something on its stage.*not your sample_moss_a.*Take it off first/);
     // With nothing to put on, it just shows it.
     const plainly = panelGame();
     assert.equal(openPanel(plainly).querySelector('#micro-note').textContent, '');

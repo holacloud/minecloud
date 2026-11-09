@@ -28,7 +28,12 @@ import (
 //     (microscopeView.Culture), so it shows that plate and no other.
 //   - microscopeClear   {x, y, z, reqId}: takes the slide off, and it comes back washed; a plate comes
 //     back as it went on. The answer's Type names what comes back, and `plates` hands a culture plate back
-//     with a new token.
+//     with a new token. It all goes to whoever takes it off, whoever put it on: the stage is shared, the
+//     one who put it on may be offline (an inventory is the browser's, and nothing can reach it then),
+//     and the prep keeps their name (PlacedBy) so that the panel says whose it was before the button.
+//
+// The block's name shows what is on the stage (microscopeBlockName, at the end of this file), so it can
+// be seen from afar that a microscope is in use.
 //   - microscopeDrop    {x, y, z, reqId}: a drop of water on the slide.
 //   - microscopeCapture {x, y, z, reqId}: draws a tardigrade off the slide into a tube.
 //   - microscopeStain   {x, y, z, source, reqId}: stains the slide with `source` (one of microscopeStains),
@@ -187,6 +192,9 @@ type MicroscopePrep struct {
 	StainedAt float64 `json:"stainedAt,omitempty"`
 	// A culture plate on the stage (plates.go): its id. Seed is then the plate's own.
 	Plate string `json:"plate,omitempty"`
+	// The name of the player who put it on, so the panel can say whose it was. Whoever takes it off
+	// gets it back (clearSlide): the one who put it on may well be offline.
+	PlacedBy string `json:"placedBy,omitempty"`
 }
 
 // microscopeView is a slide in a storageContents message: Age is the seconds since it was last wetted,
@@ -209,6 +217,8 @@ type microscopeRequest struct {
 	// A culture plate put on the stage (plates.go): which one, and the token that says the client holds it.
 	Plate string `json:"plate,omitempty"`
 	Token string `json:"token,omitempty"`
+	// Who sends it: set by handleMicroscopeMessage from the connection, never read from the message.
+	By string `json:"-"`
 }
 
 // sampleRoll is a number in [0, 1) that only depends on the salt and the coordinates.
@@ -392,7 +402,7 @@ func (b *storageBook) prepare(w cropWorld, eye *[3]float64, request microscopeRe
 	}
 	now := b.clock()
 	seed := b.seed()
-	prep := &MicroscopePrep{Source: request.Source, Seed: seed, PreparedAt: now, WetAt: now, Tardigrades: microscopeTardigrades(request.Source, seed)}
+	prep := &MicroscopePrep{Source: request.Source, Seed: seed, PreparedAt: now, WetAt: now, Tardigrades: microscopeTardigrades(request.Source, seed), PlacedBy: microscopePlacer(request.By)}
 	// What comes out of the freezer is already dry.
 	if request.Source == tardigradeTun {
 		prep.WetAt = now - microscopeDrySeconds
@@ -424,6 +434,7 @@ func (b *storageBook) prepare(w cropWorld, eye *[3]float64, request microscopeRe
 		Slots: []StorageSlot{stage},
 		Prep:  prep,
 	}
+	b.showStageLocked(w, place.cell)
 	return b.finishMicroscopeLocked(place, request.ReqID, request.Source), true
 }
 
@@ -441,7 +452,8 @@ func (b *storageBook) clearSlide(w cropWorld, eye *[3]float64, request microscop
 	stage := block.Slots[0]
 	var grants []PlateGrant
 	if stage.Plate != "" {
-		// The plate comes back to whoever took it off, as it went on.
+		// The plate comes back to whoever took it off, as it went on, whoever put it there: the one who
+		// did may be offline, and the panel says whose it was before anyone presses the button.
 		record := b.plates[stage.Plate]
 		if record == nil {
 			record = b.mintPlateLocked(stage.Type, nil)
@@ -449,6 +461,7 @@ func (b *storageBook) clearSlide(w cropWorld, eye *[3]float64, request microscop
 		grants = []PlateGrant{b.grantLocked(record)}
 	}
 	delete(b.blocks, storageKeyOf(place.cell))
+	b.showStageLocked(w, place.cell)
 	b.rev++
 	b.notifyLocked(place)
 	return b.rememberLocked(storageOutcome{ReqID: request.ReqID, Type: stage.Type, Amount: 1, Plates: grants}), true
@@ -583,6 +596,7 @@ func microscopeCleanLoaded(block *StorageBlock) {
 	prep := *block.Prep
 	prep.Tardigrades = microscopeTardigrades(prep.Source, prep.Seed)
 	prep.Taken = max(0, min(prep.Taken, prep.Tardigrades))
+	prep.PlacedBy = microscopePlacer(prep.PlacedBy)
 	if !microscopeStains[prep.Stain] {
 		prep.Stain = ""
 		prep.StainedAt = 0
@@ -626,6 +640,7 @@ func handleMicroscopeMessage(client *Client, msg Message) {
 	default:
 		return
 	}
+	request.By = client.username
 	outcome, changed := apply(chunkStore, eye, request)
 	if outcome.ReqID == "" {
 		return
@@ -634,6 +649,86 @@ func handleMicroscopeMessage(client *Client, msg Message) {
 		saveWorldState()
 	}
 	storageReply(client, outcome)
+	// A slide or a plate put on or taken off shows on the block, for everyone.
+	for _, block := range storage.drainNameChanges() {
+		broadcastToAll(createMessage("blockPlace", block))
+	}
+}
+
+// The longest name a prep keeps of who put it on (the client cuts names at 20).
+const microscopePlacerMax = 32
+
+// microscopePlacer is the name a prep keeps of who put it on: printable, and not too long.
+func microscopePlacer(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, strings.TrimSpace(name))
+	if runes := []rune(name); len(runes) > microscopePlacerMax {
+		name = string(runes[:microscopePlacerMax])
+	}
+	return name
+}
+
+// The microscope's block name shows what is on its stage, as a machine's shows its fire (appliances.go):
+// microscope (north) or microscope:e with nothing, microscope:e:slide or microscope:n:plate with a slide or
+// a plate. The empty names are those microscopes always had, so saved worlds load unchanged. Only this
+// file decides it: settleOvenName overrides whatever a plan or a client places, and a microscope from
+// before this says what it holds the first time it is opened. js/game/microscope.js registers every one
+// of these names (microscopeSettledNames in microscope_test.go, read by test/js/microscope.test.js).
+const (
+	microscopeStageSlide = "slide"
+	microscopeStagePlate = "plate"
+)
+
+// microscopeBlockName is a microscope's block name with this stage ("" for nothing on it).
+func microscopeBlockName(name, stage string) string {
+	base := storageBase(name)
+	facing := "n"
+	if parts := strings.Split(name, ":"); len(parts) > 1 && len(parts[1]) == 1 && strings.Contains("nesw", parts[1]) {
+		facing = parts[1]
+	}
+	switch {
+	case stage != "":
+		return base + ":" + facing + ":" + stage
+	case facing == "n":
+		return base
+	}
+	return base + ":" + facing
+}
+
+// microscopeStageOf is what a microscope's entry has on its stage, as its block name says it.
+func microscopeStageOf(block *StorageBlock) string {
+	if block == nil || block.Prep == nil || storageIsEmpty(block.Slots) {
+		return ""
+	}
+	if microscopePlates[block.Prep.Source] {
+		return microscopeStagePlate
+	}
+	return microscopeStageSlide
+}
+
+// showStageLocked makes the name of the microscope at cell show what its entry has on the stage.
+func (b *storageBook) showStageLocked(w cropWorld, cell [3]int) {
+	name, err := w.Block(cell[0], cell[1], cell[2])
+	if err != nil {
+		log.Printf("microscope: %v", err)
+		return
+	}
+	if storageBase(name) != microscopeKind {
+		return
+	}
+	want := microscopeBlockName(name, microscopeStageOf(b.blocks[storageKeyOf(cell)]))
+	if want == name {
+		return
+	}
+	if err := w.SetBlock(cell[0], cell[1], cell[2], want); err != nil {
+		log.Printf("microscope: %v", err)
+		return
+	}
+	b.nameChanges = append(b.nameChanges, Block{X: cell[0], Y: cell[1], Z: cell[2], BlockType: want})
 }
 
 // microscopeNewSeed is where the seed of a slide comes from (replaced by the tests).

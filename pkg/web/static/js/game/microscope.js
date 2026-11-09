@@ -299,6 +299,27 @@ function microscopePick(organisms, view, px, py) {
     return best;
 }
 
+// A whole number in superscript digits: 10 and microscopeSuperscript(8) read "10⁸".
+function microscopeSuperscript(n) {
+    const digits = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+    return String(Math.round(n)).replace(/\d/g, (d) => digits[d]).replace('-', '⁻');
+}
+
+// What lies on the stage, in words, for the panel's header and its messages: a plate by its name and how many
+// grew on it as its record says ("Mould Plate · 10⁸"), a slide by what is on it ("Slide: Dirt"). nameOf(type)
+// gives an item's name in the game's language ('cheek' included).
+function microscopeStageText(prep, nameOf) {
+    if (!prep || !prep.source) return '';
+    if (MICRO_PLATES[prep.source]) {
+        const culture = prep.culture && typeof prep.culture === 'object' ? prep.culture : null;
+        const counts = culture ? [culture.main, culture.mould].filter((pop) => pop && pop.logN > 0).map((pop) => pop.logN) : [];
+        const most = counts.length ? Math.max(...counts) : 0;
+        return most > 0 ? `${nameOf(prep.source)} · 10${microscopeSuperscript(most)}` : nameOf(prep.source);
+    }
+    const what = microscopeSay('slideOf', nameOf(prep.source));
+    return prep.stain && MICRO_STAINS[prep.stain] ? `${what} · ${microscopeSay('stainedShort')}` : what;
+}
+
 // A line about how a slide is doing.
 function microscopeSlideLine(prep, age, woke = -1) {
     if (!prep) return '';
@@ -632,15 +653,60 @@ registerBlockType('moss', {
 
 // A foot, a pillar with its curved arm, the stage with the mirror under it, and the body tube with its
 // nosepiece and eyepiece. Written facing north, as the rest of the furniture.
+// `stage` says what lies on the stage, and the server alone sets it (pkg/network/microscope.go,
+// microscopeBlockName), as it does an oven's fire: a glass slide under the objective, or a Petri dish, so
+// anyone sees from afar that a microscope is in use. With nothing on it the names are those microscopes
+// always had (microscope, microscope:e...), so saved worlds load unchanged; with something, the facing
+// and the stage both (microscope:n:slide, microscope:e:plate).
+const MICROSCOPE_STAGES = ['empty', 'slide', 'plate'];
+const MICROSCOPE_BOXES = [
+    [4, 0, 3, 12, 1.5, 13], [6.5, 1.5, 10, 9.5, 9, 12], [7, 9, 7.5, 9, 11, 12],
+    [4.5, 5.5, 3.5, 11.5, 6.5, 10], [6.5, 2.5, 5, 9.5, 3, 8],
+    [6.5, 7.5, 4.5, 9.5, 8.5, 8], [7, 8.5, 5, 9, 14, 7.5], [7.4, 14, 5.4, 8.6, 16, 7]
+];
+// What lies on the stage, in sixteenths facing north: a slide under the objective, a round dish (a cross of
+// two boxes) under the nosepiece. Their tops are painted by microscope_top_<stage>_<facing>.
+const MICROSCOPE_STAGE_BOXES = {
+    empty: [],
+    slide: [[4.75, 6.5, 5, 11.25, 6.75, 7.75]],
+    plate: [[4.9, 6.5, 5.2, 11.1, 7.1, 8.3], [6.4, 6.5, 3.65, 9.6, 7.1, 9.85]]
+};
 furnShape('microscope', {
-    boxes: [
-        [4, 0, 3, 12, 1.5, 13], [6.5, 1.5, 10, 9.5, 9, 12], [7, 9, 7.5, 9, 11, 12],
-        [4.5, 5.5, 3.5, 11.5, 6.5, 10], [6.5, 2.5, 5, 9.5, 3, 8],
-        [6.5, 7.5, 4.5, 9.5, 8.5, 8], [7, 8.5, 5, 9, 14, 7.5], [7.4, 14, 5.4, 8.6, 16, 7]
-    ],
+    boxes: (state) => [...MICROSCOPE_BOXES, ...(MICROSCOPE_STAGE_BOXES[state.stage] || [])],
     collision: [[4, 0, 3, 12, 16, 13]],
-    iconFit: true
+    iconFit: true,
+    states: [['facing', SHAPE_FACINGS], ['stage', MICROSCOPE_STAGES]],
+    stateName: (base, state) => microscopeStateName(base, state),
+    place: (ctx) => [{ dx: 0, dy: 0, dz: 0, state: { facing: furnFacePlayer(ctx), stage: 'empty' } }],
+    iconState: { facing: 's', stage: 'empty' },
+    variant: (state, def) => (state.stage && state.stage !== 'empty'
+        ? { faces: { ...def.faces, top: `microscope_top_${state.stage}_${state.facing}` } } : {}),
+    materialKey: (state) => (state.stage && state.stage !== 'empty' ? `${state.stage}:${state.facing}` : null)
 });
+
+// The block name of a microscope in `state`, as the server writes it (microscopeBlockName).
+function microscopeStateName(base, state) {
+    const facing = state.facing || 'n';
+    if (state.stage && state.stage !== 'empty') return `${base}:${facing}:${state.stage}`;
+    return facing === 'n' ? base : `${base}:${facing}`;
+}
+
+// What a microscope's block shows on its stage: 'empty', 'slide' or 'plate'.
+function microscopeStageOfName(name) {
+    const stage = typeof name === 'string' ? name.split(':')[2] : '';
+    return MICROSCOPE_STAGES.includes(stage) ? stage : 'empty';
+}
+
+// A point of a top face, (u, v) in the cell as the block stands, back in sixteenths of the shape written
+// facing north (rotateShapeBox, undone).
+function microscopeNorthPoint(u, v, facing) {
+    switch (facing) {
+        case 'e': return [v * 16, (1 - u) * 16];
+        case 's': return [(1 - u) * 16, (1 - v) * 16];
+        case 'w': return [(1 - v) * 16, u * 16];
+        default: return [u * 16, v * 16];
+    }
+}
 
 // By height: the black eyepiece, the brass tube, then black enamel with a brass band on the foot.
 registerTexturePattern('microscope_side', (f, s, tint, seed) => {
@@ -664,6 +730,37 @@ registerTexturePattern('microscope_top', (f, s, tint, seed) => {
         f.put(s, x, y, c, r < 0.12 ? 0.9 : 0.7);
     });
 }, { rtx: { roughness: 0.32, metalness: 0.65, normalScale: 0.3 } });
+// The top with something on the stage, one for each facing, as what lies there is not in the middle: the
+// eyepiece where it is, then a pale glass slide with its drop, or a dish of amber agar with pale colonies.
+for (const stage of ['slide', 'plate']) {
+    for (const facing of SHAPE_FACINGS) {
+        registerTexturePattern(`microscope_top_${stage}_${facing}`, (f, s, tint, seed) => {
+            f.each(s, (x, y, u, v) => {
+                const [nx, nz] = microscopeNorthPoint(u, v, facing);
+                const noise = (f.hash(x, y, seed) - 0.5) * 0.08;
+                const lens = Math.hypot(nx - 8, nz - 6.72) / 16;
+                let c = f.tone(s, f.rgb(0x2b2d33), noise);
+                let h = 0.7;
+                if (lens < 0.06) { c = f.rgb(0xf4f4ec); h = 0.9; } else if (lens < 0.12) { c = f.rgb(0xc69a48); h = 0.9; } else if (stage === 'slide') {
+                    if (nx >= 4.75 && nx <= 11.25 && nz >= 5 && nz <= 7.75) {
+                        const edge = nx < 5.5 || nx > 10.5 || nz < 5.5 || nz > 7.25;
+                        const drop = Math.hypot(nx - 8, nz - 6.4) < 1.2;
+                        c = f.tone(s, f.rgb(drop ? 0x8fb86a : edge ? 0xb8d4dc : 0xe4eef2), noise);
+                        h = 0.95;
+                    }
+                } else {
+                    const r = Math.hypot(nx - 8, nz - 6.75);
+                    if (r <= 3.1) {
+                        const colony = r < 2.6 && f.hash(Math.floor(nx * 1.5), Math.floor(nz * 1.5), seed + 3) > 0.78;
+                        c = f.tone(s, f.rgb(r > 2.6 ? 0xe8eef0 : colony ? 0xf3eedc : 0xd8b25a), noise);
+                        h = r > 2.6 ? 1 : 0.8;
+                    }
+                }
+                f.put(s, x, y, c, h);
+            });
+        }, { rtx: { roughness: 0.25, metalness: 0.2, normalScale: 0.3 } });
+    }
+}
 
 furnBlock('microscope', {
     color: 0x2B2D33, name: 'Microscope', shape: 'microscope', breakDuration: 0.5, category: 'stone', storageSlots: 1,
@@ -695,7 +792,7 @@ const MICROSCOPE_CSS = `
 #microscope-panel button{padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
 #microscope-panel button.active{background:rgba(120,190,255,.4);border-color:rgba(160,210,255,.8)}
 #microscope-panel .micro-head{flex:0 0 auto;display:flex;align-items:center;gap:8px}
-#microscope-panel h3{font-size:14px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#microscope-panel h3{font-size:14px;line-height:1.2;margin:0;flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
 #microscope-panel .micro-close{min-width:40px;min-height:32px}
 #micro-light{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.1);white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
 #micro-light.off{background:rgba(255,160,60,.25);color:#ffc27a}
@@ -826,7 +923,8 @@ Object.assign(Game.prototype, {
     // ---- Requests ----
 
     // Sends a request: what it uses leaves the inventory now, and the answer settles the rest.
-    microscopeRequest(message, op, payload, source) {
+    // `extra` goes with the pending request, for what to say when its answer comes.
+    microscopeRequest(message, op, payload, source, extra = {}) {
         if (!this.network || !this.network.connected) {
             this.receiveSystemMessage({ text: microscopeSay('notConnected') });
             return false;
@@ -842,7 +940,7 @@ Object.assign(Game.prototype, {
         for (const [type, count] of Object.entries(took)) this.inventoryCounts[type] = this.getInventoryCount(type) - count;
         if (plate) this.plateTakeOut(source, plate.id);
         const reqId = this.storageNewRequestId();
-        this.microscopePending.set(reqId, { took, gives, op, at: performance.now(), ...(plate ? { plate } : {}) });
+        this.microscopePending.set(reqId, { ...extra, took, gives, op, at: performance.now(), ...(plate ? { plate } : {}) });
         this.microscopeSavePending();
         this.microscopeInventoryChanged();
         this.network.send(message, { ...payload, reqId, ...(plate ? { plate: plate.id, token: plate.token } : {}) });
@@ -884,6 +982,10 @@ Object.assign(Game.prototype, {
                 this.microscopeRenderLines();
             }
             if (pending.op === 'sample') this.receiveSystemMessage({ text: microscopeSay('tookSample', this.microscopeName(outcome.type)) });
+            // Someone else's: it is in this inventory now, and they may want it back.
+            if (pending.op === 'clear' && typeof pending.placedBy === 'string' && pending.placedBy) {
+                this.receiveSystemMessage({ text: microscopeSay(pending.wasPlate ? 'tookOffOthersPlate' : 'tookOffOthersSlide', pending.placedBy, pending.wasText || '') });
+            }
         } else if (pending.op === 'sample') {
             const why = { 'too far': 'sampleTooFar', 'not water': 'filterAim' }[outcome.reason] || 'sampleNeeds';
             this.receiveSystemMessage({ text: microscopeSay(why) });
@@ -973,8 +1075,10 @@ Object.assign(Game.prototype, {
         this.microscopeOrganisms = [];
         this.microscopeScenery = [];
         this.microscopeSelected = null;
-        // Someone's slide is there already: it is shown, never replaced.
-        this.microscopeNote = asking.note || (!asking.preparing && microscopeSourceHeld(asking.held) ? microscopeSay('slideAlreadyOn') : '');
+        // Someone's slide is there already: it is shown, never replaced, and once its news comes the panel
+        // says plainly what it is and that it must come off first (microscopeOnContents).
+        this.microscopeNote = asking.note || '';
+        this.microscopeHeldOnOpen = !asking.preparing ? microscopeSourceHeld(asking.held) : null;
         this.microscopePower = this.microscopePower || 40;
         this.microscopeFocus = this.microscopeFocus ?? 0.5;
         this.microscopeStainAsked = null;
@@ -994,7 +1098,12 @@ Object.assign(Game.prototype, {
 
     // Taking the slide off is the end of looking: it comes back washed, and back to the game.
     microscopeTakeOff() {
-        if (!this.microscopeAt || !this.microscopeRequest('microscopeClear', 'clear', { ...this.microscopeAt })) return;
+        // What it was and whose, to say so once it has come off.
+        const prep = this.microscopePrep;
+        const placer = this.microscopePlacer(prep);
+        const was = prep && placer.who && !placer.mine
+            ? { placedBy: placer.who, wasPlate: Boolean(MICRO_PLATES[prep.source]), wasText: this.microscopeStageText(prep) } : {};
+        if (!this.microscopeAt || !this.microscopeRequest('microscopeClear', 'clear', { ...this.microscopeAt }, undefined, was)) return;
         this.microscopePrep = null;
         this.microscopeClose();
     },
@@ -1072,7 +1181,49 @@ Object.assign(Game.prototype, {
                 if (gone === this.microscopeSelected) this.microscopeSelected = null;
             }
         }
+        // Opened with something to look at in the hand, and something was already on the stage.
+        const held = this.microscopeHeldOnOpen;
+        this.microscopeHeldOnOpen = null;
+        if (held) {
+            const heldName = held === 'cheek' ? microscopeSay('cheekAny') : this.microscopeName(held);
+            const line = microscopeSay('stageOccupied', this.microscopeStageText(prep), this.microscopePlacedByLine(prep), heldName);
+            this.microscopeNote = line;
+            this.receiveSystemMessage({ text: line });
+        }
+        this.microscopeRenderHeader();
         this.microscopeRenderControls();
+    },
+
+    // What lies on the stage, in words ("Mould Plate · 10⁸").
+    microscopeStageText(prep) {
+        return microscopeStageText(prep, (type) => (type === 'cheek' ? microscopeSay('cheekAny') : this.microscopeName(type)));
+    },
+
+    // Who put it on: { who: their name ('' if not known, a slide from before names were kept), mine: whether
+    // it was this player }.
+    microscopePlacer(prep) {
+        const who = prep && typeof prep.placedBy === 'string' ? prep.placedBy : '';
+        const me = (this.network && this.network.username) || this.playerName || '';
+        return { who, mine: Boolean(who) && who === me };
+    },
+
+    // Who put it on, in words ("placed by Ana", "placed by you"), or '' if nobody is known.
+    microscopePlacedByLine(prep) {
+        const { who, mine } = this.microscopePlacer(prep);
+        if (!who) return '';
+        return mine ? microscopeSay('placedByYou') : microscopeSay('placedBy', who);
+    },
+
+    // The header always names what is on the stage and who put it there, so that it is never taken for
+    // what is in the hand.
+    microscopeRenderHeader() {
+        const panel = this.microscopePanel;
+        if (!panel) return;
+        const prep = this.microscopePrep;
+        const text = prep ? microscopeSay('stageHeader', this.microscopeStageText(prep), this.microscopePlacedByLine(prep)) : microscopeSay('title');
+        const head = panel.querySelector('h3');
+        head.textContent = text;
+        head.title = text;
     },
 
     microscopeOnClosed(where) {
@@ -1286,7 +1437,7 @@ Object.assign(Game.prototype, {
     // The labels that are always the same, in the language of the game.
     microscopeWriteLabels() {
         const panel = this.microscopePanel;
-        panel.querySelector('h3').textContent = microscopeSay('title');
+        this.microscopeRenderHeader();
         panel.querySelector('.micro-close').title = microscopeSay('close');
         panel.querySelector('.micro-focus-label').textContent = microscopeSay('focus');
         panel.querySelector('.micro-focus-wrap').title = microscopeSay('focusTip');
@@ -1647,7 +1798,10 @@ Object.assign(Game.prototype, {
 
         // A plate on the stage is no slide: it comes back as it went, and takes no drop, stain or pipette.
         const plate = prep && MICRO_PLATES[prep.source] ? prep.source : null;
-        this.microscopeSetTool('clear', { tip: microscopeSay(plate ? 'takeOffPlate' : 'takeOff'), item: plate || 'glass_slide' });
+        // Whoever takes it off gets it, whoever put it on (pkg/network/microscope.go): the button says whose it was.
+        const placer = this.microscopePlacer(prep);
+        const whose = placer.who && !placer.mine ? ` ${microscopeSay('takeOffWhose', placer.who)}` : '';
+        this.microscopeSetTool('clear', { tip: microscopeSay(plate ? 'takeOffPlate' : 'takeOff') + whose, item: plate || 'glass_slide' });
         const flasks = this.getInventoryCount('water_flask');
         // A drop is for a slide that is drying or dry: on a wet one it would only spend the flask.
         const stage = microSlideStage(this.microscopeAge(), this.microscopeWoke());

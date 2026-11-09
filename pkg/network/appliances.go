@@ -538,6 +538,10 @@ func (b *storageBook) settleOnOpenLocked(w cropWorld, place storagePlace) {
 			b.showFireLocked(w, cell, name, b.litLocked(m, cell, b.blocks[storageKeyOf(cell)]))
 		}
 	}
+	// A microscope from before its name showed its stage (microscope.go) says so the first time it is opened.
+	if place.kind == microscopeKind {
+		b.showStageLocked(w, cell)
+	}
 	if !applianceUsesPower(place.kind) {
 		return
 	}
@@ -562,8 +566,14 @@ func (b *storageBook) drainNameChanges() []Block {
 }
 
 // settleOvenName is the name a placed block gets: a machine shows the fire or arc it really has, none
-// unless the one standing there is alight. Other blocks keep their name, and pay nothing for this.
+// unless the one standing there is alight, and a microscope what is really on its stage (microscope.go).
+// Other blocks keep their name, and pay nothing for this.
 func (b *storageBook) settleOvenName(x, y, z int, name string) string {
+	if storageBase(name) == microscopeKind {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		return microscopeBlockName(name, microscopeStageOf(b.blocks[blockKey(x, y, z)]))
+	}
 	m := machines[storageBase(name)]
 	if m == nil {
 		return name
