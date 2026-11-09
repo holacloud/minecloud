@@ -6,7 +6,8 @@
 //   microscope, sowing it) takes it, so a plate can never be in two places. The culture is only for drawing:
 //   the server goes by its own record.
 // - `plateEntries` maps a type to the plates of it carried, in the order they came: that order is where each
-//   one shows, in the inventory panel and in the hotbar (one slot per plate), and choosing one never moves it.
+//   one shows in the inventory panel, and choosing one never moves it there. The hotbar only has the plates
+//   put on it, each by its id (js/game/inventory.js, hotbarEntryKey); the rest stay in the inventory.
 // - `plateHand` maps a type to the plate of it in the hand (the one Q drops, a microscope or the incubator
 //   takes from the hand): its id, or null for a plain one. With nothing named, or a name that is gone, the
 //   first is in the hand. Both live in the same saved JSON as the counts (minecloud-inventory-state, `plates`
@@ -180,14 +181,18 @@ Object.assign(Game.prototype, {
         if (list.length === 0 && this.plateEntries) delete this.plateEntries[type];
         this.inventoryCounts[type] = this.getInventoryCount(type) - 1;
         if (!this.plateHand) this.plateHand = {};
+        const takenKey = typeof hotbarEntryKey === 'function' ? hotbarEntryKey(type, entry ? entry.id : null) : null;
         if (entry ? entry.id !== hand : hand !== null) {
-            // Another one went: the hand keeps what it held.
+            // Another one went: the hand keeps what it held, and that plate's hotbar slot goes.
             if (hand !== undefined) this.plateHand[type] = hand;
+            if (entry && takenKey && this.hotbarReplaceEntry) this.hotbarReplaceEntry(takenKey, null);
         } else {
             const left = this.plateInventoryItems(type);
             const next = left[Math.min(Math.max(0, handAt), left.length - 1)];
             if (next) this.plateHand[type] = next.entry ? next.entry.id : null;
             else delete this.plateHand[type];
+            // The slot it had goes to the one now in the hand (js/game/inventory.js).
+            if (takenKey && this.hotbarReplaceEntry) this.hotbarReplaceEntry(takenKey, next ? hotbarEntryKey(type, next.entry ? next.entry.id : null) : null);
         }
         return entry;
     },
@@ -237,7 +242,9 @@ Object.assign(Game.prototype, {
         if (!plateIdentified(type)) return [{ type, entry: null, count: this.getInventoryCount(type), held: true }];
         const hand = this.plateHandKey(type);
         const items = this.platesOf(type).map((entry) => ({ type, entry, count: 1, held: entry.id === hand }));
-        for (let i = 0; i < this.plateLegacyCount(type); i++) items.push({ type, entry: null, count: 1, held: hand === null && i === 0 });
+        // Plain plates are all alike: one stack, as on the hotbar and in a chest's list.
+        const plain = this.plateLegacyCount(type);
+        if (plain > 0) items.push({ type, entry: null, count: plain, held: hand === null });
         return items;
     }
 });

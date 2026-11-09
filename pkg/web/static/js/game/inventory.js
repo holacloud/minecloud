@@ -1,6 +1,20 @@
 // Hotbar, inventory, crafting, pickups and the held item.
 // Mixed into Game.prototype; `this` is the Game instance.
 
+// The saved hotbar's format: 2 is one entry per plate ("type@id"); before, a plate type stood for all of them.
+const HOTBAR_VERSION = 2;
+
+// A hotbar entry: a type, or one culture plate of it by id.
+function hotbarEntryKey(type, plateId = null) {
+    return plateId ? `${type}@${plateId}` : type;
+}
+
+function hotbarEntryParse(key) {
+    const text = typeof key === 'string' ? key : '';
+    const at = text.indexOf('@');
+    return at < 0 ? { type: text, id: null } : { type: text.slice(0, at), id: text.slice(at + 1) || null };
+}
+
 Object.assign(Game.prototype, {
     restoreInventoryState() {
         const saved = window.localStorage.getItem('minecloud-inventory-state');
@@ -29,6 +43,9 @@ Object.assign(Game.prototype, {
             if (!this.hotbarPrimaryType && this.getInventoryCount(this.inventory[this.selectedSlot]) > 0) {
                 this.hotbarPrimaryType = this.inventory[this.selectedSlot];
             }
+            // Before version 2 a culture plate's type on the hotbar stood for every plate of it: now it is the
+            // plate that was in the hand, one slot, as the hotbar showed it before each plate had a slot.
+            if (!(parsed.hotbarVersion >= HOTBAR_VERSION)) this.migrateHotbarEntries();
         } catch (error) {
             console.warn('Failed to restore inventory state', error);
         }
@@ -44,6 +61,7 @@ Object.assign(Game.prototype, {
             selectedSlot: this.selectedSlot,
             hotbarPrimaryType: this.hotbarPrimaryType,
             hotbarPinnedTypes: this.hotbarPinnedTypes,
+            hotbarVersion: HOTBAR_VERSION,
             offhand: this.offhandType || null
         }));
     },
@@ -53,10 +71,11 @@ Object.assign(Game.prototype, {
     pruneUnknownInventoryTypes() {
         if (!this.world || !this.world.blockTypes) return;
         const known = (type) => Boolean(this.world.blockTypes[type]);
+        const knownEntry = (key) => known(hotbarEntryParse(key).type);
         const selectedType = this.inventory[this.selectedSlot];
         this.inventory = this.inventory.filter(known);
-        this.hotbarPinnedTypes = (this.hotbarPinnedTypes || []).filter(known);
-        if (this.hotbarPrimaryType && !known(this.hotbarPrimaryType)) this.hotbarPrimaryType = null;
+        this.hotbarPinnedTypes = (this.hotbarPinnedTypes || []).filter(knownEntry);
+        if (this.hotbarPrimaryType && !knownEntry(this.hotbarPrimaryType)) this.hotbarPrimaryType = null;
         if (this.offhandType && !known(this.offhandType)) this.offhandType = null;
         const index = this.inventory.indexOf(selectedType);
         this.selectedSlot = index >= 0 ? index : 0;
@@ -110,38 +129,54 @@ Object.assign(Game.prototype, {
         this.saveInventoryState();
     },
 
-    // What the hotbar shows, slot by slot: { index (in the inventory), type, entry, count, held }. Any item is
-    // one slot with its count; a culture plate is one slot per plate, as in the inventory panel, and `held`
-    // says which of a type the hand holds when that type is selected (js/game/plates.js).
+    // The hotbar is a short list of entries (hotbarPinnedTypes, then whatever the inventory fills the rest
+    // with): an item's type, or for a culture plate one plate by its id ("type@id", hotbarEntryKey). A plate
+    // type with no id stands for its plain plates, one stack. A plate with a record only comes onto the hotbar
+    // when it is chosen (the inventory panel, what the incubator or the autoclave hands over); the others
+    // stay in the inventory.
+
+    // The entry of what the hand holds of a type: the plate in the hand for a culture plate, else the type.
+    hotbarHandEntry(type) {
+        if (!type || !this.plateHandKey || !plateIdentified(type)) return type;
+        return hotbarEntryKey(type, this.plateHandKey(type) || null);
+    },
+
+    // What an entry shows now, or null if the player has none of it: { index, type, entry, count, key }.
+    hotbarItemOf(key) {
+        const { type, id } = hotbarEntryParse(key);
+        const index = this.inventory.indexOf(type);
+        if (!type || index === -1 || this.getInventoryCount(type) <= 0) return null;
+        if (this.platesOf && plateIdentified(type)) {
+            if (id) {
+                const entry = this.platesOf(type).find((other) => other.id === id);
+                return entry ? { index, type, entry, count: 1, key } : null;
+            }
+            const plain = this.plateLegacyCount(type);
+            return plain > 0 ? { index, type, entry: null, count: plain, key } : null;
+        }
+        if (id) return null;
+        return { index, type, entry: null, count: this.getInventoryCount(type), key };
+    },
+
+    // What the hotbar shows, slot by slot: { index (in the inventory), type, entry, count, key, selected }.
+    // `selected`: the slot of what the hand holds (for a plate, that very plate).
     getHotbarItems() {
-        const orderedTypes = [];
-        const pushType = (type) => {
-            if (!type || orderedTypes.includes(type) || this.getInventoryCount(type) <= 0) return;
-            orderedTypes.push(type);
-        };
-
-        this.hotbarPinnedTypes.forEach(pushType);
-        if (orderedTypes.length === 0) {
-            pushType(this.hotbarPrimaryType);
-        }
-        this.inventory.forEach(pushType);
-
-        const items = [];
-        for (const type of orderedTypes) {
-            const index = this.inventory.indexOf(type);
-            if (index === -1) continue;
-            const shown = this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type), held: true }];
-            for (const item of shown) items.push({ index, held: true, ...item });
-        }
-        // A plate in the hand past the end still gets a slot: the last one of its type on show.
         const size = this.hotbarSize;
-        const selected = items.findIndex((item) => item.index === this.selectedSlot && item.held);
-        if (selected >= size) {
-            let at = -1;
-            for (let i = 0; i < size; i++) if (items[i].index === items[selected].index) at = i;
-            if (at >= 0) items[at] = items[selected];
-        }
-        return items.slice(0, size);
+        const items = [];
+        const keys = new Set();
+        const push = (key) => {
+            if (!key || items.length >= size || keys.has(key)) return;
+            const item = this.hotbarItemOf(key);
+            if (!item) return;
+            keys.add(key);
+            items.push(item);
+        };
+        (this.hotbarPinnedTypes || []).forEach(push);
+        if (items.length === 0) push(this.hotbarPrimaryType);
+        this.inventory.forEach(push);
+        const hand = this.hotbarHandEntry(this.inventory[this.selectedSlot]);
+        for (const item of items) item.selected = item.index === this.selectedSlot && item.key === hand;
+        return items;
     },
 
     // The inventory indexes of the types on the hotbar, each once, in order.
@@ -149,13 +184,37 @@ Object.assign(Game.prototype, {
         return [...new Set(this.getHotbarItems().map((item) => item.index))];
     },
 
-    promoteTypeToHotbar(type) {
+    // Puts an item in the first hotbar slot, the others moving one along (only that one: a culture plate goes
+    // as the plate `plateId`, or the one in the hand, never all of its type).
+    promoteTypeToHotbar(type, plateId = null) {
         if (!type || this.getInventoryCount(type) <= 0) return;
-        this.hotbarPrimaryType = type;
-        this.hotbarPinnedTypes = [type, ...this.getHotbarInventoryIndexes()
-            .map((index) => this.inventory[index])
-            .filter((itemType) => itemType && itemType !== type)]
+        const key = plateId ? hotbarEntryKey(type, plateId) : this.hotbarHandEntry(type);
+        this.hotbarPrimaryType = key;
+        this.hotbarPinnedTypes = [key, ...this.getHotbarItems().map((item) => item.key).filter((other) => other !== key)]
             .slice(0, this.hotbarSize);
+    },
+
+    // Old saves (hotbarVersion < 2): a culture plate's type becomes the plate of it that was in the hand.
+    migrateHotbarEntries() {
+        if (!this.plateHandKey) return;
+        const migrate = (key) => {
+            const { type, id } = hotbarEntryParse(key);
+            if (id || !plateIdentified(type) || this.getInventoryCount(type) <= 0) return key;
+            return this.hotbarHandEntry(type);
+        };
+        this.hotbarPinnedTypes = [...new Set((this.hotbarPinnedTypes || []).map(migrate))];
+        if (this.hotbarPrimaryType) this.hotbarPrimaryType = migrate(this.hotbarPrimaryType);
+    },
+
+    // A plate left the inventory (js/game/plates.js, plateTakeOut): its slot goes to the plate the hand holds
+    // now (`next`, unless that is on the hotbar already), or goes.
+    hotbarReplaceEntry(oldKey, next) {
+        const list = this.hotbarPinnedTypes || (this.hotbarPinnedTypes = []);
+        if (this.hotbarPrimaryType === oldKey) this.hotbarPrimaryType = next || null;
+        const at = list.indexOf(oldKey);
+        if (at < 0 || next === oldKey) return;
+        if (next && !list.includes(next)) list[at] = next;
+        else list.splice(at, 1);
     },
 
     getHotbarSlotInventoryIndex(visibleIndex) {
@@ -176,7 +235,7 @@ Object.assign(Game.prototype, {
     stepHotbarSelection(direction) {
         const items = this.getHotbarItems();
         if (items.length === 0) return;
-        const current = items.findIndex((item) => item.index === this.selectedSlot && item.held);
+        const current = items.findIndex((item) => item.selected);
         const start = current === -1 ? 0 : current;
         this.selectHotbarSlot((start + direction + items.length) % items.length);
     },
@@ -207,7 +266,7 @@ Object.assign(Game.prototype, {
             countEl.textContent = item.count;
             slotEl.title = plate ? this.plateTitle(type, entry && entry.culture) : '';
             slotEl.classList.remove('empty');
-            slotEl.classList.toggle('selected', item.index === this.selectedSlot && item.held);
+            slotEl.classList.toggle('selected', item.selected);
         }
     },
 
@@ -707,7 +766,8 @@ Object.assign(Game.prototype, {
     selectInventoryType(type) {
         const index = this.inventory.indexOf(type);
         if (index < 0 || this.getInventoryCount(type) <= 0) return false;
-        this.selectSlot(index, { promoteToHotbar: !this.getHotbarInventoryIndexes().includes(index) });
+        const hand = this.hotbarHandEntry(type);
+        this.selectSlot(index, { promoteToHotbar: !this.getHotbarItems().some((item) => item.key === hand) });
         return true;
     },
 
