@@ -455,7 +455,7 @@ test('random moves of plates through the inventory, chests, Q, reloads and refus
 // The hotbar of js/game/inventory.js, drawn into the stand-in page.
 function hotbarOf(game, elements) {
     game.initHotbar();
-    return elements.get('hotbar').children.map((slot) => ({
+    return elements.get('hotbar').children.filter((child) => child.className.includes('hotbar-slot')).map((slot) => ({
         icon: slot.style.backgroundImage, count: slot.children[1].textContent, selected: slot.classList.contains('selected'), empty: slot.classList.contains('empty'), title: slot.title
     }));
 }
@@ -653,6 +653,46 @@ test('a short hotbar keeps the plates picked last; plain plates are one stack; k
     assert.equal(game.plateHeld('culture_soil').id, plates[1].id);
     elements.get('hotbar').children[3].listeners.pointerdown[0]({ preventDefault() {} });
     assert.equal(game.getSelectedHeldItemType(), 'stone');
+});
+
+test('the label over the hotbar names what the hand holds, a plate with its summary, in Spanish and English', () => {
+    const { game, elements, context } = loadGame();
+    const mould = grant('culture_mould', 8.2);
+    const yeast = grant('culture_yeast', 6.4, 5.1);
+    game.plateAdd(mould);
+    game.plateAdd(yeast);
+    game.addInventory('stone', 5);
+    game.addInventory('agar_plate', 2);
+    game.promoteTypeToHotbar('culture_yeast', yeast.id);
+    game.promoteTypeToHotbar('culture_mould', mould.id);
+    hotbarOf(game, elements);
+    const label = () => [game.hotbarLabelElement.textContent, game.hotbarLabelElement.classList.contains('empty')];
+    // Every selection change: keys, the wheel.
+    game.selectHotbarSlot(0);
+    assert.deepEqual(label(), ['Mould Plate · 10⁸', false]);
+    game.stepHotbarSelection(1);
+    assert.deepEqual(label(), ['Yeast Plate · 10⁶ · mould 10⁵', false]);
+    game.selectHotbarSlot(3);
+    assert.deepEqual(label(), [game.getBlockDisplayName('agar_plate'), false]);
+    game.selectHotbarSlot(2);
+    assert.deepEqual(label(), ['Stone', false]);
+    // The game in Spanish: the names that have it, at once.
+    context.setGameLang('ES');
+    assert.deepEqual(label(), ['Stone', false], 'a name with no Spanish stays as it is');
+    game.selectHotbarSlot(3);
+    assert.deepEqual(label(), ['Placa de agar estéril', false]);
+    game.selectHotbarSlot(1);
+    assert.deepEqual(label(), ['Placa de levadura · 10⁶ · moho 10⁵', false]);
+    game.selectHotbarSlot(0);
+    assert.deepEqual(label(), ['Placa de moho · 10⁸', false]);
+    // A plain plate is only its name; nothing in the hand, no label.
+    assert.equal(context.hotbarPlateSummary('Placa de moho', null, 'ES'), 'Placa de moho');
+    game.dropSelectedBlock();
+    game.selectHotbarSlot(game.getHotbarItems().findIndex((item) => item.type === 'stone'));
+    game.inventoryCounts.stone = 0;
+    game.updateHotbarCounts();
+    assert.deepEqual(label(), ['', true]);
+    context.setGameLang('EN');
 });
 
 test('a hotbar saved before each plate was its own entry: a plate type becomes the plate that was in the hand', () => {

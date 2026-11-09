@@ -331,6 +331,27 @@
             opacity: 0.45;
             filter: saturate(0.5);
         }
+        /* The name of what is in the hand, centred just over the bar (js/game/inventory.js). */
+        #hotbar-label {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 6px);
+            transform: translateX(-50%);
+            max-width: min(320px, calc(100vw - 32px));
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font: 12px/1.35 system-ui, sans-serif;
+            text-shadow: 1px 1px 1px #000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+        }
+        #hotbar-label.empty {
+            display: none;
+        }
         
         #connecting {
             position: absolute;

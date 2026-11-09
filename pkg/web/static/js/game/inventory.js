@@ -9,6 +9,26 @@ function hotbarEntryKey(type, plateId = null) {
     return plateId ? `${type}@${plateId}` : type;
 }
 
+function gameLangOrEnglish() {
+    return typeof gameLang === 'function' ? gameLang() : 'EN';
+}
+
+// A power of ten as it is written: 10⁸.
+function hotbarPowerOfTen(logN) {
+    const digits = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+    return `10${String(Math.max(0, Math.round(logN))).split('').map((d) => digits[Number(d)]).join('')}`;
+}
+
+// A culture plate in a few words, for the label over the hotbar: its name and how much grew on it, and the
+// mould if it got into a plate of something else. A plate with no record is only its name.
+function hotbarPlateSummary(name, culture, lang = 'EN') {
+    if (!culture || !culture.main) return name;
+    const parts = [name, culture.main.logN > 0 ? hotbarPowerOfTen(culture.main.logN) : (lang === 'ES' ? 'nada vivo' : 'nothing alive')];
+    const mould = culture.mould;
+    if (mould && mould.logN > 0 && culture.main.species !== 'mould') parts.push(`${lang === 'ES' ? 'moho' : 'mould'} ${hotbarPowerOfTen(mould.logN)}`);
+    return parts.join(' · ');
+}
+
 function hotbarEntryParse(key) {
     const text = typeof key === 'string' ? key : '';
     const at = text.indexOf('@');
@@ -121,6 +141,14 @@ Object.assign(Game.prototype, {
             hotbar.appendChild(slot);
             this.hotbarSlotElements[visibleIndex] = slot;
             this.hotbarCountElements[visibleIndex] = count;
+        }
+        // The name of what is in the hand, over the middle of the bar (updateHotbarLabel).
+        this.hotbarLabelElement = document.createElement('div');
+        this.hotbarLabelElement.id = 'hotbar-label';
+        hotbar.appendChild(this.hotbarLabelElement);
+        if (!this.hotbarLangListening && typeof onGameLangChange === 'function') {
+            this.hotbarLangListening = true;
+            onGameLangChange(() => this.updateHotbarLabel());
         }
 
         this.updateHotbarCounts();
@@ -268,6 +296,35 @@ Object.assign(Game.prototype, {
             slotEl.classList.remove('empty');
             slotEl.classList.toggle('selected', item.selected);
         }
+        this.updateHotbarLabel();
+    },
+
+    // An item's name in the language of the game, where it has one in Spanish; else its own name.
+    getItemDisplayName(type) {
+        const english = this.getBlockDisplayName(type);
+        if (typeof gameLang !== 'function' || gameLang() !== 'ES') return english;
+        const spanish = (typeof CULTURE_ITEMS_ES !== 'undefined' && CULTURE_ITEMS_ES[type]) ||
+            (typeof microscopeItemNameEs === 'function' && microscopeItemNameEs(type)) ||
+            (typeof bestiaryItemNameEs === 'function' && bestiaryItemNameEs(type));
+        return spanish || english;
+    },
+
+    // What the label over the hotbar says: the name of what the hand holds, a culture plate with how much
+    // grew on it ("Mould Plate · 10⁸"); '' with nothing in the hand.
+    hotbarLabelText() {
+        const type = this.getSelectedHeldItemType();
+        if (!type) return '';
+        const name = this.getItemDisplayName(type);
+        const entry = this.plateHeld && plateIdentified(type) ? this.plateHeld(type) : null;
+        return entry ? hotbarPlateSummary(name, entry.culture, gameLangOrEnglish()) : name;
+    },
+
+    updateHotbarLabel() {
+        const label = this.hotbarLabelElement;
+        if (!label) return;
+        const text = this.hotbarLabelText();
+        if (label.textContent !== text) label.textContent = text;
+        label.classList.toggle('empty', !text);
     },
 
     renderInventoryPanel() {
