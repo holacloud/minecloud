@@ -19,20 +19,30 @@ type curtainStripPayload struct {
 	Blocks []Block `json:"blocks"`
 }
 
-// The facing of a curtain block name: red_curtain is north, red_curtain:e:open looks east.
+// The facing and opening side of a curtain block name: red_curtain is north and opens right,
+// red_curtain:e:open looks east, red_curtain:e:open:left opens to the left.
 func curtainFacing(name string) (base, facing string, ok bool) {
+	base, facing, _, ok = curtainKind(name)
+	return base, facing, ok
+}
+
+func curtainKind(name string) (base, facing, side string, ok bool) {
 	parts := strings.Split(name, ":")
 	if !strings.HasSuffix(parts[0], "_curtain") {
-		return "", "", false
+		return "", "", "", false
 	}
-	if len(parts) == 1 {
-		return parts[0], "n", true
+	facing, side = "n", "right"
+	if len(parts) > 1 {
+		facing = parts[1]
 	}
-	return parts[0], parts[1], true
+	if len(parts) > 3 {
+		side = parts[3]
+	}
+	return parts[0], facing, side, true
 }
 
 // Whether the strip is one column of contiguous cells, each a curtain now, each staying the same
-// curtain with the same facing, all of them facing the same way.
+// curtain with the same facing and side, all of them facing the same way.
 func curtainStripValid(blocks []Block) bool {
 	if len(blocks) == 0 || len(blocks) > curtainStripLimit {
 		return false
@@ -46,7 +56,7 @@ func curtainStripValid(blocks []Block) bool {
 		}
 		seen[block.Y] = true
 		minY, maxY = min(minY, block.Y), max(maxY, block.Y)
-		base, to, ok := curtainFacing(block.BlockType)
+		base, to, side, ok := curtainKind(block.BlockType)
 		if !ok {
 			return false
 		}
@@ -54,8 +64,9 @@ func curtainStripValid(blocks []Block) bool {
 		if err != nil {
 			return false
 		}
-		was, from, ok := curtainFacing(current)
-		if !ok || was != base || from != to || (facing != "" && to != facing) {
+		// Only opening or closing: each keeps its colour, facing and side.
+		was, from, wasSide, ok := curtainKind(current)
+		if !ok || was != base || from != to || wasSide != side || (facing != "" && to != facing) {
 			return false
 		}
 		facing = to

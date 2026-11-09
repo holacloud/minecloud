@@ -91,6 +91,15 @@ function curtainStripCells(position, typeAt, blockTypes, limit = CURTAIN_STRIP_L
     return cells;
 }
 
+// The side a curtain looking towards `facing` opens to: the half of the face the click hit, seen by
+// someone in front of it (looking against `facing`), as a door picks its hinge. The middle is right.
+function curtainSideFromHit(facing, ctx) {
+    const [fx, fz] = SHAPE_DIRECTIONS[facing];
+    // The viewer looks along (-fx, -fz); their right is (fz, -fx).
+    const across = (ctx.hit.x - (ctx.x + 0.5)) * fz - (ctx.hit.z - (ctx.z + 0.5)) * fx;
+    return across < 0 ? 'left' : 'right';
+}
+
 Object.assign(Game.prototype, {
     // What the server says a strip of curtains holds now (to everybody, or to the sender alone when
     // it refused the strip): an empty blockType is air.
@@ -104,24 +113,36 @@ Object.assign(Game.prototype, {
 
 // A curtain hangs at the back of its cell, pleated. Right click draws it to one side and back, and
 // the curtains hanging above and below it with it (curtainStripCells).
+// `side` is where the cloth gathers when open, seen from the front (from where the curtain looks):
+// right is how every curtain opened before there was a choice, so it is the default.
 registerBlockShape('curtain', {
-    states: [['facing', SHAPE_FACINGS], ['drawn', ['closed', 'open']]],
+    states: [['facing', SHAPE_FACINGS], ['drawn', ['closed', 'open']], ['side', ['right', 'left']]],
+    // Saved worlds keep their names: red_curtain, red_curtain:e:open; only the left side adds ":left".
+    stateName(base, state) {
+        const left = state.side === 'left';
+        if (state.facing === 'n' && state.drawn === 'closed' && !left) return base;
+        return [base, state.facing, state.drawn, ...(left ? ['left'] : [])].join(':');
+    },
     boxes(state) {
-        const boxes = state.drawn === 'open'
+        // Local x = 0 is the right of someone looking at the front (rotateShapeBox, FURN_RIGHT_OF).
+        let boxes = state.drawn === 'open'
             ? [[0, 0, 12.5, 2, 16, 15.5], [2, 0, 13.5, 4, 16, 16]]
             : [[0, 0, 14, 4, 16, 15], [4, 0, 15, 8, 16, 16], [8, 0, 14, 12, 16, 15], [12, 0, 15, 16, 16, 16]];
+        if (state.drawn === 'open' && state.side === 'left') boxes = boxes.map(([x0, y0, z0, x1, y1, z1]) => [16 - x1, y0, z0, 16 - x0, y1, z1]);
         return rotateShapeBoxes(furnBoxes(boxes), state.facing);
     },
-    // Against a wall it hangs from that wall; otherwise it looks at the player.
+    // Against a wall it hangs from that wall; otherwise it looks at the player. It opens towards the
+    // half of the face you click, as you see it: the right half, to the right.
     place(ctx) {
         const wall = Math.abs(ctx.normal.y) < 0.5;
-        return [{ dx: 0, dy: 0, dz: 0, state: { facing: wall ? shapeFacingFromVector(ctx.normal.x, ctx.normal.z) : furnFacePlayer(ctx), drawn: 'closed' } }];
+        const facing = wall ? shapeFacingFromVector(ctx.normal.x, ctx.normal.z) : furnFacePlayer(ctx);
+        return [{ dx: 0, dy: 0, dz: 0, state: { facing, drawn: 'closed', side: curtainSideFromHit(facing, ctx) } }];
     },
     toggle: (state) => ({ ...state, drawn: state.drawn === 'open' ? 'closed' : 'open' }),
     // Toggled together, sent in one curtainStrip message (joineryToggle).
     strip: (position, typeAt, blockTypes) => curtainStripCells(position, typeAt, blockTypes),
     stripMessage: 'curtainStrip',
-    iconState: { facing: 's', drawn: 'closed' }
+    iconState: { facing: 's', drawn: 'closed', side: 'right' }
 });
 
 FURNITURE_COLORS.forEach(([color, label, hex]) => {

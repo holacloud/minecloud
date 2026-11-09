@@ -150,4 +150,27 @@ func TestCurtainFacingOfPlainAndStateNames(t *testing.T) {
 	if _, _, ok := curtainFacing("oak_door:lower:n:left:open"); ok {
 		t.Fatal("a door is no curtain")
 	}
+	for name, want := range map[string]string{"red_curtain": "right", "red_curtain:e:open": "right", "red_curtain:n:closed:left": "left"} {
+		if _, _, side, _ := curtainKind(name); side != want {
+			t.Fatalf("%s opens %q", name, side)
+		}
+	}
+}
+
+// Each curtain of a strip keeps its own side; a strip that would change one is refused.
+func TestCurtainStripKeepsEachSide(t *testing.T) {
+	weatherStationWorld(t)
+	alice := weatherStationClient(t, "alice")
+	curtainHang(t, 2, 3, []int{40}, "red_curtain:s:closed")
+	curtainHang(t, 2, 3, []int{41}, "red_curtain:s:closed:left")
+	curtainStripSend(t, alice, []Block{{X: 2, Y: 40, Z: 3, BlockType: "red_curtain:s:open:left"}, {X: 2, Y: 41, Z: 3, BlockType: "red_curtain:s:open:left"}})
+	if name, _ := chunkStore.Block(2, 40, 3); name != "red_curtain:s:closed" {
+		t.Fatalf("a strip that turns a side is refused: %q", name)
+	}
+	curtainStripSend(t, alice, []Block{{X: 2, Y: 40, Z: 3, BlockType: "red_curtain:s:open"}, {X: 2, Y: 41, Z: 3, BlockType: "red_curtain:s:open:left"}})
+	for y, want := range map[int]string{40: "red_curtain:s:open", 41: "red_curtain:s:open:left"} {
+		if name, _ := chunkStore.Block(2, y, 3); name != want {
+			t.Fatalf("y=%d holds %q", y, name)
+		}
+	}
 }

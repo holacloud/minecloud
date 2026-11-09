@@ -625,4 +625,10 @@ Las cortinas (`<color>_curtain`, página 230, `js/game/decor.js`) se corren con 
   mandó recibe un `curtainStrip` con lo que hay de verdad (`blockType` vacío es aire). Si vale, todos reciben un solo `curtainStrip`.
   `blockPlace`, `blockBreak` y `curtainStrip` pasan por un mismo cerrojo (`blockEditMu`), así que nadie rompe una entre la comprobación y
   la escritura.
+- **Lado:** el estado `side` (`right` o `left`) dice hacia dónde se recoge la tela abierta, visto desde delante. Al colocarla sale del
+  punto de la cara en que se hace clic, respecto a quien mira (como la bisagra de una puerta): mitad derecha, `right`; izquierda, `left`;
+  el centro, `right`. Cerrada se ve igual. `right` es como se abrían todas antes, así que es el valor por defecto y los nombres guardados
+  no cambian: `red_curtain`, `red_curtain:e:open`; solo el izquierdo añade `:left` (`red_curtain:e:open:left`). 16 colores × 4
+  orientaciones × 2 estados × 2 lados, todos registrados. Una tira copia solo `drawn`: cada cortina conserva su color y su lado, y el
+  servidor rechaza una tira que cambie un lado.
 - **Planos y `/build`:** colocan cada cortina con su nombre y estado, con `blockPlace`; no les afecta.

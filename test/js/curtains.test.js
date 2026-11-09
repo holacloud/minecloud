@@ -188,6 +188,63 @@ test('what the server says of a strip is applied, air included', () => {
     assert.equal(world.getBlockTypeAt(3, 2, 4), null);
 });
 
+test('existing curtains keep their names and their look: right is the default side', () => {
+    const world = makeWorld();
+    for (const name of ['red_curtain', 'red_curtain:n:open', 'red_curtain:e:closed', 'red_curtain:w:open', 'light_blue_curtain:s:open']) {
+        const def = world.blockTypes[name];
+        assert.ok(def, name);
+        assert.equal(def.state.side, 'right', name);
+    }
+    // 16 colours x 4 facings x 2 states x 2 sides, every one registered, the left ones with ":left".
+    const names = Object.keys(world.blockTypes).filter((t) => t === 'red_curtain' || t.startsWith('red_curtain:'));
+    assert.equal(names.length, 16);
+    assert.equal(names.filter((t) => t.endsWith(':left')).length, 8);
+    for (const facing of ['n', 'e', 's', 'w']) {
+        for (const drawn of ['closed', 'open']) {
+            for (const side of ['right', 'left']) {
+                const type = world.getShapeStateType('red_curtain', { facing, drawn, side });
+                assert.ok(type, `${facing} ${drawn} ${side}`);
+                assert.deepEqual(plain(world.blockTypes[type].state), { facing, drawn, side });
+            }
+        }
+    }
+    // The open model of the default gathers where it always did: local x 0 to 4 (east, for one looking south).
+    const boxes = (type) => plain(ctx.BLOCK_SHAPES.curtain.boxes(world.blockTypes[type].state));
+    const xs = (list) => [Math.min(...list.map((b) => b[0])), Math.max(...list.map((b) => b[3]))];
+    assert.deepEqual(xs(boxes('red_curtain:s:open')), [12 / 16, 1]);
+    assert.deepEqual(xs(boxes('red_curtain:s:open:left')), [0, 4 / 16]);
+    // Closed, both sides look the same.
+    assert.deepEqual(boxes('red_curtain:s:closed'), boxes('red_curtain:s:closed:left'));
+});
+
+test('the side comes from the half of the face clicked, as the player sees it', () => {
+    const world = makeWorld();
+    world.setEditedBlock(3, 1, 3, 'stone');
+    // A wall to the north; the player stands south looking north and clicks its south face: the
+    // curtain looks south, and the player's right is east (+x).
+    const place = (hit, normal = { x: 0, y: 0, z: 1 }, look = { x: 0, z: -1 }) =>
+        world.getPlacementBlocks('red_curtain', 3, 1, 4, { normal, hit, look })[0].blockType;
+    assert.equal(place({ x: 3.8, y: 1.5, z: 4 }), 'red_curtain:s:closed');
+    assert.equal(place({ x: 3.2, y: 1.5, z: 4 }), 'red_curtain:s:closed:left');
+    // A wall to the east, clicked from the west: the player looks east and their right is south (+z).
+    assert.equal(place({ x: 4, y: 1.5, z: 4.9 }, { x: -1, y: 0, z: 0 }, { x: 1, z: 0 }), 'red_curtain:w:closed');
+    assert.equal(place({ x: 4, y: 1.5, z: 4.1 }, { x: -1, y: 0, z: 0 }, { x: 1, z: 0 }), 'red_curtain:w:closed:left');
+    // On the floor it looks at the player, and the halves are the player's too.
+    assert.equal(place({ x: 3.1, y: 1, z: 4.5 }, { x: 0, y: 1, z: 0 }, { x: 0, z: 1 }), 'red_curtain');
+    assert.equal(place({ x: 3.9, y: 1, z: 4.5 }, { x: 0, y: 1, z: 0 }, { x: 0, z: 1 }), 'red_curtain:n:closed:left');
+});
+
+test('a strip opened together keeps each curtain its own side', () => {
+    const world = makeWorld();
+    world.setEditedBlock(3, 1, 4, 'red_curtain:s:closed:left');
+    world.setEditedBlock(3, 2, 4, 'red_curtain:s:closed');
+    world.setEditedBlock(3, 3, 4, 'blue_curtain:s:closed:left');
+    const { game, sent } = makeGame(world);
+    game.joineryToggle({ x: 3, y: 2, z: 4 });
+    assert.deepEqual([1, 2, 3].map((y) => world.getBlockTypeAt(3, y, 4)), ['red_curtain:s:open:left', 'red_curtain:s:open', 'blue_curtain:s:open:left']);
+    assert.equal(sent[0][1].blocks.length, 3);
+});
+
 test('every player hears the strip: the game listens to curtainStrip', () => {
     const source = fs.readFileSync(path.join(STATIC, 'js', 'game.js'), 'utf8');
     assert.ok(source.includes("network.on('curtainStrip'"));
