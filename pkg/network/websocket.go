@@ -739,11 +739,18 @@ func handleMessage(client *Client, msg Message) {
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
+		// From builder mode's palette (builder.go): only in a plot of the sender's, and nothing to give back.
+		var from struct {
+			Palette bool `json:"palette"`
+		}
+		json.Unmarshal(msg.Payload, &from)
 		blockEditMu.Lock()
-		placed, refusal, ok := claimPlaceBlock(client, payload)
+		placed, refusal, ok := claimPlaceBlock(client, payload, from.Palette)
 		blockEditMu.Unlock()
 		if refusal != nil {
-			refusal.Placed = payload.BlockType
+			if !from.Palette {
+				refusal.Placed = payload.BlockType
+			}
 			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
 		}
 		if ok {

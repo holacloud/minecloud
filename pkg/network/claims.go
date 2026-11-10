@@ -741,11 +741,17 @@ func claimRefuse(client *Client, refusal *claimRefusal, cells ...[3]int) {
 	storageDeliver(client, createMessage("claimRefused", refusal))
 }
 
-// claimPlaceBlock is a blockPlace with the plots' rules: the check, and the claim when it is a marker. The
-// caller holds blockEditMu. Returns what was placed, the refusal if any, and whether it was placed.
-func claimPlaceBlock(client *Client, payload Block) (Block, *claimRefusal, bool) {
+// claimPlaceBlock is a blockPlace with the plots' rules: the check, and the claim when it is a marker. With
+// `palette` it comes from builder mode and has builderCheck first (builder.go). The caller holds blockEditMu.
+// Returns what was placed, the refusal if any, and whether it was placed.
+func claimPlaceBlock(client *Client, payload Block, palette bool) (Block, *claimRefusal, bool) {
 	if !blockEditable(payload.X, payload.Y, payload.Z) {
 		return payload, nil, false
+	}
+	if palette {
+		if refusal := builderCheck(client, payload.X, payload.Z, payload.BlockType); refusal != nil {
+			return payload, refusal, false
+		}
 	}
 	if refusal := claimCheck(client, payload.X, payload.Z); refusal != nil {
 		return payload, refusal, false
