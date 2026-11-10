@@ -704,7 +704,7 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   `playerHolds` (fase 1) es «tiene parcela», así que un jugador con parcela no se borra al recuperar otro.
 - **Cliente:** borde a menos de 12 bloques (líneas en el suelo, columnas en las esquinas; verde la tuya, ámbar ajena, azul la
   zona de inicio), aviso al entrar, panel del mojón (clic derecho del dueño), comprobaciones antes de minar, colocar o abrir
-  (un visitante puede usar herramientas que solo miran: multímetro, cinta métrica, termómetro, tubo de muestras…).
+  (un visitante puede usar herramientas que solo miran: multímetro, cinta métrica, termómetro, tubo de muestras…, y leer un cartel con clic derecho).
 - **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
   <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona
   de inicio salvo con `force` al final.

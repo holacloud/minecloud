@@ -656,7 +656,10 @@ Object.assign(Game.prototype, {
                 const onMarker = String(clicked || '').split(':')[0] === CLAIM_MARKER;
                 const normal = hit.face && hit.face.normal ? hit.face.normal : { x: 0, y: 0, z: 0 };
                 const next = { x: at.x + Math.round(normal.x), y: at.y + Math.round(normal.y), z: at.z + Math.round(normal.z) };
-                const refusal = onMarker ? null : (this.claimRefusalAt(at.x, at.z) || this.claimRefusalAt(next.x, next.z));
+                // A visitor may read a sign (a right click on it reads it, js/game/social.js).
+                const readsSign = !this.cameraController.isCrouching && held !== 'spray_paint'
+                    && typeof isSignBlockType === 'function' && isSignBlockType(clicked);
+                const refusal = onMarker || readsSign ? null : (this.claimRefusalAt(at.x, at.z) || this.claimRefusalAt(next.x, next.z));
                 if (refusal && !CLAIM_LOOK_ONLY.has(held)) {
                     if (this.tryUseItemOnMob() || this.tryMountMob()) return;
                     this.claimNotice(claimRefusalText(refusal));

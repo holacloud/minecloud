@@ -245,7 +245,7 @@ test('walking into a plot says whose it is, once', () => {
 });
 
 test('mining, placing and opening in someone else\'s plot stop at once with the reason', () => {
-    const { game, network, notice, moveTo } = fakeGame();
+    const { game, network, notice, moveTo, context, blocks } = fakeGame();
     network.emit('claimList', plots());
     moveTo(97, 100);
     game.aim = { position: { x: 99, y: 64, z: 100 }, face: { normal: { x: 0, y: 1, z: 0 } } };
@@ -260,6 +260,18 @@ test('mining, placing and opening in someone else\'s plot stop at once with the 
     game.selected = 'multimeter';
     game.placeBlock();
     assert.equal(game.placed, 1);
+    // And a sign can be read: a right click on it reads it.
+    context.isSignBlockType = (type) => type === 'sign';
+    blocks.set('99,64,100', 'sign');
+    game.selected = 'stone';
+    game.placeBlock();
+    assert.equal(game.placed, 2);
+    game.cameraController.isCrouching = true;
+    game.placeBlock();
+    assert.equal(game.placed, 2, 'crouching is building against it');
+    game.cameraController.isCrouching = false;
+    blocks.delete('99,64,100');
+    game.placed = 1;
     // Out in the wild everything goes on as before.
     moveTo(60, 60);
     game.aim = { position: { x: 61, y: 64, z: 60 }, face: { normal: { x: 0, y: 1, z: 0 } } };

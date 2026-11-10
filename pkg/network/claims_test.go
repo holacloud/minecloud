@@ -813,7 +813,11 @@ func TestPlotsOverWebSocketsWithTwoBrowsers(t *testing.T) {
 				break
 			}
 		}
-		time.Sleep(20 * time.Millisecond)
+		// A closing connection lets go of the storage book (storage.forget) right after leaving clients: once
+		// it has, taking the book's lock orders that before whatever the next test does to the book.
+		time.Sleep(50 * time.Millisecond)
+		storage.mu.Lock()
+		storage.mu.Unlock()
 	})
 	ana.await("claimList")
 	beto.await("claimList")
