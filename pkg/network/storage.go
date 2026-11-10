@@ -841,6 +841,12 @@ func handleStorageMessage(client *Client, msg Message) {
 		if err := json.Unmarshal(msg.Payload, &at); err != nil {
 			return
 		}
+		// Opening someone else's chest is refused too (claims.go).
+		if refusal := claimCheck(client, at.X, at.Z); refusal != nil {
+			storageDeliver(client, createMessage("storageClosed", at))
+			claimRefuse(client, refusal)
+			return
+		}
 		if snapshot, ok := storage.open(chunkStore, storagePlayerEye(client), client, at.X, at.Y, at.Z); ok {
 			storageDeliver(client, createMessage("storageContents", snapshot))
 		} else {
@@ -857,6 +863,9 @@ func handleStorageMessage(client *Client, msg Message) {
 	case "storagePut", "storageTake":
 		var move storageMove
 		if err := json.Unmarshal(msg.Payload, &move); err != nil {
+			return
+		}
+		if claimGuardRequest(client, msg.Payload, "storageResult") {
 			return
 		}
 		apply := storage.put

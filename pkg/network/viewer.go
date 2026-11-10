@@ -112,6 +112,7 @@ func ViewerAPI() http.Handler {
 	mux.HandleFunc("/viewer-api/surface", handleViewerSurface)
 	mux.HandleFunc("/viewer-api/chunks", handleViewerChunks)
 	mux.HandleFunc("/viewer-api/players", handleViewerPlayers)
+	mux.HandleFunc("/viewer-api/claims", handleViewerClaims)
 	withSession := SessionMiddleware(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {

@@ -108,6 +108,11 @@ func handleGlowSet(client *Client, payload []byte) {
 	if err := json.Unmarshal(payload, &request); err != nil {
 		return
 	}
+	// Someone else's plot (claims.go): the panel shows what the block really is.
+	if refusal := claimCheck(client, request.X, request.Z); refusal != nil {
+		claimRefuse(client, refusal, [3]int{request.X, request.Y, request.Z})
+		return
+	}
 	block, done := glowApply(storage, chunkStore, storagePlayerEye(client), request.X, request.Y, request.Z, request.BlockType, func() (bool, error) {
 		return setBlockTracked(request.X, request.Y, request.Z, request.BlockType)
 	})

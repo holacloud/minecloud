@@ -25,7 +25,7 @@ package network
 // Recovering ("I already have a code") links the asking browser's session to the code's player, with
 // one atomic write of the session record (StoreDisk writes a temp file and renames it), so it holds
 // across a restart. The player the session leaves behind is removed if no other session is that player
-// and it holds nothing (playerHolds; in phase 1 nothing can be held): its code would only be one more
+// and it holds nothing (playerHolds: no plot): its code would only be one more
 // to guess. The inventory lives in each browser and does not travel.
 //
 // Guessing: each attempt is checked against three limits before the code is even looked at.
@@ -109,9 +109,9 @@ var (
 	// Making new codes writes to disk: a handful in a row, then a wait.
 	regenerateLimiter = newAttemptLimiter(5, 30*time.Second, 10*time.Minute, 10*time.Minute)
 
-	// playerHolds says whether a player owns anything (phase 2: parcels), which keeps an abandoned
-	// player from being removed. Nothing can be owned yet.
-	playerHolds = func(playerID string) bool { return false }
+	// playerHolds says whether a player owns anything (a plot, claims.go), which keeps an abandoned
+	// player from being removed.
+	playerHolds = func(playerID string) bool { return claims.holds(playerID) }
 
 	errIdentityUnavailable = errors.New("identity unavailable")
 )
@@ -696,6 +696,8 @@ func refreshSessionClients(sessionID, playerID string) {
 	for _, client := range targets {
 		client.setStablePlayerID(playerID)
 		sendToClient(client, message)
+		// Which plot is its own changes with it.
+		claimsSendTo(client)
 	}
 }
 

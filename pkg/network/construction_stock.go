@@ -205,7 +205,18 @@ func handleConstructionStock(client *Client, payload json.RawMessage) {
 	if err := json.Unmarshal(payload, &request); err != nil {
 		return
 	}
-	filled, refused := storage.stockAll(chunkStore, request.Fills)
+	// Only the admin gets here, and the admin may fill anything: the check stays the one of claims.go.
+	var allowed []stockFill
+	var protected []stockRefusal
+	for _, fill := range request.Fills {
+		if claimCheck(client, fill.X, fill.Z) != nil {
+			protected = append(protected, stockRefusal{X: fill.X, Y: fill.Y, Z: fill.Z, Reason: "protected"})
+			continue
+		}
+		allowed = append(allowed, fill)
+	}
+	filled, refused := storage.stockAll(chunkStore, allowed)
+	refused = append(refused, protected...)
 	// Saved before it is answered, as any move (storage.go).
 	if len(filled) > 0 {
 		saveWorldState()

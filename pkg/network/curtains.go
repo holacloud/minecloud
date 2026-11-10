@@ -80,7 +80,20 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 		return
 	}
 	blockEditMu.Lock()
-	if !curtainStripValid(payload.Blocks) {
+	// A strip in someone else's plot (claims.go) is refused whole, like an invalid one.
+	var refusal *claimRefusal
+	for i, block := range payload.Blocks {
+		if i >= curtainStripLimit {
+			break
+		}
+		if refusal = claimCheck(client, block.X, block.Z); refusal != nil {
+			break
+		}
+	}
+	if refusal != nil {
+		claimRefuse(client, refusal)
+	}
+	if refusal != nil || !curtainStripValid(payload.Blocks) {
 		// Put the sender's world right: it already drew the strip it asked for.
 		truth := make([]Block, 0, len(payload.Blocks))
 		for i, block := range payload.Blocks {

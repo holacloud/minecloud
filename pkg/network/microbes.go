@@ -710,6 +710,10 @@ func handleCultureMessage(client *Client, msg Message) {
 	if err := json.Unmarshal(msg.Payload, &request); err != nil {
 		return
 	}
+	// Not in someone else's plot (claims.go).
+	if claimGuardRequest(client, msg.Payload, "storageResult") {
+		return
+	}
 	var apply func(cropWorld, *[3]float64, cultureRequest) (storageOutcome, bool)
 	switch msg.Type {
 	case "cultureLoad":

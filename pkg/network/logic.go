@@ -562,10 +562,14 @@ func logicPressAt(x, y, z int) {
 	}
 }
 
-// handleLogicPress is the logicPress message: {x, y, z}.
-func handleLogicPress(raw json.RawMessage) {
+// handleLogicPress is the logicPress message: {x, y, z}. In someone else's plot it is refused (claims.go).
+func handleLogicPress(client *Client, raw json.RawMessage) {
 	var target powerTarget
 	if err := json.Unmarshal(raw, &target); err != nil {
+		return
+	}
+	if refusal := claimCheck(client, target.X, target.Z); refusal != nil {
+		claimRefuse(client, refusal, [3]int{target.X, target.Y, target.Z})
 		return
 	}
 	logicPressAt(target.X, target.Y, target.Z)

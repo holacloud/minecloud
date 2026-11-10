@@ -629,6 +629,10 @@ func handleMicroscopeMessage(client *Client, msg Message) {
 		}
 		return
 	}
+	// Everything but a sample changes the microscope: not in someone else's plot (claims.go).
+	if claimGuardRequest(client, msg.Payload, "storageResult") {
+		return
+	}
 	var apply func(cropWorld, *[3]float64, microscopeRequest) (storageOutcome, bool)
 	switch msg.Type {
 	case "microscopePrepare":

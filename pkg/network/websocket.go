@@ -146,6 +146,8 @@ type persistedWorldState struct {
 	StorageLog []storageOutcome        `json:"storageLog,omitempty"`
 	// Every culture plate, by its id (plates.go).
 	Plates map[string]PlateRecord `json:"plates,omitempty"`
+	// Every plot, by its id (claims.go).
+	Claims map[string]Claim `json:"claims,omitempty"`
 }
 
 var (
@@ -270,6 +272,7 @@ func loadWorldState() error {
 	loadCrops(persisted.Crops)
 	loadPower(persisted.Power)
 	storage.load(persisted.Storage, persisted.StorageLog, persisted.Plates)
+	claims.load(persisted.Claims)
 
 	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
 	return nil
@@ -299,6 +302,7 @@ func saveWorldState() {
 	persisted.Crops = snapshotCrops()
 	persisted.Power = snapshotPower()
 	persisted.Storage, persisted.StorageLog, persisted.Plates = storage.snapshotAll()
+	persisted.Claims = claims.snapshot()
 
 	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
 		log.Printf("Failed to create world state directory: %v", err)
@@ -360,6 +364,8 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	clientsMu.Lock()
 	clients[client] = true
 	clientsMu.Unlock()
+	// Every plot, with its own one marked (claims.go).
+	claimsSendTo(client)
 
 	go client.writePump()
 	go client.readPump()
@@ -637,6 +643,7 @@ func handleMessage(client *Client, msg Message) {
 			client.username = payload.PlayerID
 		}
 		recordRegistration(client, payload.PlayerID)
+		claimRenameOwner(client)
 
 		stateMu.Lock()
 		gameState.Players[client.ID] = Player{
@@ -698,6 +705,12 @@ func handleMessage(client *Client, msg Message) {
 		if !blockEditable(payload.X, payload.Y, payload.Z) {
 			return
 		}
+		// Someone else's plot, or the spawn zone (claims.go): the sender puts its copy back.
+		if refusal := claimBreakAllowed(client, payload.X, payload.Z); refusal != nil {
+			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
+			return
+		}
+		was, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
 
 		// The chunk store is the source of truth; never call it while holding stateMu.
 		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
@@ -720,13 +733,19 @@ func handleMessage(client *Client, msg Message) {
 
 		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
 		broadcastToAll(createMessage("blockBreak", payload))
+		// Breaking a marker removes its plot (claims.go).
+		claimBroken(was, payload.X, payload.Y, payload.Z)
 
 	case "blockPlace":
 		var payload Block
 		json.Unmarshal(msg.Payload, &payload)
 		blockEditMu.Lock()
-		placed, ok := placeBlock(client, payload)
+		placed, refusal, ok := claimPlaceBlock(client, payload)
 		blockEditMu.Unlock()
+		if refusal != nil {
+			refusal.Placed = payload.BlockType
+			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
+		}
 		if ok {
 			broadcastToAll(createMessage("blockPlace", placed))
 		}
@@ -740,6 +759,10 @@ func handleMessage(client *Client, msg Message) {
 		payload.Face = normalizeSprayFace(payload.Face)
 		payload.Color = normalizeSprayColor(payload.Color)
 		if payload.Face == "" || payload.Color == "" {
+			return
+		}
+		if refusal := claimCheck(client, payload.X, payload.Z); refusal != nil {
+			claimRefuse(client, refusal)
 			return
 		}
 
@@ -917,6 +940,8 @@ func handleMessage(client *Client, msg Message) {
 		client.creative.Store(false)
 	case "constructionStock":
 		handleConstructionStock(client, msg.Payload)
+	case "claimAdmin":
+		handleClaimAdmin(client, msg.Payload)
 
 	case "identityCodeShow", "identityCodeRegenerate", "identityRecover":
 		handleIdentityMessage(client, msg)
@@ -941,7 +966,7 @@ func handleMessage(client *Client, msg Message) {
 	case "powerFeed":
 		handlePowerFeed(msg.Payload)
 	case "logicPress":
-		handleLogicPress(msg.Payload)
+		handleLogicPress(client, msg.Payload)
 
 	case "sleepInBed":
 		stateMu.Lock()

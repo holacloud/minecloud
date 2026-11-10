@@ -102,7 +102,7 @@ var mechSoft = map[string]bool{
 var mechFixed = map[string]bool{
 	"bedrock": true, "lift_platform": true, "sign": true, "ladder": true, "sound_block": true,
 	"bed": true, "farmland": true, "chest": true, "barrel": true, "wardrobe": true,
-	"fridge": true, "chest_freezer": true, "oven": true, "foundry": true, "arc_furnace": true, "microscope": true, "incubator": true, "autoclave": true, "floor_lamp": true, "bathtub": true,
+	"fridge": true, "chest_freezer": true, "claim_marker": true, "oven": true, "foundry": true, "arc_furnace": true, "microscope": true, "incubator": true, "autoclave": true, "floor_lamp": true, "bathtub": true,
 }
 
 // mechMovable reports whether a ram may push or pull the block `name`.
@@ -174,6 +174,19 @@ func ramArmFacing(name string) (string, bool) {
 
 func mechAdd(p, d powerPos, n int) powerPos {
 	return powerPos{p[0] + d[0]*n, p[1] + d[1]*n, p[2] + d[2]*n}
+}
+
+// mechSameZone says whether the cells p+d .. p+d*n are all in the zone of p (claims.go): no plot, the spawn
+// zone, or one plot. A lift needs no such check: it moves in its winch's own column, which is one zone.
+func mechSameZone(p, d powerPos, n int) bool {
+	zone := claimZoneKey(p[0], p[2])
+	for i := 1; i <= n; i++ {
+		q := mechAdd(p, d, i)
+		if claimZoneKey(q[0], q[2]) != zone {
+			return false
+		}
+	}
+	return true
 }
 
 func mechInWorld(p powerPos) bool {
@@ -304,6 +317,11 @@ func (g *powerGrid) ramExtend(w cropWorld, p powerPos, ram ramBlock, set func(po
 	if !free {
 		return
 	}
+	// Every cell the push touches, the arm's and the free one at the end included, must be in the ram's own
+	// zone (claims.go): nothing goes into, out of or within a plot from outside, nor from one plot to another.
+	if !mechSameZone(p, d, len(line)+1) {
+		return
+	}
 	move := mechMove{Kind: "push", Dir: d}
 	// From the far end back, so nothing is overwritten before it moved.
 	for i := len(line); i >= 1; i-- {
@@ -332,7 +350,7 @@ func (g *powerGrid) ramRetract(w cropWorld, p powerPos, ram ramBlock, set func(p
 			pulled := false
 			if ram.sticky() {
 				stuck := mechAdd(p, d, 2)
-				if other, err := w.Block(stuck[0], stuck[1], stuck[2]); err == nil && mechInWorld(stuck) && mechMovable(other) {
+				if other, err := w.Block(stuck[0], stuck[1], stuck[2]); err == nil && mechInWorld(stuck) && mechMovable(other) && mechSameZone(p, d, 2) {
 					if set(front, other) && set(stuck, "air") {
 						pulled = true
 						g.mech.events = append(g.mech.events, mechMove{
@@ -406,7 +424,8 @@ func (g *powerGrid) liftStops(p powerPos) []powerPos {
 	for dy := 0; dy <= liftMaxRope+1-liftStopDrop; dy++ {
 		for _, side := range liftStopSides {
 			q := powerPos{p[0] + side[0], p[1] - dy, p[2] + side[2]}
-			if b := g.blocks[q]; b != nil && b.Kind == "lift_stop" {
+			// A stop in another zone than its winch (claims.go) is not this lift's.
+			if b := g.blocks[q]; b != nil && b.Kind == "lift_stop" && claimZoneKey(q[0], q[2]) == claimZoneKey(p[0], p[2]) {
 				stops = append(stops, q)
 			}
 		}
