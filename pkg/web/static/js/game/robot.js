@@ -927,6 +927,9 @@ Object.assign(Game.prototype, {
         if (!this.robotLoaded(cell)) return { ok: false, error: 'I can\'t reach there: that part of the world is not loaded' };
         const type = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
         if (!type || type === 'water') return { ok: true, duration: tick };
+        // It digs for its owner: not in someone else's plot (js/game/claims.js).
+        const protectedHere = typeof this.claimHelperRefusal === 'function' ? this.claimHelperRefusal(cell.x, cell.z) : null;
+        if (protectedHere) return { ok: false, error: protectedHere };
         const duration = this.world.getBreakDurationForType(type);
         if (!duration && duration !== 0) return { ok: false, error: `I can't dig ${this.robotName(type)}: it is unbreakable` };
         const drop = this.world.getDropTypeForBlock(type);
@@ -965,6 +968,8 @@ Object.assign(Game.prototype, {
         const cell = this.robotCell(robot, where);
         if (!this.robotLoaded(cell)) return { ok: false, error: 'I can\'t reach there: that part of the world is not loaded' };
         if (cell.y < WORLD_MIN_Y || cell.y > WORLD_MAX_Y) return { ok: false, error: 'I can\'t build that far' };
+        const protectedHere = typeof this.claimHelperRefusal === 'function' ? this.claimHelperRefusal(cell.x, cell.z) : null;
+        if (protectedHere) return { ok: false, error: protectedHere };
         const existing = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
         if (existing && !ROBOT_REPLACEABLE.includes(existing)) return { ok: true, duration: tick };
         if (this.robotAt(cell.x, cell.y, cell.z, robot)) return { ok: false, error: 'Another robot is in the way' };

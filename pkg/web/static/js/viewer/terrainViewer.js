@@ -11,7 +11,7 @@
 // (js/viewer/builtOverlay.js, in the workers). Only tiles showing a changed chunk are built again,
 // and a tile keeps drawing the old mesh until the new one is there. Up close, the real blocks of
 // those chunks replace the tile (js/viewer/nearBlocks.js). Where the players are, only if asked
-// for, goes over all of it (js/viewer/playerMarkers.js).
+// for, goes over all of it (js/viewer/playerMarkers.js), and so do the plots (js/viewer/claimMarkers.js).
 
 const TILE_SAMPLES = 64;
 const MAX_LOD = 9;
@@ -40,6 +40,7 @@ class TerrainViewer {
         nearApplyMask(this.landMaterial, this.near.uniforms);
         nearApplyMask(this.waterMaterial, this.near.uniforms);
         this.players = new PlayerMarkers({ layer: document.getElementById('player-markers') });
+        this.claims = new ClaimMarkers({ scene: this.scene, layer: document.getElementById('claim-markers') });
         this.initWorkers();
         this.initUI();
         this.built.start();
@@ -357,6 +358,8 @@ class TerrainViewer {
         // Off on every load, whatever the browser restores of the form.
         $('players').checked = false;
         $('players').addEventListener('change', (e) => this.players.setEnabled(e.target.checked));
+        $('claims').checked = false;
+        $('claims').addEventListener('change', (e) => this.claims.setEnabled(e.target.checked));
         $('goto').addEventListener('submit', (e) => {
             e.preventDefault();
             const x = Number($('goto-x').value) || 0;
@@ -425,6 +428,7 @@ class TerrainViewer {
             this.built.statusLine(),
             this.near.statusLine(),
             this.players.statusLine(),
+            this.claims.statusLine(),
             `${this.fps} fps · ${this.renderer.info.render.calls} draw calls`,
             `centre x ${Math.round(target.x)} z ${Math.round(target.z)}`
         ].filter(Boolean).join('<br>');
@@ -450,6 +454,7 @@ class TerrainViewer {
         this.renderer.render(this.scene, this.camera);
         // After rendering: the camera's matrices are this frame's.
         this.players.update(this.camera, window.innerWidth, window.innerHeight);
+        this.claims.update(this.camera, window.innerWidth, window.innerHeight);
     }
 }
 

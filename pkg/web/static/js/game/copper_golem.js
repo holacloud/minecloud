@@ -633,6 +633,8 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
         const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
         if (!shape || !shape.toggle || def.opensByHand === false) return false;
         if (typeof logicStopLocks === 'function' && logicStopLocks(this.world, cell)) return false;
+        // It opens doors for its owner: not in someone else's plot (js/game/claims.js).
+        if (typeof this.claimRefusalAt === 'function' && this.claimRefusalAt(cell.x, cell.z)) return false;
         const base = def.variantOf || type;
         const next = shape.toggle(def.state, { look });
         const nextType = next && this.world.getShapeStateType(base, next);

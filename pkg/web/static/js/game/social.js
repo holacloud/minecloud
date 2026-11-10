@@ -250,6 +250,11 @@ Object.assign(Game.prototype, {
             case 'build':
                 this.constructionCommand(normalized, args);
                 break;
+            // Plots, for the admin (js/game/claims.js).
+            case 'plots':
+            case 'plot':
+                this.claimAdminCommand(normalized, args);
+                break;
             case 'rtx':
                 this.toggleRTXMode();
                 this.receiveSystemMessage({ text: `RTX mode ${this.rtxModeEnabled ? 'enabled' : 'disabled'}` });

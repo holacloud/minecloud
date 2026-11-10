@@ -119,9 +119,9 @@ const ITEM_TAG_PATTERNS = [
 
 // What only a person can tell: family -> items. Rules get the rest; `itemTagsFromTableOnly` lists who depends on this.
 const ITEM_TAG_TABLE = {
-    building: ['grass', 'dirt', 'sand', 'stone', 'cobblestone', 'wood', 'planks', 'ladder'],
+    building: ['grass', 'dirt', 'sand', 'stone', 'cobblestone', 'wood', 'planks', 'ladder', 'claim_marker'],
     wood: ['wood', 'planks', 'ladder', 'sign', 'bed'],
-    stone: ['stone', 'cobblestone'],
+    stone: ['stone', 'cobblestone', 'claim_marker'],
     metal: ['meteoric_iron', 'gold_leaf'],
     furniture: ['bed', 'stool', 'bench', 'table', 'bedside_table', 'desk', 'chest', 'barrel', 'wardrobe', 'bookshelf', 'wall_shelf', 'workbench', 'oven', 'sink', 'fridge',
         'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'foundry', 'arc_furnace'],

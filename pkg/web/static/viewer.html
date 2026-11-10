@@ -58,6 +58,12 @@
             width: 12px; height: 12px; background: #e0483e; border: 2px solid #fff; border-radius: 50%;
             box-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
         }
+        #claim-markers { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+        .claim-marker {
+            position: absolute; left: 0; top: 0; max-width: 180px; padding: 1px 6px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; font-size: 12px; background: var(--panel-bg); border: 1px solid #ffc857; border-radius: 6px;
+        }
+        .claim-marker-spawn { border-color: #8fd3ff; }
         .help { position: fixed; right: 16px; bottom: 16px; color: rgba(16, 32, 48, 0.75); font-size: 12px; text-align: right; }
         @media (max-width: 640px) {
             .panel { left: 16px; right: 16px; width: auto; }
@@ -67,6 +73,7 @@
 </head>
 <body>
     <div id="viewport"></div>
+    <div id="claim-markers"></div>
     <div id="player-markers"></div>
 
     <div class="panel">
@@ -96,6 +103,7 @@
         </div>
         <div class="row">
             <label><input id="players" type="checkbox" autocomplete="off"> Show players</label>
+            <label><input id="claims" type="checkbox" autocomplete="off"> Show plots</label>
         </div>
 
         <label>Go to</label>
@@ -118,6 +126,7 @@
     <script src="js/viewer/builtBlocks.js"></script>
     <script src="js/viewer/nearBlocks.js"></script>
     <script src="js/viewer/playerMarkers.js"></script>
+    <script src="js/viewer/claimMarkers.js"></script>
     <script src="js/viewer/terrainViewer.js"></script>
 </body>
 </html>

@@ -1491,7 +1491,7 @@ Object.assign(Game.prototype, {
         const what = (args[0] || '').toLowerCase();
         if (what === 'undo') this.constructionStartUndo();
         else if (what === 'stop') this.constructionStop();
-        else if (CONSTRUCTION_DESIGNS[what] && Object.prototype.hasOwnProperty.call(CONSTRUCTION_DESIGNS, what)) this.constructionStart(what);
+        else if (CONSTRUCTION_DESIGNS[what] && Object.prototype.hasOwnProperty.call(CONSTRUCTION_DESIGNS, what)) this.constructionStart(what, (args[1] || '').toLowerCase() === 'force');
         else this.constructionListOptions();
     },
 
@@ -1509,7 +1509,9 @@ Object.assign(Game.prototype, {
         return true;
     },
 
-    constructionStart(name) {
+    // `force`: build over someone else's plot or the spawn area anyway (only the admin builds, and the server
+    // lets the admin; without it the build stops before it starts, js/game/claims.js).
+    constructionStart(name, force = false) {
         if (this.constructionBusy()) return;
         const position = this.cameraController.getPosition();
         const look = this.getInteractionRay().direction;
@@ -1524,6 +1526,12 @@ Object.assign(Game.prototype, {
         const plan = constructionPlan(name);
         // Where the box lands on the map (the height does not matter yet).
         const { min, size } = constructionLayout(plan, turns, anchor, 0, this.world.blockTypes);
+        const covered = !force && typeof this.claimForeignInBox === 'function'
+            ? this.claimForeignInBox(min.x, min.z, min.x + size[0] - 1, min.z + size[2] - 1) : null;
+        if (covered) {
+            this.receiveSystemMessage({ text: claimSay('buildBlocked', { zone: covered }) });
+            return;
+        }
         this.constructionWaiting = { plan, turns, anchor, fromY, min, size, waited: 0, retry: 0, left: Infinity, told: false };
         this.world.keptChunks = {
             minX: floorDiv(min.x, CHUNK_SIZE),

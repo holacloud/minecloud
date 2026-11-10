@@ -702,6 +702,8 @@ Object.assign(Game.prototype, {
     // Removes a block through the normal path, only if it still is `type`.
     beaverRemoveBlock(x, y, z, type) {
         if (this.world.getBlockTypeAt(x, y, z) !== type) return false;
+        // It works for whoever tamed it: not in someone else's plot (js/game/claims.js).
+        if (typeof this.claimRefusalAt === 'function' && this.claimRefusalAt(x, z)) return false;
         if (!this.world.removeBlockAt(x, y, z)) return false;
         if (this.network.connected) this.network.send('blockBreak', { x, y, z });
         return true;
@@ -940,6 +942,7 @@ Object.assign(Game.prototype, {
         const type = cell.type === 'wood' ? b.logType || 'wood' : cell.type;
         const payload = { x: cell.x, y: cell.y, z: cell.z, blockType: type };
         cell.done = true;
+        if (typeof this.claimRefusalAt === 'function' && this.claimRefusalAt(cell.x, cell.z)) return;
         if (!this.world.addBlock(payload)) return;
         if (this.network.connected) this.network.send('blockPlace', payload);
         this.beaverSaveSites();
