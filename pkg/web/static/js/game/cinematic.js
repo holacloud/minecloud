@@ -523,9 +523,9 @@ registerModalPanel({
     close() { this.cinematicClosePanel(); }
 });
 
-// Flight is a creative-mode privilege.
+// Flight is a creative-mode privilege, and builder mode's inside a plot (js/game/builder.js).
 registerFrameUpdate(function () {
-    if (this.cameraController) this.cameraController.flightAllowed = Boolean(this.creativeMode);
+    if (this.cameraController) this.cameraController.flightAllowed = Boolean(this.creativeMode || this.builderActive);
 });
 
 // /cam, only in creative mode (otherwise it answers like any unknown command). Wrapped once the

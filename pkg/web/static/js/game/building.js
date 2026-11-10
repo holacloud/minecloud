@@ -497,7 +497,8 @@ Object.assign(Game.prototype, {
         if (this.tryUseItemOnMob()) return;
         if (this.tryMountMob()) return;
         const hit = this.raycastBlock(this.placeDistance);
-        if (ITEM_USE_HANDLERS.some((handler) => handler.call(this, this.getSelectedHeldItemType(), hit))) return;
+        // Builder mode has already run them with an empty hand before placing from its palette (js/game/builder.js).
+        if (!this.builderPlacingOnly && ITEM_USE_HANDLERS.some((handler) => handler.call(this, this.getSelectedHeldItemType(), hit))) return;
         if (!hit) return;
 
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
@@ -586,7 +587,7 @@ Object.assign(Game.prototype, {
                 this.placeActionTimer = 0.35;
                 this.showHitIndicator();
                 this.lastSelectionUpdate = 0;
-                if (this.network.connected) parts.forEach((part) => this.network.send('blockPlace', part));
+                if (this.network.connected) parts.forEach((part) => this.network.send('blockPlace', this.blockPlaceOutgoing(part)));
                 return;
             }
 
@@ -613,9 +614,14 @@ Object.assign(Game.prototype, {
             this.lastSelectionUpdate = 0;
 
             if (this.network.connected) {
-                this.network.send('blockPlace', payload);
+                this.network.send('blockPlace', this.blockPlaceOutgoing(payload));
             }
         }
+    },
+
+    // What a placement of the player's sends: builder mode marks what comes from its palette (js/game/builder.js).
+    blockPlaceOutgoing(payload) {
+        return typeof this.builderOutgoing === 'function' ? this.builderOutgoing(payload) : payload;
     },
 
     updateMining(delta) {

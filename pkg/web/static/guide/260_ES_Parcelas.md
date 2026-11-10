@@ -43,6 +43,20 @@ Estés donde estés, puedes volver a tu parcela: **«Ir a mi parcela»** en el m
 
 No cuesta nada, pero solo se puede una vez cada **30 segundos**. Solo lleva a **tu** parcela, no a una en la que estés invitado.
 
+## Modo constructor
+
+Al entrar en **tu** parcela (o en una en la que estés invitado) se enciende solo el **modo constructor**, y arriba aparece un aviso pequeño: «🔨 Modo constructor». Al salir de la parcela se apaga solo.
+
+- **Materiales infinitos:** la barra y el inventario (**E**) muestran la **paleta**, marcada con **∞**: todos los bloques de construcción y decoración. Piedra, ladrillos, maderas y tablas, escaleras, losas, puertas, trampillas, vallas, vidrio y vidrieras de colores, lana, alfombras y cortinas, sofás, sillas, mesas, camas, armarios, cofres y barriles, lámparas, antorchas, cuadros, macetas… En total 243. Se buscan con las etiquetas de siempre (`#vidrio #azul`).
+- **No están:** lo científico, lo eléctrico, la lógica y los mecanismos, la química, el microscopio y los cultivos, los minerales, la comida, las herramientas y armas, los huevos, el horno y el mojón.
+- **Tus cosas siguen ahí:** junto a la paleta ves lo tuyo que no está en ella (herramientas, comida…). Lo tuyo de un tipo que sí está en la paleta (tus 5 piedras, por ejemplo) se queda guardado sin tocar: poner piedra en modo constructor sale de la paleta y no gasta nada.
+- **La paleta no sale de la parcela:** no se tira, no se come, no va a la mano izquierda, no se mete en cofres ni sirve para fabricar. Con un bloque de la paleta en la mano, abrir puertas o cofres o usar algo es como hacerlo con la mano vacía. Al salir, sus huecos desaparecen de la barra y vuelves a ver lo tuyo tal como estaba.
+- **Romper es instantáneo.** Un bloque de un tipo de la paleta no suelta nada; cualquier otro (un mineral, una máquina) cae como siempre, y un cofre suelta lo que tenga dentro. Un bloque que pusiste desde la paleta tampoco suelta nada aunque luego apagues el modo constructor.
+- **Volar:** doble salto (**Espacio** dos veces, o dos toques en **Saltar** en pantalla táctil) para volar; **Espacio** sube y **Mayús** baja (en táctil, **Arriba** y **Abajo**). Dentro de tu parcela no te haces daño al caer. Si sales volando, dejas de volar en el borde y bajas sin hacerte daño hasta tocar el suelo.
+- **Apagarlo:** si prefieres construir con tus propios materiales, «Modo constructor: sí / no» en el menú de pausa (en táctil también un toque en el aviso de arriba). Este navegador lo recuerda; el aviso se queda atenuado mientras estés en la parcela.
+
+El servidor lo comprueba: solo acepta un bloque de la paleta si es de la paleta y está dentro de una parcela tuya o en la que estás invitado; nunca fuera, en la de otro ni en la zona de inicio.
+
 ## La zona de inicio
 
 Alrededor del punto donde aparece todo el mundo hay una zona de **32 × 32** bloques protegida y sin dueño: nadie puede construir ni romper en ella, para que sea siempre un buen sitio para llegar. Ninguna parcela puede tocarla, y hay que dejar 8 bloques libres hasta ella.

@@ -732,6 +732,33 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   parcela lleva `mine` o `guest`, y solo el dueño recibe `guests: [{key, name, online}]`. Cliente: borde **violeta** en la
   parcela en la que eres invitado; el panel muestra invitados con «Quitar» y un botón «Invitar a …» por jugador conectado que
   no lo sea ya; a un invitado el mojón solo le dice de quién es.
+- **Modo constructor** (fase 3, `js/game/builder.js`, `pkg/network/builder.go`): se enciende solo al entrar en una parcela
+  propia o de invitado (`claimIsMember` de la columna del jugador, cada fotograma) y se apaga al salir; nunca en creativo ni
+  muerto. Aviso `#builder-indicator` arriba (atenuado si está apagado a mano; en táctil, un toque lo conmuta) y botón
+  `settings-builder` en el menú de pausa; la preferencia, en `localStorage` `minecloud-builder` (`on`/`off`).
+  - **Paleta** (`builderPaletteOf`): lo que tiene una familia de `BUILDER_FAMILIES` (building, decoration, furniture, light,
+    glass, wool, wood, stone) y ninguna de `BUILDER_NOT_FAMILIES` (science, electric, logic, mechanism, chemistry, element,
+    microscope, sample, ore, food, drink, tool, weapon, armor, egg, bait, farming, plant, animal), menos `claim_marker` y
+    `oven`, y nada `itemOnly`: 243 objetos. Entran los almacenes sencillos (cofre, barril, armario) como muebles; su contenido
+    nunca sale de la paleta. El servidor tiene la misma lista literal (`builderPalette`) y `test/js/builder.test.js` comprueba
+    que coinciden: un cambio de etiquetas que meta o saque algo falla hasta actualizar las dos.
+  - **Inventario:** la paleta no entra nunca en `inventory`/`inventoryCounts`. `builderSelected` es el objeto de la paleta en la
+    mano; `builderHotbar` las entradas de la barra (`palette:<tipo>` o las de siempre), solo en memoria. La barra y el panel
+    muestran la paleta (∞) y lo propio que no es de la paleta; lo propio de un tipo de la paleta se oculta sin tocarlo. Al salir
+    la barra vuelve a ser `hotbarPinnedTypes` tal cual (nunca se tocó) y la mano pasa al montón propio de ese tipo si lo hay.
+    Con un objeto de la paleta en la mano, todo uso (mobs, `ITEM_USE_HANDLERS`) va con la mano vacía (`builderWithEmptyHand`)
+    y solo después se coloca (`builderPlacingOnly`); tirar, comer y la mano izquierda se niegan; `consumeSelectedBlock` no gasta.
+  - **Colocar:** `blockPlace` con `palette: true` (`blockPlaceOutgoing` en `building.js`). El servidor (`builderCheck`, antes que
+    el resto de `claimPlaceBlock`) lo acepta solo si `storageBase(tipo)` está en la paleta y la columna es de una parcela donde es
+    dueño o invitado: si no, `claimRefused` con `palette`, `builderOutside`, `spawn` o `claim`, sin `placed` (no se devuelve
+    nada). Ni el administrador se salta esto (para eso tiene creativo). Las colocaciones normales no cambian.
+  - **Romper:** instantáneo (`getAdjustedBreakDuration` 0, con 0,18 s entre bloques). Un tipo de la paleta (o un estado suyo)
+    roto en modo constructor no crea recogida; lo demás cae como siempre y el contenido de un almacén lo sigue soltando el
+    servidor. Las celdas puestas desde la paleta en este navegador (`minecloud-builder-placed`, hasta 8000) tampoco sueltan nada
+    con el modo apagado; se olvidan al romperse, al poner encima algo propio, al llegar un `blockBreak` ajeno o un `claimRefused`.
+  - **Vuelo:** `flightAllowed` = creativo o modo constructor (`cinematic.js`); doble salto, como en creativo, también en táctil.
+    Sin daño de caída dentro. Al salir en el aire: se corta el vuelo en el borde y `builderSafeFall` anula el daño de la primera
+    caída (o se borra tras 0,5 s en el suelo o en el agua).
 - **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
   <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona
   de inicio salvo con `force` al final.

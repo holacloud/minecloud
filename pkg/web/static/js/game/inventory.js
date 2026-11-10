@@ -343,9 +343,11 @@ Object.assign(Game.prototype, {
         const query = this.inventorySearchTerm.trim();
         const parsed = itemTagParseQuery(this.inventorySearchTerm);
         const index = this.getItemTagIndex();
-        const visibleItems = this.inventory
+        // In builder mode: the palette (∞) and the player's own items outside it (js/game/builder.js).
+        const builderItems = this.builderInventoryItems ? this.builderInventoryItems() : null;
+        const visibleItems = (builderItems || this.inventory
             .map((type, slot) => ({ type, slot }))
-            .filter(({ type }) => this.getInventoryCount(type) > 0)
+            .filter(({ type }) => this.getInventoryCount(type) > 0))
             .filter(({ type }) => {
                 if (parsed.empty) return true;
                 const entry = index.entry(type);
@@ -362,18 +364,24 @@ Object.assign(Game.prototype, {
         }
 
         // A culture plate is one item per plate, each with its own colonies (js/game/plates.js).
-        const shownItems = visibleItems.flatMap(({ type, slot }) => (this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type), held: true }])
-            .map((shown) => ({ ...shown, slot, plate: Boolean(this.plateInventoryItems) && plateIdentified(type) })));
-        shownItems.forEach(({ type, slot, entry, count: amount, plate, held }) => {
+        const shownItems = visibleItems.flatMap(({ type, slot, palette }) => (palette
+            ? [{ type, entry: null, count: '∞', held: true, palette: true }]
+            : (this.plateInventoryItems ? this.plateInventoryItems(type) : [{ type, entry: null, count: this.getInventoryCount(type), held: true }]))
+            .map((shown) => ({ ...shown, slot, plate: !palette && Boolean(this.plateInventoryItems) && plateIdentified(type) })));
+        shownItems.forEach(({ type, slot, entry, count: amount, plate, held, palette }) => {
             const item = document.createElement('div');
-            item.className = 'inventory-item' + (this.selectedSlot === slot && held ? ' selected' : '');
+            const selected = palette ? this.builderSelected === type : !this.builderSelected && this.selectedSlot === slot && held;
+            item.className = 'inventory-item' + (selected ? ' selected' : '') + (palette ? ' builder-palette' : '');
             const brief = index.brief(type, ITEM_TAG_BRIEF_MAX.inventory);
             if (brief) item.dataset.tags = brief;
             const tags = index.entry(type).tags.map((tag) => itemTagLabel(tag)).join(' ');
             item.title = plate ? `${this.plateTitle(type, entry && entry.culture)}\n${tags}` : `${this.getBlockDisplayName(type)}\n${tags}`;
             item.addEventListener('click', () => {
-                if (plate) this.plateSelect(type, entry ? entry.id : null);
-                this.selectSlot(slot, { promoteToHotbar: true });
+                if (palette) this.builderSelect(type, true);
+                else {
+                    if (plate) this.plateSelect(type, entry ? entry.id : null);
+                    this.selectSlot(slot, { promoteToHotbar: true });
+                }
                 this.closeInventoryPanel();
             });
 
@@ -388,12 +396,12 @@ Object.assign(Game.prototype, {
 
             const count = document.createElement('div');
             count.className = 'inventory-item-count';
-            count.textContent = `x${amount}`;
+            count.textContent = palette ? amount : `x${amount}`;
 
             item.appendChild(icon);
             item.appendChild(name);
             item.appendChild(count);
-            this.offhandDecorateItem(item, type);
+            if (!palette) this.offhandDecorateItem(item, type);
             grid.appendChild(item);
         });
     },
