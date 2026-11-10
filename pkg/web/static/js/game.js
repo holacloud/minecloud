@@ -329,6 +329,7 @@ class Game {
         this.initHotbar();
         this.initInput();
         this.initPauseMenu();
+        if (typeof this.initIdentityPanel === 'function') this.initIdentityPanel();
         this.initVoiceChat();
         this.initTitleScreen();
         

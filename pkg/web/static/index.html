@@ -896,6 +896,10 @@
             left: 50%;
             transform: translate(-50%, -50%);
             width: min(360px, calc(100vw - 28px));
+            /* With the player code open it can outgrow a low window: it scrolls instead. */
+            max-height: calc(100vh - 28px);
+            overflow-y: auto;
+            box-sizing: border-box;
             display: none;
             flex-direction: column;
             gap: 14px;
@@ -949,6 +953,93 @@
             color: #fff;
             font: 700 13px/1 'Consolas', monospace;
             cursor: pointer;
+        }
+        #identity-player {
+            font-size: 12px;
+            color: rgba(217, 230, 247, 0.72);
+        }
+        .identity-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        #identity-section button {
+            flex: 1 1 140px;
+            min-height: 36px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(61, 99, 177, 0.82);
+            color: #fff;
+            font: 700 13px/1.2 'Consolas', monospace;
+            cursor: pointer;
+        }
+        #identity-section button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+        #identity-regenerate-yes {
+            background: rgba(170, 58, 48, 0.9) !important;
+        }
+        #identity-code-box,
+        #identity-recover-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        #identity-code-box[hidden],
+        #identity-recover-box[hidden],
+        #identity-regenerate-confirm[hidden] {
+            display: none;
+        }
+        #identity-section p {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #d9e6f7;
+        }
+        .identity-warning {
+            color: #ffd27a !important;
+        }
+        #identity-code {
+            display: block;
+            padding: 8px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            font: 700 17px/1.3 'Consolas', monospace;
+            letter-spacing: 1px;
+            text-align: center;
+            word-break: break-word;
+            user-select: all;
+            -webkit-user-select: all;
+        }
+        #identity-code:empty {
+            display: none;
+        }
+        #identity-recover-input {
+            height: 38px;
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            /* 16px or more, so a phone does not zoom in on it. */
+            font: 700 16px/1 'Consolas', monospace;
+            text-transform: uppercase;
+        }
+        .identity-status {
+            min-height: 1em;
+            font-size: 12px;
+            color: #a6ffc4;
+        }
+        .identity-status:empty {
+            display: none;
+        }
+        body.touch-ui #identity-section button {
+            min-height: 44px;
         }
         #settings-resume {
             width: 100%;
@@ -1561,6 +1652,40 @@
                 <option value="EN">English</option>
             </select>
         </div>
+        <!-- Who this browser is, and the recovery code behind its button (js/game/identity.js fills the text). -->
+        <div class="pause-row" id="identity-section">
+            <label id="identity-title"></label>
+            <div id="identity-player"></div>
+            <div class="identity-buttons">
+                <button id="identity-show" type="button"></button>
+                <button id="identity-recover-open" type="button"></button>
+            </div>
+            <div id="identity-code-box" hidden>
+                <p id="identity-warning" class="identity-warning"></p>
+                <code id="identity-code"></code>
+                <div class="identity-buttons">
+                    <button id="identity-copy" type="button"></button>
+                    <button id="identity-regenerate" type="button"></button>
+                </div>
+                <div id="identity-regenerate-confirm" hidden>
+                    <p id="identity-regenerate-ask"></p>
+                    <div class="identity-buttons">
+                        <button id="identity-regenerate-yes" type="button"></button>
+                        <button id="identity-regenerate-no" type="button"></button>
+                    </div>
+                </div>
+                <div id="identity-code-status" class="identity-status" aria-live="polite"></div>
+            </div>
+            <div id="identity-recover-box" hidden>
+                <p id="identity-recover-help"></p>
+                <input id="identity-recover-input" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="64">
+                <div class="identity-buttons">
+                    <button id="identity-recover-submit" type="button"></button>
+                    <button id="identity-recover-cancel" type="button"></button>
+                </div>
+                <div id="identity-recover-status" class="identity-status" aria-live="polite"></div>
+            </div>
+        </div>
         <div class="pause-actions">
             <div class="pause-actions-main">
                 <button id="settings-rtx-toggle" type="button">Toggle RTX</button>
@@ -1671,6 +1796,7 @@
     <script src="js/game.js"></script>
     <script src="js/game/audio.js"></script>
     <script src="js/game/menus.js"></script>
+    <script src="js/game/identity.js"></script>
     <script src="js/game/survival.js"></script>
     <script src="js/game/environment.js"></script>
     <script src="js/game/avatars.js"></script>

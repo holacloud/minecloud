@@ -404,6 +404,8 @@ Object.assign(Game.prototype, {
 
         this.pauseOpen = false;
         menu.classList.remove('visible');
+        // The recovery code never stays on screen behind a closed menu (js/game/identity.js).
+        if (typeof this.identityHide === 'function') this.identityHide();
         this.updateSettingsUI();
         if (recapturePointer) {
             this.recapturePointerLockFromGesture();

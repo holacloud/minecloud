@@ -125,6 +125,12 @@ class NetworkClient {
             case 'webrtcIceCandidate':
                 this.emit('webrtcIceCandidate', message.payload);
                 break;
+            case 'playerIdentity':
+                // The stable player the server knows this browser as (js/game/identity.js); this.playerId
+                // above is only this page load's.
+                this.stablePlayerId = message.payload && typeof message.payload.playerId === 'string' ? message.payload.playerId : '';
+                this.emit('playerIdentity', message.payload);
+                break;
             case 'playerJoined':
                 console.log('Player joined:', message.payload);
                 break;
