@@ -108,7 +108,7 @@ function load() {
     context.window = context;
     const scripts = [...HTML.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]).filter((src) => !/^(https?:)?\/\//.test(src));
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
-    vm.runInContext(`Object.assign(this, { Game, WorldRenderer, setGameLang, BUILDER_TEXT, BUILDER_FAMILIES, BUILDER_NOT_FAMILIES, BUILDER_NOT_ITEMS,
+    vm.runInContext(`Object.assign(this, { Game, WorldRenderer, setGameLang, BUILDER_TEXT, BUILDER_FAMILIES, BUILDER_NOT_FAMILIES, BUILDER_NOT_ITEMS, BUILDER_MARGIN, builderPlotNear,
         builderPaletteOf, builderSay, itemTagsOf, itemTagCatalogue, claimRefusalText, FRAME_UPDATERS, DAMAGE_MODIFIERS });`, context);
     return context;
 }
@@ -228,10 +228,12 @@ test('it turns on walking into my plot or one I am a guest of, and off walking o
     assert.match(ctx.document.getElementById('claim-notice').textContent, /Modo constructor/);
     moveTo(108.9, 100); // the last column of the plot
     assert.equal(game.builderActive, true);
-    moveTo(109.1, 100);
+    moveTo(109.1, 100); // the margin
+    assert.equal(game.builderActive, true);
+    moveTo(112.1, 100); // beyond it
     assert.equal(game.builderActive, false);
     assert.ok(!sign().classList.contains('visible'));
-    assert.equal(ctx.document.getElementById('claim-notice').textContent, 'Has salido de la parcela: fin del modo constructor.');
+    assert.equal(ctx.document.getElementById('claim-notice').textContent, 'Te has alejado de la parcela: fin del modo constructor.');
     moveTo(140, 100);
     assert.equal(game.builderActive, true, 'as a guest');
     moveTo(180, 100);
@@ -439,6 +441,135 @@ test('a cell placed from the palette drops nothing later, even with builder mode
     assert.equal(game.inventoryCounts.stone, 4);
     game.finishBreakingBlock({ x: 101, y: 65, z: 101 });
     assert.deepEqual([...game.pickups.values()].map((pickup) => pickup.type), ['cobblestone']);
+});
+
+// ---- The margin around the plot ----
+
+test('builder mode stays on in a margin of 3 blocks around the plot, on every side and corner, and goes off beyond it', () => {
+    const { game, moveTo } = makeGame();
+    assert.equal(ctx.BUILDER_MARGIN, 3);
+    // Ana's plot is x 92..108, z 92..108: the margin is 89..91 and 109..111.
+    for (const [x, z] of [[111.9, 100], [89.1, 100], [100, 111.9], [100, 89.1], [111.5, 111.5], [89.5, 89.5]]) {
+        moveTo(300, 300);
+        moveTo(x, z);
+        assert.equal(game.builderActive, true, `${x},${z} is in the margin`);
+        assert.ok(game.builderIndicator.classList.contains('visible'), 'with the sign');
+        assert.ok(slots(game).includes('∞stone_bricks'), 'and the palette');
+    }
+    for (const [x, z] of [[112, 100], [88.9, 100], [100, 112], [100, 88.9], [112, 112]]) {
+        moveTo(100, 100);
+        moveTo(x, z);
+        assert.equal(game.builderActive, false, `${x},${z} is beyond`);
+    }
+    // A guest's plot has its margin too; someone else's does not.
+    moveTo(150, 100);
+    assert.equal(game.builderActive, true, 'Beto\'s margin');
+    moveTo(170, 100);
+    assert.equal(game.builderActive, false, 'Cris\'s margin');
+    moveTo(171, 100);
+    assert.equal(game.builderActive, false);
+    assert.equal(ctx.builderPlotNear(plots(), 0, 0), null, 'the spawn zone');
+});
+
+test('where two of my margins meet, the plot I am in or else the nearest is the one, and builder mode does not blink', () => {
+    const { game, moveTo, network } = makeGame();
+    const state = plots();
+    // A plot of mine only 4 free columns east of Ana's (before the 8-block rule): 113..129.
+    state.claims.push({ id: 'clm_d', x: 121, y: 64, z: 100, owner: 'Ana', mine: true, minX: 113, minZ: 92, maxX: 129, maxZ: 108 });
+    network.emit('claimList', state);
+    assert.equal(ctx.builderPlotNear(state, 110, 100).id, 'clm_a');
+    assert.equal(ctx.builderPlotNear(state, 111, 100).id, 'clm_d');
+    assert.equal(ctx.builderPlotNear(state, 108, 100).id, 'clm_a', 'inside a plot, that one');
+    assert.equal(ctx.builderPlotNear(state, 113, 100).id, 'clm_d');
+    moveTo(105, 100);
+    const notices = [];
+    const notice = game.claimNotice;
+    game.claimNotice = (text) => { notices.push(text); return notice.call(game, text); };
+    for (let x = 105; x <= 118; x += 0.5) {
+        moveTo(x, 100);
+        assert.equal(game.builderActive, true, `at ${x}`);
+    }
+    assert.ok(!notices.some((text) => /constructor/.test(text)), 'never turned off and on');
+});
+
+test('flight and no fall damage in the margin; beyond it flight ends and the fall is harmless', () => {
+    const { game, moveTo } = makeGame();
+    const controller = game.cameraController;
+    moveTo(110.5, 100);
+    assert.equal(controller.flightAllowed, true);
+    assert.equal(fallDamage(game), 0);
+    controller.flying = true;
+    controller.onGround = false;
+    moveTo(111.5, 104);
+    assert.equal(controller.flying, true, 'still flying in the margin');
+    moveTo(112.5, 104);
+    assert.equal(controller.flying, false);
+    assert.equal(controller.flightAllowed, false);
+    assert.equal(game.builderSafeFall, true);
+    assert.equal(fallDamage(game), 0);
+});
+
+test('from the margin, palette placements go into the plot; one aimed at a margin cell is refused before it is sent', () => {
+    const { game, cells, network, moveTo } = makeGame();
+    moveTo(110.5, 100.5); // in the margin, east of the plot
+    assert.equal(game.getSelectedBlockType(), 'stone', 'from the palette');
+    // The plot's east wall, built from outside: against its last column's face.
+    cells.set('109,64,100', 'grass'); // a margin block to click on
+    game.raycastBlock = () => ({ position: { x: 109, y: 64, z: 100 }, face: { normal: { x: -1, y: 0, z: 0 } }, point: { x: 109, y: 64.5, z: 100.5 } });
+    game.placeBlock();
+    assert.equal(cells.get('108,64,100'), 'stone');
+    assert.deepEqual(network.sent.filter(([type]) => type === 'blockPlace'), [['blockPlace', { x: 108, y: 64, z: 100, blockType: 'stone', palette: true }]]);
+    // Onto the margin: nothing placed, nothing sent, and why.
+    aimAt(game, 109, 64, 100);
+    game.placeBlock();
+    assert.equal(cells.get('109,65,100'), undefined);
+    assert.equal(network.sent.filter(([type]) => type === 'blockPlace').length, 1);
+    assert.equal(ctx.document.getElementById('claim-notice').textContent, 'Lo de la paleta solo va dentro de la parcela, no en el margen de alrededor.');
+    assert.ok(!JSON.stringify([...game.builderPlaced]).includes('109,65,100'), 'not remembered as placed');
+    const marginNotice = () => ctx.document.getElementById('claim-notice').textContent;
+    const said = 'Lo de la paleta solo va dentro de la parcela, no en el margen de alrededor.';
+    // A piece of several cells (a door) with one of them in the margin: refused whole.
+    ctx.document.getElementById('claim-notice').textContent = '';
+    game.claimNoticeText = null;
+    assert.equal(game.builderPartsAllowed([{ x: 108, y: 64, z: 104 }, { x: 108, y: 65, z: 104 }]), true);
+    assert.equal(game.builderPartsAllowed([{ x: 108, y: 64, z: 104 }, { x: 109, y: 64, z: 104 }]), false);
+    assert.equal(marginNotice(), said);
+    ctx.document.getElementById('claim-notice').textContent = '';
+    game.claimNoticeText = null;
+    // From inside, over the plot's edge into the margin: refused too.
+    moveTo(107.5, 100.5);
+    game.builderSelect('glass');
+    cells.set('108,64,101', 'grass');
+    game.raycastBlock = () => ({ position: { x: 108, y: 64, z: 101 }, face: { normal: { x: 1, y: 0, z: 0 } }, point: { x: 109, y: 64.5, z: 101.5 } });
+    game.placeBlock();
+    assert.equal(cells.get('109,64,101'), undefined);
+    assert.equal(network.sent.filter(([type]) => type === 'blockPlace').length, 1);
+    assert.equal(marginNotice(), said);
+    // My own items, not from the palette, place in the margin as anywhere outside a plot.
+    game.selectInventoryType('iron_ore');
+    aimAt(game, 109, 64, 100);
+    game.placeBlock();
+    assert.equal(cells.get('109,65,100'), 'iron_ore');
+    assert.deepEqual(network.sent.at(-1), ['blockPlace', { x: 109, y: 65, z: 100, blockType: 'iron_ore' }]);
+});
+
+test('a block broken in the margin is not under the palette rules: it takes its time, drops, and protection is as before', () => {
+    const { game, cells, position, moveTo } = makeGame();
+    position.y = 80;
+    moveTo(110.5, 100.5);
+    assert.equal(game.builderActive, true);
+    cells.set('110,64,100', 'stone_bricks');
+    cells.set('100,64,100', 'stone_bricks');
+    assert.ok(game.getAdjustedBreakDuration('stone_bricks', 1.5, { x: 110, y: 64, z: 100 }) > 0, 'not instant in the margin');
+    assert.equal(game.getAdjustedBreakDuration('stone_bricks', 1.5, { x: 100, y: 64, z: 100 }), 0, 'instant inside');
+    assert.equal(game.finishBreakingBlock({ x: 110, y: 64, z: 100 }), true);
+    assert.deepEqual([...game.pickups.values()].map((pickup) => pickup.type), ['stone_bricks'], 'it drops');
+    assert.equal(game.builderBreakWait, 0, 'no builder pause after it');
+    game.finishBreakingBlock({ x: 100, y: 64, z: 100 });
+    assert.equal(game.pickups.size, 1, 'inside the plot: nothing, as before');
+    // Nobody's ground: no refusal there, as before; someone else's plot is still refused.
+    assert.equal(game.claimRefusalAt(110, 100), null);
+    assert.deepEqual(plain(game.claimRefusalAt(180, 100)), { reason: 'claim', owner: 'Cris' });
 });
 
 // ---- Flight and falls ----

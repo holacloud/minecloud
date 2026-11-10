@@ -100,6 +100,26 @@ func TestPalettePlacementsOnlyInsideAPlotOfTheSendersAndOnlyForPaletteTypes(t *t
 	}
 }
 
+// The client keeps builder mode on in a margin of 3 blocks around a plot (BUILDER_MARGIN in js/game/builder.js) so its
+// walls can be built from outside; the palette still reaches only the plot's own cells, never the margin's.
+func TestPalettePlacementsOnAMarginCellAreRefused(t *testing.T) {
+	claimWorld(t)
+	ana, beto, _ := claimWithGuest(t)
+	// Ana's plot is x, z 92..108: its margin is 89..91 and 109..111 on each side, corners included.
+	for _, cell := range [][2]int{{109, 100}, {110, 100}, {111, 100}, {89, 100}, {91, 100}, {100, 109}, {100, 111}, {100, 89}, {111, 111}, {89, 89}} {
+		for _, who := range []*Client{ana, beto} {
+			r, got := builderTry(t, who, builderPlace{X: cell[0], Y: 120, Z: cell[1], BlockType: "stone_bricks", Palette: true})
+			if r == nil || r.Reason != claimReasonBuilder || r.Placed != "" || (got != "air" && got != "") {
+				t.Fatalf("%s on margin cell %v: %+v, %q", who.username, cell, r, got)
+			}
+		}
+	}
+	// The plot's edge cells, right next to the margin, are still taken.
+	if r, got := builderTry(t, ana, builderPlace{X: 108, Y: 120, Z: 100, BlockType: "stone_bricks", Palette: true}); r != nil || got != "stone_bricks" {
+		t.Fatalf("Ana on her plot's edge: %+v, %q", r, got)
+	}
+}
+
 func TestNormalPlacementsAreUnchangedByBuilderMode(t *testing.T) {
 	claimWorld(t)
 	ana, _, cris := claimWithGuest(t)

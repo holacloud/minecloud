@@ -1,7 +1,13 @@
 // Builder mode (PLAN_PARCELAS.md, phase 3; the server side is pkg/network/builder.go).
 //
 // - It turns on by itself when the player walks into a plot of theirs or one they are a guest of
-//   (js/game/claims.js knows the plots), and off when they walk out. A small sign says it is on. «Modo
+//   (js/game/claims.js knows the plots), and stays on in a margin of BUILDER_MARGIN blocks around the plot's
+//   square, so its walls can be built from outside: flight, the palette and no fall damage go on there. It goes off
+//   beyond the margin. In the margin itself nothing is the plot's: a palette placement aimed at a margin cell is
+//   refused before it is sent (builderPartsAllowed), and a block broken there breaks, drops and is protected as
+//   anywhere outside a plot. The 8 free blocks between plots and from the spawn zone keep a margin off them; where
+//   two of the player's margins meet (plots placed before that rule), the plot the player is in, or else the
+//   nearest, is the one (builderPlotNear). A small sign says it is on. «Modo
 //   constructor» in the pause menu (or a tap on the sign, on touch) turns it off for whoever prefers to build
 //   with their own materials there; the choice is kept in this browser (BUILDER_PREF_KEY). Creative mode
 //   already has everything, so builder mode stays off in it.
@@ -21,8 +27,8 @@
 //   nothing, anything else drops as always (a chest's contents always spill: the server decides that). A cell
 //   placed from the palette in this browser drops nothing later either, with builder mode off
 //   (BUILDER_PLACED_KEY), so turning it off is no way to get blocks.
-// - Flight (double jump, as in creative mode: js/camera.js) and no fall damage inside the plot. Walking or
-//   flying out ends flight, and the fall down to the first landing does no harm either (builderSafeFall).
+// - Flight (double jump, as in creative mode: js/camera.js) and no fall damage inside the plot and its margin.
+//   Walking or flying beyond the margin ends flight, and the fall down to the first landing does no harm either (builderSafeFall).
 // Every line is in BUILDER_TEXT, in ES and EN. Mixed into Game.prototype; loaded after claims.js.
 
 const BUILDER_PREF_KEY = 'minecloud-builder';
@@ -43,13 +49,17 @@ const BUILDER_BREAK_GAP = 0.18;
 // How long on the ground ends the safe fall after leaving a plot in the air.
 const BUILDER_LANDED_S = 0.5;
 const BUILDER_SLOT_PREFIX = 'palette:';
+// Blocks around a plot's square in which builder mode stays on, to fly around it and build its walls from
+// outside. Less than half the 8 free blocks between plots (claimGap in pkg/network/claims.go).
+const BUILDER_MARGIN = 3;
 
 const BUILDER_TEXT = {
     on: { ES: 'Modo constructor', EN: 'Builder mode' },
     off: { ES: 'Modo constructor apagado', EN: 'Builder mode off' },
     turnedOn: { ES: 'Modo constructor: materiales infinitos (∞). Doble salto para volar.', EN: 'Builder mode: endless materials (∞). Double jump to fly.' },
     turnedOff: { ES: 'Modo constructor apagado: construyes con lo tuyo.', EN: 'Builder mode off: you build with your own things.' },
-    left: { ES: 'Has salido de la parcela: fin del modo constructor.', EN: 'You left the plot: builder mode is over.' },
+    left: { ES: 'Te has alejado de la parcela: fin del modo constructor.', EN: 'You moved away from the plot: builder mode is over.' },
+    refusedMargin: { ES: 'Lo de la paleta solo va dentro de la parcela, no en el margen de alrededor.', EN: 'Palette items only go inside the plot, not in the margin around it.' },
     pauseOn: { ES: 'Modo constructor: sí', EN: 'Builder mode: on' },
     pauseOff: { ES: 'Modo constructor: no', EN: 'Builder mode: off' },
     notYours: { ES: 'Lo de la paleta no sale de la parcela.', EN: 'Palette items never leave the plot.' },
@@ -93,6 +103,29 @@ function builderSlotType(key) {
 
 function builderCellKey(x, y, z) {
     return `${x},${y},${z}`;
+}
+
+// A plot's square grown by the margin on every side.
+function builderMarginRect(rect, margin = BUILDER_MARGIN) {
+    return { minX: rect.minX - margin, minZ: rect.minZ - margin, maxX: rect.maxX + margin, maxZ: rect.maxZ + margin };
+}
+
+// The plot whose builder mode reaches column (x, z): the plot of the player's (owner or guest) the column is in,
+// or else the nearest one whose margin has it; null in someone else's plot, the spawn zone, or beyond every margin.
+function builderPlotNear(state, x, z) {
+    const zone = claimZoneOf(state, x, z);
+    if (zone) return zone.kind === 'plot' && claimIsMember(zone.claim) ? zone.claim : null;
+    let best = null;
+    let bestDistance = Infinity;
+    for (const claim of (state && state.claims) || []) {
+        if (!claimIsMember(claim) || !claimRectContains(builderMarginRect(claim), x, z)) continue;
+        const distance = claimRectDistance(claim, x + 0.5, z + 0.5);
+        if (distance < bestDistance) {
+            best = claim;
+            bestDistance = distance;
+        }
+    }
+    return best;
 }
 
 const BUILDER_CSS = `
@@ -148,12 +181,24 @@ Object.assign(Game.prototype, {
         return Boolean(this.builderPaletteSet) && this.builderPaletteSet.has(builderItemOf(type, this.world && this.world.blockTypes));
     },
 
-    // The plot the player stands in, if they may build there.
+    // The plot the player stands in or in its margin, if they may build there.
     builderPlotHere() {
-        if (!this.cameraController || typeof this.claimZoneAt !== 'function') return null;
+        if (!this.cameraController || !this.claimState) return null;
         const at = this.cameraController.getPosition();
-        const zone = this.claimZoneAt(at.x, at.z);
-        return zone && zone.kind === 'plot' && claimIsMember(zone.claim) ? zone.claim : null;
+        return builderPlotNear(this.claimState, Math.floor(at.x), Math.floor(at.z));
+    },
+
+    // Whether column (x, z) is inside a plot of the player's (not its margin): the only cells the palette reaches.
+    builderCellInPlot(x, z) {
+        const zone = typeof this.claimZoneAt === 'function' ? this.claimZoneAt(x, z) : null;
+        return Boolean(zone && zone.kind === 'plot' && claimIsMember(zone.claim));
+    },
+
+    // building.js asks before placing from the palette: every cell inside the plot, or nothing placed nor sent.
+    builderPartsAllowed(parts) {
+        if (parts.every((part) => this.builderCellInPlot(part.x, part.z))) return true;
+        if (typeof this.claimNotice === 'function') this.claimNotice(builderSay('refusedMargin'));
+        return false;
     },
 
     builderShouldBeOn() {
@@ -530,10 +575,11 @@ Object.assign(Game.prototype, {
         }
     });
 
-    // Breaking: instant in builder mode, one block at a time.
-    wrap('getAdjustedBreakDuration', (original) => function (blockType, baseDuration) {
-        const duration = original.call(this, blockType, baseDuration);
-        return this.builderActive && duration ? 0 : duration;
+    // Breaking: instant in builder mode, one block at a time; in the margin (building.js gives the cell), as always.
+    wrap('getAdjustedBreakDuration', (original) => function (blockType, baseDuration, cell = null) {
+        const duration = original.call(this, blockType, baseDuration, cell);
+        const inPlot = !cell || this.builderCellInPlot(cell.x, cell.z);
+        return this.builderActive && inPlot && duration ? 0 : duration;
     });
     wrap('updateMining', (original) => function (delta) {
         if (this.builderActive && this.builderBreakWait > 0 && this.isBreakInputActive) {
@@ -543,12 +589,14 @@ Object.assign(Game.prototype, {
         }
         return original.call(this, delta);
     });
-    // A palette type broken in builder mode, or a cell placed from the palette, drops nothing.
+    // A palette type broken in builder mode inside the plot, or a cell placed from the palette, drops nothing. In the
+    // margin a block drops as anywhere else.
     wrap('finishBreakingBlock', (original) => function (position) {
         this.builderEnsure();
         const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
         const key = builderCellKey(position.x, position.y, position.z);
-        const noDrops = Boolean(type) && ((this.builderActive && this.builderInPalette(type)) || this.builderPlaced.has(key));
+        const inPlot = this.builderActive && this.builderCellInPlot(position.x, position.z);
+        const noDrops = Boolean(type) && ((inPlot && this.builderInPalette(type)) || this.builderPlaced.has(key));
         const previous = this.builderNoDrops;
         this.builderNoDrops = noDrops;
         let broken;
@@ -559,7 +607,7 @@ Object.assign(Game.prototype, {
         }
         if (broken) {
             this.builderForget(position.x, position.y, position.z);
-            if (this.builderActive) this.builderBreakWait = BUILDER_BREAK_GAP;
+            if (inPlot) this.builderBreakWait = BUILDER_BREAK_GAP;
         }
         return broken;
     });
@@ -586,7 +634,7 @@ Object.assign(Game.prototype, {
     }
 })();
 
-// No fall damage in builder mode, nor on the way down after leaving a plot in the air.
+// No fall damage in builder mode (the plot and its margin), nor on the way down after leaving it in the air.
 registerDamageModifier(function (amount, type) {
     if (type !== 'fall' || !(this.builderActive || this.builderSafeFall)) return amount;
     this.builderSafeFall = false;

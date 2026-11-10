@@ -10,7 +10,7 @@
 //   to a guest the marker only says whose plot it is, as to a visitor. Guests' plots have a violet border.
 // - The server tells every plot in claimList {claims, spawn, radius, gap}: each with its square, its owner's name,
 //   `mine` or `guest`, and for the owner its guests {key, name, online}. From that this file draws the borders near the player (soft lines on the ground and faint
-//   columns at the corners), says «Parcela de Ana» on walking in, and checks before acting, so that in
+//   columns at the corners; around the player's own and guest plots, a fainter line for builder mode's margin), says «Parcela de Ana» on walking in, and checks before acting, so that in
 //   someone else's plot or the spawn zone nothing is mined, placed or opened and the player is told why.
 //   The check here is only a courtesy: the server refuses anyway, with claimRefused {reason, owner, blocks,
 //   placed}, and this file puts the refused cells back as they really are and gives back the item.
@@ -630,6 +630,10 @@ Object.assign(Game.prototype, {
         for (const claim of this.claimState.claims) {
             const color = claim.mine ? CLAIM_COLORS.mine : claim.guest ? CLAIM_COLORS.guest : CLAIM_COLORS.other;
             zones.push({ rect: claim, color, key: `${claim.id}:${color}` });
+            // Around a plot of the player's, builder mode's margin (js/game/builder.js) as a fainter line, no corners.
+            if (claimIsMember(claim) && typeof builderMarginRect === 'function') {
+                zones.push({ rect: builderMarginRect(claim), color, key: `${claim.id}:margin:${color}`, margin: true });
+            }
         }
         const near = zones.filter((zone) => claimRectDistance(zone.rect, at.x, at.z) <= CLAIM_BORDER_NEAR);
         const nearKey = near.map((zone) => zone.key).join('|');
@@ -660,6 +664,10 @@ Object.assign(Game.prototype, {
             geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
             const lineMaterial = new THREE.LineBasicMaterial({ color: zone.color, transparent: true, opacity: 0.5, depthWrite: false });
             group.add(new THREE.LineSegments(geometry, lineMaterial));
+            if (zone.margin) {
+                this.claimBorderZones.push({ rect: zone.rect, lineMaterial, columnMaterial: null, margin: true });
+                continue;
+            }
             const columnMaterial = new THREE.MeshBasicMaterial({ color: zone.color, transparent: true, opacity: 0.18, depthWrite: false });
             const columnGeometry = new THREE.BoxGeometry(0.12, CLAIM_CORNER_HEIGHT, 0.12);
             for (const corner of claimCorners(zone.rect)) {
@@ -678,6 +686,10 @@ Object.assign(Game.prototype, {
     claimFadeBorders(at) {
         for (const zone of this.claimBorderZones || []) {
             const near = 1 - Math.min(1, claimRectDistance(zone.rect, at.x, at.z) / CLAIM_BORDER_NEAR);
+            if (zone.margin) {
+                zone.lineMaterial.opacity = 0.05 + 0.15 * near;
+                continue;
+            }
             zone.lineMaterial.opacity = 0.15 + 0.4 * near;
             zone.columnMaterial.opacity = 0.06 + 0.16 * near;
         }

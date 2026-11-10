@@ -45,17 +45,18 @@ It costs nothing, but it works only once every **30 seconds**. It only takes you
 
 ## Builder mode
 
-Walking into **your** plot (or one you are a guest of) turns **builder mode** on by itself, and a small sign shows at the top: "🔨 Builder mode". Leaving the plot turns it off.
+Walking into **your** plot (or one you are a guest of) turns **builder mode** on by itself, and a small sign shows at the top: "🔨 Builder mode". It stays on in a **margin of 3 blocks** around the plot, so you can fly around the outside and build the walls from outside; beyond the margin it turns off. The margin shows as a fainter line around the plot's border.
 
 - **Endless materials:** the hotbar and the inventory (**E**) show the **palette**, marked **∞**: every building and decoration block. Stone, bricks, woods and planks, stairs, slabs, doors, trapdoors, fences, glass and coloured glass, wool, carpets and curtains, sofas, chairs, tables, beds, wardrobes, chests and barrels, lamps, torches, paintings, flower pots… 243 in all. They are found with the usual tags (`#glass #blue`).
 - **Not in it:** anything scientific, electric, logic and mechanisms, chemistry, the microscope and cultures, ores, food, tools and weapons, eggs, the oven and the claim marker.
 - **Your things are still there:** next to the palette you see what you own that is not in it (tools, food…). What you own of a type that is in the palette (your 5 stone, say) stays put, untouched: placing stone in builder mode comes from the palette and spends nothing.
 - **The palette never leaves the plot:** it can't be dropped, eaten, held in the left hand, put in chests or used for crafting. With a palette block in your hand, opening doors or chests or using something is like doing it empty-handed. When you leave, its slots go from the hotbar and you see your own things as they were.
-- **Breaking is instant.** A block of a palette type drops nothing; anything else (an ore, a machine) drops as always, and a chest spills what it holds. A block you placed from the palette drops nothing either, even if you turn builder mode off later.
-- **Flying:** double jump (**Space** twice, or two taps on **Jump** on a touch screen) to fly; **Space** goes up and **Shift** down (on touch, **Up** and **Down**). Inside your plot falls don't hurt. If you fly out, flight stops at the border and you come down without harm until you touch the ground.
+- **The margin is for moving around, not for building:** from it you can place and break blocks inside the plot, but a palette block can't be placed in the margin. Your own things can, as anywhere outside a plot, and a block broken in the margin takes its time and drops as always.
+- **Breaking is instant** inside the plot. A block of a palette type drops nothing; anything else (an ore, a machine) drops as always, and a chest spills what it holds. A block you placed from the palette drops nothing either, even if you turn builder mode off later.
+- **Flying:** double jump (**Space** twice, or two taps on **Jump** on a touch screen) to fly; **Space** goes up and **Shift** down (on touch, **Up** and **Down**). Inside your plot and its margin falls don't hurt. If you fly out of the margin, flight stops at its edge and you come down without harm until you touch the ground.
 - **Turning it off:** if you'd rather build with your own materials, "Builder mode: on / off" in the pause menu (on touch, a tap on the sign at the top too). This browser remembers it; the sign stays dimmed while you are in the plot.
 
-The server checks it: it only takes a palette block if it is in the palette and inside a plot of yours or one you are a guest of; never outside, in someone else's or in the spawn area.
+The server checks it: it only takes a palette block if it is in the palette and inside a plot of yours or one you are a guest of; never outside (not in the margin either), in someone else's or in the spawn area.
 
 ## The spawn area
 

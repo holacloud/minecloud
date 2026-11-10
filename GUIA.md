@@ -733,8 +733,11 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   parcela en la que eres invitado; el panel muestra invitados con «Quitar» y un botón «Invitar a …» por jugador conectado que
   no lo sea ya; a un invitado el mojón solo le dice de quién es.
 - **Modo constructor** (fase 3, `js/game/builder.js`, `pkg/network/builder.go`): se enciende solo al entrar en una parcela
-  propia o de invitado (`claimIsMember` de la columna del jugador, cada fotograma) y se apaga al salir; nunca en creativo ni
-  muerto. Aviso `#builder-indicator` arriba (atenuado si está apagado a mano; en táctil, un toque lo conmuta) y botón
+  propia o de invitado (`claimIsMember` de la columna del jugador, cada fotograma), sigue en un margen de `BUILDER_MARGIN` = 3
+  bloques alrededor del cuadrado (`builderMarginRect`, `builderPlotNear`) y se apaga más allá; nunca en creativo ni muerto.
+  Con 8 bloques libres entre parcelas y hasta la zona de inicio, el margen no toca nada ajeno; si dos márgenes propios se
+  tocaran (parcelas anteriores a esa regla), manda la parcela en la que estás o la más cercana, sin apagar y encender. El
+  margen se dibuja como una línea más tenue, sin columnas (`claimUpdateBorders`, solo parcelas propias o de invitado). Aviso `#builder-indicator` arriba (atenuado si está apagado a mano; en táctil, un toque lo conmuta) y botón
   `settings-builder` en el menú de pausa; la preferencia, en `localStorage` `minecloud-builder` (`on`/`off`).
   - **Paleta** (`builderPaletteOf`): lo que tiene una familia de `BUILDER_FAMILIES` (building, decoration, furniture, light,
     glass, wool, wood, stone) y ninguna de `BUILDER_NOT_FAMILIES` (science, electric, logic, mechanism, chemistry, element,
@@ -751,13 +754,16 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   - **Colocar:** `blockPlace` con `palette: true` (`blockPlaceOutgoing` en `building.js`). El servidor (`builderCheck`, antes que
     el resto de `claimPlaceBlock`) lo acepta solo si `storageBase(tipo)` está en la paleta y la columna es de una parcela donde es
     dueño o invitado: si no, `claimRefused` con `palette`, `builderOutside`, `spawn` o `claim`, sin `placed` (no se devuelve
-    nada). Ni el administrador se salta esto (para eso tiene creativo). Las colocaciones normales no cambian.
-  - **Romper:** instantáneo (`getAdjustedBreakDuration` 0, con 0,18 s entre bloques). Un tipo de la paleta (o un estado suyo)
+    nada). Ni el administrador se salta esto (para eso tiene creativo). Las colocaciones normales no cambian. El margen no es
+    de la parcela: antes de colocar desde la paleta, `building.js` pregunta `builderPartsAllowed(parts)` y si alguna celda no está
+    dentro de una parcela propia o de invitado no se pone ni se envía nada (aviso `refusedMargin`); el servidor, igual que antes.
+  - **Romper:** instantáneo dentro de la parcela (`getAdjustedBreakDuration` 0 con la celda que pasa `building.js`, con 0,18 s
+    entre bloques); en el margen, como siempre (tarda, suelta lo suyo, la protección de `claims.js` no cambia). Un tipo de la paleta (o un estado suyo)
     roto en modo constructor no crea recogida; lo demás cae como siempre y el contenido de un almacén lo sigue soltando el
     servidor. Las celdas puestas desde la paleta en este navegador (`minecloud-builder-placed`, hasta 8000) tampoco sueltan nada
     con el modo apagado; se olvidan al romperse, al poner encima algo propio, al llegar un `blockBreak` ajeno o un `claimRefused`.
   - **Vuelo:** `flightAllowed` = creativo o modo constructor (`cinematic.js`); doble salto, como en creativo, también en táctil.
-    Sin daño de caída dentro. Al salir en el aire: se corta el vuelo en el borde y `builderSafeFall` anula el daño de la primera
+    Sin daño de caída dentro ni en el margen. Al salir del margen en el aire: se corta el vuelo en su borde y `builderSafeFall` anula el daño de la primera
     caída (o se borra tras 0,5 s en el suelo o en el agua).
 - **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
   <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona

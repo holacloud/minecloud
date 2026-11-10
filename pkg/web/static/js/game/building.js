@@ -549,6 +549,8 @@ Object.assign(Game.prototype, {
                 noRoom();
                 return;
             }
+            // From the palette, only into the plot itself, never into the margin around it (js/game/builder.js).
+            if (this.builderPlacingOnly && typeof this.builderPartsAllowed === 'function' && !this.builderPartsAllowed(parts)) return;
             // Solid blocks may not be placed where the player stands (it would trap the camera).
             const eye = this.getLocalPlayerPosition();
             for (const part of parts) {
@@ -653,7 +655,7 @@ Object.assign(Game.prototype, {
         }
 
         const blockType = this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z);
-        const breakDuration = this.getAdjustedBreakDuration(blockType, baseBreakDuration);
+        const breakDuration = this.getAdjustedBreakDuration(blockType, baseBreakDuration, worldPos);
 
         const targetKey = `${worldPos.x},${worldPos.y},${worldPos.z}`;
         if (targetKey !== this.miningTargetKey) {
