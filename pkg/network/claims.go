@@ -57,6 +57,12 @@ package network
 // The client hears every plot as claimList {claims, spawn, radius} on connecting, after a recovery and
 // after any change: each plot with its marker, its square, its owner's name and `mine` for its own one.
 // The owner's player id never leaves the server (identity.go keeps those private), except to the admin.
+//
+// Going home: claimHome {} asks where the sender's own plot is, from anywhere. Only an owner gets an
+// answer with a place (a guest of a plot, or anybody else, hears reason "none"): claimHomeResult {ok, x, y,
+// z, minX, minZ, maxX, maxZ} with the marker and the square, and the client lands the player on solid
+// ground inside the plot near the marker (js/game/claims.js). At most once every claimHomeCooldown per
+// player, whatever page asks: sooner is reason "wait" with the seconds left. It costs nothing.
 
 import (
 	"encoding/json"
@@ -79,6 +85,8 @@ const (
 	claimNameRunes = 20
 	// What admin messages may carry at most.
 	claimMaxPayload = 4 * 1024
+	// How often a player may go home to their plot.
+	claimHomeCooldown = 30 * time.Second
 )
 
 // Why something was refused (claimRefused.reason).
@@ -230,6 +238,19 @@ func (b *claimBook) overlapLocked(r claimRect) *Claim {
 		}
 	}
 	return nil
+}
+
+// ofOwner is a copy of an owner's plot.
+func (b *claimBook) ofOwner(owner string) (Claim, bool) {
+	if owner == "" {
+		return Claim{}, false
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if c := b.byOwner[owner]; c != nil {
+		return *c, true
+	}
+	return Claim{}, false
 }
 
 func (b *claimBook) holds(owner string) bool {
@@ -647,6 +668,48 @@ func claimRenameOwner(client *Client) {
 		saveWorldState()
 		claimsBroadcast()
 	}
+}
+
+// ---------------------------------------------------------------------------------------
+// Going home (see the header)
+
+var (
+	claimHomeMu   sync.Mutex
+	claimHomeLast = map[string]time.Time{}
+	// The clock of the cooldown; the tests move it.
+	claimNow = time.Now
+)
+
+func handleClaimHome(client *Client) {
+	me := client.stablePlayerID()
+	answer := map[string]interface{}{"ok": false}
+	reply := func() { storageDeliver(client, createMessage("claimHomeResult", answer)) }
+	c, ok := claims.ofOwner(me)
+	if !ok {
+		answer["reason"] = "none"
+		reply()
+		return
+	}
+	now := claimNow()
+	claimHomeMu.Lock()
+	last, seen := claimHomeLast[me]
+	if seen && now.Sub(last) < claimHomeCooldown {
+		claimHomeMu.Unlock()
+		left := claimHomeCooldown - now.Sub(last)
+		answer["reason"] = "wait"
+		answer["wait"] = int((left + time.Second - 1) / time.Second)
+		reply()
+		return
+	}
+	claimHomeLast[me] = now
+	claimHomeMu.Unlock()
+	r := c.rect()
+	answer["ok"] = true
+	answer["x"], answer["y"], answer["z"] = c.X, c.Y, c.Z
+	answer["minX"], answer["minZ"], answer["maxX"], answer["maxZ"] = r.MinX, r.MinZ, r.MaxX, r.MaxZ
+	answer["cooldown"] = int(claimHomeCooldown / time.Second)
+	log.Printf("claims: %s goes home to %s", client.ID, c.ID)
+	reply()
 }
 
 // ---------------------------------------------------------------------------------------

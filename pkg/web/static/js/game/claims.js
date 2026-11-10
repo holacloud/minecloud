@@ -13,6 +13,10 @@
 // - The admin (a session that passed creative auth) is not stopped, as on the server, and has /plots,
 //   /plot remove <n> and /plot owner <n> <player> (claimAdmin messages).
 // - Robots, beavers and copper golems ask claimRefusalAt before acting for their owner.
+// - Going home: «Ir a mi parcela» in the pause menu, or /home, asks the server where the player's own plot is
+//   (claimHome; only an owner gets an answer, at most once every 30 s). The player gets off whatever they
+//   ride or sit on, is held over the marker until the chunks of the plot arrive, and is then put on solid
+//   ground inside the plot near the marker (claimHomeSpot), never inside blocks nor in the air.
 // Every line is in CLAIM_TEXT, in ES and EN. Mixed into Game.prototype; `this` is the Game instance.
 
 const CLAIM_MARKER = 'claim_marker';
@@ -29,6 +33,14 @@ const CLAIM_CHECK_NEAR = 8;
 const CLAIM_NOTICE_MS = 2600;
 const CLAIM_COLORS = { mine: 0x7cf29a, other: 0xffc857, spawn: 0x8fd3ff };
 // What a visitor may still hold and use on someone else's plot: tools that only look.
+// Going home: how long the chunks of the plot are waited for before landing on what has arrived (and before
+// giving up), and how far up and down from the marker a place to stand is looked for.
+const CLAIM_HOME_WAIT_MS = 8000;
+const CLAIM_HOME_GIVE_UP_MS = 30000;
+const CLAIM_HOME_REACH_Y = 24;
+const CLAIM_HOME_RING_WEIGHT = 0.3;
+const CLAIM_HOME_COOLDOWN_S = 30;
+const CLAIM_LIQUIDS = new Set(['water', 'lava']);
 const CLAIM_LOOK_ONLY = new Set(['multimeter', 'measuring_tape', 'thermometer', 'barometer', 'anemometer', 'telescope', 'test_tube', 'water_filter', 'bug_net']);
 
 const CLAIM_TEXT = {
@@ -66,7 +78,13 @@ const CLAIM_TEXT = {
     adminAlready: { ES: 'Ese jugador ya tiene una parcela.', EN: 'That player already has a plot.' },
     adminRemoved: { ES: 'Parcela quitada.', EN: 'Plot removed.' },
     adminGiven: { ES: 'Parcela entregada.', EN: 'Plot handed over.' },
-    nameless: { ES: 'sin nombre', EN: 'no name' }
+    nameless: { ES: 'sin nombre', EN: 'no name' },
+    homeButton: { ES: 'Ir a mi parcela', EN: 'Go to my plot' },
+    homeNone: { ES: 'No tienes parcela: pon un mojón para reclamar una.', EN: "You don't have a plot: place a claim marker to claim one." },
+    homeWait: { ES: 'Espera {seconds} s para volver a ir a tu parcela.', EN: 'Wait {seconds} s to go to your plot again.' },
+    homeGoing: { ES: 'Yendo a tu parcela…', EN: 'Going to your plot…' },
+    homeArrived: { ES: 'Estás en tu parcela.', EN: 'You are at your plot.' },
+    homeDead: { ES: 'Ahora no puedes ir a tu parcela.', EN: "You can't go to your plot right now." }
 };
 
 function claimSay(key, vars = {}) {
@@ -178,6 +196,53 @@ function claimCorners(rect) {
     ];
 }
 
+// Where to put a player who goes home: feet on solid ground inside the plot, in a column near the marker
+// (not the marker's own), with two free cells for the body, at the height nearest the marker's. query has
+// solid(x, y, z), free(x, y, z) (no solid block and no liquid) and loaded(x, z); standable(x, y, z) is an
+// optional last word (the camera's collisions). Returns { x, y, z } with y the feet (x and z the middle of
+// the cell), on top of the marker if nothing else fits, or null if not even that.
+function claimHomeSpot(claim, query) {
+    const ok = (x, y, z) => query.loaded(x, z) && query.solid(x, y - 1, z) && query.free(x, y, z) && query.free(x, y + 1, z)
+        && (!query.standable || query.standable(x, y, z));
+    const radius = Math.max(claim.maxX - claim.x, claim.x - claim.minX, claim.maxZ - claim.z, claim.z - claim.minZ);
+    // A block up or down weighs as much as CLAIM_HOME_RING_WEIGHT rings further: the ground at the marker's
+    // height a few steps away beats the top of a wall right next to it.
+    let best = null;
+    for (let ring = 1; ring <= radius; ring++) {
+        if (best && ring * CLAIM_HOME_RING_WEIGHT >= best.score) break;
+        for (let dx = -ring; dx <= ring; dx++) {
+            for (let dz = -ring; dz <= ring; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue;
+                const x = claim.x + dx;
+                const z = claim.z + dz;
+                if (!claimRectContains(claim, x, z) || !query.loaded(x, z)) continue;
+                // Up and down from the marker's height, nearest first.
+                for (let step = 0; step <= 2 * CLAIM_HOME_REACH_Y; step++) {
+                    const dy = step % 2 ? (step + 1) / 2 : -step / 2;
+                    const score = Math.abs(dy) + ring * CLAIM_HOME_RING_WEIGHT + Math.hypot(dx, dz) / 1000;
+                    if (best && score >= best.score) break;
+                    if (ok(x, claim.y + dy, z)) {
+                        best = { x: x + 0.5, y: claim.y + dy, z: z + 0.5, score };
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (best) return { x: best.x, y: best.y, z: best.z };
+    if (ok(claim.x, claim.y + 1, claim.z)) return { x: claim.x + 0.5, y: claim.y + 1, z: claim.z + 0.5 };
+    return null;
+}
+
+// The corner column of each chunk (16 x 16) a plot's square covers.
+function claimChunksOf(rect, size = 16) {
+    const chunks = [];
+    for (let cx = Math.floor(rect.minX / size); cx <= Math.floor(rect.maxX / size); cx++) {
+        for (let cz = Math.floor(rect.minZ / size); cz <= Math.floor(rect.maxZ / size); cz++) chunks.push([cx * size, cz * size]);
+    }
+    return chunks;
+}
+
 // ---------------------------------------------------------------------------------------
 // The block
 
@@ -240,7 +305,136 @@ Object.assign(Game.prototype, {
         this.network.on('claimRefused', (payload) => this.claimOnRefused(payload || {}));
         this.network.on('claimMade', () => this.claimNotice(claimSay('claimed')));
         this.network.on('claimAdminResult', (payload) => this.claimOnAdminResult(payload || {}));
-        onGameLangChange(() => this.claimRenderPanel());
+        this.network.on('claimHomeResult', (payload) => this.claimOnHome(payload || {}));
+        onGameLangChange(() => { this.claimRenderPanel(); this.claimLabelPauseButton(); });
+        this.claimAddPauseButton();
+    },
+
+    // ---- Going home ----
+
+    claimAddPauseButton() {
+        if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return;
+        const row = document.querySelector('#pause-menu .pause-actions-main');
+        if (!row || document.getElementById('settings-claim-home')) return;
+        const button = document.createElement('button');
+        button.id = 'settings-claim-home';
+        button.type = 'button';
+        button.addEventListener('click', () => {
+            if (typeof this.closePauseMenu === 'function') this.closePauseMenu(true);
+            this.claimGoHome();
+        });
+        row.appendChild(button);
+        this.claimHomeButton = button;
+        this.claimLabelPauseButton();
+    },
+
+    claimLabelPauseButton() {
+        if (this.claimHomeButton) this.claimHomeButton.textContent = claimSay('homeButton');
+    },
+
+    claimNow() {
+        return typeof performance === 'object' ? performance.now() : Date.now();
+    },
+
+    // «Ir a mi parcela» and /home: asks the server, which knows the plot and keeps the cooldown too.
+    claimGoHome() {
+        if (!this.network || !this.network.connected) {
+            this.claimNotice(claimSay('offline'));
+            return false;
+        }
+        if (this.respawnPending || (Number.isFinite(this.health) && this.health <= 0)) {
+            this.claimNotice(claimSay('homeDead'));
+            return false;
+        }
+        if (!this.claimMine()) {
+            this.claimNotice(claimSay('homeNone'));
+            return false;
+        }
+        const left = Math.ceil(((this.claimHomeReadyAt || 0) - this.claimNow()) / 1000);
+        if (left > 0) {
+            this.claimNotice(claimSay('homeWait', { seconds: left }));
+            return false;
+        }
+        this.network.send('claimHome', {});
+        return true;
+    },
+
+    claimOnHome(payload) {
+        if (!payload.ok) {
+            if (payload.reason === 'wait' && Number.isFinite(payload.wait)) {
+                this.claimHomeReadyAt = this.claimNow() + payload.wait * 1000;
+                this.claimNotice(claimSay('homeWait', { seconds: payload.wait }));
+            } else this.claimNotice(claimSay('homeNone'));
+            return;
+        }
+        const claim = { x: payload.x, y: payload.y, z: payload.z, minX: payload.minX, minZ: payload.minZ, maxX: payload.maxX, maxZ: payload.maxZ };
+        if (!Object.values(claim).every(Number.isFinite)) return;
+        const cooldown = Number.isFinite(payload.cooldown) ? payload.cooldown : CLAIM_HOME_COOLDOWN_S;
+        this.claimHomeReadyAt = this.claimNow() + cooldown * 1000;
+        this.claimStartHome(claim);
+    },
+
+    // Off whatever the player rides or sits on, then held over the marker until the plot's chunks are here.
+    claimStartHome(claim) {
+        if (typeof this.stopMining === 'function') this.stopMining();
+        if (this.ridingMob && typeof this.dismount === 'function') this.dismount();
+        if (this.seated && typeof this.seatStandUp === 'function') this.seatStandUp();
+        if (this.claimPanelFor) this.claimClosePanel();
+        const controller = this.cameraController;
+        const eye = controller.eyeHeight || 1.62;
+        const hold = { x: claim.x + 0.5, y: claim.y + 2 + eye, z: claim.z + 0.5 };
+        controller.setPosition(hold);
+        this.claimHomeLanding = { claim, hold, since: this.claimNow() };
+        this.claimNotice(claimSay('homeGoing'));
+        this.claimUpdateHome();
+    },
+
+    claimColumnLoaded(x, z) {
+        const world = this.world;
+        if (!world) return false;
+        if (typeof world.getColumnAt === 'function') return Boolean(world.getColumnAt(Math.floor(x), Math.floor(z)));
+        return true;
+    },
+
+    // Each frame while going home: wait for the chunks, pinned over the marker (an unloaded chunk says
+    // nothing about the ground, as camera.js knows), then land.
+    claimUpdateHome() {
+        const landing = this.claimHomeLanding;
+        if (!landing) return;
+        const controller = this.cameraController;
+        const waited = this.claimNow() - landing.since;
+        const { claim } = landing;
+        const allLoaded = claimChunksOf(claim).every(([x, z]) => this.claimColumnLoaded(x, z));
+        const markerLoaded = this.claimColumnLoaded(claim.x, claim.z);
+        if (!allLoaded && !(markerLoaded && waited > CLAIM_HOME_WAIT_MS)) {
+            if (waited > CLAIM_HOME_GIVE_UP_MS) {
+                // Nothing came: the camera's own waiting for the ground takes over from here.
+                this.claimHomeLanding = null;
+                return;
+            }
+            const position = controller.camera && controller.camera.position;
+            if (position && typeof position.set === 'function') position.set(landing.hold.x, landing.hold.y, landing.hold.z);
+            controller.velocityY = 0;
+            return;
+        }
+        const world = this.world;
+        const spot = claimHomeSpot(claim, {
+            loaded: (x, z) => this.claimColumnLoaded(x, z),
+            solid: (x, y, z) => world.hasSolidBlock(x, y, z),
+            free: (x, y, z) => !world.hasSolidBlock(x, y, z) && !CLAIM_LIQUIDS.has(String(world.getBlockTypeAt(x, y, z) || '').split(':')[0]),
+            standable: typeof controller.canStandAt === 'function' ? (x, y, z) => controller.canStandAt(x + 0.5, z + 0.5, y) : null
+        });
+        this.claimHomeLanding = null;
+        const eye = controller.eyeHeight || 1.62;
+        if (spot) {
+            controller.setPosition({ x: spot.x, y: spot.y + eye, z: spot.z });
+            if (typeof controller.finishSpawnSettling === 'function') controller.finishSpawnSettling();
+        } else {
+            // Nowhere to stand near the marker (solid rock all round): from above, the camera's own settling
+            // lifts the player out of the ground and lays them on top.
+            controller.setPosition({ x: claim.x + 1.5, y: landing.hold.y, z: claim.z + 0.5 });
+        }
+        this.claimNotice(claimSay('homeArrived'));
     },
 
     claimReceiveList(payload) {
@@ -713,5 +907,6 @@ registerModalPanel({
 });
 
 registerFrameUpdate(function () {
+    this.claimUpdateHome();
     this.claimUpdate();
 });

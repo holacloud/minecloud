@@ -902,3 +902,62 @@ func TestViewerClaimsPayloadHasNoPlayerIDs(t *testing.T) {
 		t.Fatalf("unchanged plots: %d", again.Code)
 	}
 }
+
+// --- Going home ---
+
+func claimHomeAnswer(t *testing.T, client *Client) map[string]interface{} {
+	t.Helper()
+	claimHeard(client)
+	claimSend(t, client, "claimHome", map[string]string{})
+	heard := claimHeard(client)["claimHomeResult"]
+	if len(heard) != 1 {
+		t.Fatalf("%d answers", len(heard))
+	}
+	var out map[string]interface{}
+	json.Unmarshal(heard[0], &out)
+	return out
+}
+
+// claimHomeClock gives a test its own clock and an empty cooldown book.
+func claimHomeClock(t *testing.T) *time.Time {
+	t.Helper()
+	now := time.Unix(5000, 0)
+	claimNow = func() time.Time { return now }
+	claimHomeMu.Lock()
+	claimHomeLast = map[string]time.Time{}
+	claimHomeMu.Unlock()
+	t.Cleanup(func() { claimNow = time.Now })
+	return &now
+}
+
+func TestHomeAnswersOnlyTheOwnerWithTheMarkerAndHasACooldown(t *testing.T) {
+	claimWorld(t)
+	now := claimHomeClock(t)
+	ana := claimAnaPlot(t)
+	claimMove(ana, 900, 70, -900) // far away: it does not matter where
+	got := claimHomeAnswer(t, ana)
+	if got["ok"] != true || got["x"] != 100.0 || got["y"] != 120.0 || got["z"] != 100.0 || got["minX"] != 92.0 || got["maxZ"] != 108.0 || got["cooldown"] != 30.0 {
+		t.Fatalf("Ana's home: %+v", got)
+	}
+	if containsString(fmt.Sprint(got), plrAna) {
+		t.Fatalf("no ids: %+v", got)
+	}
+	// Again too soon, from any page of the same player: wait, with the seconds left.
+	*now = now.Add(10 * time.Second)
+	other := claimClient(t, "Ana2", plrAna, 0, 0, 0)
+	if got := claimHomeAnswer(t, other); got["ok"] != false || got["reason"] != "wait" || got["wait"] != 20.0 {
+		t.Fatalf("cooldown: %+v", got)
+	}
+	*now = now.Add(20 * time.Second)
+	if got := claimHomeAnswer(t, ana); got["ok"] != true {
+		t.Fatalf("after the cooldown: %+v", got)
+	}
+	// Someone with no plot, and a connection with no player, get nowhere.
+	beto := claimClient(t, "Beto", plrBeto, 101, 121.6, 101)
+	nobody := claimClient(t, "Nadie", "", 0, 0, 0)
+	for _, who := range []*Client{beto, nobody} {
+		if got := claimHomeAnswer(t, who); got["ok"] != false || got["reason"] != "none" || got["x"] != nil {
+			t.Fatalf("%s: %+v", who.username, got)
+		}
+	}
+}

@@ -705,6 +705,15 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
 - **Cliente:** borde a menos de 12 bloques (líneas en el suelo, columnas en las esquinas; verde la tuya, ámbar ajena, azul la
   zona de inicio), aviso al entrar, panel del mojón (clic derecho del dueño), comprobaciones antes de minar, colocar o abrir
   (un visitante puede usar herramientas que solo miran: multímetro, cinta métrica, termómetro, tubo de muestras…, y leer un cartel con clic derecho).
+- **Ir a tu parcela:** «Ir a mi parcela» en el menú de pausa (`settings-claim-home`) o `/home`. El cliente pide `claimHome {}`;
+  el servidor contesta `claimHomeResult` solo al dueño (`ofOwner`: un invitado o cualquier otro recibe `reason: "none"`) con el
+  mojón y el cuadrado, como mucho una vez cada `claimHomeCooldown` (30 s) por jugador estable, sea cual sea la pestaña (antes:
+  `reason: "wait"` y `wait` en segundos). No cuesta nada. El cliente baja al jugador del caballo o del asiento (`dismount`,
+  `seatStandUp`; un ascensor no hace falta: solo empuja por colisión), lo deja quieto encima del mojón mientras no estén
+  cargados los chunks de la parcela (como mucho 8 s si ya está el del mojón; a los 30 s cede a la espera normal de la cámara) y
+  entonces lo pone con `claimHomeSpot`: los pies sobre un bloque sólido, dos celdas libres (sin sólido ni agua ni lava) y la
+  última palabra de las colisiones de la cámara, en la columna de la parcela más cercana al mojón y a su altura (un bloque de
+  altura pesa como 0,3 anillos); si no hay ninguna, encima del mojón; si tampoco, desde arriba y la cámara lo saca del suelo.
 - **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
   <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona
   de inicio salvo con `force` al final.

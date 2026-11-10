@@ -27,6 +27,12 @@ Right click **your** marker: the size, the coordinates of the marker and the cor
 
 Nobody else can break your marker. If it is someone else's, a right click only tells you whose it is.
 
+## Going to your plot
+
+Wherever you are, you can go back to your plot: **"Go to my plot"** in the pause menu, or type `/home` in the chat. You appear standing on solid ground inside your plot, next to the marker; never inside a block nor in the air. If its terrain hasn't arrived yet, you wait still over the marker until it does. If you are riding or sitting, you get off first.
+
+It costs nothing, but it works only once every **30 seconds**. It only takes you to **your** plot, not to one you are invited to.
+
 ## The spawn area
 
 Around the point where everybody appears there is an area of **32 × 32** blocks that is protected and belongs to nobody: nobody can build or break in it, so it is always a good place to arrive. No plot may touch it.

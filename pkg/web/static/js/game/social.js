@@ -222,7 +222,7 @@ Object.assign(Game.prototype, {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /guide [page], /spawn, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /guide [page], /spawn, /home, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });
@@ -254,6 +254,10 @@ Object.assign(Game.prototype, {
             case 'plots':
             case 'plot':
                 this.claimAdminCommand(normalized, args);
+                break;
+            // Back to your own plot (js/game/claims.js).
+            case 'home':
+                this.claimGoHome();
                 break;
             case 'rtx':
                 this.toggleRTXMode();

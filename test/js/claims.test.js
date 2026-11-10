@@ -28,7 +28,9 @@ function fakeElement(tag = 'div') {
 // A Game with what claims.js uses of it, the world as a map of blocks, and a network that records.
 function fakeGame({ lang = 'ES', creative = false } = {}) {
     const byId = new Map();
+    const pauseRow = fakeElement('div');
     const document = {
+        querySelector: (selector) => (selector === '#pause-menu .pause-actions-main' ? pauseRow : null),
         body: { appendChild(child) { if (child.id) byId.set(child.id, child); } },
         head: { appendChild() {} },
         pointerLockElement: null,
@@ -63,7 +65,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
     vm.runInContext(read('gameLang.js'), context, { filename: 'gameLang.js' });
     vm.runInContext(read('game/claims.js'), context, { filename: 'claims.js' });
     vm.runInContext(`Object.assign(this, { Game, CLAIM_TEXT, claimSay, claimZoneOf, claimZoneName, claimRefusalText, claimBorderSegments,
-        claimCorners, claimRectDistance, claimRectsOverlap, setGameLang })`, context);
+        claimCorners, claimRectDistance, claimRectsOverlap, claimHomeSpot, claimChunksOf, setGameLang })`, context);
 
     const blocks = new Map();
     const world = {
@@ -71,7 +73,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         getBlockTypeAt: (x, y, z) => blocks.get(`${x},${y},${z}`) || null,
         addBlock: (block) => { blocks.set(`${block.x},${block.y},${block.z}`, block.blockType); return true; },
         removeBlockAt: (x, y, z) => blocks.delete(`${x},${y},${z}`),
-        hasSolidBlock: (x, y, z) => y <= 63 || blocks.has(`${x},${y},${z}`),
+        hasSolidBlock: (x, y, z) => (y <= 63 && !blocks.has(`${x},${y},${z}:air`)) || (blocks.has(`${x},${y},${z}`) && blocks.get(`${x},${y},${z}`) !== 'water'),
         getBlockPositionFromIntersection: (hit) => hit.position
     };
     const network = {
@@ -81,11 +83,16 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         emit(type, payload) { for (const handler of this.handlers.get(type) || []) handler(payload); }
     };
     const game = new context.Game();
-    const position = { x: 0.5, y: 65.6, z: 0.5 };
+    const position = { x: 0.5, y: 65.6, z: 0.5, set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
+    const camera = { position };
     Object.assign(game, {
         world, network, creativeMode: creative, titleScreenOpen: false, messages: [], inventory: {},
         isBreakInputActive: false, breakDistance: 4.5, placeDistance: 4.5, selected: 'stone', aim: null,
-        cameraController: { getPosition: () => position, canInteract: () => true, eyeHeight: 1.62, isCrouching: false },
+        cameraController: {
+            camera, getPosition: () => position, canInteract: () => true, eyeHeight: 1.62, isCrouching: false, settled: 0,
+            setPosition(at) { position.set(at.x, at.y, at.z); this.seat = null; this.velocityY = 0; },
+            finishSpawnSettling() { this.settled += 1; }
+        },
         raycastBlock() { return this.aim; },
         resetMiningTarget() { this.resetCalls = (this.resetCalls || 0) + 1; },
         resetMiningBlockVisual() {},
@@ -105,7 +112,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
     };
     const frame = () => hooks.frame.forEach((fn) => fn.call(game, 1 / 60));
     const moveTo = (x, z) => { position.x = x; position.z = z; context.now += 2000; };
-    return { context, game, network, world, blocks, hooks, document, notice, frame, moveTo, position };
+    return { context, game, network, world, blocks, hooks, document, notice, frame, moveTo, position, pauseRow };
 }
 
 // Ana's plot around (100, 64, 100), Beto's around (140, 64, 100), and the spawn zone.
@@ -428,4 +435,154 @@ test('it is loaded after building.js, whose methods it wraps, and /plots reaches
     assert.ok(scripts.indexOf('js/game/claims.js') > scripts.indexOf('js/game/building.js'));
     assert.ok(scripts.indexOf('js/game/claims.js') > scripts.indexOf('js/game/constructions.js'));
     assert.match(read('game/social.js'), /case 'plots':\s*case 'plot':\s*this\.claimAdminCommand\(normalized, args\)/);
+});
+
+// ---- Going home ----
+
+test('the pause menu has «Ir a mi parcela», in both languages, and /home reaches the same', () => {
+    const { context, game, network, pauseRow, notice } = fakeGame();
+    const button = pauseRow.children.find((child) => child.id === 'settings-claim-home');
+    assert.ok(button, 'the button is in the pause menu');
+    assert.equal(button.textContent, 'Ir a mi parcela');
+    context.setGameLang('EN');
+    assert.equal(button.textContent, 'Go to my plot');
+    context.setGameLang('ES');
+    let closed = 0;
+    game.closePauseMenu = () => { closed += 1; };
+    // No plot: it says so and asks nothing.
+    network.emit('claimList', plots('nobody'));
+    button.click();
+    assert.equal(closed, 1);
+    assert.equal(network.sent.length, 0);
+    assert.equal(notice(), 'No tienes parcela: pon un mojón para reclamar una.');
+    network.emit('claimList', plots('Ana'));
+    button.click();
+    assert.deepEqual(network.sent.at(-1), ['claimHome', {}]);
+    assert.match(read('game/social.js'), /case 'home':\s*this\.claimGoHome\(\)/);
+    assert.match(read('game/social.js'), /\/spawn, \/home,/);
+    network.connected = false;
+    game.claimNoticeAt = -Infinity;
+    game.claimGoHome();
+    assert.equal(notice(), 'Sin conexión: las parcelas las guarda el servidor.');
+});
+
+test('going home has a cooldown of 30 s, here and from the server', () => {
+    const { context, game, network, notice } = fakeGame({ lang: 'EN' });
+    network.emit('claimList', plots('Ana'));
+    assert.equal(game.claimGoHome(), true);
+    network.emit('claimHomeResult', { ok: true, x: 100, y: 64, z: 100, minX: 92, minZ: 92, maxX: 108, maxZ: 108, cooldown: 30 });
+    context.now += 12000;
+    assert.equal(game.claimGoHome(), false);
+    assert.equal(network.sent.length, 1);
+    assert.equal(notice(), 'Wait 18 s to go to your plot again.');
+    context.now += 18000;
+    assert.equal(game.claimGoHome(), true);
+    // The server's own count wins (another tab went home a moment ago).
+    network.emit('claimHomeResult', { ok: false, reason: 'wait', wait: 25 });
+    assert.equal(notice(), 'Wait 25 s to go to your plot again.');
+    context.now += 5000;
+    game.claimNoticeAt = -Infinity;
+    assert.equal(game.claimGoHome(), false);
+    assert.equal(notice(), 'Wait 20 s to go to your plot again.');
+    network.emit('claimHomeResult', { ok: false, reason: 'none' });
+    assert.equal(notice(), "You don't have a plot: place a claim marker to claim one.");
+    game.respawnPending = true;
+    context.now += 60000;
+    assert.equal(game.claimGoHome(), false);
+    assert.equal(notice(), "You can't go to your plot right now.");
+});
+
+test('a safe place to land: solid ground under the feet, room for the body, near the marker, inside the plot', () => {
+    const { context } = fakeGame();
+    const claim = { x: 100, y: 64, z: 100, minX: 92, minZ: 92, maxX: 108, maxZ: 108 };
+    const make = (solidCells = new Set(), { liquid = new Set(), unloaded = () => false, ground = 63 } = {}) => ({
+        loaded: (x, z) => !unloaded(x, z),
+        solid: (x, y, z) => (y <= ground && !solidCells.has(`${x},${y},${z}:air`)) || solidCells.has(`${x},${y},${z}`),
+        free: (x, y, z) => !((y <= ground && !solidCells.has(`${x},${y},${z}:air`)) || solidCells.has(`${x},${y},${z}`)) && !liquid.has(`${x},${y},${z}`)
+    });
+    const spot = (query) => { const s = context.claimHomeSpot(claim, query); return s && [s.x, s.y, s.z]; };
+    // Flat ground: right next to the marker, feet on the ground (y 64), in the middle of the cell.
+    const flat = spot(make());
+    assert.equal(Math.max(Math.abs(flat[0] - 100.5), Math.abs(flat[2] - 100.5)), 1);
+    assert.equal(flat[1], 64);
+    // Walled in all round at ring 1 (2 high): the next ring.
+    const walls = new Set();
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) if (dx || dz) for (const y of [64, 65]) walls.add(`${100 + dx},${y},${100 + dz}`);
+    const out = spot(make(walls));
+    assert.equal(Math.max(Math.abs(out[0] - 100.5), Math.abs(out[2] - 100.5)), 2);
+    // A one-block-high gap is no room for a body; a roof two blocks up is.
+    const low = new Set(walls);
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) if (dx || dz) low.delete(`${100 + dx},64,${100 + dz}`);
+    assert.equal(Math.max(Math.abs(spot(make(low))[0] - 100.5), Math.abs(spot(make(low))[2] - 100.5)), 2);
+    // Never in water or lava, never over a column whose chunk is not here.
+    const pool = new Set();
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) pool.add(`${100 + dx},64,${100 + dz}`);
+    const dry = spot(make(new Set(), { liquid: pool }));
+    assert.ok(Math.max(Math.abs(dry[0] - 100.5), Math.abs(dry[2] - 100.5)) >= 3 || dry[1] !== 64);
+    const half = spot(make(new Set(), { unloaded: (x) => x <= 101 }));
+    assert.ok(half[0] > 101);
+    // The ground far below the marker (a marker on a tower): down to it, not into the air.
+    const deep = spot(make(new Set(['100,63,100', '100,50,100']), { ground: 40 }));
+    assert.equal(deep[1], 41);
+    // Solid rock all round but a pocket of two cells over the marker: on top of the marker; no pocket: null.
+    assert.deepEqual(spot(make(new Set(['100,65,100:air', '100,66,100:air']), { ground: 200 })), [100.5, 65, 100.5]);
+    assert.equal(spot(make(new Set(), { ground: 200 })), null);
+    // The camera's collisions have the last word (a fence counts as no room).
+    const fenced = spot({ ...make(), standable: (x, y, z) => !(x === 101 && z === 100) && !(x === 99) });
+    assert.ok(!(fenced[0] === 101.5 && fenced[2] === 100.5) && fenced[0] !== 99.5);
+    // Every column it picks is inside the plot, whatever the ground.
+    for (let i = 0; i < 20; i++) {
+        const blocked = new Set();
+        for (let dx = -8; dx <= 8; dx++) for (let dz = -8; dz <= 8; dz++) if (Math.random() < 0.7) { blocked.add(`${100 + dx},64,${100 + dz}`); blocked.add(`${100 + dx},65,${100 + dz}`); }
+        const s = context.claimHomeSpot(claim, make(blocked));
+        if (s) assert.ok(s.x >= 92 && s.x < 109 && s.z >= 92 && s.z < 109 && !(Math.floor(s.x) === 100 && Math.floor(s.z) === 100 && s.y === 64));
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(context.claimChunksOf(claim))), [[80, 80], [80, 96], [96, 80], [96, 96]]);
+});
+
+test('going home: off the horse or the chair first, held over the marker until its chunks come, then on the ground', () => {
+    const { game, network, world, position, notice, frame, context } = fakeGame();
+    network.emit('claimList', plots('Ana'));
+    const loaded = new Set();
+    world.getColumnAt = (x, z) => loaded.has(`${Math.floor(x / 16)},${Math.floor(z / 16)}`) || null;
+    world.getBlockTypeAt = () => null;
+    const calls = [];
+    game.ridingMob = { userData: {} };
+    game.dismount = function () { calls.push('dismount'); this.ridingMob = null; };
+    game.seated = { x: 0, y: 0, z: 0 };
+    game.seatStandUp = function () { calls.push('stand'); this.seated = null; };
+    position.set(-500, 80, 700);
+    game.claimGoHome();
+    network.emit('claimHomeResult', { ok: true, x: 100, y: 64, z: 100, minX: 92, minZ: 92, maxX: 108, maxZ: 108, cooldown: 30 });
+    assert.deepEqual(calls, ['dismount', 'stand']);
+    assert.equal(notice(), 'Yendo a tu parcela…');
+    // No chunk yet: held over the marker, however the physics moved them.
+    assert.deepEqual([position.x, position.z], [100.5, 100.5]);
+    const held = position.y;
+    position.y -= 30;
+    frame();
+    assert.equal(position.y, held, 'never falls into an unloaded chunk');
+    // Some chunks are here, not all: still held (for a while).
+    loaded.add('6,6');
+    frame();
+    assert.equal(position.y, held);
+    for (const key of ['5,5', '5,6', '6,5']) loaded.add(key);
+    frame();
+    assert.equal(game.claimHomeLanding, null);
+    assert.equal(position.y, 64 + 1.62, 'feet on the ground');
+    assert.equal(Math.max(Math.abs(position.x - 100.5), Math.abs(position.z - 100.5)), 1);
+    assert.equal(game.cameraController.settled, 1);
+    assert.equal(notice(), 'Estás en tu parcela.');
+    // The marker's chunk alone, for long enough: it lands on what has arrived.
+    context.now += 30000;
+    loaded.clear();
+    loaded.add('6,6');
+    game.claimGoHome();
+    network.emit('claimHomeResult', { ok: true, x: 100, y: 64, z: 100, minX: 92, minZ: 92, maxX: 108, maxZ: 108 });
+    frame();
+    assert.ok(game.claimHomeLanding);
+    context.now += 9000;
+    frame();
+    assert.equal(game.claimHomeLanding, null);
+    assert.ok(position.x >= 96 && position.z >= 96, 'only on loaded columns');
 });

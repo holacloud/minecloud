@@ -27,6 +27,12 @@ Clic derecho en **tu** mojón: el tamaño, las coordenadas del mojón y de las e
 
 Nadie más puede romper tu mojón. Si es el de otro, el clic derecho solo te dice de quién es.
 
+## Ir a tu parcela
+
+Estés donde estés, puedes volver a tu parcela: **«Ir a mi parcela»** en el menú de pausa, o escribe `/home` en el chat. Apareces de pie sobre suelo firme dentro de tu parcela, junto al mojón; nunca dentro de un bloque ni en el aire. Si su terreno aún no ha llegado, esperas quieto encima del mojón hasta que llegue. Si vas a caballo o sentado, primero te bajas.
+
+No cuesta nada, pero solo se puede una vez cada **30 segundos**. Solo lleva a **tu** parcela, no a una en la que estés invitado.
+
 ## La zona de inicio
 
 Alrededor del punto donde aparece todo el mundo hay una zona de **32 × 32** bloques protegida y sin dueño: nadie puede construir ni romper en ella, para que sea siempre un buen sitio para llegar. Ninguna parcela puede tocarla.

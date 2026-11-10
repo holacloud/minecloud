@@ -942,6 +942,8 @@ func handleMessage(client *Client, msg Message) {
 		handleConstructionStock(client, msg.Payload)
 	case "claimAdmin":
 		handleClaimAdmin(client, msg.Payload)
+	case "claimHome":
+		handleClaimHome(client)
 
 	case "identityCodeShow", "identityCodeRegenerate", "identityRecover":
 		handleIdentityMessage(client, msg)
