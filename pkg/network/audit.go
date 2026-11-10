@@ -31,16 +31,20 @@ type SessionRecord struct {
 	IP        string    `json:"ip"`
 	UserAgent string    `json:"userAgent"`
 	Nick      string    `json:"nick,omitempty"`
+	// The player this browser is (identity.go). Set on its first connection, changed by a recovery.
+	PlayerID string `json:"playerId,omitempty"`
 }
 
 type RegistrationRecord struct {
 	*store.Id
-	SessionID    string    `json:"sessionId"`
-	PlayerID     string    `json:"playerId"`
-	Nick         string    `json:"nick"`
-	IP           string    `json:"ip"`
-	UserAgent    string    `json:"userAgent"`
-	RegisteredAt time.Time `json:"registeredAt"`
+	SessionID string `json:"sessionId"`
+	PlayerID  string `json:"playerId"`
+	// The stable player (identity.go); PlayerID above is the page's random id for this connection.
+	StablePlayerID string    `json:"stablePlayerId,omitempty"`
+	Nick           string    `json:"nick"`
+	IP             string    `json:"ip"`
+	UserAgent      string    `json:"userAgent"`
+	RegisteredAt   time.Time `json:"registeredAt"`
 }
 
 type ChatMessageRecord struct {
@@ -127,7 +131,11 @@ func initializeAuditStores() error {
 	}
 
 	playerStateStore, err = store.NewStoreDisk[*PlayerStateRecord]("data/player-states")
-	return err
+	if err != nil {
+		return err
+	}
+
+	return initializeIdentityStores()
 }
 
 func SessionMiddleware(next http.Handler) http.Handler {
@@ -179,11 +187,18 @@ func ensureSession(r *http.Request) (*SessionRecord, *http.Cookie, error) {
 		setCookie = sessionCookie(token)
 	}
 
+	// Read again under the lock: a recovery may have changed its player since it was found.
+	identityMu.Lock()
+	defer identityMu.Unlock()
+	if setCookie == nil {
+		if fresh := getSession(session.GetId()); fresh != nil {
+			session = fresh
+		}
+	}
 	session.UpdatedAt = now
 	session.IP = ip
 	session.UserAgent = userAgent
-	item := session
-	if err := sessionStore.Put(context.Background(), &item); err != nil {
+	if err := putSession(session); err != nil {
 		return nil, nil, err
 	}
 
@@ -237,14 +252,16 @@ func recordRegistration(client *Client, playerID string) {
 	}
 
 	now := time.Now().UTC()
+	stablePlayerID := client.stablePlayerID()
 	record := &RegistrationRecord{
-		Id:           store.NewId(newRandomID("registration")),
-		SessionID:    client.sessionID,
-		PlayerID:     playerID,
-		Nick:         client.username,
-		IP:           client.ip,
-		UserAgent:    client.userAgent,
-		RegisteredAt: now,
+		Id:             store.NewId(newRandomID("registration")),
+		SessionID:      client.sessionID,
+		PlayerID:       playerID,
+		StablePlayerID: stablePlayerID,
+		Nick:           client.username,
+		IP:             client.ip,
+		UserAgent:      client.userAgent,
+		RegisteredAt:   now,
 	}
 	item := record
 	if err := registrationStore.Put(context.Background(), &item); err != nil {
@@ -252,6 +269,7 @@ func recordRegistration(client *Client, playerID string) {
 	}
 
 	updateSessionNick(client.sessionID, client.username)
+	updatePlayerNick(stablePlayerID, client.username)
 }
 
 func recordChatMessage(client *Client, text string) {
@@ -304,16 +322,15 @@ func updateSessionNick(sessionID string, nick string) {
 		return
 	}
 
-	stored, err := sessionStore.Get(context.Background(), sessionID)
-	if err != nil || stored == nil || *stored == nil {
+	identityMu.Lock()
+	defer identityMu.Unlock()
+	session := getSession(sessionID)
+	if session == nil {
 		return
 	}
-
-	session := *stored
 	session.Nick = nick
 	session.UpdatedAt = time.Now().UTC()
-	item := session
-	if err := sessionStore.Put(context.Background(), &item); err != nil {
+	if err := putSession(session); err != nil {
 		log.Printf("Failed to update session nick: %v", err)
 	}
 }

@@ -40,6 +40,18 @@ type Client struct {
 	// Whether this session passed creative auth (creative.go): set by each creativeAuth answer, cleared by
 	// creativeOff. Only constructionStock reads it.
 	creative atomic.Bool
+	// The stable player this connection is (identity.go), from its session cookie, never from the page.
+	// A recovery from another tab of the same browser changes it, hence atomic.
+	stablePlayer atomic.Value
+}
+
+func (c *Client) stablePlayerID() string {
+	id, _ := c.stablePlayer.Load().(string)
+	return id
+}
+
+func (c *Client) setStablePlayerID(id string) {
+	c.stablePlayer.Store(id)
 }
 
 type Message struct {
@@ -343,6 +355,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		userAgent: r.UserAgent(),
 	}
 	client.stream = newChunkStream(client)
+	attachIdentity(client)
 
 	clientsMu.Lock()
 	clients[client] = true
@@ -478,9 +491,9 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		// Never log a creative key.
-		if msg.Type == "creativeAuth" {
-			log.Printf("Received message: creativeAuth (key hidden)")
+		// Never log a creative key or a recovery code.
+		if messageIsSecret(msg.Type) {
+			log.Printf("Received message: %s (payload hidden)", msg.Type)
 		} else {
 			log.Printf("Received message: %s", message)
 		}
@@ -904,6 +917,9 @@ func handleMessage(client *Client, msg Message) {
 		client.creative.Store(false)
 	case "constructionStock":
 		handleConstructionStock(client, msg.Payload)
+
+	case "identityCodeShow", "identityCodeRegenerate", "identityRecover":
+		handleIdentityMessage(client, msg)
 
 	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
 		handleStorageMessage(client, msg)
