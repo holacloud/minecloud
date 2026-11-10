@@ -13,8 +13,10 @@ Ponlo en el suelo y la parcela queda reclamada: **17 × 17 bloques** con el moj�
 El servidor lo comprueba todo. Si no se puede, el mojón no se pone, vuelve a tu inventario y te dice por qué:
 
 - **Ya tienes una parcela.** De momento, una por jugador. Para cambiarla de sitio, quita la que tienes.
-- **Se solapa con otra parcela.** Los cuadrados no pueden pisarse: deja al menos 17 bloques entre tu mojón y el de otro.
-- **Demasiado cerca de la zona de inicio** (ver abajo).
+- **Se solapa con otra parcela**, o **está demasiado cerca:** entre el borde de tu parcela y el de cualquier otra tienen que quedar al menos **8 bloques libres** (en horizontal o en vertical en el mapa, lo que sea más). El aviso dice cuántos quedarían. Con los mojones en la misma fila, eso es al menos 25 bloques entre un mojón y otro.
+- **Demasiado cerca de la zona de inicio:** los mismos 8 bloques libres hasta su borde (ver abajo).
+
+Las parcelas que ya estaban más juntas antes de esta regla se quedan como están; solo se mira al reclamar una nueva.
 - **Demasiado lejos:** ponlo al alcance de la mano, como cualquier bloque.
 
 ## El borde
@@ -43,7 +45,7 @@ No cuesta nada, pero solo se puede una vez cada **30 segundos**. Solo lleva a **
 
 ## La zona de inicio
 
-Alrededor del punto donde aparece todo el mundo hay una zona de **32 × 32** bloques protegida y sin dueño: nadie puede construir ni romper en ella, para que sea siempre un buen sitio para llegar. Ninguna parcela puede tocarla.
+Alrededor del punto donde aparece todo el mundo hay una zona de **32 × 32** bloques protegida y sin dueño: nadie puede construir ni romper en ella, para que sea siempre un buen sitio para llegar. Ninguna parcela puede tocarla, y hay que dejar 8 bloques libres hasta ella.
 
 ## Qué protege
 

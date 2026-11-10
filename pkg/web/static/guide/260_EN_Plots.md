@@ -13,8 +13,10 @@ Place it on the ground and the plot is claimed: **17 × 17 blocks** with the mar
 The server checks everything. If it can't be done, the marker is not placed, goes back to your inventory and you are told why:
 
 - **You already have a plot.** One per player, for now. To move it, remove the one you have.
-- **It overlaps another plot.** The squares can't overlap: leave at least 17 blocks between your marker and someone else's.
-- **Too close to the spawn area** (see below).
+- **It overlaps another plot**, or **it is too close:** between the edge of your plot and that of any other there must be at least **8 free blocks** (across or along on the map, whichever is more). The notice says how many there would be. With the markers in the same row, that is at least 25 blocks from one marker to the other.
+- **Too close to the spawn area:** the same 8 free blocks up to its edge (see below).
+
+Plots that were already closer together before this rule stay as they are; only a new claim is checked.
 - **Too far:** place it within arm's reach, like any block.
 
 ## The border
@@ -43,7 +45,7 @@ It costs nothing, but it works only once every **30 seconds**. It only takes you
 
 ## The spawn area
 
-Around the point where everybody appears there is an area of **32 × 32** blocks that is protected and belongs to nobody: nobody can build or break in it, so it is always a good place to arrive. No plot may touch it.
+Around the point where everybody appears there is an area of **32 × 32** blocks that is protected and belongs to nobody: nobody can build or break in it, so it is always a good place to arrive. No plot may touch it, and 8 free blocks must be left up to it.
 
 ## What it protects
 

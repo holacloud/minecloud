@@ -262,12 +262,16 @@ func TestClaimRulesAreCheckedByTheServer(t *testing.T) {
 	if r := place(nobody, 500, 500); r == nil || r.Reason != claimReasonNoPlayer {
 		t.Fatalf("without a player: %+v", r)
 	}
-	// Right next to the spawn zone (its border at 15, the plot from 16) and 17 from Ana's: fine.
-	if r := place(beto, 24, 0); r != nil {
+	// Right next to the spawn zone (its border at 15, the plot from 16): too close now, 0 free columns of 8.
+	if r := place(beto, 24, 0); r == nil || r.Reason != claimReasonTooCloseSpawn || r.Distance != 0 || r.Gap != claimGap {
 		t.Fatalf("next to the spawn zone: %+v", r)
 	}
-	if r := place(claimClient(t, "Cris", "plr_dddddddddddddddddddddddddddddddd", 0, 0, 0), 117, 100); r != nil {
-		t.Fatalf("17 from Ana's marker: %+v", r)
+	// 8 free columns from the spawn zone (16..23), and 8 from Ana's plot (109..116): fine.
+	if r := place(beto, 32, 0); r != nil {
+		t.Fatalf("8 from the spawn zone: %+v", r)
+	}
+	if r := place(claimClient(t, "Cris", "plr_dddddddddddddddddddddddddddddddd", 0, 0, 0), 125, 100); r != nil {
+		t.Fatalf("25 from Ana's marker: %+v", r)
 	}
 	if len(claims.list()) != 3 {
 		t.Fatalf("%d plots", len(claims.list()))
@@ -559,9 +563,9 @@ func TestTheChunkIndexFindsEveryColumnAndForgetsRemovedPlots(t *testing.T) {
 	// A grid of touching plots, across negative and positive chunks.
 	for i := -3; i <= 3; i++ {
 		for j := -3; j <= 3; j++ {
-			c, reason, _ := book.create(fmt.Sprintf("plr_%d_%d", i, j), "", i*claimSize+5, 60, j*claimSize-3)
-			if reason != "" {
-				t.Fatalf("(%d, %d): %s", i, j, reason)
+			c, refusal := book.createSpaced(fmt.Sprintf("plr_%d_%d", i, j), "", i*claimSize+5, 60, j*claimSize-3, 0)
+			if refusal != nil {
+				t.Fatalf("(%d, %d): %+v", i, j, refusal)
 			}
 			made = append(made, c)
 		}
@@ -611,9 +615,10 @@ func claimRamWorld(x int, sticky bool) (fakeCropWorld, *powerGrid, powerPos) {
 
 func claimPlotAt(t *testing.T, owner string, x, z int) Claim {
 	t.Helper()
-	c, reason, _ := claims.create(owner, owner, x, 0, z)
-	if reason != "" {
-		t.Fatal(reason)
+	// Touching plots, as plots saved before the gap was a rule may be.
+	c, refusal := claims.createSpaced(owner, owner, x, 0, z, 0)
+	if refusal != nil {
+		t.Fatal(refusal.Reason)
 	}
 	return c
 }
@@ -1196,5 +1201,110 @@ func TestGuestsSurviveARestartAndLoadCleansThem(t *testing.T) {
 	}
 	if _, still := book.list()[0].Guests[plrBeto]; still {
 		t.Fatal("the new owner is still a guest")
+	}
+}
+
+// --- The gap between plots ---
+
+func TestGapToCountsTheFreeColumnsBetweenTwoSquares(t *testing.T) {
+	a := claimRect{MinX: 0, MinZ: 0, MaxX: 16, MaxZ: 16}
+	for _, tc := range []struct {
+		b    claimRect
+		want int
+	}{
+		{claimRect{MinX: 17, MinZ: 0, MaxX: 33, MaxZ: 16}, 0},     // touching
+		{claimRect{MinX: 25, MinZ: 5, MaxX: 41, MaxZ: 21}, 8},     // 17..24 free
+		{claimRect{MinX: -20, MinZ: 0, MaxX: -4, MaxZ: 16}, 3},    // -3..-1 free
+		{claimRect{MinX: 20, MinZ: 20, MaxX: 36, MaxZ: 36}, 3},    // diagonal: 3 free each way
+		{claimRect{MinX: 20, MinZ: 30, MaxX: 36, MaxZ: 46}, 13},   // the larger of the two
+		{claimRect{MinX: 10, MinZ: 10, MaxX: 26, MaxZ: 26}, -7},   // overlapping
+		{claimRect{MinX: 17, MinZ: 100, MaxX: 33, MaxZ: 116}, 83}, // far along z
+	} {
+		if got := a.gapTo(tc.b); got != tc.want || tc.b.gapTo(a) != tc.want {
+			t.Errorf("%+v: %d, want %d", tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestANewPlotKeepsTheGapFromOtherPlotsAndTheSpawnZone(t *testing.T) {
+	claimWorld(t)
+	claimAnaPlot(t) // x and z 92..108
+	place := func(name, player string, x, z int) *claimRefusal {
+		client := claimClient(t, name, player, float64(x)+1, 121.6, float64(z)+1)
+		claimSend(t, client, "blockPlace", Block{X: x, Y: 120, Z: z, BlockType: claimMarkerBlock})
+		return claimRefusalOf(t, claimHeard(client))
+	}
+	for i, tc := range []struct {
+		x, z     int
+		distance int
+	}{
+		{117, 100, 0}, {120, 100, 3}, {124, 100, 7}, // east: the plot starts at x-8, Ana's ends at 108
+		{100, 83, 0}, {100, 76, 7}, // north
+		{120, 120, 3}, // diagonal: 3 free columns both ways is 3
+	} {
+		r := place(fmt.Sprintf("P%d", i), fmt.Sprintf("plr_%032d", i), tc.x, tc.z)
+		if r == nil || r.Reason != claimReasonTooClose || r.Owner != "Ana" || r.Distance != tc.distance || r.Gap != 8 {
+			t.Errorf("(%d, %d): %+v", tc.x, tc.z, r)
+		}
+		if claimBlockAt(t, tc.x, 120, tc.z) == claimMarkerBlock {
+			t.Errorf("(%d, %d): the refused marker stays", tc.x, tc.z)
+		}
+	}
+	// 8 free columns along one axis is enough, even diagonally close on the other.
+	if r := place("Q1", "plr_q1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", 125, 110); r != nil {
+		t.Fatalf("8 free columns east: %+v", r)
+	}
+	// The nearest one is named: between Ana's (x 92..108) and Q1's (x 117..133, z 102..118).
+	r := place("Q2", "plr_q2qqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", 112, 128)
+	if r == nil || r.Reason != claimReasonTooClose || r.Owner != "Q1" || r.Distance != 1 {
+		t.Fatalf("the nearest plot: %+v", r)
+	}
+	// The spawn zone (-16..15) keeps the same gap.
+	for _, tc := range []struct{ x, distance int }{{24, 0}, {28, 4}, {31, 7}} {
+		r := place("S", "plr_ssssssssssssssssssssssssssssssss", tc.x, 0)
+		if r == nil || r.Reason != claimReasonTooCloseSpawn || r.Distance != tc.distance || r.Gap != 8 {
+			t.Errorf("spawn at x=%d: %+v", tc.x, r)
+		}
+	}
+	if r := place("S", "plr_ssssssssssssssssssssssssssssssss", -40, 0); r != nil {
+		t.Fatalf("8 free columns west of the spawn zone: %+v", r)
+	}
+}
+
+func TestPlotsSavedCloserThanTheGapStayAndOnlyNewClaimsAreChecked(t *testing.T) {
+	claimWorld(t)
+	old := time.Unix(100, 0)
+	claims.load(map[string]Claim{
+		"clm_a": {X: 100, Y: 120, Z: 100, Owner: plrAna, OwnerName: "Ana", CreatedAt: old},
+		"clm_b": {X: 117, Y: 120, Z: 100, Owner: plrBeto, OwnerName: "Beto", CreatedAt: old}, // touching Ana's
+		"clm_c": {X: 0, Y: 120, Z: 26, Owner: plrCris, OwnerName: "Cris", CreatedAt: old},    // 2 from the spawn zone
+	})
+	if n := len(claims.list()); n != 3 {
+		t.Fatalf("%d plots kept", n)
+	}
+	saveWorldState()
+	claims = newClaimBook()
+	if err := loadWorldState(); err != nil || len(claims.list()) != 3 {
+		t.Fatalf("after a restart: %v %d", err, len(claims.list()))
+	}
+	// They protect as ever; a new one next to them is checked.
+	stranger := claimClient(t, "Zoe", "plr_ffffffffffffffffffffffffffffffff", 118, 121.6, 101)
+	claimSend(t, stranger, "blockPlace", Block{X: 118, Y: 120, Z: 101, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(stranger)); r == nil || r.Owner != "Beto" {
+		t.Fatalf("Beto's old plot protects: %+v", r)
+	}
+	claimMove(stranger, 141, 121.6, 101)
+	claimSend(t, stranger, "blockPlace", Block{X: 140, Y: 120, Z: 100, BlockType: claimMarkerBlock})
+	if r := claimRefusalOf(t, claimHeard(stranger)); r == nil || r.Reason != claimReasonTooClose || r.Owner != "Beto" || r.Distance != 6 {
+		t.Fatalf("a new plot near the old ones: %+v", r)
+	}
+	// The list tells the gap, for the client's own check.
+	claimsSendTo(stranger)
+	var payload struct {
+		Gap int `json:"gap"`
+	}
+	json.Unmarshal(claimHeard(stranger)["claimList"][0], &payload)
+	if payload.Gap != claimGap || claimGap != 8 {
+		t.Fatalf("gap %d", payload.Gap)
 	}
 }

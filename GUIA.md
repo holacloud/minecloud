@@ -669,9 +669,14 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
 
 - **Mojón:** receta `Make Claim Marker` (C), 2 `stone_bricks` + 1 `copper_ore`. Colocarlo (un `blockPlace` de `claim_marker`)
   es reclamar: bajo `blockEditMu`, el servidor mira el alcance (`storageReach`, 9 bloques), que el jugador estable
-  (`Client.stablePlayerID`, fase 1) no tenga ya parcela, y que el cuadrado no pise otra ni la zona de inicio; crea la parcela
-  y solo entonces escribe el bloque (si la escritura falla, la deshace). Si no, `claimRefused` con `reason` `already`,
-  `overlap` (y `owner`), `overlapSpawn`, `reach` o `noPlayer`, y el cliente devuelve el mojón al inventario.
+  (`Client.stablePlayerID`, fase 1) no tenga ya parcela, que el cuadrado no pise otra ni la zona de inicio y que deje al
+  menos `claimGap` (8) columnas libres entre sus bordes y los de cualquier otra parcela y la zona de inicio
+  (`claimRect.gapTo`: columnas libres en x o en z, la mayor; `nearestLocked` busca en los chunks del cuadrado crecido 8);
+  crea la parcela y solo entonces escribe el bloque (si la escritura falla, la deshace). Si no, `claimRefused` con `reason`
+  `already`, `overlap` (y `owner`), `overlapSpawn`, `tooClose` (con `owner` de la más cercana, `distance` y `gap`),
+  `tooCloseSpawn` (`distance`, `gap`), `reach` o `noPlayer`, y el cliente devuelve el mojón al inventario. Solo se mira al
+  reclamar: las parcelas guardadas más cerca de antes siguen valiendo (al cargar solo se descartan solapes). `claimList`
+  lleva `gap` para la comprobación de cortesía del cliente.
 - **Tamaño:** 17 × 17 columnas centradas en el mojón (`claimRadius` = 8), del bedrock al cielo: la protección solo mira x y z.
   Una por jugador. **Zona de inicio:** x y z de −16 a 15 (32 × 32 alrededor de (0, 0)), sin dueño.
 - **Quitar:** romper el mojón (solo el dueño o el administrador, porque está dentro de su propia parcela) o taparlo con otro

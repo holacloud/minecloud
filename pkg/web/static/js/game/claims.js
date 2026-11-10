@@ -1,14 +1,14 @@
 // Plots (PLAN_PARCELAS.md, phase 2; the server side, which decides everything, is pkg/network/claims.go).
 //
 // - The claim marker (claim_marker, made in C from stone bricks and copper ore): placed, it claims the plot
-//   of 17 x 17 columns around it, from bedrock to the sky, if the server agrees (one plot per player, no
-//   overlap with another plot nor with the spawn zone, in reach). Right click on your own marker opens its
+//   of 17 x 17 columns around it, from bedrock to the sky, if the server agrees (one plot per player, at
+//   least `gap` (8) free columns from any other plot and from the spawn zone, in reach). Right click on your own marker opens its
 //   panel: size, coordinates, guests, «Quitar la parcela». Breaking your own marker asks first, in that panel.
 // - Guests: in that panel the owner invites connected players (from playerList, sent by their page id; the
 //   server keeps them by stable player id) and removes them (by the key claimList gave). A guest builds,
 //   breaks and opens things there like the owner, but the marker, its panel and inviting stay the owner's;
 //   to a guest the marker only says whose plot it is, as to a visitor. Guests' plots have a violet border.
-// - The server tells every plot in claimList {claims, spawn, radius}: each with its square, its owner's name,
+// - The server tells every plot in claimList {claims, spawn, radius, gap}: each with its square, its owner's name,
 //   `mine` or `guest`, and for the owner its guests {key, name, online}. From that this file draws the borders near the player (soft lines on the ground and faint
 //   columns at the corners), says «Parcela de Ana» on walking in, and checks before acting, so that in
 //   someone else's plot or the spawn zone nothing is mined, placed or opened and the player is told why.
@@ -60,6 +60,8 @@ const CLAIM_TEXT = {
     refusedSpawn: { ES: 'Zona de inicio: aquí no se puede cambiar nada.', EN: "Spawn area: nothing can be changed here." },
     overlap: { ES: 'No cabe: se solapa con la parcela de {owner}.', EN: "It doesn't fit: it overlaps {owner}'s plot." },
     overlapSpawn: { ES: 'Demasiado cerca de la zona de inicio: aléjate un poco más.', EN: 'Too close to the spawn area: move a bit further away.' },
+    tooClose: { ES: 'Demasiado cerca de la parcela de {owner}: entre las dos quedarían {distance} bloques libres y hacen falta {gap}.', EN: "Too close to {owner}'s plot: there would be {distance} free blocks between them and {gap} are needed." },
+    tooCloseSpawn: { ES: 'Demasiado cerca de la zona de inicio: quedarían {distance} bloques libres hasta ella y hacen falta {gap}.', EN: 'Too close to the spawn area: there would be {distance} free blocks up to it and {gap} are needed.' },
     already: { ES: 'Ya tienes una parcela. Para cambiarla de sitio, rompe antes su mojón.', EN: 'You already have a plot. To move it, break its marker first.' },
     reach: { ES: 'Demasiado lejos: acércate para poner el mojón.', EN: 'Too far: come closer to place the marker.' },
     noPlayer: { ES: 'Ahora no se puede reclamar: falta la conexión con tu jugador.', EN: "You can't claim right now: there is no link to your player." },
@@ -126,6 +128,14 @@ function claimRectsOverlap(a, b) {
     return a.minX <= b.maxX && b.minX <= a.maxX && a.minZ <= b.maxZ && b.minZ <= a.maxZ;
 }
 
+// Free columns between two squares, along x or z, whichever is more; negative when they overlap (as the
+// server's claimRect.gapTo).
+function claimRectGap(a, b) {
+    const dx = Math.max(b.minX - a.maxX - 1, a.minX - b.maxX - 1);
+    const dz = Math.max(b.minZ - a.maxZ - 1, a.minZ - b.maxZ - 1);
+    return Math.max(dx, dz);
+}
+
 // How far a point (in blocks, x and z) is from a square of columns: 0 inside.
 function claimRectDistance(rect, x, z) {
     const dx = Math.max(rect.minX - x, 0, x - (rect.maxX + 1));
@@ -175,12 +185,19 @@ function claimRefusalText(refusal) {
         case 'spawn': return claimSay('refusedSpawn');
         case 'overlap': return owner ? claimSay('overlap', { owner }) : claimSay('overlap', { owner: claimSay('nameless') });
         case 'overlapSpawn': return claimSay('overlapSpawn');
+        case 'tooClose': return claimSay('tooClose', { owner: owner || claimSay('nameless'), distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 8) });
+        case 'tooCloseSpawn': return claimSay('tooCloseSpawn', { distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 8) });
         case 'already': return claimSay('already');
         case 'reach': return claimSay('reach');
         case 'noPlayer': return claimSay('noPlayer');
         case 'ownerOnly': return claimSay('ownerOnly', { owner: owner || claimSay('nameless') });
         default: return '';
     }
+}
+
+// A count from the server, 0 (or the fallback) when it is missing: omitted numbers are zeros.
+function claimCount(value, fallback = 0) {
+    return Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
 // The border of a square of columns as line segments on the ground: [x0, y0, z0, x1, y1, z1] each, along
@@ -340,7 +357,7 @@ Object.assign(Game.prototype, {
     claimsListen() {
         if (this.claimListening || !this.network) return;
         this.claimListening = true;
-        this.claimState = this.claimState || { claims: [], spawn: null, radius: 8 };
+        this.claimState = this.claimState || { claims: [], spawn: null, radius: 8, gap: 8 };
         this.network.on('claimList', (payload) => this.claimReceiveList(payload || {}));
         this.network.on('claimRefused', (payload) => this.claimOnRefused(payload || {}));
         this.network.on('claimMade', () => this.claimNotice(claimSay('claimed')));
@@ -485,7 +502,8 @@ Object.assign(Game.prototype, {
         this.claimState = {
             claims: (Array.isArray(payload.claims) ? payload.claims : []).filter(valid),
             spawn: valid(payload.spawn) ? payload.spawn : null,
-            radius: Number.isFinite(payload.radius) ? payload.radius : 8
+            radius: Number.isFinite(payload.radius) ? payload.radius : 8,
+            gap: Number.isInteger(payload.gap) && payload.gap >= 0 ? payload.gap : 8
         };
         this.claimBorderBuiltAt = 0;
         if (hadMine && !this.claimMine() && this.claimRemoving) this.claimNotice(claimSay('removed'));
@@ -1011,10 +1029,19 @@ Object.assign(Game.prototype, {
         if (!state) return null;
         if (this.claimMine()) return { reason: 'already' };
         const radius = state.radius || 8;
+        const gap = Number.isInteger(state.gap) ? state.gap : 8;
         const rect = { minX: x - radius, minZ: z - radius, maxX: x + radius, maxZ: z + radius };
         if (state.spawn && claimRectsOverlap(rect, state.spawn)) return { reason: 'overlapSpawn' };
+        if (state.spawn && claimRectGap(rect, state.spawn) < gap) return { reason: 'tooCloseSpawn', distance: claimRectGap(rect, state.spawn), gap };
         const other = state.claims.find((claim) => claimRectsOverlap(rect, claim));
-        return other ? { reason: 'overlap', owner: other.owner } : null;
+        if (other) return { reason: 'overlap', owner: other.owner };
+        // The nearest plot closer than the gap, by its free columns.
+        let nearest = null;
+        for (const claim of state.claims) {
+            const distance = claimRectGap(rect, claim);
+            if (distance < gap && (!nearest || distance < nearest.distance)) nearest = { reason: 'tooClose', owner: claim.owner, distance, gap };
+        }
+        return nearest;
     }
 });
 

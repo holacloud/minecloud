@@ -9,8 +9,12 @@ package network
 //     belongs to nobody: nobody but the admin changes it.
 //   - Claiming: a blockPlace of a claim_marker is the claim. Under blockEditMu, so in order with every
 //     other edit, the server checks the reach, that the player has no plot yet, that the square overlaps
-//     no other plot nor the spawn zone, creates the plot and only then writes the block (and removes the
-//     plot again if the write fails). A refusal is answered with claimRefused (below) and nothing changes.
+//     no other plot nor the spawn zone and leaves at least claimGap (8) free columns between its edges and
+//     theirs (claimRect.gapTo: the free columns along x or z, whichever is more), creates the plot and only
+//     then writes the block (and removes the plot again if the write fails). A refusal is answered with
+//     claimRefused (below) and nothing changes; "tooClose" and "tooCloseSpawn" say how many free columns
+//     there are (distance) and how many are needed (gap). Only new claims are checked: plots saved closer
+//     than that, from before the rule, stay as they are.
 //   - Removing: breaking the marker removes the plot. Only the owner can break it, because the marker
 //     stands in the middle of its own plot (and the admin, who can break anything). Overwriting the
 //     marker with another block does the same. A marker left with no plot (the admin removed the plot)
@@ -65,7 +69,7 @@ package network
 // client can give the item back. Storage and microscope requests also get their usual storageResult
 // with reason "protected", so their items come back as for any refusal.
 //
-// The client hears every plot as claimList {claims, spawn, radius} on connecting, after a recovery and
+// The client hears every plot as claimList {claims, spawn, radius, gap} on connecting, after a recovery and
 // after any change: each plot with its marker, its square, its owner's name, and what the client is
 // there: `mine` for its own one, `guest` for one it is invited to, nothing for a visitor. Only the owner
 // hears its guests, as {key, name, online}: the key is a hash of the plot and the guest's player id, good
@@ -105,18 +109,22 @@ const (
 	claimHomeCooldown = 30 * time.Second
 	// The most guests a plot may have.
 	claimMaxGuests = 16
+	// Free columns a new plot must leave between its edges and those of any other plot, and the spawn zone.
+	claimGap = 8
 )
 
 // Why something was refused (claimRefused.reason).
 const (
-	claimReasonPlot         = "claim"        // someone else's plot
-	claimReasonSpawn        = "spawn"        // the spawn zone
-	claimReasonOverlap      = "overlap"      // a new plot would overlap another
-	claimReasonOverlapSpawn = "overlapSpawn" // a new plot would overlap the spawn zone
-	claimReasonAlready      = "already"      // the player has a plot already
-	claimReasonReach        = "reach"        // too far to place the marker
-	claimReasonNoPlayer     = "noPlayer"     // no stable player: no plot can be theirs
-	claimReasonOwnerOnly    = "ownerOnly"    // the marker of a plot the player is only a guest of
+	claimReasonPlot          = "claim"         // someone else's plot
+	claimReasonSpawn         = "spawn"         // the spawn zone
+	claimReasonOverlap       = "overlap"       // a new plot would overlap another
+	claimReasonOverlapSpawn  = "overlapSpawn"  // a new plot would overlap the spawn zone
+	claimReasonAlready       = "already"       // the player has a plot already
+	claimReasonReach         = "reach"         // too far to place the marker
+	claimReasonNoPlayer      = "noPlayer"      // no stable player: no plot can be theirs
+	claimReasonOwnerOnly     = "ownerOnly"     // the marker of a plot the player is only a guest of
+	claimReasonTooClose      = "tooClose"      // a new plot would be closer than claimGap to another
+	claimReasonTooCloseSpawn = "tooCloseSpawn" // a new plot would be closer than claimGap to the spawn zone
 )
 
 // claimRect is a square of columns, both ends included.
@@ -133,6 +141,19 @@ func (r claimRect) contains(x, z int) bool {
 
 func (r claimRect) overlaps(o claimRect) bool {
 	return r.MinX <= o.MaxX && o.MinX <= r.MaxX && r.MinZ <= o.MaxZ && o.MinZ <= r.MaxZ
+}
+
+// gapTo is how many free columns lie between two squares, along x or z, whichever is more: negative when
+// they overlap. Two squares keep a gap of n when this is n or more.
+func (r claimRect) gapTo(o claimRect) int {
+	dx := max(o.MinX-r.MaxX-1, r.MinX-o.MaxX-1)
+	dz := max(o.MinZ-r.MaxZ-1, r.MinZ-o.MaxZ-1)
+	return max(dx, dz)
+}
+
+// grow is the square n columns bigger on every side.
+func (r claimRect) grow(n int) claimRect {
+	return claimRect{MinX: r.MinX - n, MinZ: r.MinZ - n, MaxX: r.MaxX + n, MaxZ: r.MaxZ + n}
 }
 
 // The spawn zone: 32 x 32 columns around the spawn point (0, 0). spawnZoneOn is off only in the tests of
@@ -394,27 +415,59 @@ func (b *claimBook) holds(owner string) bool {
 	return b.byOwner[owner] != nil
 }
 
-// create makes the plot of a marker at (x, y, z) for owner, or says why not (a claimReason, and the owner of
-// the plot it would overlap).
-func (b *claimBook) create(owner, ownerName string, x, y, z int) (Claim, string, string) {
+// nearestLocked is the plot whose edges are nearest a square's, among those closer than gap, and how many
+// free columns lie between them; nil if none is that close.
+func (b *claimBook) nearestLocked(r claimRect, gap int) (*Claim, int) {
+	var nearest *Claim
+	best := gap
+	for _, chunk := range claimChunks(r.grow(gap)) {
+		for _, c := range b.byChunk[chunk] {
+			d := r.gapTo(c.rect())
+			if d >= gap {
+				continue
+			}
+			if nearest == nil || d < best || (d == best && c.ID < nearest.ID) {
+				nearest, best = c, d
+			}
+		}
+	}
+	return nearest, best
+}
+
+// create makes the plot of a marker at (x, y, z) for owner, keeping claimGap from every other plot and from
+// the spawn zone, or says why not.
+func (b *claimBook) create(owner, ownerName string, x, y, z int) (Claim, *claimRefusal) {
+	return b.createSpaced(owner, ownerName, x, y, z, claimGap)
+}
+
+// createSpaced is create with another gap (0: only no overlap; the tests of other rules use it).
+func (b *claimBook) createSpaced(owner, ownerName string, x, y, z, gap int) (Claim, *claimRefusal) {
 	if owner == "" {
-		return Claim{}, claimReasonNoPlayer, ""
+		return Claim{}, &claimRefusal{Reason: claimReasonNoPlayer}
 	}
 	c := &Claim{ID: newRandomID("clm"), X: x, Y: y, Z: z, Owner: owner, OwnerName: claimCleanName(ownerName), CreatedAt: time.Now().UTC()}
 	r := c.rect()
-	if spawnZoneOn && r.overlaps(spawnZone) {
-		return Claim{}, claimReasonOverlapSpawn, ""
+	if spawnZoneOn {
+		if r.overlaps(spawnZone) {
+			return Claim{}, &claimRefusal{Reason: claimReasonOverlapSpawn}
+		}
+		if d := r.gapTo(spawnZone); d < gap {
+			return Claim{}, &claimRefusal{Reason: claimReasonTooCloseSpawn, Distance: d, Gap: gap}
+		}
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.byOwner[owner] != nil {
-		return Claim{}, claimReasonAlready, ""
+		return Claim{}, &claimRefusal{Reason: claimReasonAlready}
 	}
 	if other := b.overlapLocked(r); other != nil {
-		return Claim{}, claimReasonOverlap, other.OwnerName
+		return Claim{}, &claimRefusal{Reason: claimReasonOverlap, Owner: other.OwnerName}
+	}
+	if other, d := b.nearestLocked(r, gap); other != nil {
+		return Claim{}, &claimRefusal{Reason: claimReasonTooClose, Owner: other.OwnerName, Distance: d, Gap: gap}
 	}
 	b.indexLocked(c)
-	return c.clone(), "", ""
+	return c.clone(), nil
 }
 
 func (b *claimBook) remove(id string) (Claim, bool) {
@@ -619,6 +672,9 @@ type claimRefusal struct {
 	Owner  string  `json:"owner,omitempty"`
 	Blocks []Block `json:"blocks,omitempty"`
 	Placed string  `json:"placed,omitempty"`
+	// For tooClose and tooCloseSpawn: the free columns there are, and those needed.
+	Distance int `json:"distance,omitempty"`
+	Gap      int `json:"gap,omitempty"`
 }
 
 // claimCheck says whether this client may change column (x, z): nil when it may.
@@ -712,9 +768,9 @@ func claimPlaceBlock(client *Client, payload Block) (Block, *claimRefusal, bool)
 		if client != nil {
 			owner = client.stablePlayerID()
 		}
-		c, reason, other := claims.create(owner, client.username, payload.X, payload.Y, payload.Z)
-		if reason != "" {
-			return payload, &claimRefusal{Reason: reason, Owner: other}, false
+		c, refusal := claims.create(owner, client.username, payload.X, payload.Y, payload.Z)
+		if refusal != nil {
+			return payload, refusal, false
 		}
 		made = &c
 		payload.BlockType = claimMarkerBlock
@@ -854,7 +910,7 @@ func claimListMessage(list []Claim, me string, online map[string]bool) []byte {
 	for _, c := range list {
 		views = append(views, claimViewOf(c, me, online))
 	}
-	payload := map[string]interface{}{"claims": views, "radius": claimRadius}
+	payload := map[string]interface{}{"claims": views, "radius": claimRadius, "gap": claimGap}
 	if spawnZoneOn {
 		payload["spawn"] = spawnZone
 	}

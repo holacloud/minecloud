@@ -66,7 +66,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
     vm.runInContext(read('gameLang.js'), context, { filename: 'gameLang.js' });
     vm.runInContext(read('game/claims.js'), context, { filename: 'claims.js' });
     vm.runInContext(`Object.assign(this, { Game, CLAIM_TEXT, claimSay, claimZoneOf, claimZoneName, claimRefusalText, claimBorderSegments,
-        claimCorners, claimRectDistance, claimRectsOverlap, claimHomeSpot, claimChunksOf, setGameLang })`, context);
+        claimCorners, claimRectDistance, claimRectsOverlap, claimRectGap, claimHomeSpot, claimChunksOf, setGameLang })`, context);
 
     const blocks = new Map();
     const world = {
@@ -673,4 +673,46 @@ test('the admin may open someone else\'s panel, but the guests are the owner\'s 
     assert.ok(panel.classList.contains('visible'));
     assert.equal(panel.children.find((child) => child.className === 'claim-guests').hidden, true);
     assert.equal(panel.children.find((child) => child.className === 'claim-invite').hidden, true);
+});
+
+// ---- The gap between plots ----
+
+test('a new plot keeps 8 free blocks from any other and from the spawn area, and says how far it is', () => {
+    const { context, game, network, notice, moveTo } = fakeGame();
+    const list = plots('nobody');
+    list.gap = 8;
+    network.emit('claimList', list);
+    assert.equal(game.claimState.gap, 8);
+    game.selected = 'claim_marker';
+    const aimAt = (x, z) => { moveTo(x + 1, z + 1); game.aim = { position: { x, y: 64, z }, face: { normal: { x: 0, y: 1, z: 0 } } }; };
+    // Ana's plot ends at x 108; Beto's starts at 132.
+    aimAt(119, 100); // the marker goes on top of (119, 64, 100): its plot from x 111
+    game.placeBlock();
+    assert.equal(game.placed, undefined);
+    assert.equal(notice(), 'Demasiado cerca de la parcela de Ana: entre las dos quedarían 2 bloques libres y hacen falta 8.');
+    // Between Ana's (x 92..108) and Beto's (x 132..148): the nearest is named.
+    game.claimNoticeAt = -Infinity;
+    aimAt(127, 120);
+    game.placeBlock();
+    assert.equal(notice(), 'Demasiado cerca de la parcela de Beto: entre las dos quedarían 3 bloques libres y hacen falta 8.');
+    game.claimNoticeAt = -Infinity;
+    aimAt(28, 0);
+    game.placeBlock();
+    assert.equal(notice(), 'Demasiado cerca de la zona de inicio: quedarían 4 bloques libres hasta ella y hacen falta 8.');
+    aimAt(32, 0);
+    game.placeBlock();
+    assert.equal(game.placed, 1, '8 free columns from the spawn area go to the server');
+    // The server's refusals read the same, in both languages; a missing distance is 0.
+    context.setGameLang('EN');
+    game.claimNoticeAt = -Infinity;
+    network.emit('claimRefused', { reason: 'tooClose', owner: 'Ana', gap: 8, blocks: [] });
+    assert.equal(notice(), "Too close to Ana's plot: there would be 0 free blocks between them and 8 are needed.");
+    network.emit('claimRefused', { reason: 'tooCloseSpawn', distance: 5, gap: 8, blocks: [] });
+    assert.equal(notice(), 'Too close to the spawn area: there would be 5 free blocks up to it and 8 are needed.');
+    // The same count as the server's gapTo.
+    const a = { minX: 0, minZ: 0, maxX: 16, maxZ: 16 };
+    for (const [b, want] of [[{ minX: 17, minZ: 0, maxX: 33, maxZ: 16 }, 0], [{ minX: 25, minZ: 5, maxX: 41, maxZ: 21 }, 8], [{ minX: 20, minZ: 20, maxX: 36, maxZ: 36 }, 3], [{ minX: 10, minZ: 10, maxX: 26, maxZ: 26 }, -7]]) {
+        assert.equal(context.claimRectGap(a, b), want);
+        assert.equal(context.claimRectGap(b, a), want);
+    }
 });
