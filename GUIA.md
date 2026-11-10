@@ -661,3 +661,52 @@ Las cortinas (`<color>_curtain`, página 230, `js/game/decor.js`) se corren con 
   orientaciones × 2 estados × 2 lados, todos registrados. Una tira copia solo `drawn`: cada cortina conserva su color y su lado, y el
   servidor rechaza una tira que cambie un lado.
 - **Planos y `/build`:** colocan cada cortina con su nombre y estado, con `blockPlace`; no les afecta.
+
+## Parcelas
+
+Las parcelas (`claim_marker`, página 260, `js/game/claims.js`, `pkg/network/claims.go`) protegen un trozo del mundo para un
+jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes por cortesía.
+
+- **Mojón:** receta `Make Claim Marker` (C), 2 `stone_bricks` + 1 `copper_ore`. Colocarlo (un `blockPlace` de `claim_marker`)
+  es reclamar: bajo `blockEditMu`, el servidor mira el alcance (`storageReach`, 9 bloques), que el jugador estable
+  (`Client.stablePlayerID`, fase 1) no tenga ya parcela, y que el cuadrado no pise otra ni la zona de inicio; crea la parcela
+  y solo entonces escribe el bloque (si la escritura falla, la deshace). Si no, `claimRefused` con `reason` `already`,
+  `overlap` (y `owner`), `overlapSpawn`, `reach` o `noPlayer`, y el cliente devuelve el mojón al inventario.
+- **Tamaño:** 17 × 17 columnas centradas en el mojón (`claimRadius` = 8), del bedrock al cielo: la protección solo mira x y z.
+  Una por jugador. **Zona de inicio:** x y z de −16 a 15 (32 × 32 alrededor de (0, 0)), sin dueño.
+- **Quitar:** romper el mojón (solo el dueño o el administrador, porque está dentro de su propia parcela) o taparlo con otro
+  bloque quita la parcela. En el cliente, romperlo o «Quitar la parcela» en el panel preguntan antes.
+- **Guardado:** `world.json`, `claims` (por id: marcador, dueño, nombre, fecha). Al cargar se descarta lo imposible (sin dueño,
+  segunda del mismo dueño, solapes; se queda la más antigua). Índice por chunk (`byChunk`): una parcela toca como mucho 3 × 3
+  chunks y un chunk como mucho 4 parcelas, así que mirar una columna es un acceso a un mapa y unas pocas comparaciones.
+- **Protección (`claimCheck`):** se permite si la columna no es de nadie, si es de tu parcela o si eres el administrador (sesión
+  con la clave de creativo, `claimAdmin`: la única excepción, y explícita). Caminos protegidos: `blockPlace`, `blockBreak`,
+  `curtainStrip`, `glowSet`, `sprayPaint`, `logicPress`; `storageOpen`, `storagePut`, `storageTake` (todo almacén: cofres,
+  neveras, armarios, hornos, fundición, horno de arco, autoclave, incubadora, microscopio); `microscopePrepare`, `microscopeClear`,
+  `microscopeDrop`, `microscopeCapture`, `microscopeStain`; `cultureLoad`, `cultureInoculate`, `cultureHarvest`, `cultureSet`;
+  `constructionStock` (solo lo manda el administrador, pero pasa por la misma comprobación). Los almacenes contestan además su
+  `storageResult` con `reason: "protected"` (guardado en el registro, así un reenvío recibe la misma respuesta).
+- **Respuesta:** `claimRefused {reason, owner, blocks, placed}` solo al que lo mandó: `blocks` es lo que hay de verdad en las
+  celdas (con texto de cartel y demás), para deshacer su copia; `placed`, lo que pidió poner, para devolverle el objeto (solo
+  un bloque entero, no la mitad de arriba de una puerta, ni en creativo).
+- **Mecanismos:** un empujador solo mueve bloques dentro de su propia zona (nada, la zona de inicio o una parcela): todas las
+  celdas que toca, la del brazo y la libre del final incluidas (`mechSameZone`). Un empujador pegajoso no tira de un bloque de
+  otra zona (se recoge sin él). Un ascensor se mueve en la columna de su torno, que siempre es una sola zona; sus paradas solo
+  cuentan si están en esa zona. El mojón no se mueve (`mechFixed`).
+- **Ayudantes:** robot, castor y golem de cobre actúan desde el navegador de su dueño, con sus mensajes: el servidor los trata
+  como a él, y además preguntan `claimRefusalAt` antes de actuar.
+- **Sin proteger, a propósito:** `sampleTake` (el agua o el musgo siguen ahí), `signVote`, `powerCrank`, `powerFeed`,
+  `powerProbe`, `soundBlockPlay`. **Imposible de proteger** (lo decide el navegador y el servidor no lo ve): mascotas y mobs,
+  trampas y jaulas, hormigueros de tarro, objetos tirados, el inventario. Placas de presión y sensores de proximidad reaccionan a
+  cualquiera, como deben.
+- **Lista:** `claimList {claims, spawn, radius}` al conectar, tras recuperar el jugador y tras cada cambio; cada parcela con su
+  cuadrado, el nombre del dueño y `mine`. El id de jugador del dueño no sale nunca del servidor (salvo al administrador).
+  `playerHolds` (fase 1) es «tiene parcela», así que un jugador con parcela no se borra al recuperar otro.
+- **Cliente:** borde a menos de 12 bloques (líneas en el suelo, columnas en las esquinas; verde la tuya, ámbar ajena, azul la
+  zona de inicio), aviso al entrar, panel del mojón (clic derecho del dueño), comprobaciones antes de minar, colocar o abrir
+  (un visitante puede usar herramientas que solo miran: multímetro, cinta métrica, termómetro, tubo de muestras…).
+- **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
+  <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona
+  de inicio salvo con `force` al final.
+- **Visor:** opción «Show plots» (apagada al cargar), de `/viewer-api/claims`: cuadrados, altura del mojón y nombre del dueño, sin
+  ids (`js/viewer/claimMarkers.js`).

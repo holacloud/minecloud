@@ -54,6 +54,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
 - A workshop for materials: the coal-fired [foundry](235), and the [electric arc furnace](236) that makes silicon.
 - [The small world](237): the [microscope](238), [samples](239), [tardigrades](240) and [cryptobiosis](241), [cells](242), [protozoa and algae](243) and [bacteria](244), with [stains](246), [filters and dark-field](247); and [lifeless things](258) under it, [opaque, clear or amorphous](259).
 - [Cultures and the incubator](253): agar plates, the [growth curve](254) and temperature, and [sterilising](255) with the autoclave, the filter and Fleming's mould.
+- [Plots](260): a marker and 17 × 17 blocks where only you can change anything; the spawn area belongs to nobody.
 
 ---
 

@@ -321,6 +321,7 @@ New topics after the first edition, listed in their index (16, 48 or 98) and in 
 | 255 | Esterilizar: autoclave, filtro y moho | Sterilising: autoclave, filter and mould | autoclave, agar_plate_unsterile, water_filter, sample_filtered, `mould` (organism), culture_mould: spores and 121 °C, contamination, penicillin's clear ring, Fleming's story |
 | 258 | Lo que no vive, al microscopio | Lifeless things under the microscope | the specimens (js/game/specimens.js, specimens_text.js, pkg/network/microscope_specimens.go): every family, what 40x and 400x show, the stains on them (microscope 238, contents 0) |
 | 259 | Opaco, transparente y amorfo | Opaque, clear and amorphous | transmitted light: edges of clear things, dissolved colour, opaque things black and lit from above only at low power, glass amorphous, alizarin red and polarised light (258, 238, contents 0) |
+| 260 | Parcelas | Plots | claim_marker, js/game/claims.js, pkg/network/claims.go: 17 x 17 from bedrock to the sky, one per player, the 32 x 32 spawn area, the border and the notice, the marker's panel, what is protected and what the server cannot see (contents 0) |
 
 ### Secret pages
 
