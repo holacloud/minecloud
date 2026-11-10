@@ -3,9 +3,13 @@
 // - The claim marker (claim_marker, made in C from stone bricks and copper ore): placed, it claims the plot
 //   of 17 x 17 columns around it, from bedrock to the sky, if the server agrees (one plot per player, no
 //   overlap with another plot nor with the spawn zone, in reach). Right click on your own marker opens its
-//   panel: size, coordinates, «Quitar la parcela». Breaking your own marker asks first, in that panel.
-// - The server tells every plot in claimList {claims, spawn, radius}: each with its square, its owner's name
-//   and `mine`. From that this file draws the borders near the player (soft lines on the ground and faint
+//   panel: size, coordinates, guests, «Quitar la parcela». Breaking your own marker asks first, in that panel.
+// - Guests: in that panel the owner invites connected players (from playerList, sent by their page id; the
+//   server keeps them by stable player id) and removes them (by the key claimList gave). A guest builds,
+//   breaks and opens things there like the owner, but the marker, its panel and inviting stay the owner's;
+//   to a guest the marker only says whose plot it is, as to a visitor. Guests' plots have a violet border.
+// - The server tells every plot in claimList {claims, spawn, radius}: each with its square, its owner's name,
+//   `mine` or `guest`, and for the owner its guests {key, name, online}. From that this file draws the borders near the player (soft lines on the ground and faint
 //   columns at the corners), says «Parcela de Ana» on walking in, and checks before acting, so that in
 //   someone else's plot or the spawn zone nothing is mined, placed or opened and the player is told why.
 //   The check here is only a courtesy: the server refuses anyway, with claimRefused {reason, owner, blocks,
@@ -31,7 +35,7 @@ const CLAIM_CORNER_HEIGHT = 5;
 // Reach within which the checks before acting look at all (blocks).
 const CLAIM_CHECK_NEAR = 8;
 const CLAIM_NOTICE_MS = 2600;
-const CLAIM_COLORS = { mine: 0x7cf29a, other: 0xffc857, spawn: 0x8fd3ff };
+const CLAIM_COLORS = { mine: 0x7cf29a, guest: 0xc39bff, other: 0xffc857, spawn: 0x8fd3ff };
 // What a visitor may still hold and use on someone else's plot: tools that only look.
 // Going home: how long the chunks of the plot are waited for before landing on what has arrived (and before
 // giving up), and how far up and down from the marker a place to stand is looked for.
@@ -47,6 +51,9 @@ const CLAIM_TEXT = {
     plotOf: { ES: 'Parcela de {owner}', EN: "{owner}'s plot" },
     plotNobody: { ES: 'Parcela de otro jugador', EN: "Another player's plot" },
     yourPlot: { ES: 'Tu parcela', EN: 'Your plot' },
+    guestPlotOf: { ES: 'Parcela de {owner} (eres invitado)', EN: "{owner}'s plot (you are a guest)" },
+    guestPlotNobody: { ES: 'Parcela de otro jugador (eres invitado)', EN: "Another player's plot (you are a guest)" },
+    ownerOnly: { ES: 'Solo {owner} puede quitar su mojón: tú eres invitado.', EN: "Only {owner} can remove their marker: you are a guest." },
     spawn: { ES: 'Zona de inicio', EN: 'Spawn area' },
     refusedPlot: { ES: 'Parcela de {owner}: aquí no puedes cambiar nada.', EN: "{owner}'s plot: you can't change anything here." },
     refusedPlotNobody: { ES: 'Parcela de otro jugador: aquí no puedes cambiar nada.', EN: "Another player's plot: you can't change anything here." },
@@ -63,7 +70,22 @@ const CLAIM_TEXT = {
     panelSize: { ES: 'Tamaño: {size} × {size} bloques, del fondo del mundo al cielo.', EN: 'Size: {size} × {size} blocks, from the bottom of the world to the sky.' },
     panelMarker: { ES: 'Mojón en X {x}, Y {y}, Z {z}.', EN: 'Marker at X {x}, Y {y}, Z {z}.' },
     panelCorners: { ES: 'De X {minX} a {maxX} y de Z {minZ} a {maxZ}.', EN: 'From X {minX} to {maxX} and from Z {minZ} to {maxZ}.' },
-    panelHelp: { ES: 'Aquí solo tú puedes construir, romper, abrir cofres y usar máquinas. Los demás pueden entrar y mirar.', EN: 'Only you can build, break, open chests and use machines here. Others can come in and look.' },
+    panelHelp: { ES: 'Aquí solo tú y tus invitados podéis construir, romper, abrir cofres y usar máquinas. Los demás pueden entrar y mirar.', EN: 'Only you and your guests can build, break, open chests and use machines here. Others can come in and look.' },
+    guestsTitle: { ES: 'Invitados', EN: 'Guests' },
+    guestsNone: { ES: 'Nadie invitado todavía.', EN: 'Nobody invited yet.' },
+    guestsHelp: { ES: 'Tus invitados pueden construir, romper y abrir cofres aquí, pero no quitar la parcela ni invitar a otros.', EN: 'Your guests can build, break and open chests here, but not remove the plot nor invite others.' },
+    guestOnline: { ES: '{name} · conectado', EN: '{name} · online' },
+    guestRemove: { ES: 'Quitar', EN: 'Remove' },
+    inviteTitle: { ES: 'Invitar a un jugador conectado:', EN: 'Invite a player who is online:' },
+    inviteNobody: { ES: 'No hay nadie más conectado para invitar.', EN: 'There is nobody else online to invite.' },
+    inviteButton: { ES: 'Invitar a {name}', EN: 'Invite {name}' },
+    invited: { ES: 'Has invitado a {name} a tu parcela.', EN: 'You invited {name} to your plot.' },
+    uninvited: { ES: '{name} ya no es invitado de tu parcela.', EN: '{name} is no longer a guest of your plot.' },
+    guestErrorPlayer: { ES: 'Ese jugador ya no está conectado.', EN: 'That player is no longer online.' },
+    guestErrorFull: { ES: 'Tu parcela ya tiene todos los invitados que caben.', EN: 'Your plot already has as many guests as it can.' },
+    guestErrorSelf: { ES: 'No puedes invitarte a ti mismo.', EN: "You can't invite yourself." },
+    guestErrorNone: { ES: 'Solo el dueño de una parcela puede invitar.', EN: 'Only the owner of a plot can invite.' },
+    guestErrorUnknown: { ES: 'Ese invitado ya no estaba en la lista.', EN: 'That guest was no longer on the list.' },
     panelRemove: { ES: 'Quitar la parcela', EN: 'Remove the plot' },
     panelAsk: { ES: '¿Seguro? La parcela desaparece y cualquiera podrá cambiar lo que hay dentro. El mojón se rompe y lo recoges.', EN: 'Are you sure? The plot goes away and anybody will be able to change what is inside. The marker breaks and you pick it up.' },
     panelYes: { ES: 'Sí, quitarla', EN: 'Yes, remove it' },
@@ -136,7 +158,13 @@ function claimZoneName(zone) {
     if (zone.kind === 'spawn') return claimSay('spawn');
     if (zone.claim.mine) return claimSay('yourPlot');
     const owner = claimOwnerName(zone.claim.owner);
+    if (zone.claim.guest) return owner ? claimSay('guestPlotOf', { owner }) : claimSay('guestPlotNobody');
     return owner ? claimSay('plotOf', { owner }) : claimSay('plotNobody');
+}
+
+// Whether the player may change things in this plot: theirs, or one they are a guest of.
+function claimIsMember(claim) {
+    return Boolean(claim && (claim.mine || claim.guest));
 }
 
 // What to tell the player about a refusal (the server's claimRefused, or the same shape from here).
@@ -150,6 +178,7 @@ function claimRefusalText(refusal) {
         case 'already': return claimSay('already');
         case 'reach': return claimSay('reach');
         case 'noPlayer': return claimSay('noPlayer');
+        case 'ownerOnly': return claimSay('ownerOnly', { owner: owner || claimSay('nameless') });
         default: return '';
     }
 }
@@ -234,6 +263,12 @@ function claimHomeSpot(claim, query) {
     return null;
 }
 
+// Takes every child out of an element.
+function claimEmpty(element) {
+    if (typeof element.replaceChildren === 'function') element.replaceChildren();
+    else while (element.firstChild) element.removeChild(element.firstChild);
+}
+
 // The corner column of each chunk (16 x 16) a plot's square covers.
 function claimChunksOf(rect, size = 16) {
     const chunks = [];
@@ -294,6 +329,11 @@ const CLAIM_CSS = `
 #claim-panel .claim-row{display:flex;gap:8px;flex-wrap:wrap}
 #claim-panel button{min-height:44px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
 #claim-panel button.claim-danger{border-color:rgba(255,120,120,.6);background:rgba(160,40,40,.35)}
+#claim-panel h4{font-size:14px;margin:4px 0 0}
+#claim-panel .claim-guests{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow-y:auto}
+#claim-panel .claim-guest{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#claim-panel .claim-guest span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#claim-panel .claim-invite{display:flex;gap:6px;flex-wrap:wrap}
 `;
 
 Object.assign(Game.prototype, {
@@ -306,6 +346,8 @@ Object.assign(Game.prototype, {
         this.network.on('claimMade', () => this.claimNotice(claimSay('claimed')));
         this.network.on('claimAdminResult', (payload) => this.claimOnAdminResult(payload || {}));
         this.network.on('claimHomeResult', (payload) => this.claimOnHome(payload || {}));
+        this.network.on('claimGuestResult', (payload) => this.claimOnGuestResult(payload || {}));
+        this.network.on('playerList', (payload) => this.claimOnPlayerList(payload || {}));
         onGameLangChange(() => { this.claimRenderPanel(); this.claimLabelPauseButton(); });
         this.claimAddPauseButton();
     },
@@ -470,7 +512,7 @@ Object.assign(Game.prototype, {
         const zone = this.claimZoneAt(x, z);
         if (!zone) return null;
         if (zone.kind === 'spawn') return { reason: 'spawn' };
-        if (zone.claim.mine) return null;
+        if (claimIsMember(zone.claim)) return null;
         return { reason: 'claim', owner: zone.claim.owner };
     },
 
@@ -486,7 +528,7 @@ Object.assign(Game.prototype, {
         const at = this.cameraController.getPosition();
         const near = (rect) => claimRectDistance(rect, at.x, at.z) <= CLAIM_CHECK_NEAR;
         if (this.claimState.spawn && near(this.claimState.spawn)) return true;
-        return this.claimState.claims.some((claim) => !claim.mine && near(claim));
+        return this.claimState.claims.some((claim) => !claimIsMember(claim) && near(claim));
     },
 
     // The first zone of someone else (or the spawn) that a box of columns covers, by name; null if none.
@@ -494,7 +536,7 @@ Object.assign(Game.prototype, {
         if (!this.claimState) return null;
         const box = { minX, minZ, maxX, maxZ };
         if (this.claimState.spawn && claimRectsOverlap(box, this.claimState.spawn)) return claimZoneName({ kind: 'spawn' });
-        const claim = this.claimState.claims.find((c) => !c.mine && claimRectsOverlap(box, c));
+        const claim = this.claimState.claims.find((c) => !claimIsMember(c) && claimRectsOverlap(box, c));
         return claim ? claimZoneName({ kind: 'plot', claim }) : null;
     },
 
@@ -567,7 +609,10 @@ Object.assign(Game.prototype, {
         const now = typeof performance === 'object' ? performance.now() : Date.now();
         const zones = [];
         if (this.claimState.spawn) zones.push({ rect: this.claimState.spawn, color: CLAIM_COLORS.spawn, key: 'spawn' });
-        for (const claim of this.claimState.claims) zones.push({ rect: claim, color: claim.mine ? CLAIM_COLORS.mine : CLAIM_COLORS.other, key: claim.id });
+        for (const claim of this.claimState.claims) {
+            const color = claim.mine ? CLAIM_COLORS.mine : claim.guest ? CLAIM_COLORS.guest : CLAIM_COLORS.other;
+            zones.push({ rect: claim, color, key: `${claim.id}:${color}` });
+        }
         const near = zones.filter((zone) => claimRectDistance(zone.rect, at.x, at.z) <= CLAIM_BORDER_NEAR);
         const nearKey = near.map((zone) => zone.key).join('|');
         const moved = !this.claimBorderAt || Math.hypot(at.x - this.claimBorderAt.x, at.y - this.claimBorderAt.y, at.z - this.claimBorderAt.z) > 3;
@@ -655,6 +700,11 @@ Object.assign(Game.prototype, {
             marker: make('p'),
             corners: make('p'),
             help: make('p', 'claim-help'),
+            guestsTitle: make('h4'),
+            guestsHelp: make('p', 'claim-help'),
+            guests: make('div', 'claim-guests'),
+            inviteTitle: make('p'),
+            invite: make('div', 'claim-invite'),
             ask: make('p'),
             row: make('div', 'claim-row'),
             remove: make('button', 'claim-danger'),
@@ -663,7 +713,8 @@ Object.assign(Game.prototype, {
             close: make('button')
         };
         for (const button of [parts.remove, parts.yes, parts.cancel, parts.close]) button.type = 'button';
-        [parts.title, parts.size, parts.marker, parts.corners, parts.help, parts.ask, parts.row].forEach((child) => panel.appendChild(child));
+        [parts.title, parts.size, parts.marker, parts.corners, parts.help, parts.guestsTitle, parts.guestsHelp, parts.guests, parts.inviteTitle,
+            parts.invite, parts.ask, parts.row].forEach((child) => panel.appendChild(child));
         [parts.remove, parts.yes, parts.cancel, parts.close].forEach((child) => parts.row.appendChild(child));
         parts.remove.addEventListener('click', () => { this.claimAsking = true; this.claimRenderPanel(); });
         parts.cancel.addEventListener('click', () => { this.claimAsking = false; this.claimRenderPanel(); });
@@ -718,6 +769,81 @@ Object.assign(Game.prototype, {
         parts.yes.hidden = !this.claimAsking;
         parts.cancel.hidden = !this.claimAsking;
         parts.remove.hidden = this.claimAsking;
+        this.claimRenderGuests(parts, claim);
+    },
+
+    // ---- Guests ----
+
+    // The guests of the plot, each with «Quitar», and a button for each connected player who is not one yet.
+    // Only the owner manages them (the admin sees the panel, not this).
+    claimRenderGuests(parts, claim) {
+        const manage = Boolean(claim.mine);
+        for (const part of [parts.guestsTitle, parts.guestsHelp, parts.guests, parts.inviteTitle, parts.invite]) part.hidden = !manage;
+        claimEmpty(parts.guests);
+        claimEmpty(parts.invite);
+        if (!manage) return;
+        parts.guestsTitle.textContent = claimSay('guestsTitle');
+        parts.guestsHelp.textContent = claimSay('guestsHelp');
+        const guests = Array.isArray(claim.guests) ? claim.guests.filter((guest) => guest && typeof guest.key === 'string') : [];
+        if (!guests.length) {
+            const none = document.createElement('p');
+            none.className = 'claim-help';
+            none.textContent = claimSay('guestsNone');
+            parts.guests.appendChild(none);
+        }
+        for (const guest of guests) {
+            const row = document.createElement('div');
+            row.className = 'claim-guest';
+            const name = document.createElement('span');
+            const shown = claimOwnerName(guest.name) || claimSay('nameless');
+            name.textContent = guest.online ? claimSay('guestOnline', { name: shown }) : shown;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'claim-danger';
+            remove.textContent = claimSay('guestRemove');
+            remove.addEventListener('click', () => this.claimSendGuest({ action: 'remove', key: guest.key }));
+            row.appendChild(name);
+            row.appendChild(remove);
+            parts.guests.appendChild(row);
+        }
+        const taken = new Set(guests.filter((guest) => guest.online).map((guest) => claimOwnerName(guest.name).toLowerCase()));
+        const candidates = (this.claimPlayers || []).filter((player) => !taken.has(player.name.toLowerCase()));
+        parts.inviteTitle.textContent = candidates.length ? claimSay('inviteTitle') : claimSay('inviteNobody');
+        for (const player of candidates) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = claimSay('inviteButton', { name: player.name });
+            button.addEventListener('click', () => this.claimSendGuest({ action: 'add', player: player.id }));
+            parts.invite.appendChild(button);
+        }
+    },
+
+    claimSendGuest(request) {
+        if (!this.network || !this.network.connected) {
+            this.claimNotice(claimSay('offline'));
+            return;
+        }
+        this.network.send('claimGuest', request);
+    },
+
+    claimOnGuestResult(payload) {
+        const name = claimOwnerName(payload.name) || claimSay('nameless');
+        if (payload.ok) {
+            this.claimNotice(claimSay(payload.action === 'remove' ? 'uninvited' : 'invited', { name }));
+            return;
+        }
+        const key = { player: 'guestErrorPlayer', full: 'guestErrorFull', self: 'guestErrorSelf', none: 'guestErrorNone', unknown: 'guestErrorUnknown' }[payload.error];
+        if (key) this.claimNotice(claimSay(key));
+    },
+
+    // Who else is connected, by page id and name (playerList), for inviting.
+    claimOnPlayerList(payload) {
+        const me = this.network && this.network.playerId;
+        this.claimPlayers = (Array.isArray(payload.players) ? payload.players : [])
+            .filter((player) => player && typeof player.id === 'string' && player.id !== me && claimOwnerName(player.name))
+            .map((player) => ({ id: player.id, name: claimOwnerName(player.name) }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        if (this.claimPanelFor) this.claimRenderPanel();
     },
 
     // «Sí, quitarla»: the marker is broken as the player would break it, which removes the plot.
@@ -829,6 +955,11 @@ Object.assign(Game.prototype, {
         const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
         const key = `${position.x},${position.y},${position.z}`;
         const claim = String(type || '').split(':')[0] === CLAIM_MARKER ? this.claimAtMarker(position.x, position.y, position.z) : null;
+        // A guest may break anything in the plot but its marker.
+        if (claim && claim.guest && !claim.mine && !this.creativeMode) {
+            this.claimNotice(claimRefusalText({ reason: 'ownerOnly', owner: claim.owner }));
+            return false;
+        }
         // Breaking a plot's marker removes the plot: it asks first.
         if (claim && this.claimConfirmedKey !== key) {
             this.claimOpenPanel(claim, true);
@@ -887,7 +1018,7 @@ Object.assign(Game.prototype, {
     }
 });
 
-// Right click on a marker: its owner gets the panel; anyone else, whose it is.
+// Right click on a marker: its owner gets the panel; anyone else, guests too, whose it is.
 registerItemUseHandler(function (itemType, hit) {
     if (!hit || (this.cameraController && this.cameraController.isCrouching)) return false;
     const at = this.world.getBlockPositionFromIntersection(hit);

@@ -2,7 +2,7 @@
 
 ![Mojón](item:claim_marker)
 
-Una **parcela** es un trozo del mundo que es tuyo: dentro, solo tú puedes construir, romper, abrir cofres y usar máquinas. Los demás pueden entrar, pasear y mirar lo que has hecho, pero no cambiar nada.
+Una **parcela** es un trozo del mundo que es tuyo: dentro, solo tú (y quien tú invites) puedes construir, romper, abrir cofres y usar máquinas. Los demás pueden entrar, pasear y mirar lo que has hecho, pero no cambiar nada.
 
 ## El mojón
 
@@ -19,13 +19,21 @@ El servidor lo comprueba todo. Si no se puede, el mojón no se pone, vuelve a tu
 
 ## El borde
 
-Al acercarte a una parcela se dibuja su contorno con líneas suaves sobre el suelo y unas columnas tenues en las esquinas: **verde** la tuya, **ámbar** la de otro, **azul** la zona de inicio. Al entrar sale un aviso breve: «Tu parcela», «Parcela de Ana» o «Zona de inicio».
+Al acercarte a una parcela se dibuja su contorno con líneas suaves sobre el suelo y unas columnas tenues en las esquinas: **verde** la tuya, **violeta** una en la que estás invitado, **ámbar** la de otro, **azul** la zona de inicio. Al entrar sale un aviso breve: «Tu parcela», «Parcela de Ana (eres invitado)», «Parcela de Ana» o «Zona de inicio».
 
 ## El panel del mojón
 
-Clic derecho en **tu** mojón: el tamaño, las coordenadas del mojón y de las esquinas, y el botón **Quitar la parcela**. Antes de quitarla te pregunta si estás seguro. Romper el mojón a mano hace lo mismo: te pregunta primero.
+Clic derecho en **tu** mojón: el tamaño, las coordenadas del mojón y de las esquinas, tus **invitados** y el botón **Quitar la parcela**. Antes de quitarla te pregunta si estás seguro. Romper el mojón a mano hace lo mismo: te pregunta primero.
 
 Nadie más puede romper tu mojón. Si es el de otro, el clic derecho solo te dice de quién es.
+
+## Invitados
+
+En el panel del mojón puedes **invitar** a otros jugadores: sale un botón «Invitar a…» por cada jugador conectado. Cada invitado aparece en la lista con su nombre (y «conectado» si está jugando); si se desconecta sigue en la lista, con el último nombre que usó. **Quitar** junto a su nombre le retira el permiso al momento.
+
+Un invitado puede construir, romper, abrir cofres y usar máquinas en tu parcela, como tú. Lo que no puede: romper o tapar el mojón (o sea, quitar la parcela), abrir el panel del mojón ni invitar a nadie. Para él, el clic derecho en el mojón solo dice de quién es la parcela.
+
+La invitación es para **tu jugador**, no para un nombre: si el invitado cambia de nombre, sigue invitado.
 
 ## Ir a tu parcela
 

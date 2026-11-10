@@ -19,8 +19,19 @@ package network
 //     chunks and a chunk is touched by at most 4 plots, so finding the plot of a column is a map lookup
 //     and a few comparisons, whatever the number of plots.
 //
+// Guests (PLAN_PARCELAS.md, phase 4): the owner may invite other players to their plot, from the marker's
+// panel. A guest is kept by their stable player id (never by name) with the name they last played with,
+// in the plot's "guests" in world.json; at most claimMaxGuests. claimGuest {action, player | key} from the
+// owner, and only the owner: "add" {player} takes the page id of a connected player (or, failing that, a
+// connected player's name when only one plays with it); "remove" {key} takes the key the owner was shown.
+// Answered with claimGuestResult {action, ok, error, name}; any change is saved and told to everyone.
+// A guest builds, breaks and opens containers in that plot like the owner, because claimCheck (below)
+// lets them; what stays the owner's alone is the marker (breaking it or covering it, which would remove
+// the plot: claimMarkerGuard, reason "ownerOnly"), the marker's panel, inviting, and going home there.
+// Removing a guest takes effect on their next message: every check reads the book as it is.
+//
 // Protection (claimCheck): a change at column (x, z) by a client is allowed when the column is in no
-// zone, when the column is in the client's own plot, or when the client is the admin: a session that
+// zone, when the column is in a plot the client owns or is a guest of, or when the client is the admin: a session that
 // passed creative auth (Client.creative), the one explicit bypass, decided in claimAdmin and nowhere
 // else. Everybody else can walk in, look, read signs, but every message that would change the world or
 // take something out of it is refused. The paths that check it are listed in claimProtectedMessages
@@ -55,8 +66,11 @@ package network
 // with reason "protected", so their items come back as for any refusal.
 //
 // The client hears every plot as claimList {claims, spawn, radius} on connecting, after a recovery and
-// after any change: each plot with its marker, its square, its owner's name and `mine` for its own one.
-// The owner's player id never leaves the server (identity.go keeps those private), except to the admin.
+// after any change: each plot with its marker, its square, its owner's name, and what the client is
+// there: `mine` for its own one, `guest` for one it is invited to, nothing for a visitor. Only the owner
+// hears its guests, as {key, name, online}: the key is a hash of the plot and the guest's player id, good
+// for removing them and nothing else. Player ids never leave the server (identity.go keeps those private),
+// except to the admin.
 //
 // Going home: claimHome {} asks where the sender's own plot is, from anywhere. Only an owner gets an
 // answer with a place (a guest of a plot, or anybody else, hears reason "none"): claimHomeResult {ok, x, y,
@@ -65,6 +79,8 @@ package network
 // player, whatever page asks: sooner is reason "wait" with the seconds left. It costs nothing.
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"sort"
@@ -87,6 +103,8 @@ const (
 	claimMaxPayload = 4 * 1024
 	// How often a player may go home to their plot.
 	claimHomeCooldown = 30 * time.Second
+	// The most guests a plot may have.
+	claimMaxGuests = 16
 )
 
 // Why something was refused (claimRefused.reason).
@@ -98,6 +116,7 @@ const (
 	claimReasonAlready      = "already"      // the player has a plot already
 	claimReasonReach        = "reach"        // too far to place the marker
 	claimReasonNoPlayer     = "noPlayer"     // no stable player: no plot can be theirs
+	claimReasonOwnerOnly    = "ownerOnly"    // the marker of a plot the player is only a guest of
 )
 
 // claimRect is a square of columns, both ends included.
@@ -132,6 +151,46 @@ type Claim struct {
 	Owner     string    `json:"owner"`
 	OwnerName string    `json:"ownerName,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
+	// By stable player id.
+	Guests map[string]ClaimGuest `json:"guests,omitempty"`
+}
+
+// ClaimGuest is a player invited to a plot: the name they last played with.
+type ClaimGuest struct {
+	Name    string    `json:"name,omitempty"`
+	AddedAt time.Time `json:"addedAt"`
+}
+
+// clone is a copy that shares nothing with the book.
+func (c Claim) clone() Claim {
+	if c.Guests != nil {
+		guests := make(map[string]ClaimGuest, len(c.Guests))
+		for id, guest := range c.Guests {
+			guests[id] = guest
+		}
+		c.Guests = guests
+	}
+	return c
+}
+
+// roleOf is what a player is in this plot: "owner", "guest" or "".
+func (c *Claim) roleOf(me string) string {
+	switch {
+	case me == "":
+		return ""
+	case me == c.Owner:
+		return "owner"
+	}
+	if _, ok := c.Guests[me]; ok {
+		return "guest"
+	}
+	return ""
+}
+
+// claimGuestKey names a guest to the owner without their player id.
+func claimGuestKey(claimID, player string) string {
+	sum := sha256.Sum256([]byte(claimID + "|" + player))
+	return hex.EncodeToString(sum[:8])
 }
 
 func (c Claim) rect() claimRect {
@@ -208,6 +267,79 @@ func (b *claimBook) unindexLocked(c *Claim) {
 	}
 }
 
+// checkAt is what protection needs of a column: whether a plot covers it, its owner's name, and whether
+// me may change it (its owner or a guest).
+func (b *claimBook) checkAt(x, z int, me string) (inPlot bool, ownerName string, member bool) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	c := b.atLocked(x, z)
+	if c == nil {
+		return false, "", false
+	}
+	return true, c.OwnerName, c.roleOf(me) != ""
+}
+
+// markerOwner is the plot whose marker is at (x, y, z), if any: its owner and owner's name.
+func (b *claimBook) markerOwner(x, y, z int) (owner, ownerName string, ok bool) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	c := b.byMarker[[3]int{x, y, z}]
+	if c == nil {
+		return "", "", false
+	}
+	return c.Owner, c.OwnerName, true
+}
+
+// addGuest invites a player to owner's plot (or updates their name). Returns the plot, or an error:
+// "none" (no plot), "self", "full".
+func (b *claimBook) addGuest(owner, guest, name string) (Claim, string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	c := b.byOwner[owner]
+	if owner == "" || c == nil {
+		return Claim{}, "none"
+	}
+	if guest == owner {
+		return c.clone(), "self"
+	}
+	known, ok := c.Guests[guest]
+	if !ok && len(c.Guests) >= claimMaxGuests {
+		return c.clone(), "full"
+	}
+	if c.Guests == nil {
+		c.Guests = make(map[string]ClaimGuest)
+	}
+	if !ok {
+		known.AddedAt = time.Now().UTC()
+	}
+	if clean := claimCleanName(name); clean != "" {
+		known.Name = clean
+	}
+	c.Guests[guest] = known
+	return c.clone(), ""
+}
+
+// removeGuest takes away the guest of owner's plot with this key. Returns the guest's name, or an error:
+// "none" (no plot), "unknown".
+func (b *claimBook) removeGuest(owner, key string) (string, string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	c := b.byOwner[owner]
+	if owner == "" || c == nil {
+		return "", "none"
+	}
+	for id, guest := range c.Guests {
+		if claimGuestKey(c.ID, id) == key {
+			delete(c.Guests, id)
+			if len(c.Guests) == 0 {
+				c.Guests = nil
+			}
+			return guest.Name, ""
+		}
+	}
+	return "", "unknown"
+}
+
 // atLocked is the plot of a column, nil if none.
 func (b *claimBook) atLocked(x, z int) *Claim {
 	for _, c := range b.byChunk[[2]int{claimChunkOf(x), claimChunkOf(z)}] {
@@ -223,7 +355,7 @@ func (b *claimBook) at(x, z int) (Claim, bool) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	if c := b.atLocked(x, z); c != nil {
-		return *c, true
+		return c.clone(), true
 	}
 	return Claim{}, false
 }
@@ -248,7 +380,7 @@ func (b *claimBook) ofOwner(owner string) (Claim, bool) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	if c := b.byOwner[owner]; c != nil {
-		return *c, true
+		return c.clone(), true
 	}
 	return Claim{}, false
 }
@@ -282,7 +414,7 @@ func (b *claimBook) create(owner, ownerName string, x, y, z int) (Claim, string,
 		return Claim{}, claimReasonOverlap, other.OwnerName
 	}
 	b.indexLocked(c)
-	return *c, "", ""
+	return c.clone(), "", ""
 }
 
 func (b *claimBook) remove(id string) (Claim, bool) {
@@ -293,7 +425,7 @@ func (b *claimBook) remove(id string) (Claim, bool) {
 		return Claim{}, false
 	}
 	b.unindexLocked(c)
-	return *c, true
+	return c.clone(), true
 }
 
 // removeAtMarker removes the plot whose marker is at (x, y, z), if there is one.
@@ -305,7 +437,7 @@ func (b *claimBook) removeAtMarker(x, y, z int) (Claim, bool) {
 		return Claim{}, false
 	}
 	b.unindexLocked(c)
-	return *c, true
+	return c.clone(), true
 }
 
 // setOwner gives a plot to another player (admin). Returns a claimReason when it cannot.
@@ -317,32 +449,42 @@ func (b *claimBook) setOwner(id, owner, ownerName string) (Claim, string, bool) 
 		return Claim{}, "", false
 	}
 	if owner == "" {
-		return *c, claimReasonNoPlayer, true
+		return c.clone(), claimReasonNoPlayer, true
 	}
 	if other := b.byOwner[owner]; other != nil && other != c {
-		return *c, claimReasonAlready, true
+		return c.clone(), claimReasonAlready, true
 	}
 	b.unindexLocked(c)
 	c.Owner = owner
 	c.OwnerName = claimCleanName(ownerName)
+	// The new owner is no longer a guest of their own plot.
+	delete(c.Guests, owner)
 	b.indexLocked(c)
-	return *c, "", true
+	return c.clone(), "", true
 }
 
-// rename keeps an owner's shown name up to date (the name they last played with). Says whether it changed.
-func (b *claimBook) rename(owner, name string) bool {
+// rename keeps a player's shown name up to date (the name they last played with), as an owner and as a
+// guest. Says whether it changed.
+func (b *claimBook) rename(player, name string) bool {
 	name = claimCleanName(name)
-	if owner == "" || name == "" {
+	if player == "" || name == "" {
 		return false
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	c := b.byOwner[owner]
-	if c == nil || c.OwnerName == name {
-		return false
+	changed := false
+	if c := b.byOwner[player]; c != nil && c.OwnerName != name {
+		c.OwnerName = name
+		changed = true
 	}
-	c.OwnerName = name
-	return true
+	for _, c := range b.byID {
+		if guest, ok := c.Guests[player]; ok && guest.Name != name {
+			guest.Name = name
+			c.Guests[player] = guest
+			changed = true
+		}
+	}
+	return changed
 }
 
 // list copies every plot, in a stable order.
@@ -350,7 +492,7 @@ func (b *claimBook) list() []Claim {
 	b.mu.RLock()
 	out := make([]Claim, 0, len(b.byID))
 	for _, c := range b.byID {
-		out = append(out, *c)
+		out = append(out, c.clone())
 	}
 	b.mu.RUnlock()
 	sort.Slice(out, func(i, j int) bool {
@@ -370,7 +512,7 @@ func (b *claimBook) snapshot() map[string]Claim {
 	}
 	out := make(map[string]Claim, len(b.byID))
 	for id, c := range b.byID {
-		out[id] = *c
+		out[id] = c.clone()
 	}
 	return out
 }
@@ -401,9 +543,41 @@ func (b *claimBook) load(saved map[string]Claim) {
 			continue
 		}
 		c.OwnerName = claimCleanName(c.OwnerName)
+		c.Guests = claimCleanGuests(c.Guests, c.Owner)
 		claim := c
 		b.indexLocked(&claim)
 	}
+}
+
+// claimCleanGuests keeps what a saved list of guests may hold: player ids, not the owner, cleaned names, at
+// most claimMaxGuests (the earliest invited).
+func claimCleanGuests(saved map[string]ClaimGuest, owner string) map[string]ClaimGuest {
+	ids := make([]string, 0, len(saved))
+	for id := range saved {
+		if id != owner && strings.HasPrefix(id, "plr_") {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		a, b := saved[ids[i]].AddedAt, saved[ids[j]].AddedAt
+		if !a.Equal(b) {
+			return a.Before(b)
+		}
+		return ids[i] < ids[j]
+	})
+	if len(ids) > claimMaxGuests {
+		ids = ids[:claimMaxGuests]
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make(map[string]ClaimGuest, len(ids))
+	for _, id := range ids {
+		guest := saved[id]
+		guest.Name = claimCleanName(guest.Name)
+		out[id] = guest
+	}
+	return out
 }
 
 // claimCleanName is a name to show: printable, trimmed, not too long.
@@ -455,16 +629,28 @@ func claimCheck(client *Client, x, z int) *claimRefusal {
 	if spawnZoneOn && spawnZone.contains(x, z) {
 		return &claimRefusal{Reason: claimReasonSpawn}
 	}
-	c, ok := claims.at(x, z)
-	if !ok {
+	me := ""
+	if client != nil {
+		me = client.stablePlayerID()
+	}
+	inPlot, ownerName, member := claims.checkAt(x, z, me)
+	if !inPlot || member {
 		return nil
 	}
-	if client != nil {
-		if me := client.stablePlayerID(); me != "" && me == c.Owner {
-			return nil
-		}
+	return &claimRefusal{Reason: claimReasonPlot, Owner: ownerName}
+}
+
+// claimMarkerGuard keeps a plot's marker its owner's: a guest may change anything in the plot but the
+// marker, whose breaking or covering would remove the plot. nil when the client may.
+func claimMarkerGuard(client *Client, x, y, z int) *claimRefusal {
+	if claimAdmin(client) {
+		return nil
 	}
-	return &claimRefusal{Reason: claimReasonPlot, Owner: c.OwnerName}
+	owner, ownerName, ok := claims.markerOwner(x, y, z)
+	if !ok || (client != nil && client.stablePlayerID() == owner) {
+		return nil
+	}
+	return &claimRefusal{Reason: claimReasonOwnerOnly, Owner: ownerName}
 }
 
 // claimTruth is what a cell really holds, with its metadata, for a client to put its copy right.
@@ -511,6 +697,11 @@ func claimPlaceBlock(client *Client, payload Block) (Block, *claimRefusal, bool)
 	current, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
 	isMarker := storageBase(payload.BlockType) == claimMarkerBlock
 	wasMarker := storageBase(current) == claimMarkerBlock
+	if wasMarker {
+		if refusal := claimMarkerGuard(client, payload.X, payload.Y, payload.Z); refusal != nil {
+			return payload, refusal, false
+		}
+	}
 	var made *Claim
 	if isMarker && !wasMarker {
 		eye := storagePlayerEye(client)
@@ -542,7 +733,7 @@ func claimPlaceBlock(client *Client, payload Block) (Block, *claimRefusal, bool)
 	if changed {
 		if made != nil {
 			log.Printf("claims: %s claimed %s at %d,%d,%d", client.ID, made.ID, made.X, made.Y, made.Z)
-			storageDeliver(client, createMessage("claimMade", claimViewOf(*made, made.Owner)))
+			storageDeliver(client, createMessage("claimMade", claimViewOf(*made, made.Owner, nil)))
 		}
 		saveWorldState()
 		claimsBroadcast()
@@ -550,10 +741,13 @@ func claimPlaceBlock(client *Client, payload Block) (Block, *claimRefusal, bool)
 	return placed, nil, true
 }
 
-// claimBreakAllowed checks a blockBreak (caller holds blockEditMu); claimBroken removes the plot of a marker
-// that was broken. The marker stands inside its own plot, so only its owner (or the admin) gets this far.
-func claimBreakAllowed(client *Client, x, z int) *claimRefusal {
-	return claimCheck(client, x, z)
+// claimBreakAllowed checks a blockBreak; claimBroken removes the plot of a marker that was broken. Only its
+// owner (or the admin) breaks a marker: a guest may break anything else in the plot.
+func claimBreakAllowed(client *Client, x, y, z int) *claimRefusal {
+	if refusal := claimCheck(client, x, z); refusal != nil {
+		return refusal
+	}
+	return claimMarkerGuard(client, x, y, z)
 }
 
 func claimBroken(was string, x, y, z int) {
@@ -618,23 +812,47 @@ func (b *storageBook) refuse(reqID, item, reason string) (storageOutcome, bool) 
 // What clients hear
 
 type claimView struct {
-	ID    string `json:"id"`
-	X     int    `json:"x"`
-	Y     int    `json:"y"`
-	Z     int    `json:"z"`
-	Owner string `json:"owner"`
-	Mine  bool   `json:"mine,omitempty"`
+	ID     string           `json:"id"`
+	X      int              `json:"x"`
+	Y      int              `json:"y"`
+	Z      int              `json:"z"`
+	Owner  string           `json:"owner"`
+	Mine   bool             `json:"mine,omitempty"`
+	Guest  bool             `json:"guest,omitempty"`
+	Guests []claimGuestView `json:"guests,omitempty"`
 	claimRect
 }
 
-func claimViewOf(c Claim, me string) claimView {
-	return claimView{ID: c.ID, X: c.X, Y: c.Y, Z: c.Z, Owner: c.OwnerName, Mine: me != "" && me == c.Owner, claimRect: c.rect()}
+// claimGuestView is a guest as their plot's owner sees them.
+type claimGuestView struct {
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Online bool   `json:"online,omitempty"`
 }
 
-func claimListMessage(list []Claim, me string) []byte {
+// claimViewOf is a plot as me sees it; online (the connected players, may be nil) marks guests who play now.
+func claimViewOf(c Claim, me string, online map[string]bool) claimView {
+	role := c.roleOf(me)
+	view := claimView{ID: c.ID, X: c.X, Y: c.Y, Z: c.Z, Owner: c.OwnerName, Mine: role == "owner", Guest: role == "guest", claimRect: c.rect()}
+	if role == "owner" {
+		for id, guest := range c.Guests {
+			view.Guests = append(view.Guests, claimGuestView{Key: claimGuestKey(c.ID, id), Name: guest.Name, Online: online[id]})
+		}
+		sort.Slice(view.Guests, func(i, j int) bool {
+			a, b := strings.ToLower(view.Guests[i].Name), strings.ToLower(view.Guests[j].Name)
+			if a != b {
+				return a < b
+			}
+			return view.Guests[i].Key < view.Guests[j].Key
+		})
+	}
+	return view
+}
+
+func claimListMessage(list []Claim, me string, online map[string]bool) []byte {
 	views := make([]claimView, 0, len(list))
 	for _, c := range list {
-		views = append(views, claimViewOf(c, me))
+		views = append(views, claimViewOf(c, me, online))
 	}
 	payload := map[string]interface{}{"claims": views, "radius": claimRadius}
 	if spawnZoneOn {
@@ -643,26 +861,118 @@ func claimListMessage(list []Claim, me string) []byte {
 	return createMessage("claimList", payload)
 }
 
-// claimsSendTo tells one client every plot.
-func claimsSendTo(client *Client) {
-	storageDeliver(client, claimListMessage(claims.list(), client.stablePlayerID()))
-}
-
-// claimsBroadcast tells every client every plot, each with its own one marked.
-func claimsBroadcast() {
-	list := claims.list()
+// claimConnected is every connected client, and the stable players among them.
+func claimConnected() ([]*Client, map[string]bool) {
 	clientsMu.RLock()
+	defer clientsMu.RUnlock()
 	targets := make([]*Client, 0, len(clients))
+	online := make(map[string]bool, len(clients))
 	for client := range clients {
 		targets = append(targets, client)
+		if player := client.stablePlayerID(); player != "" {
+			online[player] = true
+		}
 	}
-	clientsMu.RUnlock()
+	return targets, online
+}
+
+// claimsSendTo tells one client every plot.
+func claimsSendTo(client *Client) {
+	_, online := claimConnected()
+	storageDeliver(client, claimListMessage(claims.list(), client.stablePlayerID(), online))
+}
+
+// claimsBroadcast tells every client every plot, each as that client sees it.
+func claimsBroadcast() {
+	list := claims.list()
+	targets, online := claimConnected()
 	for _, client := range targets {
-		storageDeliver(client, claimListMessage(list, client.stablePlayerID()))
+		storageDeliver(client, claimListMessage(list, client.stablePlayerID(), online))
 	}
 }
 
-// claimRenameOwner follows the name an owner plays with (playerJoin).
+// ---------------------------------------------------------------------------------------
+// Guests (see the header)
+
+func handleClaimGuest(client *Client, payload []byte) {
+	if len(payload) > claimMaxPayload {
+		return
+	}
+	var request struct {
+		Action string `json:"action"`
+		Player string `json:"player"`
+		Key    string `json:"key"`
+	}
+	if json.Unmarshal(payload, &request) != nil {
+		return
+	}
+	me := client.stablePlayerID()
+	answer := map[string]interface{}{"action": request.Action, "ok": false}
+	reply := func() { storageDeliver(client, createMessage("claimGuestResult", answer)) }
+	switch request.Action {
+	case "add":
+		guest, name := claimFindConnected(request.Player)
+		if guest == "" {
+			answer["error"] = "player"
+			reply()
+			return
+		}
+		c, err := claims.addGuest(me, guest, name)
+		if err != "" {
+			answer["error"] = err
+			reply()
+			return
+		}
+		answer["name"] = claimCleanName(name)
+		log.Printf("claims: %s invited %s to %s", client.ID, guest, c.ID)
+	case "remove":
+		name, err := claims.removeGuest(me, request.Key)
+		if err != "" {
+			answer["error"] = err
+			reply()
+			return
+		}
+		answer["name"] = name
+		log.Printf("claims: %s removed a guest from their plot", client.ID)
+	default:
+		return
+	}
+	answer["ok"] = true
+	reply()
+	saveWorldState()
+	claimsBroadcast()
+}
+
+// claimFindConnected finds a connected player by their page id (what other clients know them by), or by
+// their name when only one connected player has it. Returns their stable player id and name.
+func claimFindConnected(who string) (id, name string) {
+	who = strings.TrimSpace(who)
+	if who == "" {
+		return "", ""
+	}
+	clientsMu.RLock()
+	defer clientsMu.RUnlock()
+	matches := 0
+	for client := range clients {
+		player := client.stablePlayerID()
+		if player == "" {
+			continue
+		}
+		if client.ID == who {
+			return player, client.username
+		}
+		if strings.EqualFold(client.username, who) && player != id {
+			id, name = player, client.username
+			matches++
+		}
+	}
+	if matches != 1 {
+		return "", ""
+	}
+	return id, name
+}
+
+// claimRenameOwner follows the name a player plays with, as an owner and as a guest (playerJoin).
 func claimRenameOwner(client *Client) {
 	if claims.rename(client.stablePlayerID(), client.username) {
 		saveWorldState()
@@ -781,7 +1091,7 @@ func handleClaimAdmin(client *Client, payload []byte) {
 	}
 	views := []claimAdminView{}
 	for _, c := range claims.list() {
-		views = append(views, claimAdminView{claimView: claimViewOf(c, client.stablePlayerID()), OwnerID: c.Owner})
+		views = append(views, claimAdminView{claimView: claimViewOf(c, client.stablePlayerID(), nil), OwnerID: c.Owner})
 	}
 	answer["ok"] = true
 	answer["claims"] = views

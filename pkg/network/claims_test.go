@@ -202,7 +202,7 @@ func TestClaimMarkerClaimsAPlotOfSeventeenAndTellsEveryone(t *testing.T) {
 		t.Fatalf("Ana sees %+v", anaSees)
 	}
 	// The owner's player id never goes out in the list.
-	raw := claimListMessage(claims.list(), "")
+	raw := claimListMessage(claims.list(), "", nil)
 	if json.Valid(raw) && containsString(string(raw), plrAna) {
 		t.Fatal("the list carries the owner's player id")
 	}
@@ -959,5 +959,242 @@ func TestHomeAnswersOnlyTheOwnerWithTheMarkerAndHasACooldown(t *testing.T) {
 		if got := claimHomeAnswer(t, who); got["ok"] != false || got["reason"] != "none" || got["x"] != nil {
 			t.Fatalf("%s: %+v", who.username, got)
 		}
+	}
+}
+
+// --- Guests ---
+
+const plrCris = "plr_dddddddddddddddddddddddddddddddd"
+
+type claimGuestAnswer struct {
+	Action string `json:"action"`
+	OK     bool   `json:"ok"`
+	Error  string `json:"error"`
+	Name   string `json:"name"`
+}
+
+func claimGuestSend(t *testing.T, client *Client, payload map[string]string) claimGuestAnswer {
+	t.Helper()
+	claimHeard(client)
+	claimSend(t, client, "claimGuest", payload)
+	heard := claimHeard(client)["claimGuestResult"]
+	if len(heard) != 1 {
+		t.Fatalf("%d answers to %v", len(heard), payload)
+	}
+	var out claimGuestAnswer
+	json.Unmarshal(heard[0], &out)
+	return out
+}
+
+// Ana's plot (claimAnaPlot) with Beto invited; Cris is a stranger. All three stand in the plot.
+func claimWithGuest(t *testing.T) (ana, beto, cris *Client) {
+	t.Helper()
+	ana = claimAnaPlot(t)
+	beto = claimClient(t, "Beto", plrBeto, 101, 121.6, 101)
+	cris = claimClient(t, "Cris", plrCris, 101, 121.6, 101)
+	if got := claimGuestSend(t, ana, map[string]string{"action": "add", "player": "page_Beto"}); !got.OK || got.Name != "Beto" {
+		t.Fatalf("invite Beto: %+v", got)
+	}
+	return ana, beto, cris
+}
+
+func TestAGuestPassesEveryProtectedPathAndAStrangerStillDoesNot(t *testing.T) {
+	claimWorld(t)
+	_, beto, cris := claimWithGuest(t)
+	claimFurnish(t)
+	for _, path := range claimPaths() {
+		claimHeard(cris)
+		claimSend(t, cris, path.kind, path.payload())
+		if r := claimRefusalOf(t, claimHeard(cris)); r == nil || r.Reason != claimReasonPlot || r.Owner != "Ana" {
+			t.Errorf("%s: the stranger is not refused: %+v", path.kind, r)
+		}
+		claimHeard(beto)
+		claimSend(t, beto, path.kind, path.payload())
+		if r := claimRefusalOf(t, claimHeard(beto)); r != nil {
+			t.Errorf("%s refused to the guest: %+v", path.kind, r)
+		}
+	}
+	if claimBlockAt(t, 104, 120, 104) != "stone" || claimBlockAt(t, 105, 120, 105) != "air" {
+		t.Error("the guest's place and break did not land")
+	}
+	storage.mu.Lock()
+	if slots := storage.blocks[blockKey(103, 120, 103)].Slots; len(slots) == 0 || slots[0].Type != "dirt" || slots[0].Count != 4 {
+		t.Errorf("the guest takes from the chest: %+v", slots)
+	}
+	storage.mu.Unlock()
+}
+
+func TestTheMarkerInvitingAndGoingHomeStayTheOwners(t *testing.T) {
+	claimWorld(t)
+	ana, beto, cris := claimWithGuest(t)
+	// Breaking the marker, covering it, or a curtain strip over it: refused to the guest, plot intact.
+	claimSend(t, beto, "blockBreak", map[string]int{"x": 100, "y": 120, "z": 100})
+	if r := claimRefusalOf(t, claimHeard(beto)); r == nil || r.Reason != claimReasonOwnerOnly || r.Owner != "Ana" || len(r.Blocks) != 1 || r.Blocks[0].BlockType != claimMarkerBlock {
+		t.Fatalf("the guest breaks the marker: %+v", r)
+	}
+	claimSend(t, beto, "blockPlace", Block{X: 100, Y: 120, Z: 100, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(beto)); r == nil || r.Reason != claimReasonOwnerOnly {
+		t.Fatalf("the guest covers the marker: %+v", r)
+	}
+	claimSend(t, beto, "curtainStrip", curtainStripPayload{Blocks: []Block{{X: 100, Y: 120, Z: 100, BlockType: "red_curtain:s:open"}}})
+	if r := claimRefusalOf(t, claimHeard(beto)); r == nil || r.Reason != claimReasonOwnerOnly {
+		t.Fatalf("a curtain over the marker: %+v", r)
+	}
+	if !claims.holds(plrAna) || claimBlockAt(t, 100, 120, 100) != claimMarkerBlock {
+		t.Fatal("the plot or its marker is gone")
+	}
+	// The guest may not invite, nor remove anybody, nor go home to Ana's plot.
+	if got := claimGuestSend(t, beto, map[string]string{"action": "add", "player": "page_Cris"}); got.OK || got.Error != "none" {
+		t.Fatalf("the guest invites: %+v", got)
+	}
+	claimSend(t, cris, "blockPlace", Block{X: 102, Y: 120, Z: 102, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(cris)); r == nil {
+		t.Fatal("Cris got in through Beto")
+	}
+	key := claimGuestKey(claims.list()[0].ID, plrBeto)
+	if got := claimGuestSend(t, beto, map[string]string{"action": "remove", "key": key}); got.OK || got.Error != "none" {
+		t.Fatalf("the guest removes: %+v", got)
+	}
+	claimHomeClock(t)
+	if got := claimHomeAnswer(t, beto); got["ok"] != false || got["reason"] != "none" {
+		t.Fatalf("the guest goes home to Ana's: %+v", got)
+	}
+	// The owner breaks her own marker as before: the plot and its guests go.
+	claimSend(t, ana, "blockBreak", map[string]int{"x": 100, "y": 120, "z": 100})
+	if claims.holds(plrAna) {
+		t.Fatal("Ana could not remove her plot")
+	}
+}
+
+func TestInvitingRules(t *testing.T) {
+	claimWorld(t)
+	ana := claimAnaPlot(t)
+	claimClient(t, "Beto", plrBeto, 0, 0, 0)
+	claimClient(t, "Nadie", "", 0, 0, 0)
+	for _, tc := range []struct {
+		player, err string
+	}{
+		{"page_Ana", "self"}, {"page_Zoe", "player"}, {"page_Nadie", "player"}, {"", "player"},
+	} {
+		if got := claimGuestSend(t, ana, map[string]string{"action": "add", "player": tc.player}); got.OK || got.Error != tc.err {
+			t.Errorf("%q: %+v", tc.player, got)
+		}
+	}
+	// By name when it names one connected player only, in any case.
+	if got := claimGuestSend(t, ana, map[string]string{"action": "add", "player": "beto"}); !got.OK || got.Name != "Beto" {
+		t.Fatalf("by name: %+v", got)
+	}
+	claimClient(t, "beto", "plr_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", 0, 0, 0)
+	if got := claimGuestSend(t, ana, map[string]string{"action": "add", "player": "Beto"}); got.OK || got.Error != "player" {
+		t.Fatalf("two players called Beto: %+v", got)
+	}
+	// Inviting twice is one guest; a full plot takes no more.
+	claimGuestSend(t, ana, map[string]string{"action": "add", "player": "page_Beto"})
+	if g := claims.list()[0].Guests; len(g) != 1 || g[plrBeto].Name != "Beto" {
+		t.Fatalf("guests %+v", g)
+	}
+	for i := 0; len(claims.list()[0].Guests) < claimMaxGuests; i++ {
+		claims.addGuest(plrAna, fmt.Sprintf("plr_%032d", i), "")
+	}
+	if got := claimGuestSend(t, ana, map[string]string{"action": "add", "player": "page_beto"}); got.OK || got.Error != "full" {
+		t.Fatalf("full: %+v", got)
+	}
+	if got := claimGuestSend(t, ana, map[string]string{"action": "remove", "key": "nope"}); got.OK || got.Error != "unknown" {
+		t.Fatalf("unknown key: %+v", got)
+	}
+}
+
+func TestRemovingAGuestRevokesAtOnceAndTheListsSayWhoIsWhat(t *testing.T) {
+	claimWorld(t)
+	ana, beto, cris := claimWithGuest(t)
+	claimsBroadcast()
+	anaSees := claimLastList(t, claimHeard(ana))
+	betoSees := claimLastList(t, claimHeard(beto))
+	crisSees := claimLastList(t, claimHeard(cris))
+	if len(anaSees[0].Guests) != 1 || anaSees[0].Guests[0].Name != "Beto" || !anaSees[0].Guests[0].Online || !anaSees[0].Mine || anaSees[0].Guest {
+		t.Fatalf("Ana sees %+v", anaSees)
+	}
+	if !betoSees[0].Guest || betoSees[0].Mine || betoSees[0].Guests != nil {
+		t.Fatalf("Beto sees %+v", betoSees)
+	}
+	if crisSees[0].Guest || crisSees[0].Mine || crisSees[0].Guests != nil {
+		t.Fatalf("Cris sees %+v", crisSees)
+	}
+	for _, raw := range [][]byte{claimListMessage(claims.list(), plrAna, nil), claimListMessage(claims.list(), plrBeto, nil)} {
+		if containsString(string(raw), plrBeto) || containsString(string(raw), plrAna) {
+			t.Fatalf("player ids in %s", raw)
+		}
+	}
+	// A guest who left is still listed, by the name they last played with; a new name follows them.
+	clientsMu.Lock()
+	delete(clients, beto)
+	clientsMu.Unlock()
+	claimsSendTo(ana)
+	if l := claimLastList(t, claimHeard(ana)); len(l[0].Guests) != 1 || l[0].Guests[0].Online || l[0].Guests[0].Name != "Beto" {
+		t.Fatalf("offline guest %+v", l[0].Guests)
+	}
+	clientsMu.Lock()
+	clients[beto] = true
+	clientsMu.Unlock()
+	beto.username = "Bea"
+	claimRenameOwner(beto)
+	if l := claimLastList(t, claimHeard(ana)); l[0].Guests[0].Name != "Bea" {
+		t.Fatalf("renamed guest %+v", l[0].Guests)
+	}
+	claimSend(t, beto, "blockPlace", Block{X: 102, Y: 120, Z: 102, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(beto)); r != nil {
+		t.Fatalf("the guest builds: %+v", r)
+	}
+	// Removed by the key Ana was shown: the very next change is refused, and Beto is told.
+	if got := claimGuestSend(t, ana, map[string]string{"action": "remove", "key": anaSees[0].Guests[0].Key}); !got.OK || got.Name != "Bea" {
+		t.Fatalf("remove %+v", got)
+	}
+	if l := claimLastList(t, claimHeard(beto)); l[0].Guest {
+		t.Fatal("Beto is still told he is a guest")
+	}
+	claimSend(t, beto, "blockBreak", map[string]int{"x": 102, "y": 120, "z": 102})
+	if r := claimRefusalOf(t, claimHeard(beto)); r == nil || r.Reason != claimReasonPlot || claimBlockAt(t, 102, 120, 102) != "stone" {
+		t.Fatalf("a removed guest still breaks: %+v", r)
+	}
+}
+
+func TestGuestsSurviveARestartAndLoadCleansThem(t *testing.T) {
+	claimWorld(t)
+	claimWithGuest(t)
+	saveWorldState()
+	claims = newClaimBook()
+	if err := loadWorldState(); err != nil {
+		t.Fatal(err)
+	}
+	if g := claims.list()[0].Guests; len(g) != 1 || g[plrBeto].Name != "Beto" {
+		t.Fatalf("after a restart: %+v", g)
+	}
+	beto := claimClient(t, "Beto2", plrBeto, 101, 121.6, 101)
+	claimSend(t, beto, "blockPlace", Block{X: 102, Y: 120, Z: 102, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(beto)); r != nil {
+		t.Fatalf("the guest after a restart: %+v", r)
+	}
+
+	saved := map[string]ClaimGuest{plrAna: {Name: "Ana"}, "page_x": {Name: "x"}, plrBeto: {Name: "Be\x00to"}}
+	for i := 0; i < claimMaxGuests+3; i++ {
+		saved[fmt.Sprintf("plr_%032d", i)] = ClaimGuest{AddedAt: time.Unix(int64(100+i), 0)}
+	}
+	book := newClaimBook()
+	book.load(map[string]Claim{"clm_a": {X: 0, Z: 0, Owner: plrAna, Guests: saved}})
+	g := book.list()[0].Guests
+	if len(g) != claimMaxGuests || g[plrAna].Name != "" || g["page_x"].Name != "" {
+		t.Fatalf("cleaned guests: %d %+v", len(g), g)
+	}
+	if _, ok := g[plrBeto]; !ok || g[plrBeto].Name != "Beto" {
+		t.Fatalf("Beto, the earliest, stays with a clean name: %+v", g[plrBeto])
+	}
+	// The admin giving the plot to its guest makes them its owner, and no longer a guest.
+	c := book.list()[0]
+	book.setOwner(c.ID, plrBeto, "Beto")
+	if c := book.list()[0]; c.Owner != plrBeto || c.roleOf(plrBeto) != "owner" {
+		t.Fatalf("%+v", c)
+	}
+	if _, still := book.list()[0].Guests[plrBeto]; still {
+		t.Fatal("the new owner is still a guest")
 	}
 }

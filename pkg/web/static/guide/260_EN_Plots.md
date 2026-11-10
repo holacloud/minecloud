@@ -2,7 +2,7 @@
 
 ![Claim marker](item:claim_marker)
 
-A **plot** is a piece of the world that is yours: inside it, only you can build, break, open chests and use machines. Others can come in, walk around and look at what you made, but not change anything.
+A **plot** is a piece of the world that is yours: inside it, only you (and whoever you invite) can build, break, open chests and use machines. Others can come in, walk around and look at what you made, but not change anything.
 
 ## The marker
 
@@ -19,13 +19,21 @@ The server checks everything. If it can't be done, the marker is not placed, goe
 
 ## The border
 
-As you come near a plot, its outline is drawn with soft lines on the ground and faint columns at the corners: **green** for yours, **amber** for someone else's, **blue** for the spawn area. Walking in shows a short notice: "Your plot", "Ana's plot" or "Spawn area".
+As you come near a plot, its outline is drawn with soft lines on the ground and faint columns at the corners: **green** for yours, **violet** for one you are invited to, **amber** for someone else's, **blue** for the spawn area. Walking in shows a short notice: "Your plot", "Ana's plot (you are a guest)", "Ana's plot" or "Spawn area".
 
 ## The marker's panel
 
-Right click **your** marker: the size, the coordinates of the marker and the corners, and the **Remove the plot** button. Before removing it, it asks whether you are sure. Breaking the marker by hand does the same: it asks first.
+Right click **your** marker: the size, the coordinates of the marker and the corners, your **guests** and the **Remove the plot** button. Before removing it, it asks whether you are sure. Breaking the marker by hand does the same: it asks first.
 
 Nobody else can break your marker. If it is someone else's, a right click only tells you whose it is.
+
+## Guests
+
+In the marker's panel you can **invite** other players: there is an "Invite…" button for each player who is online. Each guest is listed by name (with "online" if they are playing); if they log off they stay on the list, with the last name they used. **Remove** next to their name takes the permission away at once.
+
+A guest can build, break, open chests and use machines in your plot, as you do. What they can't do: break or cover the marker (that is, remove the plot), open the marker's panel, or invite anybody. To them, a right click on the marker only says whose plot it is.
+
+The invitation is for **your player**, not for a name: if the guest changes their name, they are still invited.
 
 ## Going to your plot
 

@@ -20,6 +20,7 @@ function fakeElement(tag = 'div') {
         tag, id: '', className: '', type: '', textContent: '', hidden: false, style: {}, children: [], listeners,
         classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name), contains: (name) => classes.has(name) },
         appendChild(child) { this.children.push(child); return child; },
+        replaceChildren() { this.children.length = 0; },
         addEventListener(type, listener) { (listeners[type] = listeners[type] || []).push(listener); },
         click() { for (const listener of listeners.click || []) listener({ stopPropagation() {}, preventDefault() {} }); }
     };
@@ -585,4 +586,91 @@ test('going home: off the horse or the chair first, held over the marker until i
     frame();
     assert.equal(game.claimHomeLanding, null);
     assert.ok(position.x >= 96 && position.z >= 96, 'only on loaded columns');
+});
+
+// ---- Guests ----
+
+test('a guest builds in the plot like its owner, but not the marker; the border is violet', () => {
+    const { context, game, network, blocks, hooks, notice } = fakeGame();
+    const list = plots('nobody');
+    list.claims[0].guest = true; // Ana's: I am her guest
+    network.emit('claimList', list);
+    assert.equal(game.claimRefusalAt(100, 100), null);
+    assert.deepEqual({ ...game.claimRefusalAt(140, 100) }, { reason: 'claim', owner: 'Beto' });
+    assert.equal(game.claimForeignInBox(95, 95, 99, 99), null, 'a guest\'s plot does not count as foreign');
+    assert.equal(context.claimZoneName(game.claimZoneAt(100, 100)), 'Parcela de Ana (eres invitado)');
+    // The marker: refused, says why, nothing broken; a right click only says whose it is.
+    blocks.set('100,64,100', 'claim_marker');
+    assert.equal(game.finishBreakingBlock({ x: 100, y: 64, z: 100 }), false);
+    assert.equal(blocks.get('100,64,100'), 'claim_marker');
+    assert.equal(notice(), 'Solo Ana puede quitar su mojón: tú eres invitado.');
+    assert.equal(game.claimAsking, undefined);
+    game.claimNoticeAt = -Infinity;
+    assert.equal(hooks.use.some((handler) => handler.call(game, 'stone', { position: { x: 100, y: 64, z: 100 } })), true);
+    assert.equal(game.claimPanelFor, undefined, 'no panel for a guest');
+    assert.equal(notice(), 'Parcela de Ana (eres invitado)');
+    // Anything else in the plot breaks.
+    blocks.set('101,64,100', 'stone');
+    assert.equal(game.finishBreakingBlock({ x: 101, y: 64, z: 100 }), true);
+    // The server's refusal reads the same in English.
+    context.setGameLang('EN');
+    game.claimNoticeAt = -Infinity;
+    network.emit('claimRefused', { reason: 'ownerOnly', owner: 'Ana', blocks: [] });
+    assert.equal(notice(), 'Only Ana can remove their marker: you are a guest.');
+    assert.equal(context.CLAIM_COLORS === undefined, true);
+    assert.match(read('game/claims.js'), /guest: 0xc39bff/);
+    assert.match(read('game/claims.js'), /claim\.mine \? CLAIM_COLORS\.mine : claim\.guest \? CLAIM_COLORS\.guest : CLAIM_COLORS\.other/);
+});
+
+test('the marker\'s panel lists the guests by name, removes them by key and invites connected players by page id', () => {
+    const { game, network, blocks, hooks, document, notice } = fakeGame();
+    network.playerId = 'page_me';
+    const list = plots('Ana');
+    list.claims[0].guests = [{ key: 'k1', name: 'Beto', online: true }, { key: 'k2', name: 'Cris' }];
+    network.emit('claimList', list);
+    network.emit('playerList', { players: [{ id: 'page_me', name: 'Ana' }, { id: 'page_b', name: 'Beto' }, { id: 'page_d', name: 'Dani' }, { id: 'page_x', name: '  ' }] });
+    blocks.set('100,64,100', 'claim_marker');
+    hooks.use.some((handler) => handler.call(game, 'stone', { position: { x: 100, y: 64, z: 100 } }));
+    const panel = document.getElementById('claim-panel');
+    const part = (className) => panel.children.find((child) => child.className === className);
+    const guests = part('claim-guests');
+    assert.deepEqual(guests.children.map((row) => row.children[0].textContent), ['Beto · conectado', 'Cris'], 'an offline guest is still there');
+    const invite = part('claim-invite');
+    assert.deepEqual(invite.children.map((button) => button.textContent), ['Invitar a Dani'], 'not myself, not a guest, not a blank name');
+    guests.children[1].children[1].click();
+    assert.deepEqual(network.sent.at(-1), ['claimGuest', { action: 'remove', key: 'k2' }]);
+    invite.children[0].click();
+    assert.deepEqual(network.sent.at(-1), ['claimGuest', { action: 'add', player: 'page_d' }]);
+    assert.ok(!JSON.stringify(network.sent).includes('plr_'), 'never a player id');
+    // The answers.
+    network.emit('claimGuestResult', { action: 'add', ok: true, name: 'Dani' });
+    assert.equal(notice(), 'Has invitado a Dani a tu parcela.');
+    network.emit('claimGuestResult', { action: 'remove', ok: true, name: 'Cris' });
+    assert.equal(notice(), 'Cris ya no es invitado de tu parcela.');
+    for (const [error, text] of [['player', 'Ese jugador ya no está conectado.'], ['full', 'Tu parcela ya tiene todos los invitados que caben.'], ['self', 'No puedes invitarte a ti mismo.'], ['none', 'Solo el dueño de una parcela puede invitar.'], ['unknown', 'Ese invitado ya no estaba en la lista.']]) {
+        game.claimNoticeAt = -Infinity;
+        network.emit('claimGuestResult', { action: 'add', ok: false, error });
+        assert.equal(notice(), text, error);
+    }
+    // A new list redraws the panel: Dani is a guest now, and nobody else is left to invite.
+    list.claims[0].guests = [{ key: 'k1', name: 'Beto', online: true }, { key: 'k3', name: 'Dani', online: true }];
+    network.emit('claimList', list);
+    assert.deepEqual(part('claim-guests').children.map((row) => row.children[0].textContent), ['Beto · conectado', 'Dani · conectado']);
+    assert.equal(part('claim-invite').children.length, 0);
+    assert.ok(panel.children.some((child) => child.textContent === 'No hay nadie más conectado para invitar.'));
+    // No guests at all.
+    list.claims[0].guests = undefined;
+    network.emit('claimList', list);
+    assert.equal(part('claim-guests').children[0].textContent, 'Nadie invitado todavía.');
+});
+
+test('the admin may open someone else\'s panel, but the guests are the owner\'s to manage', () => {
+    const { game, network, blocks, hooks, document } = fakeGame({ creative: true });
+    network.emit('claimList', plots('nobody'));
+    blocks.set('100,64,100', 'claim_marker');
+    hooks.use.some((handler) => handler.call(game, 'stone', { position: { x: 100, y: 64, z: 100 } }));
+    const panel = document.getElementById('claim-panel');
+    assert.ok(panel.classList.contains('visible'));
+    assert.equal(panel.children.find((child) => child.className === 'claim-guests').hidden, true);
+    assert.equal(panel.children.find((child) => child.className === 'claim-invite').hidden, true);
 });

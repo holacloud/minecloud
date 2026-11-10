@@ -702,8 +702,8 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
 - **Lista:** `claimList {claims, spawn, radius}` al conectar, tras recuperar el jugador y tras cada cambio; cada parcela con su
   cuadrado, el nombre del dueño y `mine`. El id de jugador del dueño no sale nunca del servidor (salvo al administrador).
   `playerHolds` (fase 1) es «tiene parcela», así que un jugador con parcela no se borra al recuperar otro.
-- **Cliente:** borde a menos de 12 bloques (líneas en el suelo, columnas en las esquinas; verde la tuya, ámbar ajena, azul la
-  zona de inicio), aviso al entrar, panel del mojón (clic derecho del dueño), comprobaciones antes de minar, colocar o abrir
+- **Cliente:** borde a menos de 12 bloques (líneas en el suelo, columnas en las esquinas; verde la tuya, violeta en la que eres
+  invitado, ámbar ajena, azul la zona de inicio), aviso al entrar, panel del mojón (clic derecho del dueño), comprobaciones antes de minar, colocar o abrir
   (un visitante puede usar herramientas que solo miran: multímetro, cinta métrica, termómetro, tubo de muestras…, y leer un cartel con clic derecho).
 - **Ir a tu parcela:** «Ir a mi parcela» en el menú de pausa (`settings-claim-home`) o `/home`. El cliente pide `claimHome {}`;
   el servidor contesta `claimHomeResult` solo al dueño (`ofOwner`: un invitado o cualquier otro recibe `reason: "none"`) con el
@@ -714,6 +714,19 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   entonces lo pone con `claimHomeSpot`: los pies sobre un bloque sólido, dos celdas libres (sin sólido ni agua ni lava) y la
   última palabra de las colisiones de la cámara, en la columna de la parcela más cercana al mojón y a su altura (un bloque de
   altura pesa como 0,3 anillos); si no hay ninguna, encima del mojón; si tampoco, desde arriba y la cámara lo saca del suelo.
+- **Invitados** (fase 4): `Claim.Guests` por id de jugador estable (nunca por nombre) con el último nombre que usó y la fecha,
+  guardados con la parcela; como mucho `claimMaxGuests` (16). `claimGuest {action: "add", player}` solo del dueño: `player` es
+  el id de página de un jugador conectado (lo que los clientes conocen de él, de `playerList`) o, si no, el nombre de un único
+  conectado; `{action: "remove", key}`, con la clave que vio el dueño (`claimGuestKey`: hash de la parcela y del id, no el id).
+  Contesta `claimGuestResult {action, ok, error (none, self, full, player, unknown), name}`, guarda y manda la lista a todos.
+  `claimCheck` deja al dueño y a sus invitados (`checkAt`), así que vale para todos los caminos protegidos; quitar un invitado
+  cuenta desde su siguiente mensaje. Solo del dueño: el mojón (`claimMarkerGuard`, razón `ownerOnly`, en `blockBreak`,
+  `blockPlace` sobre el mojón y `curtainStrip`), el panel, invitar e ir a la parcela. El cambio de nombre al entrar
+  (`claimRenameOwner`) sigue también a los invitados; si el administrador da la parcela a un invitado, deja de serlo. Al cargar
+  se descartan ids que no son `plr_…`, el propio dueño y los que pasen de 16 (se quedan los más antiguos). En `claimList` cada
+  parcela lleva `mine` o `guest`, y solo el dueño recibe `guests: [{key, name, online}]`. Cliente: borde **violeta** en la
+  parcela en la que eres invitado; el panel muestra invitados con «Quitar» y un botón «Invitar a …» por jugador conectado que
+  no lo sea ya; a un invitado el mojón solo le dice de quién es.
 - **Administración** (creativo): `/plots` lista (con el id del dueño), `/plot remove <n>` quita una y su mojón, `/plot owner <n>
   <jugador>` la da a otro (nombre de un jugador conectado o su `plr_…`). `/build` se niega a pisar una parcela ajena o la zona
   de inicio salvo con `force` al final.

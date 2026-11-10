@@ -89,6 +89,10 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 		if refusal = claimCheck(client, block.X, block.Z); refusal != nil {
 			break
 		}
+		// Nor over a plot's marker, unless it is the sender's own (a guest may not cover it).
+		if refusal = claimMarkerGuard(client, block.X, block.Y, block.Z); refusal != nil {
+			break
+		}
 	}
 	if refusal != nil {
 		claimRefuse(client, refusal)

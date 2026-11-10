@@ -706,7 +706,7 @@ func handleMessage(client *Client, msg Message) {
 			return
 		}
 		// Someone else's plot, or the spawn zone (claims.go): the sender puts its copy back.
-		if refusal := claimBreakAllowed(client, payload.X, payload.Z); refusal != nil {
+		if refusal := claimBreakAllowed(client, payload.X, payload.Y, payload.Z); refusal != nil {
 			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
 			return
 		}
@@ -944,6 +944,8 @@ func handleMessage(client *Client, msg Message) {
 		handleClaimAdmin(client, msg.Payload)
 	case "claimHome":
 		handleClaimHome(client)
+	case "claimGuest":
+		handleClaimGuest(client, msg.Payload)
 
 	case "identityCodeShow", "identityCodeRegenerate", "identityRecover":
 		handleIdentityMessage(client, msg)
