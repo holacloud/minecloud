@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"strings"
+	"time"
 
 	"minecloud/pkg/terrain"
 )
@@ -572,6 +573,39 @@ func (b *storageBook) microscopeViewOf(block *StorageBlock) *microscopeView {
 		view.Woke = now - block.Prep.WokenAt
 	}
 	return view
+}
+
+// microscopeBook is what the microscopes keep in the book of the chests (storage.go).
+type microscopeBook struct {
+	// The clock slides dry by, and where their seeds come from (replaced by the tests).
+	now  func() time.Time
+	seed func() uint32
+}
+
+// What the microscopes add to the chests (storagePart, storage.go).
+var microscopePart = storagePart{
+	init: func(b *storageBook) {
+		b.now, b.seed = time.Now, microscopeNewSeed
+	},
+	clean: microscopeCleanLoaded,
+	copyState: func(copied, block *StorageBlock) {
+		if block.Prep != nil {
+			prep := *block.Prep
+			copied.Prep = &prep
+		}
+	},
+	view: func(b *storageBook, place storagePlace, block *StorageBlock, snapshot *storageSnapshot) {
+		if place.kind == microscopeKind {
+			snapshot.Microscope = b.microscopeViewOf(block)
+		}
+	},
+	// A slide and what lies on it only move together.
+	refuses: func(place storagePlace) string {
+		if place.kind == microscopeKind {
+			return "not for the microscope"
+		}
+		return ""
+	},
 }
 
 // microscopeCleanLoaded limits what a saved slide can claim.

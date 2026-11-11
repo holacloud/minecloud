@@ -131,6 +131,14 @@ own file and registers itself from an `init()`; `pkg/network/registry.go` docume
    `loadWorldState`, written in `saveWorldState`. Prefer state in the block's name (`glow_block:ff0000`),
    which travels with the chunks and needs none of this.
 
+**A block that keeps things** (a chest with a life of its own: an oven, a microscope, an incubator) is built
+on `storage.go`, which does the slots, the panels, the moves and the saving. What the mechanic adds is a
+`storagePart` (documented there; examples: `microscopePart` in `microscope.go`, the smallest, and
+`appliancePart` in `appliances.go`): hooks for what its panel shows, what it refuses, what it does when the
+contents change or the block is broken. Three lines outside its own file: its part in `storageParts`, its
+book (state out of the blocks, if any) embedded in `storageBook`, and its saved fields in `StorageBlock`.
+`storage_parts_test.go` fails if `storage.go` names a mechanic any other way.
+
 Rules every handler follows:
 
 - **Plots.** See `plot` above. A `plotChecked` handler calls `claimCheck(client, x, z)` and answers a
