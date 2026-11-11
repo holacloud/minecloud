@@ -40,7 +40,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         exitPointerLock() {}
     };
     const store = new Map([['minecloud-guide-lang', lang]]);
-    const hooks = { content: [], use: [], modal: [], frame: [], textures: {}, blocks: {} };
+    const hooks = { content: [], use: [], modal: [], frame: [], guards: [], init: [], heard: [], textures: {}, blocks: {} };
     const timers = [];
     const context = vm.createContext({
         console, Math, Number, String, Array, Map, Set, Object, JSON, Promise,
@@ -54,7 +54,11 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         registerGameContent: (hook) => hooks.content.push(hook),
         registerItemUseHandler: (handler) => hooks.use.push(handler),
         registerModalPanel: (panel) => hooks.modal.push(panel),
-        registerFrameUpdate: (fn) => hooks.frame.push(fn)
+        registerFrameUpdate: (fn) => hooks.frame.push(fn),
+        registerBlockEditGuard: (guard) => hooks.guards.push(guard),
+        registerGameInit: (hook) => hooks.init.push(hook),
+        registerNetworkHandler: (type, handler) => hooks.heard.push([type, handler]),
+        BLOCK_EDIT_GUARDS: hooks.guards
     });
     context.now = 10000;
     vm.runInContext(`class Game {
@@ -64,6 +68,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         placeBlock() { this.placed = (this.placed || 0) + 1; }
     }`, context);
     vm.runInContext(read('gameLang.js'), context, { filename: 'gameLang.js' });
+    vm.runInContext(read('game/block_edits.js'), context, { filename: 'block_edits.js' });
     vm.runInContext(read('game/claims.js'), context, { filename: 'claims.js' });
     vm.runInContext(`Object.assign(this, { Game, CLAIM_TEXT, claimSay, claimZoneOf, claimZoneName, claimRefusalText, claimBorderSegments,
         claimCorners, claimRectDistance, claimRectsOverlap, claimRectGap, claimHomeSpot, claimChunksOf, setGameLang })`, context);
@@ -106,7 +111,10 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         receiveSystemMessage(message) { this.messages.push(message.text); },
         recapturePointerLock() {}
     });
+    // As Game does: the handlers are listening before the socket opens, and then the game has started.
     game.initNetwork();
+    for (const [type, handler] of hooks.heard) game.network.on(type, (payload) => handler.call(game, payload));
+    hooks.init.forEach((hook) => hook.call(game));
     const notice = () => {
         const element = document.getElementById('claim-notice');
         return element && element.classList.contains('visible') ? element.textContent : '';
@@ -407,7 +415,8 @@ test('/build stops before it covers someone else\'s plot, unless forced', () => 
     const source = read('game/constructions.js');
     assert.match(source, /claimForeignInBox\(min\.x, min\.z, min\.x \+ size\[0\] - 1, min\.z \+ size\[2\] - 1\)/);
     assert.match(source, /constructionStart\(what, \(args\[1\] \|\| ''\)\.toLowerCase\(\) === 'force'\)/);
-    for (const helper of ['robot.js', 'beaver.js', 'copper_golem.js']) assert.match(read(`game/${helper}`), /claim(Helper)?Refusal(At)?\(/, helper);
+    // Helpers act for their owner through the block edits everything shares, which ask the plots' guard.
+    for (const helper of ['robot.js', 'beaver.js', 'copper_golem.js']) assert.match(read(`game/${helper}`), /(placeBlockForAll|removeBlockForAll)\(/, helper);
 });
 
 // ---- Nothing missing ----

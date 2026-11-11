@@ -263,11 +263,12 @@ Object.assign(Game.prototype, {
             if (otherNextType) updates.push({ x: cell.x, y: cell.y, z: cell.z, blockType: otherNextType });
         }
 
-        updates.forEach((update) => this.world.addBlock(update));
-        if (this.network.connected) {
+        if (shape.stripMessage && updates.length > 1) {
             // A strip goes in one message: the server changes all of it or none.
-            if (shape.stripMessage && updates.length > 1) this.network.send(shape.stripMessage, { blocks: updates });
-            else updates.forEach((update) => this.network.send('blockPlace', update));
+            updates.forEach((update) => this.world.addBlock(update));
+            if (this.network.connected) this.network.send(shape.stripMessage, { blocks: updates });
+        } else {
+            updates.forEach((update) => this.placeBlockForAll(update, { always: true }));
         }
         const iron = def.category === 'stone';
         this.playNoiseBurst({ duration: iron ? 0.1 : 0.16, volume: 0.03, highpass: iron ? 900 : 200, lowpass: iron ? 4200 : 1300 });
@@ -289,8 +290,6 @@ registerItemUseHandler(function (itemType, hit) {
 registerBlockBreakHandler(function (blockType, position) {
     const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
     for (const { x, y, z } of shapeLinkedCells(blockType, position, typeAt, this.world.blockTypes)) {
-        if (this.world.removeBlockAt(x, y, z) && this.network.connected) {
-            this.network.send('blockBreak', { x, y, z });
-        }
+        this.removeBlockForAll(x, y, z);
     }
 });

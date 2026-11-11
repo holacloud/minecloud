@@ -47,8 +47,10 @@ func handleCreativeAuth(client *Client, payload json.RawMessage) {
 		"command": request.Command,
 		"silent":  request.Silent,
 	})
-	select {
-	case client.send <- reply:
-	default:
-	}
+	client.trySend(reply)
+}
+
+func init() {
+	registerMessage(messageSpec{plot: plotNowhere, handle: func(c *Client, m Message) { handleCreativeAuth(c, m.Payload) }}, "creativeAuth")
+	registerMessage(messageSpec{plot: plotNowhere, handle: func(c *Client, m Message) { c.creative.Store(false) }}, "creativeOff")
 }

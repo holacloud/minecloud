@@ -54,6 +54,26 @@ func (c *Client) setStablePlayerID(id string) {
 	c.stablePlayer.Store(id)
 }
 
+// trySend queues a message for the client without ever blocking: false when its buffer is full. Every
+// message to one client goes through here (or through broadcastToAll). The send channel is never closed,
+// so this is safe from any goroutine at any time, also after the client was dropped or has left.
+func (c *Client) trySend(data []byte) bool {
+	select {
+	case c.send <- data:
+		return true
+	default:
+		return false
+	}
+}
+
+// drop ends the connection of a client that cannot keep up: its readPump then fails, which removes it from
+// the world and stops its writePump. Safe to call more than once, and next to the pumps.
+func (c *Client) drop() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+}
+
 type Message struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
@@ -184,11 +204,9 @@ func Initialize() error {
 		return err
 	}
 
-	go runWorldClock()
-	go runCropGrowth()
-	go runAppliances()
-	go runPowerGrid()
-	go runVoiceMesh()
+	for _, run := range loops {
+		go run()
+	}
 	return nil
 }
 
@@ -364,8 +382,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	clientsMu.Lock()
 	clients[client] = true
 	clientsMu.Unlock()
-	// Every plot, with its own one marked (claims.go).
-	claimsSendTo(client)
+	for _, tell := range onConnect {
+		tell(client)
+	}
 
 	go client.writePump()
 	go client.readPump()
@@ -510,19 +529,15 @@ func (c *Client) readPump() {
 func (c *Client) writePump() {
 	defer c.conn.Close()
 
-	writeText := func(message []byte, ok bool) bool {
-		if !ok {
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			return false
-		}
+	writeText := func(message []byte) bool {
 		return c.conn.WriteMessage(websocket.TextMessage, message) == nil
 	}
 
 	for {
 		// Regular messages always go first; chunk frames fill the gaps.
 		select {
-		case message, ok := <-c.send:
-			if !writeText(message, ok) {
+		case message := <-c.send:
+			if !writeText(message) {
 				return
 			}
 			continue
@@ -530,8 +545,8 @@ func (c *Client) writePump() {
 		}
 
 		select {
-		case message, ok := <-c.send:
-			if !writeText(message, ok) {
+		case message := <-c.send:
+			if !writeText(message) {
 				return
 			}
 		case data := <-c.chunks:
@@ -590,9 +605,8 @@ func placeBlock(client *Client, payload Block) (Block, bool) {
 	if payload.BlockType == "" {
 		return payload, false
 	}
-	payload.BlockType = glowSanitizeName(payload.BlockType)
-	// An oven burns when the server says so, whatever a plan or a client asks for.
-	payload.BlockType = storage.settleOvenName(payload.X, payload.Y, payload.Z, payload.BlockType)
+	// What the mechanics make of the name (glow_block.go, appliances.go...).
+	payload.BlockType = placeFiltered(payload.X, payload.Y, payload.Z, payload.BlockType)
 	spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
 		return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
 	})
@@ -620,386 +634,378 @@ func placeBlock(client *Client, payload Block) (Block, bool) {
 	return payload, true
 }
 
-func handleMessage(client *Client, msg Message) {
-	switch msg.Type {
-	case "ping":
-		response, _ := json.Marshal(map[string]string{"type": "pong"})
-		client.send <- response
-
-	case "playerJoin":
-		var payload struct {
-			PlayerID   string `json:"playerId"`
-			Username   string `json:"username,omitempty"`
-			ShirtColor string `json:"shirtColor,omitempty"`
-			HairStyle  string `json:"hairStyle,omitempty"`
-			HairColor  string `json:"hairColor,omitempty"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-
-		client.ID = payload.PlayerID
-		if payload.Username != "" {
-			client.username = payload.Username
-		} else {
-			client.username = payload.PlayerID
-		}
-		recordRegistration(client, payload.PlayerID)
-		claimRenameOwner(client)
-
-		stateMu.Lock()
-		gameState.Players[client.ID] = Player{
-			ID:         client.ID,
-			Username:   client.username,
-			ShirtColor: payload.ShirtColor,
-			HairStyle:  payload.HairStyle,
-			HairColor:  payload.HairColor,
-			X:          0, Y: 4, Z: 0,
-		}
-		stateMu.Unlock()
-
-		log.Printf("Player joined: %s (%s)", client.username, client.ID)
-		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s joined the world", client.username)}))
-
-		sendInitialState(client)
-		broadcastPlayerList()
-
-	case "playerMove":
-		var payload Player
-		json.Unmarshal(msg.Payload, &payload)
-
-		payload.Located = true
-		stateMu.Lock()
-		existing, ok := gameState.Players[payload.ID]
-		// A connection that died unnoticed takes the player's entry with it when it finally
-		// closes, after they are back on a new one; their next move brings the entry back.
-		if !ok && payload.ID != "" && payload.ID == client.ID {
-			existing, ok = Player{ID: client.ID, Username: client.username}, true
-		}
-		if ok {
-			if payload.Username == "" {
-				payload.Username = existing.Username
-			}
-			if payload.ShirtColor == "" {
-				payload.ShirtColor = existing.ShirtColor
-			}
-			if payload.HairStyle == "" {
-				payload.HairStyle = existing.HairStyle
-			}
-			if payload.HairColor == "" {
-				payload.HairColor = existing.HairColor
-			}
-			gameState.Players[payload.ID] = payload
-		}
-		stateMu.Unlock()
-
-		broadcastToAll(createMessage("playerMove", payload))
-
-	case "blockBreak":
-		blockEditMu.Lock()
-		defer blockEditMu.Unlock()
-		var payload struct {
-			X int `json:"x"`
-			Y int `json:"y"`
-			Z int `json:"z"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		if !blockEditable(payload.X, payload.Y, payload.Z) {
-			return
-		}
-		// Someone else's plot, or the spawn zone (claims.go): the sender puts its copy back.
-		if refusal := claimBreakAllowed(client, payload.X, payload.Y, payload.Z); refusal != nil {
-			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
-			return
-		}
-		was, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
-
-		// The chunk store is the source of truth; never call it while holding stateMu.
-		spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
-			return setBlockTracked(payload.X, payload.Y, payload.Z, "")
-		})
-		if err != nil {
-			log.Printf("blockBreak: %v", err)
-			return
-		}
-		key := blockKey(payload.X, payload.Y, payload.Z)
-		stateMu.Lock()
-		_, hadMetadata := gameState.Blocks[key]
-		delete(gameState.Blocks, key)
-		removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
-		stateMu.Unlock()
-		if hadMetadata || cropsChanged || len(spill) > 0 {
-			saveWorldState()
-		}
-		storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
-
-		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
-		broadcastToAll(createMessage("blockBreak", payload))
-		// Breaking a marker removes its plot (claims.go).
-		claimBroken(was, payload.X, payload.Y, payload.Z)
-
-	case "blockPlace":
-		var payload Block
-		json.Unmarshal(msg.Payload, &payload)
-		// From builder mode's palette (builder.go): only in a plot of the sender's, and nothing to give back.
-		var from struct {
-			Palette bool `json:"palette"`
-		}
-		json.Unmarshal(msg.Payload, &from)
-		blockEditMu.Lock()
-		placed, refusal, ok := claimPlaceBlock(client, payload, from.Palette)
-		blockEditMu.Unlock()
-		if refusal != nil {
-			if !from.Palette {
-				refusal.Placed = payload.BlockType
-			}
-			claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
-		}
-		if ok {
-			broadcastToAll(createMessage("blockPlace", placed))
-		}
-
-	case "curtainStrip":
-		curtainStripMessage(client, msg.Payload)
-
-	case "sprayPaint":
-		var payload SprayPaint
-		json.Unmarshal(msg.Payload, &payload)
-		payload.Face = normalizeSprayFace(payload.Face)
-		payload.Color = normalizeSprayColor(payload.Color)
-		if payload.Face == "" || payload.Color == "" {
-			return
-		}
-		if refusal := claimCheck(client, payload.X, payload.Z); refusal != nil {
-			claimRefuse(client, refusal)
-			return
-		}
-
-		stateMu.Lock()
-		payload.Author = client.username
-		payload.ExpiresAtDay = gameState.WorldDay + 1
-		payload.ExpiresAtTime = gameState.WorldTime
-		key := sprayPaintKey(payload.X, payload.Y, payload.Z, payload.Face)
-		gameState.SprayPaints[key] = payload
-		stateMu.Unlock()
-		saveWorldState()
-
-		broadcastToAll(createMessage("sprayPaint", payload))
-
-	case "soundBlockPlay":
-		var payload struct {
-			X          int    `json:"x"`
-			Y          int    `json:"y"`
-			Z          int    `json:"z"`
-			Instrument string `json:"instrument"`
-			Note       int    `json:"note"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		payload.Instrument = strings.TrimSpace(payload.Instrument)
-		if payload.Instrument == "" {
-			payload.Instrument = "bell"
-		}
-		if payload.Note < 0 || payload.Note > 7 {
-			payload.Note = 0
-		}
-		broadcastToAll(createMessage("soundBlockPlay", payload))
-
-	case "worldNote":
-		var payload struct {
-			Text     string  `json:"text"`
-			Username string  `json:"username,omitempty"`
-			X        float64 `json:"x"`
-			Y        float64 `json:"y"`
-			Z        float64 `json:"z"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		payload.Text = strings.TrimSpace(payload.Text)
-		if payload.Text == "" {
-			return
-		}
-		if len(payload.Text) > 80 {
-			payload.Text = payload.Text[:80]
-		}
-		payload.Username = client.username
-		broadcastToAll(createMessage("worldNote", payload))
-
-	case "worldPing":
-		var payload struct {
-			Username string  `json:"username,omitempty"`
-			X        float64 `json:"x"`
-			Y        float64 `json:"y"`
-			Z        float64 `json:"z"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		payload.Username = client.username
-		broadcastToAll(createMessage("worldPing", payload))
-
-	case "playerReaction":
-		var payload struct {
-			TargetID string `json:"targetId"`
-			Kind     string `json:"kind"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		payload.TargetID = strings.TrimSpace(payload.TargetID)
-		payload.Kind = strings.TrimSpace(payload.Kind)
-		if payload.TargetID == "" {
-			return
-		}
-		if payload.Kind != "heart" && payload.Kind != "clap" && payload.Kind != "confetti" {
-			payload.Kind = "heart"
-		}
-		broadcastToAll(createMessage("playerReaction", payload))
-
-	case "proximityEmote":
-		var payload struct {
-			Kind string  `json:"kind"`
-			X    float64 `json:"x"`
-			Y    float64 `json:"y"`
-			Z    float64 `json:"z"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		payload.Kind = strings.TrimSpace(payload.Kind)
-		if payload.Kind != "laugh" && payload.Kind != "cheer" && payload.Kind != "boo" {
-			return
-		}
-		broadcastToAll(createMessage("proximityEmote", payload))
-
-	case "chat":
-		var payload struct {
-			Text string `json:"text"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-
-		text := payload.Text
-		if len(text) == 0 {
-			return
-		}
-		if len(text) > 140 {
-			text = text[:140]
-		}
-
-		chat := ChatMessage{
-			PlayerID:  client.ID,
-			Username:  client.username,
-			Text:      text,
-			Timestamp: time.Now().UnixMilli(),
-		}
-		recordChatMessage(client, text)
-
-		broadcastToAll(createMessage("chat", chat))
-
-	case "voiceState":
-		var payload struct {
-			Enabled bool `json:"enabled"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		client.voiceEnabled = payload.Enabled
-		broadcastToAll(createMessage("voiceState", map[string]interface{}{
-			"playerId": client.ID,
-			"enabled":  payload.Enabled,
-		}))
-		broadcastPlayerList()
-
-	case "playerDeath":
-		var payload struct {
-			Reason string `json:"reason"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		reason := payload.Reason
-		if reason == "" {
-			reason = "died"
-		}
-		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
-
-	case "signVote":
-		var payload struct {
-			X     int    `json:"x"`
-			Y     int    `json:"y"`
-			Z     int    `json:"z"`
-			Emoji string `json:"emoji"`
-		}
-		json.Unmarshal(msg.Payload, &payload)
-		emojiLabels := map[string]string{"thumbup": "👍", "thumbdown": "👎", "heart": "❤️", "happy": "😊", "star": "⭐"}
-		emojiLabel, validEmoji := emojiLabels[payload.Emoji]
-		if !validEmoji {
-			return
-		}
-		key := blockKey(payload.X, payload.Y, payload.Z)
-		stateMu.Lock()
-		block, ok := gameState.Blocks[key]
-		if ok && isSignBlock(block.BlockType) {
-			if block.Votes == nil {
-				block.Votes = map[string]int{}
-			}
-			block.Votes[payload.Emoji] = block.Votes[payload.Emoji] + 1
-			gameState.Blocks[key] = block
-		} else {
-			ok = false
-		}
-		stateMu.Unlock()
-		if ok {
-			saveWorldState()
-			broadcastToAll(createMessage("signVoteUpdate", block))
-			broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("El usuario %s ha votado %s", client.username, emojiLabel)}))
-		}
-
-	case "creativeAuth":
-		handleCreativeAuth(client, msg.Payload)
-	case "creativeOff":
-		client.creative.Store(false)
-	case "constructionStock":
-		handleConstructionStock(client, msg.Payload)
-	case "claimAdmin":
-		handleClaimAdmin(client, msg.Payload)
-	case "claimHome":
-		handleClaimHome(client)
-	case "claimGuest":
-		handleClaimGuest(client, msg.Payload)
-
-	case "identityCodeShow", "identityCodeRegenerate", "identityRecover":
-		handleIdentityMessage(client, msg)
-
-	case "storageOpen", "storageClose", "storagePut", "storageTake", "storageSync":
-		handleStorageMessage(client, msg)
-
-	case "cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet":
-		handleCultureMessage(client, msg)
-	case "sampleTake", "microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture", "microscopeStain":
-		handleMicroscopeMessage(client, msg)
-
-	case "glowSet":
-		handleGlowSet(client, msg.Payload)
-
-	case "powerProbe":
-		handlePowerProbe(client, msg.Payload)
-
-	case "powerCrank":
-		handlePowerCrank(msg.Payload)
-
-	case "powerFeed":
-		handlePowerFeed(msg.Payload)
-	case "logicPress":
-		handleLogicPress(client, msg.Payload)
-
-	case "sleepInBed":
-		stateMu.Lock()
-		gameState.WorldTime = 0
-		gameState.WorldDay++
-		currentDay := gameState.WorldDay
-		stateMu.Unlock()
-		broadcastToAll(createMessage("timeSync", map[string]interface{}{"timeOfDay": 0, "worldDay": currentDay}))
-		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s slept until dawn", client.username)}))
-
-	case "webrtcOffer":
-		forwardSignalMessage(client.ID, "webrtcOffer", msg.Payload)
-
-	case "webrtcAnswer":
-		forwardSignalMessage(client.ID, "webrtcAnswer", msg.Payload)
-
-	case "webrtcIceCandidate":
-		forwardSignalMessage(client.ID, "webrtcIceCandidate", msg.Payload)
-
-	default:
-		log.Printf("Unknown message type: %s", msg.Type)
+// The messages of the world itself; every mechanic registers its own from its file (registry.go).
+func init() {
+	nowhere := func(handle func(*Client, Message), types ...string) {
+		registerMessage(messageSpec{plot: plotNowhere, handle: handle}, types...)
 	}
+	nowhere(handlePing, "ping")
+	nowhere(handlePlayerJoin, "playerJoin")
+	nowhere(handlePlayerMove, "playerMove")
+	nowhere(handleWorldNote, "worldNote")
+	nowhere(handleWorldPing, "worldPing")
+	nowhere(handlePlayerReaction, "playerReaction")
+	nowhere(handleProximityEmote, "proximityEmote")
+	nowhere(handleChat, "chat")
+	nowhere(handleVoiceState, "voiceState")
+	nowhere(handlePlayerDeath, "playerDeath")
+	nowhere(handleSleepInBed, "sleepInBed")
+	nowhere(func(client *Client, msg Message) { forwardSignalMessage(client.ID, msg.Type, msg.Payload) },
+		"webrtcOffer", "webrtcAnswer", "webrtcIceCandidate")
+	// A break or a place has the plots' own rules on top of the check: the marker, builder mode (claims.go).
+	registerMessage(messageSpec{plot: plotChecked, handle: handleBlockBreak}, "blockBreak")
+	registerMessage(messageSpec{plot: plotChecked, handle: handleBlockPlace}, "blockPlace")
+	// Checked once the face and the colour are known to be real ones.
+	registerMessage(messageSpec{plot: plotChecked, handle: handleSprayPaint}, "sprayPaint")
+	registerMessage(messageSpec{plot: plotOpen, why: "a sound changes nothing", handle: handleSoundBlockPlay}, "soundBlockPlay")
+	registerMessage(messageSpec{plot: plotOpen, why: "a visitor may read and vote a sign", handle: handleSignVote}, "signVote")
+
+	registerLoop(runWorldClock)
+}
+
+func handlePing(client *Client, msg Message) {
+	response, _ := json.Marshal(map[string]string{"type": "pong"})
+	client.trySend(response)
+}
+
+func handlePlayerJoin(client *Client, msg Message) {
+	var payload struct {
+		PlayerID   string `json:"playerId"`
+		Username   string `json:"username,omitempty"`
+		ShirtColor string `json:"shirtColor,omitempty"`
+		HairStyle  string `json:"hairStyle,omitempty"`
+		HairColor  string `json:"hairColor,omitempty"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+
+	client.ID = payload.PlayerID
+	if payload.Username != "" {
+		client.username = payload.Username
+	} else {
+		client.username = payload.PlayerID
+	}
+	recordRegistration(client, payload.PlayerID)
+	claimRenameOwner(client)
+
+	stateMu.Lock()
+	gameState.Players[client.ID] = Player{
+		ID:         client.ID,
+		Username:   client.username,
+		ShirtColor: payload.ShirtColor,
+		HairStyle:  payload.HairStyle,
+		HairColor:  payload.HairColor,
+		X:          0, Y: 4, Z: 0,
+	}
+	stateMu.Unlock()
+
+	log.Printf("Player joined: %s (%s)", client.username, client.ID)
+	broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s joined the world", client.username)}))
+
+	sendInitialState(client)
+	broadcastPlayerList()
+}
+
+func handlePlayerMove(client *Client, msg Message) {
+	var payload Player
+	json.Unmarshal(msg.Payload, &payload)
+
+	payload.Located = true
+	stateMu.Lock()
+	existing, ok := gameState.Players[payload.ID]
+	// A connection that died unnoticed takes the player's entry with it when it finally
+	// closes, after they are back on a new one; their next move brings the entry back.
+	if !ok && payload.ID != "" && payload.ID == client.ID {
+		existing, ok = Player{ID: client.ID, Username: client.username}, true
+	}
+	if ok {
+		if payload.Username == "" {
+			payload.Username = existing.Username
+		}
+		if payload.ShirtColor == "" {
+			payload.ShirtColor = existing.ShirtColor
+		}
+		if payload.HairStyle == "" {
+			payload.HairStyle = existing.HairStyle
+		}
+		if payload.HairColor == "" {
+			payload.HairColor = existing.HairColor
+		}
+		gameState.Players[payload.ID] = payload
+	}
+	stateMu.Unlock()
+
+	broadcastToAll(createMessage("playerMove", payload))
+}
+
+func handleBlockBreak(client *Client, msg Message) {
+	blockEditMu.Lock()
+	defer blockEditMu.Unlock()
+	var payload struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+		Z int `json:"z"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	if !blockEditable(payload.X, payload.Y, payload.Z) {
+		return
+	}
+	// Someone else's plot, or the spawn zone (claims.go): the sender puts its copy back.
+	if refusal := claimBreakAllowed(client, payload.X, payload.Y, payload.Z); refusal != nil {
+		claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
+		return
+	}
+	was, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
+
+	// The chunk store is the source of truth; never call it while holding stateMu.
+	spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
+		return setBlockTracked(payload.X, payload.Y, payload.Z, "")
+	})
+	if err != nil {
+		log.Printf("blockBreak: %v", err)
+		return
+	}
+	key := blockKey(payload.X, payload.Y, payload.Z)
+	stateMu.Lock()
+	_, hadMetadata := gameState.Blocks[key]
+	delete(gameState.Blocks, key)
+	removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
+	stateMu.Unlock()
+	if hadMetadata || cropsChanged || len(spill) > 0 {
+		saveWorldState()
+	}
+	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
+
+	log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
+	broadcastToAll(createMessage("blockBreak", payload))
+	// Breaking a marker removes its plot (claims.go).
+	claimBroken(was, payload.X, payload.Y, payload.Z)
+}
+
+func handleBlockPlace(client *Client, msg Message) {
+	var payload Block
+	json.Unmarshal(msg.Payload, &payload)
+	// From builder mode's palette (builder.go): only in a plot of the sender's, and nothing to give back.
+	var from struct {
+		Palette bool `json:"palette"`
+	}
+	json.Unmarshal(msg.Payload, &from)
+	blockEditMu.Lock()
+	placed, refusal, ok := claimPlaceBlock(client, payload, from.Palette)
+	blockEditMu.Unlock()
+	if refusal != nil {
+		if !from.Palette {
+			refusal.Placed = payload.BlockType
+		}
+		claimRefuse(client, refusal, [3]int{payload.X, payload.Y, payload.Z})
+	}
+	if ok {
+		broadcastToAll(createMessage("blockPlace", placed))
+	}
+}
+
+func handleSprayPaint(client *Client, msg Message) {
+	var payload SprayPaint
+	json.Unmarshal(msg.Payload, &payload)
+	payload.Face = normalizeSprayFace(payload.Face)
+	payload.Color = normalizeSprayColor(payload.Color)
+	if payload.Face == "" || payload.Color == "" {
+		return
+	}
+	if refusal := claimCheck(client, payload.X, payload.Z); refusal != nil {
+		claimRefuse(client, refusal)
+		return
+	}
+
+	stateMu.Lock()
+	payload.Author = client.username
+	payload.ExpiresAtDay = gameState.WorldDay + 1
+	payload.ExpiresAtTime = gameState.WorldTime
+	key := sprayPaintKey(payload.X, payload.Y, payload.Z, payload.Face)
+	gameState.SprayPaints[key] = payload
+	stateMu.Unlock()
+	saveWorldState()
+
+	broadcastToAll(createMessage("sprayPaint", payload))
+}
+
+func handleSoundBlockPlay(client *Client, msg Message) {
+	var payload struct {
+		X          int    `json:"x"`
+		Y          int    `json:"y"`
+		Z          int    `json:"z"`
+		Instrument string `json:"instrument"`
+		Note       int    `json:"note"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	payload.Instrument = strings.TrimSpace(payload.Instrument)
+	if payload.Instrument == "" {
+		payload.Instrument = "bell"
+	}
+	if payload.Note < 0 || payload.Note > 7 {
+		payload.Note = 0
+	}
+	broadcastToAll(createMessage("soundBlockPlay", payload))
+}
+
+func handleWorldNote(client *Client, msg Message) {
+	var payload struct {
+		Text     string  `json:"text"`
+		Username string  `json:"username,omitempty"`
+		X        float64 `json:"x"`
+		Y        float64 `json:"y"`
+		Z        float64 `json:"z"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	payload.Text = strings.TrimSpace(payload.Text)
+	if payload.Text == "" {
+		return
+	}
+	if len(payload.Text) > 80 {
+		payload.Text = payload.Text[:80]
+	}
+	payload.Username = client.username
+	broadcastToAll(createMessage("worldNote", payload))
+}
+
+func handleWorldPing(client *Client, msg Message) {
+	var payload struct {
+		Username string  `json:"username,omitempty"`
+		X        float64 `json:"x"`
+		Y        float64 `json:"y"`
+		Z        float64 `json:"z"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	payload.Username = client.username
+	broadcastToAll(createMessage("worldPing", payload))
+}
+
+func handlePlayerReaction(client *Client, msg Message) {
+	var payload struct {
+		TargetID string `json:"targetId"`
+		Kind     string `json:"kind"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	payload.TargetID = strings.TrimSpace(payload.TargetID)
+	payload.Kind = strings.TrimSpace(payload.Kind)
+	if payload.TargetID == "" {
+		return
+	}
+	if payload.Kind != "heart" && payload.Kind != "clap" && payload.Kind != "confetti" {
+		payload.Kind = "heart"
+	}
+	broadcastToAll(createMessage("playerReaction", payload))
+}
+
+func handleProximityEmote(client *Client, msg Message) {
+	var payload struct {
+		Kind string  `json:"kind"`
+		X    float64 `json:"x"`
+		Y    float64 `json:"y"`
+		Z    float64 `json:"z"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	payload.Kind = strings.TrimSpace(payload.Kind)
+	if payload.Kind != "laugh" && payload.Kind != "cheer" && payload.Kind != "boo" {
+		return
+	}
+	broadcastToAll(createMessage("proximityEmote", payload))
+}
+
+func handleChat(client *Client, msg Message) {
+	var payload struct {
+		Text string `json:"text"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+
+	text := payload.Text
+	if len(text) == 0 {
+		return
+	}
+	if len(text) > 140 {
+		text = text[:140]
+	}
+
+	chat := ChatMessage{
+		PlayerID:  client.ID,
+		Username:  client.username,
+		Text:      text,
+		Timestamp: time.Now().UnixMilli(),
+	}
+	recordChatMessage(client, text)
+
+	broadcastToAll(createMessage("chat", chat))
+}
+
+func handleVoiceState(client *Client, msg Message) {
+	var payload struct {
+		Enabled bool `json:"enabled"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	client.voiceEnabled = payload.Enabled
+	broadcastToAll(createMessage("voiceState", map[string]interface{}{
+		"playerId": client.ID,
+		"enabled":  payload.Enabled,
+	}))
+	broadcastPlayerList()
+}
+
+func handlePlayerDeath(client *Client, msg Message) {
+	var payload struct {
+		Reason string `json:"reason"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	reason := payload.Reason
+	if reason == "" {
+		reason = "died"
+	}
+	broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
+}
+
+func handleSignVote(client *Client, msg Message) {
+	var payload struct {
+		X     int    `json:"x"`
+		Y     int    `json:"y"`
+		Z     int    `json:"z"`
+		Emoji string `json:"emoji"`
+	}
+	json.Unmarshal(msg.Payload, &payload)
+	emojiLabels := map[string]string{"thumbup": "👍", "thumbdown": "👎", "heart": "❤️", "happy": "😊", "star": "⭐"}
+	emojiLabel, validEmoji := emojiLabels[payload.Emoji]
+	if !validEmoji {
+		return
+	}
+	key := blockKey(payload.X, payload.Y, payload.Z)
+	stateMu.Lock()
+	block, ok := gameState.Blocks[key]
+	if ok && isSignBlock(block.BlockType) {
+		// A new map each time, never a change in place: saveWorldState and the broadcasts below
+		// read the old one with stateMu released, and a map read while written aborts the server.
+		votes := make(map[string]int, len(block.Votes)+1)
+		for emoji, count := range block.Votes {
+			votes[emoji] = count
+		}
+		votes[payload.Emoji]++
+		block.Votes = votes
+		gameState.Blocks[key] = block
+	} else {
+		ok = false
+	}
+	stateMu.Unlock()
+	if ok {
+		saveWorldState()
+		broadcastToAll(createMessage("signVoteUpdate", block))
+		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("El usuario %s ha votado %s", client.username, emojiLabel)}))
+	}
+}
+
+func handleSleepInBed(client *Client, msg Message) {
+	stateMu.Lock()
+	gameState.WorldTime = 0
+	gameState.WorldDay++
+	currentDay := gameState.WorldDay
+	stateMu.Unlock()
+	broadcastToAll(createMessage("timeSync", map[string]interface{}{"timeOfDay": 0, "worldDay": currentDay}))
+	broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s slept until dawn", client.username)}))
 }
 
 func forwardSignalMessage(fromPlayerID string, msgType string, rawPayload json.RawMessage) {
@@ -1027,10 +1033,7 @@ func sendToPlayer(playerID string, data []byte) {
 			continue
 		}
 
-		select {
-		case client.send <- data:
-		default:
-		}
+		client.trySend(data)
 		return
 	}
 }
@@ -1102,7 +1105,10 @@ func sendInitialState(client *Client) {
 	}
 
 	data, _ := json.Marshal(initMsg)
-	client.send <- data
+	// Never a blocking send under stateMu: a client with no room for its first message is beyond help.
+	if !client.trySend(data) {
+		client.drop()
+	}
 }
 
 func SavePlayerStates() error {
@@ -1204,9 +1210,7 @@ func broadcastToAll(data []byte) {
 
 	clientsMu.RLock()
 	for client := range clients {
-		select {
-		case client.send <- data:
-		default:
+		if !client.trySend(data) {
 			staleClients = append(staleClients, client)
 		}
 	}
@@ -1216,11 +1220,14 @@ func broadcastToAll(data []byte) {
 		return
 	}
 
+	// A client whose buffer is full is dropped by closing its connection, never its send channel: its
+	// readPump may be in the middle of answering it, and a send on a closed channel would take the
+	// whole server down.
 	clientsMu.Lock()
 	for _, client := range staleClients {
 		if clients[client] {
 			delete(clients, client)
-			close(client.send)
+			client.drop()
 		}
 	}
 	clientsMu.Unlock()

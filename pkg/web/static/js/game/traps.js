@@ -26,10 +26,10 @@ const TRAPS_BAITS = {
     bait_honey: { name: 'Honey Bait', color: 0xe8a92a, pile: [0xe8a92a, 0xf2c650, 0xc88a18, 0xf6d880] }
 };
 
-// Per species (the 22 in mobSpecies.js, the 9 new ones and the ant):
+// Per species (the 22 in mobSpecies.js; those with a file of their own say theirs in registerSpecies):
 //   baits  the baits it walks to   cage  a cage trap can hold it   net  what the bug net gives
 //   bucket what an empty bucket catches it as (eel.js does the catching)
-const TRAPS_SPECIES = {
+const TRAPS_SPECIES = speciesFacet('trap', {
     sheep: { baits: ['bait_seeds'], cage: true },
     duck: { baits: ['bait_seeds', 'bait_worms'], cage: true },
     pig: { baits: ['bait_seeds', 'bait_worms'], cage: true },
@@ -51,33 +51,18 @@ const TRAPS_SPECIES = {
     firefly: { baits: [], net: 'firefly_jar' },
     shadow: { baits: [] },
     eagle: { baits: ['bait_fish'] },
-    bat: { baits: [], net: 'bat_egg' },
-    crab: { baits: ['bait_fish'], cage: true },
-    fox: { baits: ['bait_meat'], cage: true },
-    rabbit: { baits: ['bait_seeds'], cage: true },
-    owl: { baits: ['bait_meat'] },
-    vulture: { baits: ['bait_meat'] },
-    snake: { baits: ['bait_meat'], cage: true },
-    storm_golem: { baits: [] },
-    wisp: { baits: [], net: 'glow_dust' },
-    mole: { baits: ['bait_worms'], cage: true },
-    beaver: { baits: ['bait_seeds'], cage: true },
-    ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' },
-    eel: { baits: [], bucket: 'eel_bucket' },
-    copper_golem: { baits: [] } // a machine: no bait, no cage
-};
+    bat: { baits: [], net: 'bat_egg' }
+});
 
 const TRAPS_BAIT_LIFE = 120;
 const TRAPS_BAIT_RANGE = 16;
 const TRAPS_EAT_SECONDS = 14;
 const TRAPS_CAST_RANGE = 9;
 const TRAPS_NET_RANGE = 4.5;
-const TRAPS_NUDGE_MODES = ['hop', 'dart', 'amphibious'];
-// Who really goes to a pile of bait, by movement: the default AI, and the behaviours whose update
-// asks getMobGoal; TRAPS_NUDGE_MODES are pushed to it; bees (trapsLureBee) and ants (ants.js) have
-// their own way. The rest only nibble if they happen to pass by, whatever TRAPS_SPECIES says.
-const TRAPS_GOAL_MOVEMENTS = ['ground', 'climb', 'scuttle', 'lodge'];
-const TRAPS_OWN_WAY_MOVEMENTS = ['swarm', 'anthill'];
+// Who really goes to a pile of bait is said by each movement (js/extensions.js): `walksToGoal` for the
+// default AI and the behaviours whose update asks getMobGoal; `nudgedToBait` for those pushed to it
+// (trapsNudge); `baitOwnWay` for bees (trapsLureBee) and ants (ants.js). The rest only nibble if they
+// happen to pass by, whatever TRAPS_SPECIES says.
 // What goes on the hook of a fishing rod, the first one carried (for fish, never a pile: see trapsCast).
 const TRAPS_HOOK_BAITS = ['bait_worms', 'bait_fish'];
 const TRAPS_HOOKED_SPECIES = ['fish'];
@@ -90,7 +75,7 @@ function trapsIsLured(species) {
     const info = MOB_SPECIES[species];
     if (!entry || !info || entry.baits.length === 0) return false;
     const movement = info.movement;
-    return !movement || TRAPS_GOAL_MOVEMENTS.includes(movement) || TRAPS_NUDGE_MODES.includes(movement) || TRAPS_OWN_WAY_MOVEMENTS.includes(movement);
+    return mobMovementIs(movement, 'walksToGoal') || mobMovementIs(movement, 'nudgedToBait') || mobMovementIs(movement, 'baitOwnWay');
 }
 
 Object.entries(TRAPS_BAITS).forEach(([id, bait]) => registerItemType(id, { color: bait.color, name: bait.name }));
@@ -305,9 +290,8 @@ Object.assign(Game.prototype, {
         } else if (entity.kind === 'jar') {
             if (item === 'bug_net') {
                 const mob = this.createMob('firefly', entity.position.clone());
-                mob.userData.natural = true;
                 const { chunkX, chunkZ } = this.world.getChunkCoords(entity.position.x, entity.position.z);
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
                 this.ambientMobs.push(mob);
                 this.receiveSystemMessage({ text: 'You set the fireflies free' });
                 this.playTone({ frequency: 1800, endFrequency: 2600, duration: 0.3, type: 'sine', volume: 0.01, release: 0.2 });
@@ -459,7 +443,7 @@ Object.assign(Game.prototype, {
             const distance = Math.hypot(bait.position.x - mob.position.x, bait.position.z - mob.position.z);
             const movement = getMobSpecies(species).movement;
             // Hopping, darting and amphibious mobs are nudged; into a cage, right to its centre.
-            if (TRAPS_NUDGE_MODES.includes(movement) && (bait.cage || distance > 1.4)) this.trapsNudge(mob, bait.position, distance, delta, bait.cage ? 0 : 0.8);
+            if (mobMovementIs(movement, 'nudgedToBait') && (bait.cage || distance > 1.4)) this.trapsNudge(mob, bait.position, distance, delta, bait.cage ? 0 : 0.8);
             if (distance <= (bait.cage ? 0.5 : 1.4)) {
                 // Nibble: head down, bobbing, and the pile shrinks.
                 bait.amount = Math.max(0, bait.amount - delta / TRAPS_EAT_SECONDS);

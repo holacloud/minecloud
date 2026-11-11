@@ -927,8 +927,8 @@ Object.assign(Game.prototype, {
         if (!this.robotLoaded(cell)) return { ok: false, error: 'I can\'t reach there: that part of the world is not loaded' };
         const type = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
         if (!type || type === 'water') return { ok: true, duration: tick };
-        // It digs for its owner: not in someone else's plot (js/game/claims.js).
-        const protectedHere = typeof this.claimHelperRefusal === 'function' ? this.claimHelperRefusal(cell.x, cell.z) : null;
+        // It digs for its owner: not where they may not (someone else's plot), and it says why.
+        const protectedHere = this.blockEditRefusal(cell.x, cell.z);
         if (protectedHere) return { ok: false, error: protectedHere };
         const duration = this.world.getBreakDurationForType(type);
         if (!duration && duration !== 0) return { ok: false, error: `I can't dig ${this.robotName(type)}: it is unbreakable` };
@@ -938,11 +938,8 @@ Object.assign(Game.prototype, {
         const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);
         const otherHalves = shapeLinkedCells(type, cell, typeAt, this.world.blockTypes);
         const boundBed = isBedBlockType(type) && this.isRespawnBoundToBed(type, cell);
-        if (!this.world.removeBlockAt(cell.x, cell.y, cell.z)) return { ok: true, duration: tick };
-        if (this.network.connected) this.network.send('blockBreak', { x: cell.x, y: cell.y, z: cell.z });
-        for (const { x, y, z } of otherHalves) {
-            if (this.world.removeBlockAt(x, y, z) && this.network.connected) this.network.send('blockBreak', { x, y, z });
-        }
+        if (!this.removeBlockForAll(cell.x, cell.y, cell.z)) return { ok: true, duration: tick };
+        for (const { x, y, z } of otherHalves) this.removeBlockForAll(x, y, z);
         if (boundBed) {
             this.respawnPoint = null;
             window.localStorage.removeItem('minecloud-respawn-point');
@@ -968,7 +965,7 @@ Object.assign(Game.prototype, {
         const cell = this.robotCell(robot, where);
         if (!this.robotLoaded(cell)) return { ok: false, error: 'I can\'t reach there: that part of the world is not loaded' };
         if (cell.y < WORLD_MIN_Y || cell.y > WORLD_MAX_Y) return { ok: false, error: 'I can\'t build that far' };
-        const protectedHere = typeof this.claimHelperRefusal === 'function' ? this.claimHelperRefusal(cell.x, cell.z) : null;
+        const protectedHere = this.blockEditRefusal(cell.x, cell.z);
         if (protectedHere) return { ok: false, error: protectedHere };
         const existing = this.world.getBlockTypeAt(cell.x, cell.y, cell.z);
         if (existing && !ROBOT_REPLACEABLE.includes(existing)) return { ok: true, duration: tick };
@@ -984,11 +981,10 @@ Object.assign(Game.prototype, {
             return { ok: false, error: 'You are in the way: I won\'t build on you!' };
         }
         const payload = { x: cell.x, y: cell.y, z: cell.z, blockType: type };
-        if (!this.world.addBlock(payload)) {
+        if (!this.placeBlockForAll(payload)) {
             ROBOT_LOGIC.add(robot.inventory, type, 1);
             return { ok: true, duration: tick };
         }
-        if (this.network.connected) this.network.send('blockPlace', payload);
         this.playPlaceSound(type);
         this.lastSelectionUpdate = 0;
         this.robotRefreshInventory(robot);

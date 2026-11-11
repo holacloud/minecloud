@@ -325,9 +325,7 @@ Object.assign(Game.prototype, {
         this.showHitIndicator();
         this.lastSelectionUpdate = 0;
 
-        if (this.network.connected) {
-            this.network.send('blockBreak', { x: position.x, y: position.y, z: position.z });
-        }
+        this.sendBlockBreak(position.x, position.y, position.z);
 
         return true;
     },
@@ -478,10 +476,7 @@ Object.assign(Game.prototype, {
 
         let placedAny = false;
         for (const payload of payloads) {
-            if (this.world.addBlock(payload)) {
-                placedAny = true;
-                if (this.network.connected) this.network.send('blockPlace', payload);
-            }
+            if (this.placeBlockForAll(payload)) placedAny = true;
         }
         if (!placedAny) return;
 
@@ -589,7 +584,7 @@ Object.assign(Game.prototype, {
                 this.placeActionTimer = 0.35;
                 this.showHitIndicator();
                 this.lastSelectionUpdate = 0;
-                if (this.network.connected) parts.forEach((part) => this.network.send('blockPlace', this.blockPlaceOutgoing(part)));
+                parts.forEach((part) => this.sendBlockPlace(part, { fromHand: true }));
                 return;
             }
 
@@ -615,9 +610,7 @@ Object.assign(Game.prototype, {
             this.showHitIndicator();
             this.lastSelectionUpdate = 0;
 
-            if (this.network.connected) {
-                this.network.send('blockPlace', this.blockPlaceOutgoing(payload));
-            }
+            this.sendBlockPlace(payload, { fromHand: true });
         }
     },
 

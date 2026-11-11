@@ -612,10 +612,9 @@ Object.assign(Game.prototype, {
             payload.note = Number.isInteger(meta.o) ? meta.o : 0;
         }
         if (consume && this.getInventoryCount(this.world.blockTypes[cell.type].variantOf || cell.type) <= 0) return false;
-        if (!this.world.addBlock(payload)) return false;
+        if (!this.placeBlockForAll(payload)) return false;
         if (consume) this.consumeSelectedBlock();
-        if (this.network.connected) this.network.send('blockPlace', payload);
-        if (otherHalf && this.world.addBlock(otherHalf) && this.network.connected) this.network.send('blockPlace', otherHalf);
+        if (otherHalf) this.placeBlockForAll(otherHalf);
         this.playPlaceSound(cell.type);
         if (consume) {
             this.placeActionTimer = 0.35;

@@ -26,12 +26,29 @@ const _moleScale = new THREE.Vector3();
 const _moleVec = new THREE.Vector3();
 const _moleColor = new THREE.Color();
 
-MOB_SPECIES.mole = {
-    eggColor: 0x3b3a40, tone: 1500, maxHealth: 12, speed: 0.5, group: [1, 1], limit: 2,
-    movement: 'tunnel', spawnBiomes: { plains: 1, forest: 1 }
-};
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('mole', {
+    info: {
+        eggColor: 0x3b3a40, tone: 1500, maxHealth: 12, speed: 0.5, group: [1, 1], limit: 2,
+        movement: 'tunnel', spawnBiomes: { plains: 1, forest: 1 }
+    },
+    surface: 'fur',
+    drops: [['fur', 1, 2]],
+    furry: true,
+    diet: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 },
+    trap: { baits: ['bait_worms'], cage: true },
+    card: {
+        name: 'Giant Mole', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
+        hint: 'Fresh mounds of earth appear and vanish.',
+        description: 'A giant burrower that pops out of the ground, leaving mounds of soil that crumble away after a while. Watch for the mounds to find it.'
+    },
+    cardEs: {
+        name: 'Topo gigante', habitat: 'Llanuras y bosques',
+        hint: 'Aparecen y desaparecen montículos de tierra fresca.',
+        description: 'Un excavador gigante que asoma del suelo y deja montículos de tierra que se deshacen al cabo de un rato. Busca los montículos para encontrarlo.'
+    }
+});
 
-VoxelModels.MOB_SURFACES.mole = 'fur';
 
 // Faces +z, belly on the ground. The nose star is a pink disc ringed by ten tentacles
 // (tentacle0..9); the forelimbs end in broad pink palms with ivory claws.
@@ -459,18 +476,15 @@ Object.assign(Game.prototype, {
     moleHit(mob) {
         const data = mob.userData;
         if (data.moleBuried || data.moleState === 'diving') return;
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         data.flinch = 0.35;
         this.moleSqueak(mob, 1);
         this.playNoiseBurst({ duration: 0.05, volume: 0.015, highpass: 200, lowpass: 1200 });
         const colors = this.moleGroundColors(mob.position.x, data.surfaceY, mob.position.z);
-        if (data.health <= 0) {
+        if (lethal) {
             this.moleThrowDirt(mob.position.x, data.surfaceY, mob.position.z, 20, 0.5, 3.5, colors);
             this.moleMakeMound(mob.position.x, data.surfaceY, mob.position.z, 1);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the giant mole' });
+            this.defeatMobByPlayer(mob, 'You defeated the giant mole');
             return;
         }
         data.huntTarget = null;
@@ -862,6 +876,7 @@ registerFrameUpdate(function (delta) {
 });
 
 registerMobBehaviour('tunnel', {
+    bodiless: true,
     update(mob, delta, player) {
         this.updateBurrowingMob(mob, delta, player);
     },

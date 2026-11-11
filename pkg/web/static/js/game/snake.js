@@ -29,12 +29,28 @@ const SNAKE_PALETTES = [
     { base: 0x8f897e, dark: 0x3a342e, light: 0xbdb6a8, belly: 0xd8d2c4, bellyLine: 0xb0a898, eye: 0xd2742a, rattle: true }
 ];
 
-MOB_SPECIES.snake = {
-    eggColor: 0xb89a5a, tone: 520, hostile: true, attackDamage: 1, poison: 3, maxHealth: 6,
-    speed: 0.9, fleeSpeed: 2.6, alertDistance: 5, strikeDistance: 2.2,
-    variants: SNAKE_PALETTES.length, group: [1, 1], limit: 2, movement: 'slither'
-};
-VoxelModels.MOB_SURFACES.snake = 'skin';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('snake', {
+    info: {
+        eggColor: 0xb89a5a, tone: 520, hostile: true, attackDamage: 1, poison: 3, maxHealth: 6,
+        speed: 0.9, fleeSpeed: 2.6, alertDistance: 5, strikeDistance: 2.2,
+        variants: SNAKE_PALETTES.length, group: [1, 1], limit: 2, movement: 'slither'
+    },
+    surface: 'skin',
+    drops: [['scale', 1, 2], ['venom_sac', 1, 1, 0.6]],
+    // No diet: it cannot be tamed.
+    trap: { baits: ['bait_meat'], cage: true },
+    card: {
+        name: 'Snake', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Hostile',
+        hint: 'A hiss rises from the sand.',
+        description: 'It lies hidden in the sand, or coiled flat on rock, and hisses as a warning before it strikes. Its bite is venomous, and it moves in smooth waves.'
+    },
+    cardEs: {
+        name: 'Serpiente', habitat: 'Desiertos y rocas',
+        hint: 'Un siseo sube desde la arena.',
+        description: 'Se esconde en la arena, o enroscada sobre la roca, y sisea para avisar antes de atacar. Su mordedura es venenosa, y se mueve en suaves ondas.'
+    }
+});
 
 // Faces the +z axis. Body segments are top-level parts placed every frame by poseSnake, each
 // pivoted at its front joint and reaching back to the next one.
@@ -175,7 +191,7 @@ Object.assign(Game.prototype, {
         if (biome !== 'desert' && biome !== 'rocky') return;
         if (this.chunkRandom(chunkX, chunkZ, 331) > (biome === 'desert' ? 0.08 : 0.05)) return;
         const info = getMobSpecies('snake');
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'snake').length >= info.limit) return;
+        if (this.mobCount('snake') >= info.limit) return;
         // Snakes share the wild hostile budget with spiders, cave monsters and scorpions.
         if (this.mobHostileCapReached && this.mobHostileCapReached()) return;
         const size = this.world.chunkSize;
@@ -190,8 +206,7 @@ Object.assign(Game.prototype, {
             const roll = this.chunkRandom(chunkX, chunkZ, 322);
             const variant = biome === 'desert' ? (roll < 0.75 ? 0 : 1) : (roll < 0.7 ? 2 : 1);
             const mob = this.createMob('snake', new THREE.Vector3(x, ground, z), { variant });
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
             this.snakeInit(mob, 'hidden');
             return;
@@ -641,14 +656,11 @@ Object.assign(Game.prototype, {
         const distance = Math.hypot(player.x - mob.position.x, player.z - mob.position.z);
         // Slender and quick, it takes half of each blow: 3 blows bare-handed or with a wooden
         // sword, 2 with a stone sword or better.
-        data.health -= this.getPlayerAttackDamage() / 2;
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob, this.getPlayerAttackDamage() / 2);
         this.snakeSound(mob, 'hurt', distance);
-        if (data.health <= 0) {
+        if (lethal) {
             this.snakeSandBurst(mob, null, 3);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the snake' });
+            this.defeatMobByPlayer(mob, 'You defeated the snake');
             return;
         }
         s.recoil = 1;

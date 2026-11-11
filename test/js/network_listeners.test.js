@@ -30,8 +30,8 @@ test('a message nobody listens to is ignored', () => {
 test('both chests and the microscope listen to what a chest says', () => {
     const read = (file) => fs.readFileSync(path.join(__dirname, '../../pkg/web/static/js/game', file), 'utf8');
     for (const type of ['storageResult', 'storageContents', 'storageClosed']) {
-        assert.ok(read('storage.js').includes(`network.on('${type}'`), `storage.js listens to ${type}`);
-        assert.ok(read('microscope.js').includes(`network.on('${type}'`), `microscope.js listens to ${type}`);
-        assert.ok(read('cultures.js').includes(`network.on('${type}'`), `cultures.js listens to ${type}`);
+        assert.ok(read('storage.js').includes(`registerNetworkHandler('${type}'`), `storage.js listens to ${type}`);
+        assert.ok(read('microscope.js').includes(`registerNetworkHandler('${type}'`), `microscope.js listens to ${type}`);
+        assert.ok(read('cultures.js').includes(`registerNetworkHandler('${type}'`), `cultures.js listens to ${type}`);
     }
 });

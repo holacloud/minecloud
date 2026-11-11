@@ -210,6 +210,10 @@ function scopeGame(carried, all) {
     ctx.window.devicePixelRatio = 1;
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
+    // What the microscope listens to (registerNetworkHandler), and nothing of the chests loaded with it.
+    for (const [type, handler] of vm.runInContext('NETWORK_HANDLERS', ctx)) {
+        if (String(handler).includes('microscope')) game.network.on(type, (payload) => handler.call(game, payload));
+    }
     ctx.ITEM_USE_HANDLERS[0].call(game, null, {});
     scopeSlide(game, { source: 'cheek' });
     return game;

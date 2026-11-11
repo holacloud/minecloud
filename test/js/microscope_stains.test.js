@@ -73,7 +73,8 @@ test('the stains match the server', () => {
     const line = /var microscopeStains = map\[string\]bool\{([^}]*)\}/.exec(go);
     const read = [...line[1].matchAll(/"(\w+)"/g)].map((match) => match[1]);
     assert.deepEqual(read.sort(), Object.keys(ctx.MICRO_STAINS).sort());
-    assert.match(fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'websocket.go'), 'utf8'), /"microscopeStain":/);
+    // Registered as a message from the same file (pkg/network/registry.go).
+    assert.match(go, /registerMessage\([^)]*"microscopeStain"\)/);
 });
 
 test('every one of the 17 organisms says what each stain does to it', () => {
@@ -597,6 +598,10 @@ function panelGame(carried = {}) {
     game.microscopeIdentified = () => {};
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
+    // What the microscope listens to (registerNetworkHandler), and nothing of the chests loaded with it.
+    for (const [type, handler] of vm.runInContext('NETWORK_HANDLERS', ctx)) {
+        if (String(handler).includes('microscope')) game.network.on(type, (payload) => handler.call(game, payload));
+    }
     ctx.ITEM_USE_HANDLERS[0].call(game, null, {});
     slide(game, { source: 'cheek' });
     return game;

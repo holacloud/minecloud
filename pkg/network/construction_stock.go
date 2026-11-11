@@ -224,3 +224,8 @@ func handleConstructionStock(client *Client, payload json.RawMessage) {
 	log.Printf("constructionStock from %s: %d filled, %d refused", client.ID, len(filled), len(refused))
 	storageDeliver(client, createMessage("constructionStockResult", map[string]interface{}{"filled": filled, "refused": refused}))
 }
+
+func init() {
+	// Only the admin gets to fill, and each fill still goes through claimCheck.
+	registerMessage(messageSpec{plot: plotChecked, handle: func(c *Client, m Message) { handleConstructionStock(c, m.Payload) }}, "constructionStock")
+}

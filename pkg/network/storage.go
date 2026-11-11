@@ -251,69 +251,80 @@ type storageBook struct {
 	rev     int64
 	viewers map[[3]int]map[*Client]bool
 	viewing map[*Client][3]int
-	// Appliances with work to do (appliances.go), by the key of their entry in blocks; the power
-	// each viewed cold block last showed; for how many ticks each electric machine has asked the
-	// grid for power (up to 2); and blocks whose names changed, to broadcast.
-	active      map[string]bool
-	asked       map[string]int
-	shownPower  map[[3]int]bool
-	nameChanges []Block
 	// Sends a message to a watcher (replaced by the tests).
 	deliver func(*Client, []byte) bool
-	// Whether the cold block at this base cell has power, and telling the grid of a block it may
-	// not know, and an electric machine asking for its watts or no longer (appliances.go; replaced
-	// by the tests).
-	powered   func(cell [3]int) bool
-	adopt     func(x, y, z int, name string)
-	wantPower func(cell [3]int, on bool)
-	// The clock slides dry by, and where their seeds come from (microscope.go; replaced by the tests).
-	now  func() time.Time
-	seed func() uint32
-	// The temperature where a block stands, and whether light reaches it (microbes.go; replaced by the tests).
-	ambient func(w cropWorld, cell [3]int) float64
-	lit     func(w cropWorld, cell [3]int) bool
-	// The world the book last read, for what a panel shows of the place (nil until then).
-	world cropWorld
-	// Every culture plate, by its id (plates.go).
+	// Every culture plate, by its id (plates.go): a plate is a kind of stack, in any chest.
 	plates map[string]*PlateRecord
+	// What each mechanic built on the chests keeps in the book, declared in its own file and guarded by
+	// the same mu (see storageParts).
+	applianceBook
+	microscopeBook
+	incubatorBook
 }
 
+// storagePart is what a mechanic built on the chests adds to them (a machine that works by itself, a
+// block that holds one thing with a state of its own), so that this file does not know which there are.
+// Its state in the book is a struct of its own embedded in storageBook; its saved state is its fields of
+// StorageBlock. Every hook is optional and runs with b.mu held, in the order of storageParts.
+type storagePart struct {
+	// A new book: its maps and what it asks of the rest of the server.
+	init func(b *storageBook)
+	// A saved world is about to be loaded over the book; each block as read, to drop what no valid request
+	// could have made; and each block kept, under its key.
+	loading func(b *storageBook)
+	clean   func(block *StorageBlock)
+	loaded  func(b *storageBook, key string, block *StorageBlock)
+	// For world.json: what of `block` the plain copy `copied` still shares with it.
+	copyState func(copied, block *StorageBlock)
+	// What a panel shows of the block at `place` besides its slots (block is nil when it holds nothing).
+	view func(b *storageBook, place storagePlace, block *StorageBlock, snapshot *storageSnapshot)
+	// Why a block of this kind takes no plain put or take ("" when it does).
+	refuses func(place storagePlace) string
+	// The one slot an item belongs in, when the kind has a slot for each thing: ok is false for another
+	// kind; a reason says the item has no place in it.
+	slotFor func(place storagePlace, item string) (slot int, reason string, ok bool)
+	// The contents changed and something is left; nothing is left; a player opened it; nobody watches the
+	// cell any more.
+	changed   func(b *storageBook, place storagePlace, block *StorageBlock)
+	emptied   func(b *storageBook, w cropWorld, place storagePlace)
+	opened    func(b *storageBook, w cropWorld, place storagePlace)
+	unwatched func(b *storageBook, cell [3]int)
+	// The block is broken: what it spills when that is not just its slots (ok), and then what to forget.
+	spill func(b *storageBook, block *StorageBlock) (items []StorageSlot, ok bool)
+	gone  func(b *storageBook, cell [3]int, key string)
+}
+
+// The mechanics built on the chests. A new one adds its part here, its book (if it keeps any state out of
+// the blocks) to storageBook, and its saved fields to StorageBlock: nothing else in this file names it.
+var storageParts = []storagePart{appliancePart, microscopePart, incubatorPart}
+
 func newStorageBook() *storageBook {
-	return &storageBook{
-		blocks:     make(map[string]*StorageBlock),
-		log:        make(map[string]storageOutcome),
-		viewers:    make(map[[3]int]map[*Client]bool),
-		viewing:    make(map[*Client][3]int),
-		active:     make(map[string]bool),
-		asked:      make(map[string]int),
-		shownPower: make(map[[3]int]bool),
-		plates:     make(map[string]*PlateRecord),
-		deliver:    storageDeliver,
-		powered:    powerRunsAt,
-		adopt:      powerAdopt,
-		wantPower:  powerAsk,
-		now:        time.Now,
-		seed:       microscopeNewSeed,
-		ambient:    incubatorAmbient,
-		lit:        incubatorLight,
+	b := &storageBook{
+		blocks:  make(map[string]*StorageBlock),
+		log:     make(map[string]storageOutcome),
+		viewers: make(map[[3]int]map[*Client]bool),
+		viewing: make(map[*Client][3]int),
+		plates:  make(map[string]*PlateRecord),
+		deliver: storageDeliver,
 	}
+	for _, part := range storageParts {
+		if part.init != nil {
+			part.init(b)
+		}
+	}
+	return b
 }
 
 var storage = newStorageBook()
 
-// storageDeliver sends without blocking, and never to a channel broadcastToAll has closed.
+// storageDeliver sends without blocking, and only to a client still in the world: false otherwise.
 func storageDeliver(client *Client, data []byte) bool {
 	clientsMu.RLock()
 	defer clientsMu.RUnlock()
 	if !clients[client] {
 		return false
 	}
-	select {
-	case client.send <- data:
-		return true
-	default:
-		return false
-	}
+	return client.trySend(data)
 }
 
 func storageKeyOf(cell [3]int) string {
@@ -366,20 +377,10 @@ func (b *storageBook) snapshotLocked(place storagePlace) storageSnapshot {
 			copy(snapshot.Freezer, block.Freezer)
 		}
 	}
-	snapshot.Cold = applianceIsCold(place.kind)
-	if applianceUsesPower(place.kind) {
-		snapshot.Powered = b.powered(cell)
-		b.shownPower[cell] = snapshot.Powered
-	}
-	if m := machines[place.kind]; m != nil {
-		snapshot.Oven = ovenStatusOf(m, block)
-		snapshot.Oven.Starting = m.electric() && snapshot.Oven.CookMax > 0 && b.asked[storageKeyOf(cell)] < 2
-	}
-	if place.kind == microscopeKind {
-		snapshot.Microscope = b.microscopeViewOf(block)
-	}
-	if place.kind == incubatorKind {
-		snapshot.Incubator = b.incubatorViewOf(b.world, cell, block)
+	for _, part := range storageParts {
+		if part.view != nil {
+			part.view(b, place, block, &snapshot)
+		}
 	}
 	snapshot.Cultures = b.culturesOfLocked(snapshot.Slots, snapshot.Freezer)
 	return snapshot
@@ -442,12 +443,13 @@ func (b *storageBook) beginMoveLocked(w cropWorld, eye *[3]float64, move storage
 			reason = "not a storage block"
 		} else if _, ok := place.slots(move.Compartment); !ok {
 			reason = "bad compartment"
-		} else if place.kind == microscopeKind {
-			// A slide and what lies on it only move together (microscope.go).
-			reason = "not for the microscope"
-		} else if place.kind == incubatorKind {
-			// Nor a plate and what lives on it (microbes.go).
-			reason = "not for the incubator"
+		} else {
+			// What moves only with a state of its own: a slide and what lies on it, a plate and what lives on it.
+			for _, part := range storageParts {
+				if part.refuses != nil && reason == "" {
+					reason = part.refuses(place)
+				}
+			}
 		}
 	}
 	if reason != "" {
@@ -469,12 +471,16 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 	}
 	capacity, _ := place.slots(move.Compartment)
 	first, last := 0, capacity
-	if m := machines[place.kind]; m != nil {
-		slot := m.slotFor(move.Type)
-		if slot < 0 {
-			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "not for the " + m.Name}), false
+	for _, part := range storageParts {
+		if part.slotFor == nil {
+			continue
 		}
-		first, last = slot, slot+1
+		if slot, reason, ok := part.slotFor(place, move.Type); ok {
+			if reason != "" {
+				return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: reason}), false
+			}
+			first, last = slot, slot+1
+		}
 	}
 	key := storageKeyOf(place.cell)
 	block := b.blocks[key]
@@ -491,7 +497,7 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 			return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: reason}), false
 		}
 		b.blocks[key] = block
-		b.wakeLocked(place, block)
+		b.changedLocked(place, block)
 		b.rev++
 		b.notifyLocked(place)
 		return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
@@ -517,7 +523,7 @@ func (b *storageBook) put(w cropWorld, eye *[3]float64, move storageMove) (stora
 		return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Reason: "full"}), false
 	}
 	b.blocks[key] = block
-	b.wakeLocked(place, block)
+	b.changedLocked(place, block)
 	b.rev++
 	b.notifyLocked(place)
 	return b.rememberLocked(storageOutcome{ReqID: move.ReqID, Type: move.Type, Amount: moved}), true
@@ -564,9 +570,13 @@ func (b *storageBook) take(w cropWorld, eye *[3]float64, move storageMove) (stor
 	}
 	if block.holdsNothing() {
 		delete(b.blocks, key)
-		b.emptiedLocked(w, place)
+		for _, part := range storageParts {
+			if part.emptied != nil {
+				part.emptied(b, w, place)
+			}
+		}
 	} else {
-		b.wakeLocked(place, block)
+		b.changedLocked(place, block)
 	}
 	b.rev++
 	b.notifyLocked(place)
@@ -618,9 +628,30 @@ func (b *storageBook) open(w cropWorld, eye *[3]float64, client *Client, x, y, z
 	}
 	b.viewers[cell][client] = true
 	b.viewing[client] = cell
-	b.settleOnOpenLocked(w, place)
-	b.world = w
+	for _, part := range storageParts {
+		if part.opened != nil {
+			part.opened(b, w, place)
+		}
+	}
 	return b.snapshotLocked(place), true
+}
+
+// changedLocked tells the parts that a block's contents changed and it still holds something.
+func (b *storageBook) changedLocked(place storagePlace, block *StorageBlock) {
+	for _, part := range storageParts {
+		if part.changed != nil {
+			part.changed(b, place, block)
+		}
+	}
+}
+
+// unwatchedLocked tells the parts that nobody has this cell open any more.
+func (b *storageBook) unwatchedLocked(cell [3]int) {
+	for _, part := range storageParts {
+		if part.unwatched != nil {
+			part.unwatched(b, cell)
+		}
+	}
 }
 
 func (b *storageBook) closeLocked(client *Client) {
@@ -632,7 +663,7 @@ func (b *storageBook) closeLocked(client *Client) {
 	delete(b.viewers[cell], client)
 	if len(b.viewers[cell]) == 0 {
 		delete(b.viewers, cell)
-		delete(b.shownPower, cell)
+		b.unwatchedLocked(cell)
 	}
 }
 
@@ -671,14 +702,21 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 	key := storageKeyOf(had)
 	var spill []StorageSlot
 	if block := b.blocks[key]; block != nil {
-		if block.Kind == incubatorKind {
-			spill = b.incubatorSpillLocked(block)
-		} else {
+		own := false
+		for _, part := range storageParts {
+			if part.spill != nil && !own {
+				spill, own = part.spill(b, block)
+			}
+		}
+		if !own {
 			spill = append(b.spillSlotsLocked(block.Slots), b.spillSlotsLocked(block.Freezer)...)
 		}
 		delete(b.blocks, key)
-		delete(b.active, key)
-		b.stopAskingLocked(had, key)
+		for _, part := range storageParts {
+			if part.gone != nil {
+				part.gone(b, had, key)
+			}
+		}
 	}
 	b.rev++
 	if watchers := b.viewers[had]; len(watchers) > 0 {
@@ -688,7 +726,7 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 			delete(b.viewing, client)
 		}
 		delete(b.viewers, had)
-		delete(b.shownPower, had)
+		b.unwatchedLocked(had)
 	}
 	return spill, changed, nil
 }
@@ -706,22 +744,29 @@ func (b *storageBook) load(saved map[string]StorageBlock, savedLog []storageOutc
 		}
 	}
 	b.blocks = make(map[string]*StorageBlock, len(saved))
-	b.active = make(map[string]bool)
-	b.asked = make(map[string]int)
+	for _, part := range storageParts {
+		if part.loading != nil {
+			part.loading(b)
+		}
+	}
 	for _, block := range saved {
 		copied := block
 		copied.Slots = storageCleanSlots(block.Slots)
 		copied.Freezer = storageCleanSlots(block.Freezer)
-		applianceCleanLoaded(&copied)
-		microscopeCleanLoaded(&copied)
-		cultureCleanLoaded(&copied)
+		for _, part := range storageParts {
+			if part.clean != nil {
+				part.clean(&copied)
+			}
+		}
 		if copied.holdsNothing() {
 			continue
 		}
 		key := blockKey(block.X, block.Y, block.Z)
 		b.blocks[key] = &copied
-		if copied.Kind != "" {
-			b.active[key] = true
+		for _, part := range storageParts {
+			if part.loaded != nil {
+				part.loaded(b, key, &copied)
+			}
 		}
 	}
 	b.migratePlatesLocked()
@@ -768,14 +813,10 @@ func (b *storageBook) snapshotAll() (map[string]StorageBlock, []storageOutcome, 
 		copied := *block
 		copied.Slots = append([]StorageSlot(nil), block.Slots...)
 		copied.Freezer = append([]StorageSlot(nil), block.Freezer...)
-		if block.Prep != nil {
-			prep := *block.Prep
-			copied.Prep = &prep
-		}
-		copied.Plates = cultureCopyPlates(block.Plates)
-		if block.Inside != nil {
-			inside := *block.Inside
-			copied.Inside = &inside
+		for _, part := range storageParts {
+			if part.copyState != nil {
+				part.copyState(&copied, block)
+			}
 		}
 		blocks[key] = copied
 	}
@@ -893,4 +934,10 @@ func handleStorageMessage(client *Client, msg Message) {
 			storageReply(client, outcome)
 		}
 	}
+}
+
+func init() {
+	// Opening and moving are refused in someone else's plot, each with the answer its panel waits for.
+	registerMessage(messageSpec{plot: plotChecked, handle: handleStorageMessage}, "storageOpen", "storagePut", "storageTake")
+	registerMessage(messageSpec{plot: plotNowhere, handle: handleStorageMessage}, "storageClose", "storageSync")
 }

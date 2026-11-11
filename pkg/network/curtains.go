@@ -115,10 +115,7 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 		}
 		blockEditMu.Unlock()
 		log.Printf("curtainStrip refused: %d cells", len(payload.Blocks))
-		select {
-		case client.send <- createMessage("curtainStrip", curtainStripPayload{Blocks: truth}):
-		default:
-		}
+		client.trySend(createMessage("curtainStrip", curtainStripPayload{Blocks: truth}))
 		return
 	}
 	placed := make([]Block, 0, len(payload.Blocks))
@@ -129,4 +126,9 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 	}
 	blockEditMu.Unlock()
 	broadcastToAll(createMessage("curtainStrip", curtainStripPayload{Blocks: placed}))
+}
+
+func init() {
+	// A strip is several cells, refused whole.
+	registerMessage(messageSpec{plot: plotChecked, handle: func(c *Client, m Message) { curtainStripMessage(c, m.Payload) }}, "curtainStrip")
 }

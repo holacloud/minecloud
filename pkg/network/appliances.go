@@ -379,6 +379,74 @@ func coldStep(slots []StorageSlot, changes map[string]string, seconds float64, p
 	return changed, work
 }
 
+// applianceBook is what the appliances keep in the book of the chests (storage.go), under its mu.
+type applianceBook struct {
+	// Appliances with work to do, by the key of their entry in blocks; for how many ticks each electric
+	// machine has asked the grid for power (up to 2); the power each viewed cold block last showed; and
+	// blocks whose names changed, to broadcast.
+	active      map[string]bool
+	asked       map[string]int
+	shownPower  map[[3]int]bool
+	nameChanges []Block
+	// Whether the cold block at this base cell has power, and telling the grid of a block it may not know,
+	// and an electric machine asking for its watts or no longer (replaced by the tests).
+	powered   func(cell [3]int) bool
+	adopt     func(x, y, z int, name string)
+	wantPower func(cell [3]int, on bool)
+}
+
+// What the appliances add to the chests (storagePart, storage.go).
+var appliancePart = storagePart{
+	init: func(b *storageBook) {
+		b.active = make(map[string]bool)
+		b.asked = make(map[string]int)
+		b.shownPower = make(map[[3]int]bool)
+		b.powered, b.adopt, b.wantPower = powerRunsAt, powerAdopt, powerAsk
+	},
+	loading: func(b *storageBook) {
+		b.active = make(map[string]bool)
+		b.asked = make(map[string]int)
+	},
+	clean: applianceCleanLoaded,
+	// Every saved appliance is looked at once after a restart: it may have work to do.
+	loaded: func(b *storageBook, key string, block *StorageBlock) {
+		if block.Kind != "" {
+			b.active[key] = true
+		}
+	},
+	view: func(b *storageBook, place storagePlace, block *StorageBlock, snapshot *storageSnapshot) {
+		snapshot.Cold = applianceIsCold(place.kind)
+		if applianceUsesPower(place.kind) {
+			snapshot.Powered = b.powered(place.cell)
+			b.shownPower[place.cell] = snapshot.Powered
+		}
+		if m := machines[place.kind]; m != nil {
+			snapshot.Oven = ovenStatusOf(m, block)
+			snapshot.Oven.Starting = m.electric() && snapshot.Oven.CookMax > 0 && b.asked[storageKeyOf(place.cell)] < 2
+		}
+	},
+	// In a machine each item goes only into the slot it belongs in.
+	slotFor: func(place storagePlace, item string) (int, string, bool) {
+		m := machines[place.kind]
+		if m == nil {
+			return 0, "", false
+		}
+		slot := m.slotFor(item)
+		if slot < 0 {
+			return 0, "not for the " + m.Name, true
+		}
+		return slot, "", true
+	},
+	changed:   (*storageBook).wakeLocked,
+	emptied:   (*storageBook).emptiedLocked,
+	opened:    (*storageBook).settleOnOpenLocked,
+	unwatched: func(b *storageBook, cell [3]int) { delete(b.shownPower, cell) },
+	gone: func(b *storageBook, cell [3]int, key string) {
+		delete(b.active, key)
+		b.stopAskingLocked(cell, key)
+	},
+}
+
 // wakeLocked notes that an appliance's contents changed, so it may have work to do.
 func (b *storageBook) wakeLocked(place storagePlace, block *StorageBlock) {
 	if applianceIsKind(place.kind) {
@@ -651,4 +719,10 @@ func runAppliances() {
 			broadcastToAll(createMessage("blockPlace", block))
 		}
 	}
+}
+
+func init() {
+	registerLoop(runAppliances)
+	// An oven burns when the server says so, whatever a plan or a client asks for.
+	registerPlaceFilter(func(x, y, z int, name string) string { return storage.settleOvenName(x, y, z, name) })
 }

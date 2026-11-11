@@ -885,8 +885,9 @@ func (g *powerGrid) eelFeed(x, y, z int, now time.Time) bool {
 	return true
 }
 
-// handlePowerFeed feeds the eel of a tank (a player gave it raw fish).
-func handlePowerFeed(raw json.RawMessage) {
+// handlePowerFeed feeds the eel of a tank (a player gave it raw fish). plotGuarded: not in someone
+// else's plot.
+func handlePowerFeed(client *Client, raw json.RawMessage) {
 	var target powerTarget
 	if err := json.Unmarshal(raw, &target); err != nil {
 		return
@@ -1019,14 +1020,11 @@ func handlePowerProbe(client *Client, raw json.RawMessage) {
 	powerMu.Lock()
 	report := grid.probe(target.X, target.Y, target.Z, chunkStore, env, time.Now())
 	powerMu.Unlock()
-	select {
-	case client.send <- createMessage("powerProbe", report):
-	default:
-	}
+	client.trySend(createMessage("powerProbe", report))
 }
 
-// handlePowerCrank turns a hand crank.
-func handlePowerCrank(raw json.RawMessage) {
+// handlePowerCrank turns a hand crank. plotGuarded: not in someone else's plot.
+func handlePowerCrank(client *Client, raw json.RawMessage) {
 	var target powerTarget
 	if err := json.Unmarshal(raw, &target); err != nil {
 		return
@@ -1106,4 +1104,12 @@ func snapshotPower() map[string]PowerBlock {
 		out[blockKey(p[0], p[1], p[2])] = *b
 	}
 	return out
+}
+
+// The power a crank or a fed eel gives drives the plot's rams, lifts and doors: guarded like a lever.
+func init() {
+	registerMessage(messageSpec{plot: plotGuarded, handle: func(c *Client, m Message) { handlePowerCrank(c, m.Payload) }}, "powerCrank")
+	registerMessage(messageSpec{plot: plotGuarded, handle: func(c *Client, m Message) { handlePowerFeed(c, m.Payload) }}, "powerFeed")
+	registerMessage(messageSpec{plot: plotOpen, why: "a multimeter only reads", handle: func(c *Client, m Message) { handlePowerProbe(c, m.Payload) }}, "powerProbe")
+	registerLoop(runPowerGrid)
 }

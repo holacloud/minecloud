@@ -122,15 +122,6 @@ Object.assign(Game.prototype, {
             // Typing here is not playing: no key reaches the game.
             event.stopPropagation();
         });
-
-        if (this.network) {
-            this.network.on('playerIdentity', (payload) => {
-                this.stablePlayerId = payload && typeof payload.playerId === 'string' ? payload.playerId : '';
-                this.identityApplyText();
-            });
-            this.network.on('identityCode', (payload) => this.identityReceiveCode(payload || {}));
-            this.network.on('identityRecoverResult', (payload) => this.identityReceiveRecovery(payload || {}));
-        }
     },
 
     identityApplyText() {
@@ -314,3 +305,14 @@ Object.assign(Game.prototype, {
         }
     }
 });
+
+registerGameInit(function () {
+    this.initIdentityPanel();
+});
+
+registerNetworkHandler('playerIdentity', function (payload) {
+    this.stablePlayerId = payload && typeof payload.playerId === 'string' ? payload.playerId : '';
+    this.identityApplyText();
+});
+registerNetworkHandler('identityCode', function (payload) { this.identityReceiveCode(payload || {}); });
+registerNetworkHandler('identityRecoverResult', function (payload) { this.identityReceiveRecovery(payload || {}); });

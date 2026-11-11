@@ -184,7 +184,25 @@ const COPPER_GOLEM_WRENCH_SPRITE = [
 
 if (typeof MOB_SPECIES !== 'undefined') {
     // No spawnBiomes: it never appears by itself. maxHealth 1: no health pool (hits do no harm).
-    MOB_SPECIES.copper_golem = { eggColor: 0xd9793e, tone: 520, speed: COPPER_GOLEM.speed, variants: 4, group: [1, 1], limit: COPPER_GOLEM.limit, movement: 'copper_helper' };
+    // The whole species: what it is and its row in every table of the other features (js/extensions.js).
+    registerSpecies('copper_golem', {
+        info: { eggColor: 0xd9793e, tone: 520, speed: COPPER_GOLEM.speed, variants: 4, group: [1, 1], limit: COPPER_GOLEM.limit, movement: 'copper_helper' },
+        // never defeated: Shift + right click packs it back into its core (copper_golem.js)
+        drops: [],
+        // No diet: built, not tamed: it already follows its builder (copper_golem.js).
+        // a machine: no bait, no cage
+        trap: { baits: [] },
+        card: {
+            name: 'Copper Golem', habitat: 'Wherever its builder goes', activity: 'While it has charge', temperament: 'Friendly',
+            hint: 'It is not found: it is built, from a copper golem core.',
+            description: 'A small helper of copper with big round eyes, a lightning-rod antenna and a coil on its back. It follows you, waits, or gathers the items lying around and brings them to you, opening doors on its way. It runs on charge (a battery block, coal or a lithium battery), and over the days its copper turns brown and then green, unless you wax it with honeycomb.'
+        },
+        cardEs: {
+            name: 'Golem de cobre', habitat: 'Allá donde vaya quien lo construyó',
+            hint: 'No se encuentra: se construye, con un núcleo de golem de cobre.',
+            description: 'Un pequeño ayudante de cobre con grandes ojos redondos, una antena pararrayos y una bobina a la espalda. Te sigue, te espera o recoge los objetos que hay por el suelo y te los trae, abriendo puertas por el camino. Funciona con carga (un bloque de batería, carbón o una batería de litio) y, con los días, su cobre se vuelve marrón y luego verde, salvo que lo enceres con panal.'
+        }
+    });
 }
 
 if (typeof VoxelModels !== 'undefined') {
@@ -633,8 +651,8 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
         const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
         if (!shape || !shape.toggle || def.opensByHand === false) return false;
         if (typeof logicStopLocks === 'function' && logicStopLocks(this.world, cell)) return false;
-        // It opens doors for its owner: not in someone else's plot (js/game/claims.js).
-        if (typeof this.claimRefusalAt === 'function' && this.claimRefusalAt(cell.x, cell.z)) return false;
+        // It opens doors for its owner: not where they may not (someone else's plot).
+        if (this.blockEditRefusal(cell.x, cell.z)) return false;
         const base = def.variantOf || type;
         const next = shape.toggle(def.state, { look });
         const nextType = next && this.world.getShapeStateType(base, next);
@@ -651,10 +669,7 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
             const otherNextType = this.world.getShapeStateType(base, otherNext);
             if (otherNextType) updates.push({ ...other, blockType: otherNextType });
         }
-        updates.forEach((update) => {
-            this.world.addBlock(update);
-            if (this.network && this.network.connected) this.network.send('blockPlace', update);
-        });
+        updates.forEach((update) => this.placeBlockForAll(update, { always: true }));
         this.playNoiseBurst({ duration: 0.14, volume: 0.025, highpass: 300, lowpass: 1600 });
         this.lastSelectionUpdate = 0;
         return true;

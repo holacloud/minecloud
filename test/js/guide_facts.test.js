@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { anyStub, loadSpeciesTables } = require('./support/game');
 
 const ROOT = path.join(__dirname, '..', '..');
 const STATIC = path.join(ROOT, 'pkg', 'web', 'static');
@@ -21,13 +22,6 @@ function page(id, lang) {
     return fs.readFileSync(path.join(GUIDE, file), 'utf8');
 }
 
-function anyStub() {
-    return new Proxy(function () {}, {
-        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : key === 'prototype' ? {} : anyStub()),
-        apply: () => anyStub(), construct: () => anyStub(), set: () => true
-    });
-}
-
 function loadGame() {
     const values = new Map();
     const context = vm.createContext({
@@ -35,13 +29,9 @@ function loadGame() {
         window: { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }, addEventListener() {} },
         requestAnimationFrame: () => 1, cancelAnimationFrame() {}
     });
-    vm.runInContext('class Game {}', context);
-    for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(read(file), context);
-    for (const file of ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js']) {
-        vm.runInContext(read(`game/${file}`), context, { filename: file });
-    }
+    loadSpeciesTables(context, ['game/furniture.js', 'game/storage.js', 'game/appliances.js', 'game/microbes.js', 'game/microscope_text.js']);
     vm.runInContext(`Object.assign(this, { MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
-        TAMING_DIET, TAMING_GOAL_MOVEMENTS, TRAPS_SPECIES, TRAPS_NUDGE_MODES, trapsIsLured });`, context);
+        TAMING_DIET, TRAPS_SPECIES, trapsIsLured, mobMovementIs });`, context);
     return context;
 }
 
@@ -55,6 +45,10 @@ const ownFile = {};
 const ownDefinition = {};
 for (const name of gameFiles) {
     for (const match of read(`game/${name}`).matchAll(/MOB_SPECIES\.([a-z_]+)\s*=\s*\{([\s\S]*?)\};/g)) {
+        ownFile[match[1]] = name;
+        ownDefinition[match[1]] = match[2];
+    }
+    for (const match of read(`game/${name}`).matchAll(/^\s*registerSpecies\('([a-z_]+)',\s*\{\s*info:\s*\{([\s\S]*?)\},\n/gm)) {
         ownFile[match[1]] = name;
         ownDefinition[match[1]] = match[2];
     }
@@ -148,7 +142,7 @@ test('page 5 tells the notice of the complete notebook as the code does it', () 
 const canTame = (id) => {
     const diet = ctx.TAMING_DIET[id];
     const { movement, hostile } = info(id);
-    return Boolean(diet) && !hostile && (!movement || ctx.TAMING_GOAL_MOVEMENTS.includes(movement));
+    return Boolean(diet) && !hostile && ctx.mobMovementIs(movement, 'tameable');
 };
 
 test('no behaviour opts in to taming: if one does, the guide has to say so', () => {
@@ -190,7 +184,7 @@ test('page 3 says who has food written down but cannot be tamed; their cards no 
 function walksToBait(id) {
     if (id === 'bee' || id === 'ant') return true;
     const { movement } = info(id);
-    if (!movement || movement === 'climb' || ctx.TRAPS_NUDGE_MODES.includes(movement)) return true;
+    if (!movement || movement === 'climb' || ctx.mobMovementIs(movement, 'nudgedToBait')) return true;
     return Boolean(ownFile[id]) && read(`game/${ownFile[id]}`).includes('getMobGoal(');
 }
 

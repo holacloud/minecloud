@@ -15,8 +15,25 @@ const FOX_TROT = 2.3;
 const FOX_RUN = 4.6;
 const FOX_CREEP = 0.7;
 
-MOB_SPECIES.fox = { eggColor: 0xd9661f, tone: 760, speed: FOX_WALK, maxHealth: 12, variants: 4, group: [1, 2], limit: 4, movement: 'prowl', spawnBiomes: { forest: 2, plains: 1 } };
-VoxelModels.MOB_SURFACES.fox = 'fur';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('fox', {
+    info: { eggColor: 0xd9661f, tone: 760, speed: FOX_WALK, maxHealth: 12, variants: 4, group: [1, 2], limit: 4, movement: 'prowl', spawnBiomes: { forest: 2, plains: 1 } },
+    surface: 'fur',
+    drops: [['fur', 1, 2]],
+    furry: true,
+    diet: { foods: ['raw_fish', 'mushroom_red'], chance: 1 / 4 },
+    trap: { baits: ['bait_meat'], cage: true },
+    card: {
+        name: 'Fox', habitat: 'Forests and plains', activity: 'Day and night', temperament: 'Passive',
+        hint: 'A russet tail vanishes into the woods.',
+        description: 'A clever hunter that stalks rabbits and frogs. At night it sneaks around and steals items left lying on the ground, so keep your things close.'
+    },
+    cardEs: {
+        name: 'Zorro', habitat: 'Bosques y llanuras',
+        hint: 'Una cola rojiza desaparece en el bosque.',
+        description: 'Un cazador astuto que acecha a conejos y ranas. De noche se mueve a hurtadillas y roba los objetos que hay por el suelo, así que ten tus cosas cerca.'
+    }
+});
 
 // Red, ginger, arctic and silver coats; all with a white-tipped tail and dark socks.
 VoxelModels.mobBuilders.fox = function (b, variant) {
@@ -554,15 +571,12 @@ Object.assign(Game.prototype, {
         this.foxDropCarcass(mob);
         fox.stealCooldown = 30;
         fox.huntCooldown = Math.max(fox.huntCooldown, 10);
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         const tone = getMobSpecies('fox').tone;
         this.playTone({ frequency: tone * 1.9, endFrequency: tone * 1.1, duration: 0.16, type: 'sawtooth', volume: 0.02, attack: 0.01, release: 0.08 });
         this.playTone({ frequency: tone * 2.4, endFrequency: tone * 1.3, duration: 0.12, type: 'triangle', volume: 0.012, release: 0.06 });
-        if (data.health <= 0) {
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the fox' });
+        if (lethal) {
+            this.defeatMobByPlayer(mob, 'You defeated the fox');
             return;
         }
         fox.bark = 0.25;

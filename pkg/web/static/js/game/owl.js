@@ -21,8 +21,26 @@ const OWL_IRIS = [0xf08a1c, 0xf2c230, 0xf6d84a];
 // Shared by every owl's eyes (never disposed with a mob).
 const OWL_EYE_GEOMETRY = {};
 
-MOB_SPECIES.owl = { eggColor: 0x8a6440, tone: 340, speed: 3.4, maxHealth: 12, variants: 3, group: [1, 1], limit: 3, movement: 'nightwatch' };
-VoxelModels.MOB_SURFACES.owl = 'feather';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('owl', {
+    info: { eggColor: 0x8a6440, tone: 340, speed: 3.4, maxHealth: 12, variants: 3, group: [1, 1], limit: 3, movement: 'nightwatch' },
+    surface: 'feather',
+    drops: [['feather', 1, 3]],
+    sheds: ['feather', 0.4, 8],
+    molts: true,
+    diet: { foods: ['raw_fish'], chance: 1 / 4 },
+    trap: { baits: ['bait_meat'] },
+    card: {
+        name: 'Owl', habitat: 'Forests and trees on the plains', activity: 'Night', temperament: 'Passive',
+        hint: 'Two round eyes follow you at night.',
+        description: 'A silent night hunter that perches in the trees and turns its head to follow you. It swoops down on bats and rabbits in the dark.'
+    },
+    cardEs: {
+        name: 'Búho', habitat: 'Bosques y árboles de las llanuras',
+        hint: 'Dos ojos redondos te siguen de noche.',
+        description: 'Un silencioso cazador nocturno que se posa en los árboles y gira la cabeza para seguirte. En la oscuridad se lanza sobre murciélagos y conejos.'
+    }
+});
 
 // Round and upright, standing on its talons at the origin. Its wings hang folded at its
 // sides and spread sideways for flight; the eyes (lit) are added by js/game/owl.js, under
@@ -191,14 +209,13 @@ Object.assign(Game.prototype, {
     owlSpawnForChunk(chunkX, chunkZ, biome) {
         if (biome !== 'forest' && biome !== 'plains') return;
         if (this.chunkRandom(chunkX, chunkZ, 141) > (biome === 'forest' ? 0.18 : 0.07)) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'owl').length >= getMobSpecies('owl').limit) return;
+        if (this.mobCount('owl') >= getMobSpecies('owl').limit) return;
         const size = this.world.chunkSize;
         for (let i = 0; i < 24; i++) {
             const spot = this.owlFindPerch(chunkX * size + this.chunkRandom(chunkX, chunkZ, 142 + i) * size, chunkZ * size + this.chunkRandom(chunkX, chunkZ, 172 + i) * size);
             if (!spot) continue;
             const owl = this.createMob('owl', spot);
-            owl.userData.natural = true;
-            owl.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(owl, chunkX, chunkZ);
             this.owlInit(owl);
             this.ambientMobs.push(owl);
             return;
@@ -623,14 +640,11 @@ Object.assign(Game.prototype, {
         if (!mob.parent) return;
         if (!data.flight) this.owlInit(mob);
         const flight = data.flight;
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         this.playNoiseBurst({ duration: 0.1, volume: 0.025, highpass: 500, lowpass: 3000 });
-        if (data.health <= 0) {
+        if (lethal) {
             this.owlScreech(mob);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the owl' });
+            this.defeatMobByPlayer(mob, 'You defeated the owl');
             return;
         }
         if (flight.carrying) this.owlSwallow(mob);

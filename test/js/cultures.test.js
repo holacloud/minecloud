@@ -166,9 +166,9 @@ test('the autoclave, the storage sizes and the power match the server', () => {
     assert.equal(ctx.ELECTRIC_KINDS.incubator.watts, 20);
     assert.ok(ctx.BLOCK_TYPES.incubator.electric && ctx.BLOCK_TYPES.autoclave.electric);
     assert.equal(ctx.APPLIANCE_MACHINES.autoclave.refused, 'not for the autoclave');
-    // The server's messages are wired.
-    const websocket = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'websocket.go'), 'utf8');
-    assert.match(websocket, /"cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet":/);
+    // The server's messages are wired: registered from the mechanic's own file (pkg/network/registry.go).
+    const microbes = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'microbes.go'), 'utf8');
+    assert.match(microbes, /registerMessage\([^\n]*"cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet"\)/);
 });
 
 test('every machine, placed facing any way, settles on the server to a block the client registers', () => {
@@ -439,7 +439,7 @@ test('the incubator opens before a chest would, is a modal panel, and listens wi
     assert.equal(game.cultureEscape(), true);
     assert.equal(game.cultureEscape(), false);
     const source = fs.readFileSync(path.join(JS, 'game', 'cultures.js'), 'utf8');
-    for (const type of ['storageResult', 'storageContents', 'storageClosed']) assert.ok(source.includes(`network.on('${type}'`), type);
+    for (const type of ['storageResult', 'storageContents', 'storageClosed']) assert.ok(source.includes(`registerNetworkHandler('${type}'`), type);
     // Not connected: says so and opens nothing.
     const offline = panelGame();
     offline.game.network.connected = false;

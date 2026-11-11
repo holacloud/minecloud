@@ -676,10 +676,7 @@ func identityPayload(playerID string) map[string]string {
 }
 
 func sendToClient(client *Client, data []byte) {
-	select {
-	case client.send <- data:
-	default:
-	}
+	client.trySend(data)
 }
 
 // Every open connection of a session (one per tab) becomes the player the session now is.
@@ -772,4 +769,8 @@ func handleIdentityMessage(client *Client, msg Message) {
 // Messages whose payload must never reach the log.
 func messageIsSecret(msgType string) bool {
 	return msgType == "creativeAuth" || msgType == "identityRecover"
+}
+
+func init() {
+	registerMessage(messageSpec{plot: plotNowhere, handle: handleIdentityMessage}, "identityCodeShow", "identityCodeRegenerate", "identityRecover")
 }

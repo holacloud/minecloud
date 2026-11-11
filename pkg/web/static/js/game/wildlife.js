@@ -72,8 +72,7 @@ Object.assign(Game.prototype, {
             const [minGroup, maxGroup] = MOB_SPECIES.fish.group;
             const count = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, 5) * (maxGroup - minGroup + 1));
             this.spawnFishSchool(column, count).forEach((fish) => {
-                fish.userData.natural = true;
-                fish.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(fish, chunkX, chunkZ);
             });
             return;
         }
@@ -298,8 +297,7 @@ Object.assign(Game.prototype, {
             for (let i = 0; i < count; i++) {
                 const mob = this.createMob(species, new THREE.Vector3(spot.x + (Math.random() - 0.5) * 0.6, spot.y, spot.z + (Math.random() - 0.5) * 0.6));
                 mob.userData.pond = spot.water;
-                mob.userData.natural = true;
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
                 this.ambientMobs.push(mob);
             }
             return;

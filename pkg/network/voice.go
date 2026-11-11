@@ -165,3 +165,7 @@ func runVoiceMesh() {
 		wasFull = full
 	}
 }
+
+func init() {
+	registerLoop(runVoiceMesh)
+}

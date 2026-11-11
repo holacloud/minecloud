@@ -16,7 +16,8 @@
 //   placed}, and this file puts the refused cells back as they really are and gives back the item.
 // - The admin (a session that passed creative auth) is not stopped, as on the server, and has /plots,
 //   /plot remove <n> and /plot owner <n> <player> (claimAdmin messages).
-// - Robots, beavers and copper golems ask claimRefusalAt before acting for their owner.
+// - Whatever changes blocks for the player (robots, beavers, copper golems, tools) does it through
+//   placeBlockForAll and removeBlockForAll (js/game/building.js), which ask the guard registered below.
 // - Going home: «Ir a mi parcela» in the pause menu, or /home, asks the server where the player's own plot is
 //   (claimHome; only an owner gets an answer, at most once every 30 s). The player gets off whatever they
 //   ride or sit on, is held over the marker until the chunks of the plot arrive, and is then put on solid
@@ -354,17 +355,9 @@ const CLAIM_CSS = `
 `;
 
 Object.assign(Game.prototype, {
-    claimsListen() {
-        if (this.claimListening || !this.network) return;
-        this.claimListening = true;
+    // Once, when the game has started (registerGameInit below).
+    claimsInit() {
         this.claimState = this.claimState || { claims: [], spawn: null, radius: 8, gap: 8 };
-        this.network.on('claimList', (payload) => this.claimReceiveList(payload || {}));
-        this.network.on('claimRefused', (payload) => this.claimOnRefused(payload || {}));
-        this.network.on('claimMade', () => this.claimNotice(claimSay('claimed')));
-        this.network.on('claimAdminResult', (payload) => this.claimOnAdminResult(payload || {}));
-        this.network.on('claimHomeResult', (payload) => this.claimOnHome(payload || {}));
-        this.network.on('claimGuestResult', (payload) => this.claimOnGuestResult(payload || {}));
-        this.network.on('playerList', (payload) => this.claimOnPlayerList(payload || {}));
         onGameLangChange(() => { this.claimRenderPanel(); this.claimLabelPauseButton(); });
         this.claimAddPauseButton();
     },
@@ -889,7 +882,7 @@ Object.assign(Game.prototype, {
         const done = this.finishBreakingBlock({ x: claim.x, y: claim.y, z: claim.z });
         this.claimConfirmedKey = null;
         // Not in the world here (a chunk not loaded): the server still hears it.
-        if (!done) this.network.send('blockBreak', { x: claim.x, y: claim.y, z: claim.z });
+        if (!done) this.sendBlockBreak(claim.x, claim.y, claim.z);
         this.claimClosePanel();
     },
 
@@ -951,13 +944,6 @@ Object.assign(Game.prototype, {
 // player may not change. The server refuses anyway; this only saves the item and says why at once.
 (() => {
     const proto = Game.prototype;
-    const initNetwork = proto.initNetwork;
-    proto.initNetwork = function (...args) {
-        const result = initNetwork.apply(this, args);
-        // Before the socket opens: the plots arrive right after it does.
-        this.claimsListen();
-        return result;
-    };
 
     const updateMining = proto.updateMining;
     proto.updateMining = function (delta) {
@@ -1076,7 +1062,25 @@ registerModalPanel({
     close() { this.claimClosePanel(); }
 });
 
+// Nothing changes a block for the player in someone else's plot or the spawn zone (js/extensions.js).
+registerBlockEditGuard(function (x, z) {
+    return this.claimHelperRefusal(x, z);
+});
+
 registerFrameUpdate(function () {
     this.claimUpdateHome();
     this.claimUpdate();
 });
+
+registerGameInit(function () {
+    this.claimsInit();
+});
+
+// What the server says of the plots. The list arrives right after the socket opens.
+registerNetworkHandler('claimList', function (payload) { this.claimReceiveList(payload || {}); });
+registerNetworkHandler('claimRefused', function (payload) { this.claimOnRefused(payload || {}); });
+registerNetworkHandler('claimMade', function () { this.claimNotice(claimSay('claimed')); });
+registerNetworkHandler('claimAdminResult', function (payload) { this.claimOnAdminResult(payload || {}); });
+registerNetworkHandler('claimHomeResult', function (payload) { this.claimOnHome(payload || {}); });
+registerNetworkHandler('claimGuestResult', function (payload) { this.claimOnGuestResult(payload || {}); });
+registerNetworkHandler('playerList', function (payload) { this.claimOnPlayerList(payload || {}); });

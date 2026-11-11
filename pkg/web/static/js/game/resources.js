@@ -316,8 +316,10 @@ registerGameContent(({ addItem, addRecipe }) => {
 });
 
 // ---------------------------------------------------------------------------------------
-// Loot per species when defeated by the player: [item, min, max, chance].
-const RESOURCE_DROPS = {
+// Loot per species when defeated by the player: [item, min, max, chance]. Here, the species of
+// mobSpecies.js; those with a file of their own say theirs (and whether they shed, are furry or molt)
+// in registerSpecies (js/extensions.js).
+const RESOURCE_DROPS = speciesFacet('drops', {
     sheep: [['white_wool', 1, 2]],
     duck: [['feather', 1, 3]],
     pig: [['leather', 1, 2]],
@@ -339,43 +341,28 @@ const RESOURCE_DROPS = {
     firefly: [['glow_dust', 1, 2]],
     shadow: [['shadow_essence', 1, 2]],
     eagle: [['feather', 2, 3]],
-    bat: [['leather', 1, 1, 0.5]],
-    crab: [['shell', 1, 2]],
-    fox: [['fur', 1, 2]],
-    rabbit: [['fur', 1, 1]],
-    owl: [['feather', 1, 3]],
-    vulture: [['feather', 2, 3]], // it also sheds feathers when struck
-    snake: [['scale', 1, 2], ['venom_sac', 1, 1, 0.6]],
-    storm_golem: [['glow_dust', 2, 3], ['iron_ore', 1, 2]],
-    wisp: [], // wisp.js drops its own glow_dust when caught
-    mole: [['fur', 1, 2]],
-    beaver: [['fur', 1, 2], ['wood', 1, 1, 0.5]],
-    ant: [], // a squashed ant leaves nothing (ants.js)
-    eel: [['raw_fish', 1, 2]],
-    copper_golem: [] // never defeated: Shift + right click packs it back into its core (copper_golem.js)
-};
+    bat: [['leather', 1, 1, 0.5]]
+});
 
 // Struck but not defeated, some creatures shed something: [item, chance, cooldown seconds].
-const RESOURCE_SHEDS = {
+const RESOURCE_SHEDS = speciesFacet('sheds', {
     duck: ['feather', 0.4, 8],
     macaw: ['feather', 0.4, 8],
     eagle: ['feather', 0.5, 8],
-    owl: ['feather', 0.4, 8],
-    vulture: ['feather', 0.4, 8],
     lizard: ['scale', 0.35, 10],
     turtle: ['shell', 0.15, 60],
     firefly: ['glow_dust', 0.3, 20]
-};
+});
 
 // Shears trim these for fur (sheep give wool instead).
-const RESOURCE_FURRY = ['goat', 'camel', 'horse', 'dog', 'cat', 'fox', 'rabbit', 'mole'];
-const RESOURCE_MILKABLE = ['goat', 'camel'];
+const RESOURCE_FURRY = speciesFacet('furry', { goat: true, camel: true, horse: true, dog: true, cat: true });
+const RESOURCE_MILKABLE = speciesFacet('milkable', { goat: true, camel: true });
 const RESOURCE_WOOL_REGROW = 150;
 const RESOURCE_FUR_REGROW = 120;
 const RESOURCE_MILK_REFILL = 60;
 const RESOURCE_HIVE_REFILL = 120;
 // Birds that now and then drop a feather while they preen.
-const RESOURCE_MOLTERS = ['duck', 'macaw', 'owl', 'vulture'];
+const RESOURCE_MOLTERS = speciesFacet('molts', { duck: true, macaw: true });
 
 registerMobUseHandler(function (mob, item) {
     return this.resourcesHarvest(mob, item);
@@ -427,7 +414,7 @@ Object.assign(Game.prototype, {
         const data = mob.userData;
         if (data.resourcesDropped) return;
         data.resourcesDropped = true;
-        const inWater = data.species === 'fish' || data.species === 'eel';
+        const inWater = mobMovementIs((getMobSpecies(data.species) || {}).movement, 'inWater');
         (RESOURCE_DROPS[data.species] || []).forEach(([type, min, max, chance = 1]) => {
             if (Math.random() >= chance) return;
             const amount = min + Math.floor(Math.random() * (max - min + 1));
@@ -455,7 +442,7 @@ Object.assign(Game.prototype, {
             return true;
         }
 
-        if (item === 'iron_shears' && RESOURCE_FURRY.includes(species)) {
+        if (item === 'iron_shears' && RESOURCE_FURRY[species]) {
             if (data.resourcesTrimmedAt && now - data.resourcesTrimmedAt < RESOURCE_FUR_REGROW) {
                 this.receiveSystemMessage({ text: `This ${species.replace('_', ' ')} was trimmed recently` });
                 return true;
@@ -466,7 +453,7 @@ Object.assign(Game.prototype, {
             return true;
         }
 
-        if (item === 'glass' && RESOURCE_MILKABLE.includes(species)) {
+        if (item === 'glass' && RESOURCE_MILKABLE[species]) {
             if (data.resourcesMilkedAt && now - data.resourcesMilkedAt < RESOURCE_MILK_REFILL) {
                 this.receiveSystemMessage({ text: `The ${species} has no milk right now. Try again later` });
                 return true;
@@ -541,9 +528,7 @@ Object.assign(Game.prototype, {
         // Swatting into a school now and then catches a fish.
         if (data.species === 'fish') {
             if (Math.random() < 0.2) {
-                this.emitMobEvent('defeated', mob, 'player');
-                this.removeMob(mob);
-                this.receiveSystemMessage({ text: 'You caught a fish!' });
+                this.defeatMobByPlayer(mob, 'You caught a fish!');
             }
             return;
         }
@@ -579,7 +564,7 @@ Object.assign(Game.prototype, {
                     this.resourcesApplyShorn(mob, true);
                 }
             }
-            if (RESOURCE_MOLTERS.includes(data.species) && Math.random() < 1 / 400 &&
+            if (RESOURCE_MOLTERS[data.species] && Math.random() < 1 / 400 &&
                 Math.hypot(player.x - mob.position.x, player.z - mob.position.z) < 24) {
                 this.resourcesDrop('feather', 1, mob.position);
             }

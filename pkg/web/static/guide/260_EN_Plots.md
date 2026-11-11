@@ -67,7 +67,7 @@ Around the point where everybody appears there is an area of **32 × 32** blocks
 In someone else's plot (and in the spawn area) the server does not let you:
 
 - place or break blocks, draw curtains, change a glow block's colour, spray paint;
-- flip levers or press buttons;
+- flip levers, press buttons, turn a hand crank or feed the eel of a tank;
 - open chests, barrels, wardrobes, fridges, ovens, foundries, the autoclave, the incubator or the microscope, nor take anything out or put anything in;
 - let a ram from outside push, pull or move blocks inside it, nor carry blocks from one plot to another. A lift goes up and down in its own column, so it never crosses a border;
 - let your robot, your beaver or your copper golem work in it: they act in your name.
@@ -82,7 +82,7 @@ Some things only happen in your browser and the server never sees them, so it ca
 - traps, cages and ant colony jars;
 - what lies on the ground to be picked up.
 
-Nor is anything stopped that changes nothing: taking a water sample with a tube, voting on a sign, turning a hand crank, feeding an eel or measuring with the multimeter. And a pressure plate or a proximity sensor reacts to whoever steps on it or walks by, whoever they are.
+Nor is anything stopped that changes nothing: taking a water sample with a tube, voting on a sign or measuring with the multimeter. And a pressure plate or a proximity sensor reacts to whoever steps on it or walks by, whoever they are.
 
 ## Your plot belongs to your player
 

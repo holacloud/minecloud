@@ -824,7 +824,7 @@ Object.assign(Game.prototype, {
         const cells = [[x, y + 1, z]];
         if (this.world.getBlockTypeAt(x, y + 2, z) === WEATHER_STATION_UPPER) cells.push([x, y + 2, z]);
         for (const [cx, cy, cz] of cells) {
-            if (this.world.removeBlockAt(cx, cy, cz) && this.network.connected) this.network.send('blockBreak', { x: cx, y: cy, z: cz });
+            this.removeBlockForAll(cx, cy, cz);
         }
         this.spawnPickup(WEATHER_STATION, { x, y, z }, 1);
     },
@@ -896,10 +896,7 @@ Object.assign(Game.prototype, {
             { x: cell.x, y: cell.y, z: cell.z, blockType: WEATHER_STATION },
             { x: cell.x, y: cell.y + 1, z: cell.z, blockType: WEATHER_STATION_UPPER }
         ];
-        parts.forEach((part) => {
-            this.world.addBlock(part);
-            this.network.send('blockPlace', part);
-        });
+        parts.forEach((part) => this.placeBlockForAll(part, { always: true }));
     },
 
     // ---- Every frame ---------------------------------------------------------------------

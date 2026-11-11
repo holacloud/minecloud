@@ -1051,12 +1051,6 @@ Object.assign(Game.prototype, {
 
     cultureUpdate() {
         if (!this.network) return;
-        if (!this.cultureListening) {
-            this.cultureListening = true;
-            this.network.on('storageResult', (outcome) => this.cultureOnOutcome(outcome));
-            this.network.on('storageContents', (contents) => this.cultureOnContents(contents));
-            this.network.on('storageClosed', (where) => this.cultureOnClosed(where));
-        }
         const now = performance.now();
         if (this.culturePending && this.culturePending.size > 0 && this.network.connected && now >= this.cultureNextSync) {
             const late = [...this.culturePending.entries()].filter(([, entry]) => now - entry.at >= STORAGE_SYNC_AFTER).map(([id]) => id);
@@ -1492,3 +1486,8 @@ registerGameContent(function () {
 registerFrameUpdate(function () {
     this.cultureUpdate();
 });
+
+// A culture plate is kept as a chest is (storage.go): its answers come as a chest's do.
+registerNetworkHandler('storageResult', function (outcome) { this.cultureOnOutcome(outcome); });
+registerNetworkHandler('storageContents', function (contents) { this.cultureOnContents(contents); });
+registerNetworkHandler('storageClosed', function (where) { this.cultureOnClosed(where); });

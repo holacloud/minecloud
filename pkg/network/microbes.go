@@ -590,6 +590,49 @@ func (b *storageBook) incubatorSpillLocked(block *StorageBlock) []StorageSlot {
 	return spill
 }
 
+// incubatorBook is what the incubators keep in the book of the chests (storage.go).
+type incubatorBook struct {
+	// The temperature where a block stands, and whether light reaches it (replaced by the tests).
+	ambient func(w cropWorld, cell [3]int) float64
+	lit     func(w cropWorld, cell [3]int) bool
+	// The world the book last read, for what a panel shows of the place (nil until then).
+	world cropWorld
+}
+
+// What the incubators add to the chests (storagePart, storage.go).
+var incubatorPart = storagePart{
+	init: func(b *storageBook) {
+		b.ambient, b.lit = incubatorAmbient, incubatorLight
+	},
+	clean: cultureCleanLoaded,
+	copyState: func(copied, block *StorageBlock) {
+		copied.Plates = cultureCopyPlates(block.Plates)
+		if block.Inside != nil {
+			inside := *block.Inside
+			copied.Inside = &inside
+		}
+	},
+	view: func(b *storageBook, place storagePlace, block *StorageBlock, snapshot *storageSnapshot) {
+		if place.kind == incubatorKind {
+			snapshot.Incubator = b.incubatorViewOf(b.world, place.cell, block)
+		}
+	},
+	// A plate and what lives on it only move together.
+	refuses: func(place storagePlace) string {
+		if place.kind == incubatorKind {
+			return "not for the incubator"
+		}
+		return ""
+	},
+	opened: func(b *storageBook, w cropWorld, place storagePlace) { b.world = w },
+	spill: func(b *storageBook, block *StorageBlock) ([]StorageSlot, bool) {
+		if block.Kind != incubatorKind {
+			return nil, false
+		}
+		return b.incubatorSpillLocked(block), true
+	},
+}
+
 // cultureCleanLoaded limits what a saved incubator can claim.
 func cultureCleanLoaded(block *StorageBlock) {
 	if block.Kind != incubatorKind {
@@ -760,4 +803,8 @@ func cultureCopyPlates(plates []*CulturePlate) []*CulturePlate {
 		copied[i] = &c
 	}
 	return copied
+}
+
+func init() {
+	registerMessage(messageSpec{plot: plotChecked, handle: handleCultureMessage}, "cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet")
 }

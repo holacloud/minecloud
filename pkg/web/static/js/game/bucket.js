@@ -104,8 +104,7 @@ Object.assign(Game.prototype, {
             return true;
         }
         // Same path as breaking a block: local edit, then the server tells everyone.
-        if (!this.world.removeBlockAt(water.x, water.y, water.z)) return true;
-        if (this.network.connected) this.network.send('blockBreak', { x: water.x, y: water.y, z: water.z });
+        if (!this.removeBlockForAll(water.x, water.y, water.z)) return true;
         this.bucketSwap('bucket', 'water_bucket');
         this.bucketAfterUse(water.x, water.y, water.z);
         return true;
@@ -122,8 +121,7 @@ Object.assign(Game.prototype, {
         if (y < WORLD_MIN_Y || y > WORLD_MAX_Y || this.world.getBlockTypeAt(x, y, z)) return true;
         // Same path as placing a block. Water is not solid, so it may go where you stand.
         const payload = { x, y, z, blockType: 'water' };
-        if (!this.world.addBlock(payload)) return true;
-        if (this.network.connected) this.network.send('blockPlace', payload);
+        if (!this.placeBlockForAll(payload)) return true;
         this.bucketSwap('water_bucket', 'bucket');
         this.bucketAfterUse(x, y - 1, z);
         return true;

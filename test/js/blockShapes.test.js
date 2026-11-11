@@ -39,6 +39,7 @@ function loadGame() {
     const files = ['extensions.js', 'chunkStore.js', 'blockShapes.js', 'chunkMesher.js', 'camera.js', 'mobSpecies.js', 'blockTextures.js', 'world.js'];
     for (const file of files) vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     vm.runInContext('class Game {}', context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', '..', 'pkg', 'web', 'static', 'js', 'game', 'block_edits.js'), 'utf8'), context, { filename: 'block_edits.js' });
     vm.runInContext(fs.readFileSync(path.join(JS, 'game', 'joinery.js'), 'utf8'), context, { filename: 'joinery.js' });
     vm.runInContext('this.WorldRenderer = WorldRenderer; this.ChunkMesher = ChunkMesher; this.ChunkColumn = ChunkColumn; this.CameraController = CameraController; this.BLOCK_SHAPES = BLOCK_SHAPES; this.Game = Game;', context);
     return context;

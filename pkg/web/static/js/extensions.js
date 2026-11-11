@@ -10,9 +10,74 @@
 //   spawnForChunk(chunkX, chunkZ, biome) natural spawning, once per chunk
 //   worksWithoutChunk                    true: update also runs over a chunk that is not loaded,
 //                                        where a mob otherwise just waits for it
+// And what the rest of the game has to know of the movement, which it asks with mobMovementIs: no other
+// file keeps a list of movement names (all false by default):
+//   bodiless      not a body on the ground: it neither blocks the others nor is blocked (herd.js)
+//   walksToGoal   its update asks getMobGoal, so it walks to a pile of bait (traps.js)
+//   nudgedToBait  it does not ask, and traps.js pushes it to the bait instead
+//   baitOwnWay    it comes to a bait by code of its own (bees, ants)
+//   tameable      its update honours getMobGoal and `userData.resting` (taming.js)
+//   inWater       it lives in water: what it drops floats up (resources.js)
+//   pointLike     a light or a shoal with no height: the bestiary looks at its position as it is
 const MOB_BEHAVIOURS = {};
+const MOB_MOVEMENT_TRAITS = {};
 function registerMobBehaviour(movement, behaviour) {
     MOB_BEHAVIOURS[movement] = behaviour;
+    MOB_MOVEMENT_TRAITS[movement] = behaviour;
+}
+
+// The traits of a movement that has no behaviour here: the built-in ones (js/mobSpecies.js).
+function registerMobMovementTraits(movement, traits) {
+    MOB_MOVEMENT_TRAITS[movement] = traits;
+}
+
+// Whether a movement (a species' `movement`; none is 'ground') has one of the traits above.
+function mobMovementIs(movement, trait) {
+    const traits = MOB_MOVEMENT_TRAITS[movement || 'ground'];
+    return Boolean(traits && traits[trait]);
+}
+
+// A species, whole, from its own file: what it is, how it looks and its row in the tables of the other
+// features, so that adding one edits none of them.
+//
+//   registerSpecies('crab', {
+//       info: { eggColor: 0xd2482c, movement: 'scuttle', ... },  // the fields of js/mobSpecies.js
+//       model(b, variant) { ... },       // VoxelModels.mobBuilders
+//       surface: 'skin',                 // VoxelModels.MOB_SURFACES
+//       drops: [['shell', 1, 2]],        // loot when defeated: [item, min, max, chance] (resources.js)
+//       sheds: ['feather', 0.4, 8],      // struck but not defeated: [item, chance, cooldown seconds]
+//       furry: true, milkable: true,     // shears give fur; a glass gives milk
+//       molts: true,                     // drops a feather now and then
+//       diet: { foods: [...], chance: 1 / 3 },          // what tames it (taming.js); none: not tameable
+//       trap: { baits: ['bait_fish'], cage: true },     // traps.js; a species with no bait says baits: []
+//       card: { name, habitat, activity, temperament, hint, description },   // bestiary.js, English
+//       cardEs: { name, habitat, hint, description }                         // and Spanish
+//   });
+//
+// Only `info` is required. The tables are those of each feature (RESOURCE_DROPS, TAMING_DIET...), which
+// take these rows with speciesFacet whichever file loads first.
+const SPECIES_FACETS = { drops: null, sheds: null, furry: null, milkable: null, molts: null, diet: null, trap: null, card: null, cardEs: null };
+const SPECIES_FACETS_WAITING = {};
+function registerSpecies(id, species) {
+    if (!species || !species.info) throw new Error(`registerSpecies ${id}: no info`);
+    if (MOB_SPECIES[id]) throw new Error(`registerSpecies ${id}: there is one already`);
+    for (const key of Object.keys(species)) {
+        if (key === 'info' || key === 'model' || key === 'surface') continue;
+        if (!(key in SPECIES_FACETS)) throw new Error(`registerSpecies ${id}: unknown field ${key}`);
+        (SPECIES_FACETS[key] || (SPECIES_FACETS_WAITING[key] = SPECIES_FACETS_WAITING[key] || {}))[id] = species[key];
+    }
+    MOB_SPECIES[id] = species.info;
+    if (species.model) VoxelModels.mobBuilders[id] = species.model;
+    if (species.surface) VoxelModels.MOB_SURFACES[id] = species.surface;
+}
+
+// The feature that owns a table keyed by species gives it here: it gets the rows registered so far, and
+// the ones to come are written straight into it. Returns the table.
+function speciesFacet(name, table) {
+    if (!(name in SPECIES_FACETS) || SPECIES_FACETS[name]) throw new Error(`speciesFacet ${name}: unknown, or owned twice`);
+    SPECIES_FACETS[name] = Object.assign(table, SPECIES_FACETS_WAITING[name]);
+    delete SPECIES_FACETS_WAITING[name];
+    return table;
 }
 
 // Right click on a mob with the held item (null when empty-handed): handler(mob, itemType)
@@ -76,6 +141,32 @@ function registerModalPanel(panel) {
 }
 
 // Once per frame, after the mobs moved: updater(delta) (client-side entities of a mechanic).
+// What the server says: registerNetworkHandler('glowSet', function (payload) { ... }). Any message type
+// the server sends, and 'connected' (every time the socket opens, reconnections too). Several handlers
+// may share a type; all hear it, in the order they registered. They are listening before the socket
+// opens, so nothing the server says on connecting is missed: no feature subscribes by itself.
+const NETWORK_HANDLERS = [];
+function registerNetworkHandler(type, handler) {
+    NETWORK_HANDLERS.push([type, handler]);
+}
+
+// Game.initNetwork gives its new network here, before connecting.
+function attachNetworkHandlers(game, network) {
+    for (const [type, handler] of NETWORK_HANDLERS) network.on(type, (payload) => handler.call(game, payload));
+}
+
+// Once, when the game has started: the scene, the world, the network (not yet connected), the hotbar and
+// the pause menu exist. For what a feature sets up once and needs them: a button in the pause menu, a
+// listener of the language. State with no such need is better made where it is first used.
+const GAME_INIT_HOOKS = [];
+function registerGameInit(hook) {
+    GAME_INIT_HOOKS.push(hook);
+}
+
+function runGameInit(game) {
+    for (const hook of GAME_INIT_HOOKS) hook.call(game);
+}
+
 const FRAME_UPDATERS = [];
 function registerFrameUpdate(updater) {
     FRAME_UPDATERS.push(updater);
@@ -127,6 +218,15 @@ function registerTexturePattern(name, paint, options = {}) {
 const BLOCK_BREAK_HANDLERS = [];
 function registerBlockBreakHandler(handler) {
     BLOCK_BREAK_HANDLERS.push(handler);
+}
+
+// Who may change a block, asked before any change by the player or by a helper of theirs (a robot, a
+// beaver, a golem) reaches the world: guard(x, z) returns a line saying why column (x, z) is not theirs to
+// change, or null. Game.placeBlockForAll and Game.removeBlockForAll (js/game/building.js) ask every guard,
+// so whatever changes blocks through them needs to know nothing of plots (js/game/claims.js).
+const BLOCK_EDIT_GUARDS = [];
+function registerBlockEditGuard(guard) {
+    BLOCK_EDIT_GUARDS.push(guard);
 }
 
 // Non-cube block shapes (stairs, doors, fences...): registerBlockShape(name, shape). Boxes are

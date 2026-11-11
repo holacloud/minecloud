@@ -243,8 +243,7 @@ Object.assign(Game.prototype, {
 
     farmingSetBlock(position, blockType) {
         const payload = { x: position.x, y: position.y, z: position.z, blockType };
-        if (!this.world.addBlock(payload)) return false;
-        if (this.network.connected) this.network.send('blockPlace', payload);
+        if (!this.placeBlockForAll(payload)) return false;
         this.placeActionTimer = 0.35;
         this.showHitIndicator();
         this.lastSelectionUpdate = 0;
@@ -267,10 +266,9 @@ Object.assign(Game.prototype, {
         // Breaking the soil uproots the crop on it.
         const above = { x: position.x, y: position.y + 1, z: position.z };
         const crop = this.world.getBlockTypeAt(above.x, above.y, above.z);
-        if (!this.farmingIsCrop(crop) || !this.world.removeBlockAt(above.x, above.y, above.z)) return;
+        if (!this.farmingIsCrop(crop) || !this.removeBlockForAll(above.x, above.y, above.z)) return;
         this.spawnPickup(this.world.getDropTypeForBlock(crop), above, 1);
         this.farmingExtraDrops(crop, above);
-        if (this.network.connected) this.network.send('blockBreak', above);
     },
 
     // G key on bread.
