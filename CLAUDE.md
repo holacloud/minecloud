@@ -30,7 +30,7 @@ before calling it done. There is no CI: nothing else will catch a red test.
 | `pkg/web/static/js/game.js`, `world.js`, `chunkMesher.js`, `camera.js`, `models.js` | The core. A feature should not need to edit them. |
 | `pkg/web/static/index.html` | Core CSS and markup, and the `<script>` list. **Order is load order.** |
 | `pkg/web/static/guide/` | The in-game guide: one Markdown page per topic, in ES and EN. Its `README.md` has the rules. |
-| `pkg/network/` | The server: `websocket.go` is the hub; each mechanic has its own file (`glow_block.go`, `power.go`...). |
+| `pkg/network/` | The server: `registry.go` is how a mechanic plugs in, `websocket.go` the hub; each mechanic has its own file (`glow_block.go`, `power.go`...). |
 | `pkg/world/`, `pkg/terrain/` | Chunk storage and terrain generation. |
 | `test/js/` | Node tests: they run the real scripts of `index.html` in a VM with stand-ins for the browser. |
 | `GUIA.md` | The player's reference of every mechanic, in Spanish. Kept up to date with each feature. |
@@ -106,21 +106,27 @@ Tests: `node --test test/js/item_tags.test.js test/js/viewerPalette.test.js` and
 
 ## Recipe: a machine with state on the server
 
-Examples: `pkg/network/glow_block.go` (the smallest), `appliances.go`, `power.go`. The server has no registry
-yet, so these are edits by hand in `pkg/network/websocket.go`:
+Examples: `pkg/network/glow_block.go` (the smallest), `appliances.go`, `power.go`. A mechanic lives in its
+own file and registers itself from an `init()`; `pkg/network/registry.go` documents each call:
 
-1. A `case "<message>":` in `handleMessage` that calls a handler in the mechanic's own file.
-2. Anything it does to the name of a placed block: in `placeBlock`.
-3. A loop of its own: `go run<Mechanic>()` in `Initialize`.
-4. Saved state: a field in `persistedWorldState`, read in `loadWorldState`, written in `saveWorldState`.
-5. What a client must know on connecting: next to `claimsSendTo` in `HandleWebSocket`. Prefer state in the
-   block's name (`glow_block:ff0000`), which travels with the chunks and needs none of 4 and 5.
+1. `registerMessage(messageSpec{plot: ..., handle: ...}, "<message>")` for each message of the client.
+   **`plot` is mandatory** (the server does not start without it) and says what the message has to do with plots:
+   - `plotGuarded`: the payload is `{x, y, z, ...}` and it changes that cell. The dispatcher refuses it in
+     someone else's plot before the handler runs. **Use this one whenever it fits.**
+   - `plotChecked`: the handler checks by itself (several cells, an answer of its own to give back). It must
+     then be in `claimPaths()` of `claims_test.go`, or `registry_test.go` fails.
+   - `plotOpen` with a `why`: anyone may, on purpose (reading, a sound).
+   - `plotNowhere`: it acts on no cell (chat, identity).
+2. `registerLoop(run)` for a loop of its own, `registerOnConnect(tell)` for what a client must know on
+   connecting, `registerPlaceFilter(filter)` for what it does to the name of a placed block.
+3. Saved state is still by hand in `websocket.go`: a field in `persistedWorldState`, read in
+   `loadWorldState`, written in `saveWorldState`. Prefer state in the block's name (`glow_block:ff0000`),
+   which travels with the chunks and needs none of this.
 
 Rules every handler follows:
 
-- **Plots.** A handler that acts on a position checks `claimCheck(client, x, z)` and answers a refusal with
-  `claimRefuse` (or `claimGuardRequest` for storage-like requests); see `handleGlowSet`. Nothing fails if it
-  is forgotten: the machine is then usable inside someone else's plot.
+- **Plots.** See `plot` above. A `plotChecked` handler calls `claimCheck(client, x, z)` and answers a
+  refusal with `claimRefuse` (or `claimGuardRequest` for storage-like requests).
 - **Sending.** To one client: `client.trySend(data)`; to all: `broadcastToAll`. Never `client.send <- data`
   and never close that channel.
 - **Shared maps and slices** inside saved state are replaced, never changed in place: `saveWorldState` and

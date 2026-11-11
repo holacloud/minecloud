@@ -761,3 +761,7 @@ func cultureCopyPlates(plates []*CulturePlate) []*CulturePlate {
 	}
 	return copied
 }
+
+func init() {
+	registerMessage(messageSpec{plot: plotChecked, handle: handleCultureMessage}, "cultureLoad", "cultureInoculate", "cultureHarvest", "cultureSet")
+}

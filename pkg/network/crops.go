@@ -200,3 +200,7 @@ func snapshotCrops() map[string]Crop {
 	}
 	return out
 }
+
+func init() {
+	registerLoop(runCropGrowth)
+}

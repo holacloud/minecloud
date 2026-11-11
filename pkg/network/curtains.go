@@ -127,3 +127,8 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 	blockEditMu.Unlock()
 	broadcastToAll(createMessage("curtainStrip", curtainStripPayload{Blocks: placed}))
 }
+
+func init() {
+	// A strip is several cells, refused whole.
+	registerMessage(messageSpec{plot: plotChecked, handle: func(c *Client, m Message) { curtainStripMessage(c, m.Payload) }}, "curtainStrip")
+}

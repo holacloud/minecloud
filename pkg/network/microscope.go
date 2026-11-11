@@ -743,3 +743,9 @@ func (b *storageBook) showStageLocked(w cropWorld, cell [3]int) {
 func microscopeNewSeed() uint32 {
 	return rand.Uint32()
 }
+
+func init() {
+	registerMessage(messageSpec{plot: plotChecked, handle: handleMicroscopeMessage},
+		"microscopePrepare", "microscopeClear", "microscopeDrop", "microscopeCapture", "microscopeStain")
+	registerMessage(messageSpec{plot: plotOpen, why: "the water or the moss sampled stays where it was", handle: handleMicroscopeMessage}, "sampleTake")
+}

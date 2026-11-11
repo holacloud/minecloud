@@ -1199,3 +1199,12 @@ func claimFindPlayer(who string) (id, name string) {
 	}
 	return "", ""
 }
+
+func init() {
+	// These are about the plots themselves, and each has its own rule of who may (the admin, the owner).
+	registerMessage(messageSpec{plot: plotNowhere, handle: func(c *Client, m Message) { handleClaimAdmin(c, m.Payload) }}, "claimAdmin")
+	registerMessage(messageSpec{plot: plotNowhere, handle: func(c *Client, m Message) { handleClaimHome(c) }}, "claimHome")
+	registerMessage(messageSpec{plot: plotNowhere, handle: func(c *Client, m Message) { handleClaimGuest(c, m.Payload) }}, "claimGuest")
+	// Every plot, with its own one marked.
+	registerOnConnect(claimsSendTo)
+}

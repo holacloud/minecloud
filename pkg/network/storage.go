@@ -889,3 +889,9 @@ func handleStorageMessage(client *Client, msg Message) {
 		}
 	}
 }
+
+func init() {
+	// Opening and moving are refused in someone else's plot, each with the answer its panel waits for.
+	registerMessage(messageSpec{plot: plotChecked, handle: handleStorageMessage}, "storageOpen", "storagePut", "storageTake")
+	registerMessage(messageSpec{plot: plotNowhere, handle: handleStorageMessage}, "storageClose", "storageSync")
+}

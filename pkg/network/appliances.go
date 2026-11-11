@@ -652,3 +652,9 @@ func runAppliances() {
 		}
 	}
 }
+
+func init() {
+	registerLoop(runAppliances)
+	// An oven burns when the server says so, whatever a plan or a client asks for.
+	registerPlaceFilter(func(x, y, z int, name string) string { return storage.settleOvenName(x, y, z, name) })
+}

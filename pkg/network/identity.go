@@ -770,3 +770,7 @@ func handleIdentityMessage(client *Client, msg Message) {
 func messageIsSecret(msgType string) bool {
 	return msgType == "creativeAuth" || msgType == "identityRecover"
 }
+
+func init() {
+	registerMessage(messageSpec{plot: plotNowhere, handle: handleIdentityMessage}, "identityCodeShow", "identityCodeRegenerate", "identityRecover")
+}
