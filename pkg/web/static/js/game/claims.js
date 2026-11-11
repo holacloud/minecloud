@@ -16,7 +16,8 @@
 //   placed}, and this file puts the refused cells back as they really are and gives back the item.
 // - The admin (a session that passed creative auth) is not stopped, as on the server, and has /plots,
 //   /plot remove <n> and /plot owner <n> <player> (claimAdmin messages).
-// - Robots, beavers and copper golems ask claimRefusalAt before acting for their owner.
+// - Whatever changes blocks for the player (robots, beavers, copper golems, tools) does it through
+//   placeBlockForAll and removeBlockForAll (js/game/building.js), which ask the guard registered below.
 // - Going home: «Ir a mi parcela» in the pause menu, or /home, asks the server where the player's own plot is
 //   (claimHome; only an owner gets an answer, at most once every 30 s). The player gets off whatever they
 //   ride or sit on, is held over the marker until the chunks of the plot arrive, and is then put on solid
@@ -889,7 +890,7 @@ Object.assign(Game.prototype, {
         const done = this.finishBreakingBlock({ x: claim.x, y: claim.y, z: claim.z });
         this.claimConfirmedKey = null;
         // Not in the world here (a chunk not loaded): the server still hears it.
-        if (!done) this.network.send('blockBreak', { x: claim.x, y: claim.y, z: claim.z });
+        if (!done) this.sendBlockBreak(claim.x, claim.y, claim.z);
         this.claimClosePanel();
     },
 
@@ -1074,6 +1075,11 @@ registerItemUseHandler(function (itemType, hit) {
 registerModalPanel({
     isOpen() { return Boolean(this.claimPanelFor); },
     close() { this.claimClosePanel(); }
+});
+
+// Nothing changes a block for the player in someone else's plot or the spawn zone (js/extensions.js).
+registerBlockEditGuard(function (x, z) {
+    return this.claimHelperRefusal(x, z);
 });
 
 registerFrameUpdate(function () {

@@ -52,6 +52,10 @@ before calling it done. There is no CI: nothing else will catch a red test.
 - Network: `this.network.send('type', payload)`; `this.network.on('type', handler)` (any type the server sends
   arrives; several listeners may share one). There is no init hook yet: subscribe once behind a flag from a
   `registerFrameUpdate` (see `claimsListen` in `game/claims.js`).
+- **Changing a block** (anything: a tool, a mob, a panel): `this.placeBlockForAll({ x, y, z, blockType })` and
+  `this.removeBlockForAll(x, y, z)` (`game/block_edits.js`). Never `world.addBlock` plus a `blockPlace` message
+  by hand: `block_edits.test.js` fails. `this.blockEditRefusal(x, z)` gives the line to show when the player
+  may not change that column; a feature that restricts edits registers a `registerBlockEditGuard`.
 - Mobs are simulated on each client and are not sent over the network. Blocks, storage, power and plots are
   the server's.
 
@@ -67,7 +71,8 @@ Example to read: `game/crab.js` (550 lines, self-contained). Everything goes in 
    the `defeated` event and removal as the older species do.
 4. Natural spawning draws from `this.chunkRandom(chunkX, chunkZ, salt)`: pick salts no other file uses
    (`grep -rn "chunkRandom(" pkg/web/static/js/game`).
-5. A mob that edits blocks for its owner asks `this.claimRefusalAt(x, z)` first (see `game/beaver.js`).
+5. A mob that changes blocks does it with `this.placeBlockForAll(payload)` and `this.removeBlockForAll(x, y, z)`
+   (see `game/beaver.js`): they tell the server and stop by themselves in someone else's plot.
 
 Then the tables of other features, each one line:
 

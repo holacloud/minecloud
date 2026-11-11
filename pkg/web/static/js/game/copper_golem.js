@@ -633,8 +633,8 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
         const shape = def && def.shape ? BLOCK_SHAPES[def.shape] : null;
         if (!shape || !shape.toggle || def.opensByHand === false) return false;
         if (typeof logicStopLocks === 'function' && logicStopLocks(this.world, cell)) return false;
-        // It opens doors for its owner: not in someone else's plot (js/game/claims.js).
-        if (typeof this.claimRefusalAt === 'function' && this.claimRefusalAt(cell.x, cell.z)) return false;
+        // It opens doors for its owner: not where they may not (someone else's plot).
+        if (this.blockEditRefusal(cell.x, cell.z)) return false;
         const base = def.variantOf || type;
         const next = shape.toggle(def.state, { look });
         const nextType = next && this.world.getShapeStateType(base, next);
@@ -651,10 +651,7 @@ if (typeof Game !== 'undefined') Object.assign(Game.prototype, {
             const otherNextType = this.world.getShapeStateType(base, otherNext);
             if (otherNextType) updates.push({ ...other, blockType: otherNextType });
         }
-        updates.forEach((update) => {
-            this.world.addBlock(update);
-            if (this.network && this.network.connected) this.network.send('blockPlace', update);
-        });
+        updates.forEach((update) => this.placeBlockForAll(update, { always: true }));
         this.playNoiseBurst({ duration: 0.14, volume: 0.025, highpass: 300, lowpass: 1600 });
         this.lastSelectionUpdate = 0;
         return true;

@@ -129,6 +129,15 @@ function registerBlockBreakHandler(handler) {
     BLOCK_BREAK_HANDLERS.push(handler);
 }
 
+// Who may change a block, asked before any change by the player or by a helper of theirs (a robot, a
+// beaver, a golem) reaches the world: guard(x, z) returns a line saying why column (x, z) is not theirs to
+// change, or null. Game.placeBlockForAll and Game.removeBlockForAll (js/game/building.js) ask every guard,
+// so whatever changes blocks through them needs to know nothing of plots (js/game/claims.js).
+const BLOCK_EDIT_GUARDS = [];
+function registerBlockEditGuard(guard) {
+    BLOCK_EDIT_GUARDS.push(guard);
+}
+
 // Non-cube block shapes (stairs, doors, fences...): registerBlockShape(name, shape). Boxes are
 // [x0, y0, z0, x1, y1, z1] in block units from the cell's minimum corner. The shape's states
 // (orientation, open/closed...) become part of the block name, so they are stored and synced

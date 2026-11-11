@@ -311,10 +311,7 @@ Object.assign(Game.prototype, {
             const instrumentIndex = this.soundBlockInstruments.indexOf(current.instrument);
             payload.instrument = this.soundBlockInstruments[(Math.max(0, instrumentIndex) + 1) % this.soundBlockInstruments.length];
             payload.note = (current.note + 1) % this.soundBlockNotes.length;
-            this.world.addBlock(payload);
-            if (this.network.connected) {
-                this.network.send('blockPlace', payload);
-            }
+            this.placeBlockForAll(payload, { always: true });
             this.receiveSystemMessage({ text: `Sound block set to ${payload.instrument} note ${payload.note + 1}` });
         } else {
             if (this.network.connected) {

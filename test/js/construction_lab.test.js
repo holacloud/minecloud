@@ -38,6 +38,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     }
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', '..', 'pkg', 'web', 'static', 'js', 'game', 'block_edits.js'), 'utf8'), context, { filename: 'block_edits.js' });
     for (const file of ['joinery.js', 'weather.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'smelters.js', 'farming.js', 'glow_block.js', 'microbes.js', 'microscope.js', 'cultures_text.js', 'cultures.js', 'decor.js', 'mirrors.js', 'construction_lab.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }

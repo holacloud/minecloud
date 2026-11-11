@@ -35,6 +35,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, file), 'utf8'), context, { filename: file });
     }
     vm.runInContext('class Game {}; function resourcesDrawSprite() { return () => {}; } function resourcesDisplayMesh() { return null; }', context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', '..', 'pkg', 'web', 'static', 'js', 'game', 'block_edits.js'), 'utf8'), context, { filename: 'block_edits.js' });
     // As in index.html, with what these flats and this lift are made of.
     for (const file of ['joinery.js', 'chemistry.js', 'electricity.js', 'logic.js', 'mechanics.js', 'blueprints.js', 'constructions.js', 'furniture.js', 'seating.js', 'storage.js', 'appliances.js', 'decor.js', 'mirrors.js', 'construction_apartments.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });

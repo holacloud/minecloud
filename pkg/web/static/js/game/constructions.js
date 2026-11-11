@@ -1729,8 +1729,7 @@ Object.assign(Game.prototype, {
     // One block, the way a player places or breaks it.
     constructionApply(op) {
         if (!op.type) {
-            this.world.removeBlockAt(op.x, op.y, op.z);
-            if (this.network.connected) this.network.send('blockBreak', { x: op.x, y: op.y, z: op.z });
+            this.removeBlockForAll(op.x, op.y, op.z, { always: true });
             return;
         }
         const payload = { x: op.x, y: op.y, z: op.z, blockType: op.type };
@@ -1741,8 +1740,7 @@ Object.assign(Game.prototype, {
             payload.instrument = meta.i || 'bell';
             payload.note = Number.isInteger(meta.o) ? meta.o : 0;
         }
-        this.world.addBlock(payload);
-        if (this.network.connected) this.network.send('blockPlace', payload);
+        this.placeBlockForAll(payload, { always: true });
     },
 
     constructionUpdate(delta) {

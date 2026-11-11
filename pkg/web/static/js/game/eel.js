@@ -813,8 +813,7 @@ Object.assign(Game.prototype, {
     // Changes the tank block for everyone (the server's network follows the name).
     eelSetTank(position, type) {
         const payload = { x: position.x, y: position.y, z: position.z, blockType: type };
-        this.world.addBlock(payload);
-        if (this.network && this.network.connected) this.network.send('blockPlace', payload);
+        this.placeBlockForAll(payload, { always: true });
     },
 
     eelTankSplash(position) {
