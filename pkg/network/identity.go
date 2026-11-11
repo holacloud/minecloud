@@ -676,10 +676,7 @@ func identityPayload(playerID string) map[string]string {
 }
 
 func sendToClient(client *Client, data []byte) {
-	select {
-	case client.send <- data:
-	default:
-	}
+	client.trySend(data)
 }
 
 // Every open connection of a session (one per tab) becomes the player the session now is.

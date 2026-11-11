@@ -47,8 +47,5 @@ func handleCreativeAuth(client *Client, payload json.RawMessage) {
 		"command": request.Command,
 		"silent":  request.Silent,
 	})
-	select {
-	case client.send <- reply:
-	default:
-	}
+	client.trySend(reply)
 }

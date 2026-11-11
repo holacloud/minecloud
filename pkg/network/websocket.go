@@ -54,6 +54,26 @@ func (c *Client) setStablePlayerID(id string) {
 	c.stablePlayer.Store(id)
 }
 
+// trySend queues a message for the client without ever blocking: false when its buffer is full. Every
+// message to one client goes through here (or through broadcastToAll). The send channel is never closed,
+// so this is safe from any goroutine at any time, also after the client was dropped or has left.
+func (c *Client) trySend(data []byte) bool {
+	select {
+	case c.send <- data:
+		return true
+	default:
+		return false
+	}
+}
+
+// drop ends the connection of a client that cannot keep up: its readPump then fails, which removes it from
+// the world and stops its writePump. Safe to call more than once, and next to the pumps.
+func (c *Client) drop() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+}
+
 type Message struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
@@ -510,19 +530,15 @@ func (c *Client) readPump() {
 func (c *Client) writePump() {
 	defer c.conn.Close()
 
-	writeText := func(message []byte, ok bool) bool {
-		if !ok {
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			return false
-		}
+	writeText := func(message []byte) bool {
 		return c.conn.WriteMessage(websocket.TextMessage, message) == nil
 	}
 
 	for {
 		// Regular messages always go first; chunk frames fill the gaps.
 		select {
-		case message, ok := <-c.send:
-			if !writeText(message, ok) {
+		case message := <-c.send:
+			if !writeText(message) {
 				return
 			}
 			continue
@@ -530,8 +546,8 @@ func (c *Client) writePump() {
 		}
 
 		select {
-		case message, ok := <-c.send:
-			if !writeText(message, ok) {
+		case message := <-c.send:
+			if !writeText(message) {
 				return
 			}
 		case data := <-c.chunks:
@@ -624,7 +640,7 @@ func handleMessage(client *Client, msg Message) {
 	switch msg.Type {
 	case "ping":
 		response, _ := json.Marshal(map[string]string{"type": "pong"})
-		client.send <- response
+		client.trySend(response)
 
 	case "playerJoin":
 		var payload struct {
@@ -926,10 +942,14 @@ func handleMessage(client *Client, msg Message) {
 		stateMu.Lock()
 		block, ok := gameState.Blocks[key]
 		if ok && isSignBlock(block.BlockType) {
-			if block.Votes == nil {
-				block.Votes = map[string]int{}
+			// A new map each time, never a change in place: saveWorldState and the broadcasts below
+			// read the old one with stateMu released, and a map read while written aborts the server.
+			votes := make(map[string]int, len(block.Votes)+1)
+			for emoji, count := range block.Votes {
+				votes[emoji] = count
 			}
-			block.Votes[payload.Emoji] = block.Votes[payload.Emoji] + 1
+			votes[payload.Emoji]++
+			block.Votes = votes
 			gameState.Blocks[key] = block
 		} else {
 			ok = false
@@ -1027,10 +1047,7 @@ func sendToPlayer(playerID string, data []byte) {
 			continue
 		}
 
-		select {
-		case client.send <- data:
-		default:
-		}
+		client.trySend(data)
 		return
 	}
 }
@@ -1102,7 +1119,10 @@ func sendInitialState(client *Client) {
 	}
 
 	data, _ := json.Marshal(initMsg)
-	client.send <- data
+	// Never a blocking send under stateMu: a client with no room for its first message is beyond help.
+	if !client.trySend(data) {
+		client.drop()
+	}
 }
 
 func SavePlayerStates() error {
@@ -1204,9 +1224,7 @@ func broadcastToAll(data []byte) {
 
 	clientsMu.RLock()
 	for client := range clients {
-		select {
-		case client.send <- data:
-		default:
+		if !client.trySend(data) {
 			staleClients = append(staleClients, client)
 		}
 	}
@@ -1216,11 +1234,14 @@ func broadcastToAll(data []byte) {
 		return
 	}
 
+	// A client whose buffer is full is dropped by closing its connection, never its send channel: its
+	// readPump may be in the middle of answering it, and a send on a closed channel would take the
+	// whole server down.
 	clientsMu.Lock()
 	for _, client := range staleClients {
 		if clients[client] {
 			delete(clients, client)
-			close(client.send)
+			client.drop()
 		}
 	}
 	clientsMu.Unlock()

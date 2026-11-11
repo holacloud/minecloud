@@ -301,19 +301,14 @@ func newStorageBook() *storageBook {
 
 var storage = newStorageBook()
 
-// storageDeliver sends without blocking, and never to a channel broadcastToAll has closed.
+// storageDeliver sends without blocking, and only to a client still in the world: false otherwise.
 func storageDeliver(client *Client, data []byte) bool {
 	clientsMu.RLock()
 	defer clientsMu.RUnlock()
 	if !clients[client] {
 		return false
 	}
-	select {
-	case client.send <- data:
-		return true
-	default:
-		return false
-	}
+	return client.trySend(data)
 }
 
 func storageKeyOf(cell [3]int) string {

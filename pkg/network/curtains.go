@@ -115,10 +115,7 @@ func curtainStripMessage(client *Client, raw json.RawMessage) {
 		}
 		blockEditMu.Unlock()
 		log.Printf("curtainStrip refused: %d cells", len(payload.Blocks))
-		select {
-		case client.send <- createMessage("curtainStrip", curtainStripPayload{Blocks: truth}):
-		default:
-		}
+		client.trySend(createMessage("curtainStrip", curtainStripPayload{Blocks: truth}))
 		return
 	}
 	placed := make([]Block, 0, len(payload.Blocks))

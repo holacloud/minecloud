@@ -1019,10 +1019,7 @@ func handlePowerProbe(client *Client, raw json.RawMessage) {
 	powerMu.Lock()
 	report := grid.probe(target.X, target.Y, target.Z, chunkStore, env, time.Now())
 	powerMu.Unlock()
-	select {
-	case client.send <- createMessage("powerProbe", report):
-	default:
-	}
+	client.trySend(createMessage("powerProbe", report))
 }
 
 // handlePowerCrank turns a hand crank.
