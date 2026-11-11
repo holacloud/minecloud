@@ -992,10 +992,10 @@ func handleMessage(client *Client, msg Message) {
 		handlePowerProbe(client, msg.Payload)
 
 	case "powerCrank":
-		handlePowerCrank(msg.Payload)
+		handlePowerCrank(client, msg.Payload)
 
 	case "powerFeed":
-		handlePowerFeed(msg.Payload)
+		handlePowerFeed(client, msg.Payload)
 	case "logicPress":
 		handleLogicPress(client, msg.Payload)
 

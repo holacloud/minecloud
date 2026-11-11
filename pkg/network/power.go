@@ -885,10 +885,15 @@ func (g *powerGrid) eelFeed(x, y, z int, now time.Time) bool {
 	return true
 }
 
-// handlePowerFeed feeds the eel of a tank (a player gave it raw fish).
-func handlePowerFeed(raw json.RawMessage) {
+// handlePowerFeed feeds the eel of a tank (a player gave it raw fish). In someone else's plot it is
+// refused (claims.go).
+func handlePowerFeed(client *Client, raw json.RawMessage) {
 	var target powerTarget
 	if err := json.Unmarshal(raw, &target); err != nil {
+		return
+	}
+	if refusal := claimCheck(client, target.X, target.Z); refusal != nil {
+		claimRefuse(client, refusal, [3]int{target.X, target.Y, target.Z})
 		return
 	}
 	powerMu.Lock()
@@ -1022,10 +1027,14 @@ func handlePowerProbe(client *Client, raw json.RawMessage) {
 	client.trySend(createMessage("powerProbe", report))
 }
 
-// handlePowerCrank turns a hand crank.
-func handlePowerCrank(raw json.RawMessage) {
+// handlePowerCrank turns a hand crank. In someone else's plot it is refused (claims.go).
+func handlePowerCrank(client *Client, raw json.RawMessage) {
 	var target powerTarget
 	if err := json.Unmarshal(raw, &target); err != nil {
+		return
+	}
+	if refusal := claimCheck(client, target.X, target.Z); refusal != nil {
+		claimRefuse(client, refusal, [3]int{target.X, target.Y, target.Z})
 		return
 	}
 	powerMu.Lock()

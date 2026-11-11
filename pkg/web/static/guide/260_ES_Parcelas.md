@@ -67,7 +67,7 @@ Alrededor del punto donde aparece todo el mundo hay una zona de **32 × 32** blo
 En una parcela ajena (y en la zona de inicio) el servidor no deja:
 
 - poner ni romper bloques, correr cortinas, cambiar el color de un bloque luminoso, pintar con espray;
-- mover palancas ni pulsar botones;
+- mover palancas, pulsar botones, girar una manivela ni dar de comer a la anguila de un tanque;
 - abrir cofres, barriles, armarios, neveras, hornos, fundiciones, el autoclave, la incubadora o el microscopio, ni sacar o meter nada;
 - que un empujador de fuera meta, saque o mueva bloques dentro, ni que pase bloques de una parcela a otra. Un ascensor sube y baja en su propia columna, así que nunca cruza un borde;
 - que tu robot, tu castor o tu golem de cobre trabajen en ella: actúan en tu nombre.
@@ -82,7 +82,7 @@ Hay cosas que solo pasan en tu navegador y el servidor no las ve, así que no pu
 - las trampas, las jaulas y los hormigueros de tarro;
 - lo que hay tirado en el suelo para recoger.
 
-Tampoco se impide, porque no cambia nada: tomar una muestra de agua con un tubo, votar un cartel, girar una manivela, dar de comer a una anguila o medir con el multímetro. Y una placa de presión o un sensor de proximidad reaccionan a quien pise o pase, sea quien sea.
+Tampoco se impide, porque no cambia nada: tomar una muestra de agua con un tubo, votar un cartel o medir con el multímetro. Y una placa de presión o un sensor de proximidad reaccionan a quien pise o pase, sea quien sea.
 
 ## Tu parcela es de tu jugador
 

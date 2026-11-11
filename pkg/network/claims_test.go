@@ -308,6 +308,8 @@ func claimPaths() []claimPath {
 			return SprayPaint{X: 104, Y: 120, Z: 104, Face: "px", Color: "green"}
 		}},
 		{kind: "logicPress", payload: func() interface{} { return map[string]int{"x": 102, "y": 120, "z": 98} }},
+		{kind: "powerCrank", payload: func() interface{} { return map[string]int{"x": 101, "y": 120, "z": 97} }},
+		{kind: "powerFeed", payload: func() interface{} { return map[string]int{"x": 101, "y": 120, "z": 97} }},
 		{kind: "storageOpen", payload: func() interface{} { return at }, answer: "storageClosed"},
 		{kind: "storagePut", payload: req(map[string]interface{}{"type": "stone", "amount": 1}), answer: "storageResult"},
 		{kind: "storageTake", payload: req(map[string]interface{}{"type": "dirt", "amount": 1, "slot": 0}), answer: "storageResult"},

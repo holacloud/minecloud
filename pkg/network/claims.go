@@ -42,7 +42,8 @@ package network
 // (claims_test.go walks them all with a stranger, the owner and the admin):
 //
 //   - blockPlace, blockBreak (claimPlaceBlock, claimBreakBlock), curtainStrip, glowSet, sprayPaint,
-//     logicPress (a lever or a button is a change too).
+//     logicPress (a lever or a button is a change too), powerCrank and powerFeed (the power they
+//     give drives the plot's rams, lifts and doors, and the game's own page already refuses the click).
 //   - storageOpen, storagePut, storageTake (chests, fridges, wardrobes, ovens, foundries, arc furnaces,
 //     the autoclave, the incubator and the microscope are all storage): opening and moving.
 //   - microscopePrepare, microscopeClear, microscopeDrop, microscopeCapture, microscopeStain, and
@@ -57,9 +58,8 @@ package network
 //     blockPlace and blockBreak, so they are checked as their owner.
 //
 // What is not checked, on purpose: sampleTake (the water or the moss stays where it was), signVote (a
-// visitor may read and vote a sign), powerCrank and powerFeed (cranking or feeding an eel only adds
-// energy), powerProbe (reading), soundBlockPlay (a sound). What cannot be checked: whatever the browser
-// decides alone, because the server never hears of it: pets and tamed animals, mobs, traps and cages,
+// visitor may read and vote a sign), powerProbe (reading), soundBlockPlay (a sound). What cannot be
+// checked: whatever the browser decides alone, because the server never hears of it: pets and tamed animals, mobs, traps and cages,
 // ant jars, pickups, the inventory. A pressure plate or a proximity sensor reacts to whoever stands on or
 // near it, by design.
 //
