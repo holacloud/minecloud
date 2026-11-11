@@ -91,7 +91,7 @@ Object.assign(Game.prototype, {
         if (this.wispSpawnTimer > 0) return;
         this.wispSpawnTimer = 30;
         if (!this.world || !this.isNightTime() || this.titleScreenOpen || this.respawnPending || Math.random() > 0.2) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'wisp').length >= getMobSpecies('wisp').limit) return;
+        if (this.mobCount('wisp') >= getMobSpecies('wisp').limit) return;
         const player = this.getLocalPlayerPosition();
         let plain = null;
         for (let i = 0; i < 12; i++) {

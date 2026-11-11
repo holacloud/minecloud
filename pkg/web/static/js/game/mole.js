@@ -476,18 +476,15 @@ Object.assign(Game.prototype, {
     moleHit(mob) {
         const data = mob.userData;
         if (data.moleBuried || data.moleState === 'diving') return;
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         data.flinch = 0.35;
         this.moleSqueak(mob, 1);
         this.playNoiseBurst({ duration: 0.05, volume: 0.015, highpass: 200, lowpass: 1200 });
         const colors = this.moleGroundColors(mob.position.x, data.surfaceY, mob.position.z);
-        if (data.health <= 0) {
+        if (lethal) {
             this.moleThrowDirt(mob.position.x, data.surfaceY, mob.position.z, 20, 0.5, 3.5, colors);
             this.moleMakeMound(mob.position.x, data.surfaceY, mob.position.z, 1);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the giant mole' });
+            this.defeatMobByPlayer(mob, 'You defeated the giant mole');
             return;
         }
         data.huntTarget = null;

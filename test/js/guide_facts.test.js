@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { anyStub, loadSpeciesTables } = require('./support/game');
 
 const ROOT = path.join(__dirname, '..', '..');
 const STATIC = path.join(ROOT, 'pkg', 'web', 'static');
@@ -21,13 +22,6 @@ function page(id, lang) {
     return fs.readFileSync(path.join(GUIDE, file), 'utf8');
 }
 
-function anyStub() {
-    return new Proxy(function () {}, {
-        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : key === 'prototype' ? {} : anyStub()),
-        apply: () => anyStub(), construct: () => anyStub(), set: () => true
-    });
-}
-
 function loadGame() {
     const values = new Map();
     const context = vm.createContext({
@@ -35,18 +29,7 @@ function loadGame() {
         window: { localStorage: { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }, addEventListener() {} },
         requestAnimationFrame: () => 1, cancelAnimationFrame() {}
     });
-    vm.runInContext('class Game {}', context);
-    for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(read(file), context);
-    // The tables of the mechanics, and with them the files that register a movement or a whole species
-    // (js/extensions.js): those say what the tables need of them (the traits of a movement, the rows of a
-    // species). All in the order the game loads them.
-    const tables = ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js'];
-    context.VoxelModels = { mobBuilders: {}, MOB_SURFACES: {} };
-    const html = fs.readFileSync(path.join(STATIC, 'index.html'), 'utf8');
-    for (const [, name] of html.matchAll(/<script src="js\/game\/([a-z_]+\.js)"/g)) {
-        if (tables.includes(name) || /^\s*register(Species|MobBehaviour)\(/m.test(read(`game/${name}`))) vm.runInContext(read(`game/${name}`), context, { filename: name });
-    }
-    delete context.VoxelModels;
+    loadSpeciesTables(context, ['game/furniture.js', 'game/storage.js', 'game/appliances.js', 'game/microbes.js', 'game/microscope_text.js']);
     vm.runInContext(`Object.assign(this, { MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
         TAMING_DIET, TRAPS_SPECIES, trapsIsLured, mobMovementIs });`, context);
     return context;

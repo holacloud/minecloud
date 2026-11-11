@@ -191,7 +191,7 @@ Object.assign(Game.prototype, {
         if (biome !== 'desert' && biome !== 'rocky') return;
         if (this.chunkRandom(chunkX, chunkZ, 331) > (biome === 'desert' ? 0.08 : 0.05)) return;
         const info = getMobSpecies('snake');
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'snake').length >= info.limit) return;
+        if (this.mobCount('snake') >= info.limit) return;
         // Snakes share the wild hostile budget with spiders, cave monsters and scorpions.
         if (this.mobHostileCapReached && this.mobHostileCapReached()) return;
         const size = this.world.chunkSize;
@@ -206,8 +206,7 @@ Object.assign(Game.prototype, {
             const roll = this.chunkRandom(chunkX, chunkZ, 322);
             const variant = biome === 'desert' ? (roll < 0.75 ? 0 : 1) : (roll < 0.7 ? 2 : 1);
             const mob = this.createMob('snake', new THREE.Vector3(x, ground, z), { variant });
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
             this.snakeInit(mob, 'hidden');
             return;
@@ -657,14 +656,11 @@ Object.assign(Game.prototype, {
         const distance = Math.hypot(player.x - mob.position.x, player.z - mob.position.z);
         // Slender and quick, it takes half of each blow: 3 blows bare-handed or with a wooden
         // sword, 2 with a stone sword or better.
-        data.health -= this.getPlayerAttackDamage() / 2;
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob, this.getPlayerAttackDamage() / 2);
         this.snakeSound(mob, 'hurt', distance);
-        if (data.health <= 0) {
+        if (lethal) {
             this.snakeSandBurst(mob, null, 3);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the snake' });
+            this.defeatMobByPlayer(mob, 'You defeated the snake');
             return;
         }
         s.recoil = 1;

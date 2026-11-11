@@ -62,7 +62,7 @@ Object.assign(Game.prototype, {
     spawnBatsForChunk(chunkX, chunkZ, biome) {
         if (biome === 'desert') return;
         if (this.chunkRandom(chunkX, chunkZ, 81) > (biome === 'forest' ? 0.25 : 0.12)) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'bat').length >= getMobSpecies('bat').limit) return;
+        if (this.mobCount('bat') >= getMobSpecies('bat').limit) return;
         const size = this.world.chunkSize;
         for (let i = 0; i < 24; i++) {
             const roost = this.findRoost(chunkX * size + this.chunkRandom(chunkX, chunkZ, 82 + i) * size, chunkZ * size + this.chunkRandom(chunkX, chunkZ, 112 + i) * size);
@@ -70,8 +70,7 @@ Object.assign(Game.prototype, {
             const [min, max] = getMobSpecies('bat').group;
             const colony = this.spawnBatColony(roost, min + Math.floor(this.chunkRandom(chunkX, chunkZ, 83) * (max - min + 1)));
             colony.bats.forEach((bat) => {
-                bat.userData.natural = true;
-                bat.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(bat, chunkX, chunkZ);
             });
             return;
         }

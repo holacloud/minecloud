@@ -97,7 +97,7 @@ onMobEvent('defeated', function (mob) {
 
 Object.assign(Game.prototype, {
     vultureCount() {
-        return this.ambientMobs.filter((mob) => mob.userData.species === 'vulture').length;
+        return this.mobCount('vulture');
     },
 
     vultureBiomeAt(x, z) {
@@ -122,8 +122,7 @@ Object.assign(Game.prototype, {
         let leader = null;
         for (let i = 0; i < count; i++) {
             const mob = this.createMob('vulture', new THREE.Vector3(x, ground, z));
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
             this.initVulture(mob);
             // The kettle shares one thermal, spread around the circle and stacked in height.
@@ -242,8 +241,7 @@ Object.assign(Game.prototype, {
             const angle = Math.random() * Math.PI * 2;
             const start = new THREE.Vector3(site.x + Math.cos(angle) * 40, site.y, site.z + Math.sin(angle) * 40);
             const mob = this.createMob('vulture', start);
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
             this.initVulture(mob);
             mob.userData.vulture.mode = 'soar';

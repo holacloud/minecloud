@@ -200,7 +200,7 @@ Object.assign(Game.prototype, {
         if (biome !== 'forest' && biome !== 'plains') return;
         if (this.chunkRandom(chunkX, chunkZ, 371) > 0.22) return;
         const info = getMobSpecies('beaver');
-        const alive = this.ambientMobs.filter((mob) => mob.userData.species === 'beaver').length;
+        const alive = this.mobCount('beaver');
         if (alive >= info.limit) return;
         const size = this.world.chunkSize;
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -212,8 +212,7 @@ Object.assign(Game.prototype, {
             const count = Math.min(info.limit - alive, min + Math.floor(this.chunkRandom(chunkX, chunkZ, 373) * (max - min + 1)));
             for (let i = 0; i < count; i++) {
                 const mob = this.createMob('beaver', new THREE.Vector3(spot.x + (Math.random() - 0.5) * 0.6, spot.y, spot.z + (Math.random() - 0.5) * 0.6));
-                mob.userData.natural = true;
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
                 mob.userData.beaverPond = { x: Math.floor(spot.water.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.water.z) };
                 this.ambientMobs.push(mob);
             }

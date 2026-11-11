@@ -246,7 +246,7 @@ Object.assign(Game.prototype, {
     // ---- Spawning ----------------------------------------------------------------------
 
     eelCount() {
-        return this.ambientMobs.filter((mob) => mob.userData.species === 'eel').length;
+        return this.mobCount('eel');
     },
 
     // A new eel at `position` (in water or, out of a broken tank, on land).

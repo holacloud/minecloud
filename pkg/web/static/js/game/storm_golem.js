@@ -164,9 +164,8 @@ Object.assign(Game.prototype, {
         const surface = this.world.getBlockTypeAt(Math.floor(x), floor - 1, Math.floor(z));
         if (!surface || surface.endsWith('leaves') || surface === 'cactus') return;
         const mob = this.createMob('storm_golem', new THREE.Vector3(x, floor, z));
-        mob.userData.natural = true;
         const { chunkX, chunkZ } = this.world.getChunkCoords(x, z);
-        mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+        this.mobMarkNatural(mob, chunkX, chunkZ);
         this.ambientMobs.push(mob);
         this.stormGolemCooldown = 360;
     },

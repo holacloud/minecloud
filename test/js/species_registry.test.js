@@ -98,3 +98,22 @@ test('a behaviour that says it walks to a goal asks getMobGoal, and one that ask
         if (says) assert.ok(source.includes('getMobGoal('), `${name} says walksToGoal but never asks getMobGoal`);
     }
 });
+
+// ---- What every species does the same way (js/game/mobs.js) ----
+
+test('a species counts its own with mobCount, and marks what the world spawns with mobMarkNatural', () => {
+    for (const name of gameFiles) {
+        const source = read(`game/${name}`);
+        assert.doesNotMatch(source, /ambientMobs\.filter\(\(mob\) => mob\.userData\.species === [^)]+\)\.length/, `${name}: this.mobCount(species)`);
+        if (name !== 'mobs.js') assert.doesNotMatch(source, /userData\.natural = true;/, `${name}: this.mobMarkNatural(mob, chunkX, chunkZ)`);
+    }
+});
+
+test('a mob struck down by the player goes through defeatMobByPlayer, but for the two that fall their own way', () => {
+    // The storm golem crumbles for a while before it is gone, and a caught wisp bursts: each emits by itself.
+    const ownWay = ['mobs.js', 'storm_golem.js', 'wisp.js'];
+    for (const name of gameFiles) {
+        if (ownWay.includes(name)) continue;
+        assert.doesNotMatch(read(`game/${name}`), /emitMobEvent\('defeated', mob, 'player'\)/, `${name}: damageMobByPlayer and defeatMobByPlayer (js/game/mobs.js)`);
+    }
+});

@@ -209,14 +209,13 @@ Object.assign(Game.prototype, {
     owlSpawnForChunk(chunkX, chunkZ, biome) {
         if (biome !== 'forest' && biome !== 'plains') return;
         if (this.chunkRandom(chunkX, chunkZ, 141) > (biome === 'forest' ? 0.18 : 0.07)) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'owl').length >= getMobSpecies('owl').limit) return;
+        if (this.mobCount('owl') >= getMobSpecies('owl').limit) return;
         const size = this.world.chunkSize;
         for (let i = 0; i < 24; i++) {
             const spot = this.owlFindPerch(chunkX * size + this.chunkRandom(chunkX, chunkZ, 142 + i) * size, chunkZ * size + this.chunkRandom(chunkX, chunkZ, 172 + i) * size);
             if (!spot) continue;
             const owl = this.createMob('owl', spot);
-            owl.userData.natural = true;
-            owl.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(owl, chunkX, chunkZ);
             this.owlInit(owl);
             this.ambientMobs.push(owl);
             return;
@@ -641,14 +640,11 @@ Object.assign(Game.prototype, {
         if (!mob.parent) return;
         if (!data.flight) this.owlInit(mob);
         const flight = data.flight;
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         this.playNoiseBurst({ duration: 0.1, volume: 0.025, highpass: 500, lowpass: 3000 });
-        if (data.health <= 0) {
+        if (lethal) {
             this.owlScreech(mob);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the owl' });
+            this.defeatMobByPlayer(mob, 'You defeated the owl');
             return;
         }
         if (flight.carrying) this.owlSwallow(mob);

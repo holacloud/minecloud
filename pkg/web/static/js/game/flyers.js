@@ -373,8 +373,7 @@ Object.assign(Game.prototype, {
             const [min, max] = getMobSpecies('bee').group;
             const colony = this.spawnColony(spot, min + Math.floor(this.chunkRandom(chunkX, chunkZ, 32) * (max - min + 1)));
             [colony.hive, ...colony.bees].forEach((mob) => {
-                mob.userData.natural = true;
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
             });
             return;
         }
@@ -605,7 +604,7 @@ Object.assign(Game.prototype, {
     spawnFirefliesForChunk(chunkX, chunkZ, biome) {
         if (biome !== 'forest' && biome !== 'plains') return;
         if (this.chunkRandom(chunkX, chunkZ, 51) > 0.25) return;
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'firefly').length >= getMobSpecies('firefly').limit) return;
+        if (this.mobCount('firefly') >= getMobSpecies('firefly').limit) return;
         const size = this.world.chunkSize;
         let spot = null;
         for (let i = 0; i < 8 && !spot; i++) {
@@ -620,8 +619,7 @@ Object.assign(Game.prototype, {
         }
         if (!spot) return;
         const mob = this.createMob('firefly', spot);
-        mob.userData.natural = true;
-        mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+        this.mobMarkNatural(mob, chunkX, chunkZ);
         this.ambientMobs.push(mob);
     },
 

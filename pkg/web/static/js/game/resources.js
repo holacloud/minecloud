@@ -528,9 +528,7 @@ Object.assign(Game.prototype, {
         // Swatting into a school now and then catches a fish.
         if (data.species === 'fish') {
             if (Math.random() < 0.2) {
-                this.emitMobEvent('defeated', mob, 'player');
-                this.removeMob(mob);
-                this.receiveSystemMessage({ text: 'You caught a fish!' });
+                this.defeatMobByPlayer(mob, 'You caught a fish!');
             }
             return;
         }

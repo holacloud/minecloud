@@ -107,7 +107,7 @@ Object.assign(Game.prototype, {
     crabSpawnForChunk(chunkX, chunkZ) {
         if (this.chunkRandom(chunkX, chunkZ, 141) > 0.3) return;
         const info = getMobSpecies('crab');
-        const alive = this.ambientMobs.filter((mob) => mob.userData.species === 'crab').length;
+        const alive = this.mobCount('crab');
         if (alive >= info.limit) return;
         const size = this.world.chunkSize;
         for (let attempt = 0; attempt < 10; attempt++) {
@@ -124,8 +124,7 @@ Object.assign(Game.prototype, {
                 const dry = floor > -20 && Math.abs(floor - spot.y) <= 1 && this.findWaterSurface(px, floor + 0.1, pz) === null;
                 const mob = this.createMob('crab', dry ? new THREE.Vector3(px, floor, pz) : new THREE.Vector3(spot.x, spot.y, spot.z));
                 mob.userData.pond = spot.water;
-                mob.userData.natural = true;
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
                 this.ambientMobs.push(mob);
             }
             return;
@@ -364,15 +363,12 @@ Object.assign(Game.prototype, {
         const data = mob.userData;
         const crab = data.crab || this.crabState(mob);
         const loudness = 1;
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         this.playTone({ frequency: getMobSpecies('crab').tone * 0.5, endFrequency: getMobSpecies('crab').tone * 0.35, duration: 0.05, type: 'square', volume: 0.012, release: 0.05 });
         this.playNoiseBurst({ duration: 0.04, volume: 0.018, highpass: 900, lowpass: 4000 });
-        if (data.health <= 0) {
+        if (lethal) {
             this.crabPuff(mob.position, 6, 0xf0d8b8);
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the crab' });
+            this.defeatMobByPlayer(mob, 'You defeated the crab');
             return;
         }
         if (crab.bury > 0.3) this.crabPuff(mob.position, 6, CRAB_DUST_COLORS[this.world.getBlockTypeAt(Math.floor(mob.position.x), Math.floor(mob.position.y) - 1, Math.floor(mob.position.z))]);

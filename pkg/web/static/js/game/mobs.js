@@ -220,7 +220,7 @@ Object.assign(Game.prototype, {
             this.spawnGroupInChunk(chunkX, chunkZ, this.pickWeightedSpecies(hostile, this.chunkRandom(chunkX, chunkZ, 502)), 600);
         }
 
-        if (this.ambientMobs.filter((mob) => mob.userData.species === 'fish').length < MOB_FISH_CAP) this.spawnFishForChunk(chunkX, chunkZ);
+        if (this.mobCount('fish') < MOB_FISH_CAP) this.spawnFishForChunk(chunkX, chunkZ);
         this.spawnShoreMobsForChunk(chunkX, chunkZ, biome);
         this.spawnBeesForChunk(chunkX, chunkZ, biome);
         this.spawnFirefliesForChunk(chunkX, chunkZ, biome);
@@ -234,7 +234,7 @@ Object.assign(Game.prototype, {
     spawnGroupInChunk(chunkX, chunkZ, species, salt) {
         const size = this.world.chunkSize;
         const info = getMobSpecies(species);
-        if (info.limit && this.ambientMobs.filter((mob) => mob.userData.species === species).length >= info.limit) return;
+        if (info.limit && this.mobCount(species) >= info.limit) return;
         const [minGroup, maxGroup] = info.group || [1, 1];
         const groupSize = minGroup + Math.floor(this.chunkRandom(chunkX, chunkZ, salt + 3) * (maxGroup - minGroup + 1));
         for (let i = 0; i < groupSize; i++) {
@@ -247,10 +247,24 @@ Object.assign(Game.prototype, {
             if (!surface || above === 'water' || surface.endsWith('leaves') || surface === 'cactus') continue;
 
             const mob = this.createMob(species, new THREE.Vector3(x, ground, z));
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
         }
+    },
+
+    // How many of a species are alive (for its `limit`), without making a list of them.
+    mobCount(species) {
+        let count = 0;
+        for (const mob of this.ambientMobs) if (mob.userData.species === species) count++;
+        return count;
+    },
+
+    // Marks a mob as spawned by the world for a chunk, not by a player: it leaves with that chunk and
+    // comes back with it (updateNaturalSpawning), and it counts for the caps of natural spawning.
+    mobMarkNatural(mob, chunkX, chunkZ) {
+        mob.userData.natural = true;
+        mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+        return mob;
     },
 
     removeMob(mob) {

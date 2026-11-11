@@ -283,7 +283,7 @@ Object.assign(Game.prototype, {
         const chance = biome === 'forest' ? 0.25 : biome === 'desert' ? 0.06 : 0.3;
         if (this.chunkRandom(chunkX, chunkZ, 301) > chance) return;
         const info = getMobSpecies('rabbit');
-        const alive = this.ambientMobs.filter((mob) => mob.userData.species === 'rabbit').length;
+        const alive = this.mobCount('rabbit');
         if (alive >= info.limit) return;
         const size = this.world.chunkSize;
         for (let attempt = 0; attempt < 8; attempt++) {
@@ -295,8 +295,7 @@ Object.assign(Game.prototype, {
             const count = Math.min(info.limit - alive, min + Math.floor(this.chunkRandom(chunkX, chunkZ, 302) * (max - min + 1)));
             const variant = this.rabbitNaturalVariant(biome, this.chunkRandom(chunkX, chunkZ, 303));
             this.spawnRabbitFamily(spot, count, variant).forEach((rabbit) => {
-                rabbit.userData.natural = true;
-                rabbit.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(rabbit, chunkX, chunkZ);
             });
             return;
         }

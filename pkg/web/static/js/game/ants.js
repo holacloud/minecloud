@@ -445,8 +445,7 @@ Object.assign(Game.prototype, {
             const [min, max] = getMobSpecies('ant').group;
             const count = min + Math.floor(this.chunkRandom(chunkX, chunkZ, 1303) * (max - min + 1));
             const mob = this.antsSpawnColony(spot.position, count, variant);
-            mob.userData.natural = true;
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             return;
         }
     },

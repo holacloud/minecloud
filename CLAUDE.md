@@ -32,7 +32,7 @@ before calling it done. There is no CI: nothing else will catch a red test.
 | `pkg/web/static/guide/` | The in-game guide: one Markdown page per topic, in ES and EN. Its `README.md` has the rules. |
 | `pkg/network/` | The server: `registry.go` is how a mechanic plugs in, `websocket.go` the hub; each mechanic has its own file (`glow_block.go`, `power.go`...). |
 | `pkg/world/`, `pkg/terrain/` | Chunk storage and terrain generation. |
-| `test/js/` | Node tests: they run the real scripts of `index.html` in a VM with stand-ins for the browser. |
+| `test/js/` | Node tests: they run the real scripts of `index.html` in a VM with stand-ins for the browser. `support/game.js` has the script list, `anyStub` and loaders to start a new test from. |
 | `GUIA.md` | The player's reference of every mechanic, in Spanish. Kept up to date with each feature. |
 
 ## How the client is put together
@@ -76,10 +76,11 @@ file to edit is `index.html` (`<script>` after `game/mobs.js`):
    movement name of its own, unless a built-in one fits (`'ground'`, `'swim'`, `'hop'`...: then no behaviour).
    **The behaviour also says its traits** (`bodiless`, `walksToGoal`, `tameable`, `inWater`...; the list is in
    `extensions.js`): other features ask `mobMovementIs(movement, trait)` and never list movement names.
-3. When struck, use `damageMobByPlayer` / `defeatMobByPlayer` (`game/mobs.js`); do not hand-roll health,
-   the `defeated` event and removal as the older species do.
+3. When struck: `if (this.damageMobByPlayer(mob)) { ...its last effects...; this.defeatMobByPlayer(mob); }`
+   (`game/mobs.js`). Never the health, the `defeated` event and the removal by hand.
 4. Natural spawning draws from `this.chunkRandom(chunkX, chunkZ, salt)`: pick salts no other file uses
-   (`grep -rn "chunkRandom(" pkg/web/static/js/game`).
+   (`grep -rn "chunkRandom(" pkg/web/static/js/game`). `this.mobCount('<id>')` against `info.limit`, then
+   `this.createMob`, `this.mobMarkNatural(mob, chunkX, chunkZ)` and `this.ambientMobs.push(mob)`.
 5. A mob that changes blocks does it with `this.placeBlockForAll(payload)` and `this.removeBlockForAll(x, y, z)`
    (see `game/beaver.js`): they tell the server and stop by themselves in someone else's plot.
 6. Its guide pages (see "a guide page"): `guide_facts.test.js` counts the species and checks what the pages

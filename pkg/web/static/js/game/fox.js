@@ -571,15 +571,12 @@ Object.assign(Game.prototype, {
         this.foxDropCarcass(mob);
         fox.stealCooldown = 30;
         fox.huntCooldown = Math.max(fox.huntCooldown, 10);
-        data.health -= this.getPlayerAttackDamage();
-        this.updateMobHealthBar(mob);
+        const lethal = this.damageMobByPlayer(mob);
         const tone = getMobSpecies('fox').tone;
         this.playTone({ frequency: tone * 1.9, endFrequency: tone * 1.1, duration: 0.16, type: 'sawtooth', volume: 0.02, attack: 0.01, release: 0.08 });
         this.playTone({ frequency: tone * 2.4, endFrequency: tone * 1.3, duration: 0.12, type: 'triangle', volume: 0.012, release: 0.06 });
-        if (data.health <= 0) {
-            this.emitMobEvent('defeated', mob, 'player');
-            this.removeMob(mob);
-            this.receiveSystemMessage({ text: 'You defeated the fox' });
+        if (lethal) {
+            this.defeatMobByPlayer(mob, 'You defeated the fox');
             return;
         }
         fox.bark = 0.25;

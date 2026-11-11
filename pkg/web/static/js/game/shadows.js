@@ -101,9 +101,8 @@ Object.assign(Game.prototype, {
             const spot = new THREE.Vector3(x, floor, z);
             if (this.isNearPlacedTorch(spot)) continue;
             const mob = this.createMob('shadow', spot);
-            mob.userData.natural = true;
             const { chunkX, chunkZ } = this.world.getChunkCoords(x, z);
-            mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+            this.mobMarkNatural(mob, chunkX, chunkZ);
             this.ambientMobs.push(mob);
             this.emitSmoke(spot, 10, 1.6);
             return mob;

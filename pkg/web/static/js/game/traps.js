@@ -290,9 +290,8 @@ Object.assign(Game.prototype, {
         } else if (entity.kind === 'jar') {
             if (item === 'bug_net') {
                 const mob = this.createMob('firefly', entity.position.clone());
-                mob.userData.natural = true;
                 const { chunkX, chunkZ } = this.world.getChunkCoords(entity.position.x, entity.position.z);
-                mob.userData.spawnChunk = this.world.chunkKey(chunkX, chunkZ);
+                this.mobMarkNatural(mob, chunkX, chunkZ);
                 this.ambientMobs.push(mob);
                 this.receiveSystemMessage({ text: 'You set the fireflies free' });
                 this.playTone({ frequency: 1800, endFrequency: 2600, duration: 0.3, type: 'sine', volume: 0.01, release: 0.2 });
