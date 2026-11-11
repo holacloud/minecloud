@@ -49,9 +49,11 @@ before calling it done. There is no CI: nothing else will catch a red test.
   names exist.
 - Text the player reads goes through `gameText({ ES, EN })` (`js/gameLang.js`); longer text lives in a
   `*_text.js` file next to the feature. Item and block `name:` fields are English.
-- Network: `this.network.send('type', payload)`; `this.network.on('type', handler)` (any type the server sends
-  arrives; several listeners may share one). There is no init hook yet: subscribe once behind a flag from a
-  `registerFrameUpdate` (see `claimsListen` in `game/claims.js`).
+- Network: `this.network.send('type', payload)` to say, and `registerNetworkHandler('type', function (payload)
+  { ... })` to hear (any type the server sends, and `'connected'`; several handlers may share one). Never
+  `this.network.on(...)` from a feature: `game_hooks.test.js` fails.
+- What a feature sets up once the game has started (a button in the pause menu, a listener of the language):
+  `registerGameInit(function () { ... })`. Items, recipes and loading saved state go in `registerGameContent`.
 - **Changing a block** (anything: a tool, a mob, a panel): `this.placeBlockForAll({ x, y, z, blockType })` and
   `this.removeBlockForAll(x, y, z)` (`game/block_edits.js`). Never `world.addBlock` plus a `blockPlace` message
   by hand: `block_edits.test.js` fails. `this.blockEditRefusal(x, z)` gives the line to show when the player

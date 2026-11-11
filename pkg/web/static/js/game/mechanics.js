@@ -364,13 +364,8 @@ Object.assign(Game.prototype, {
         }
     },
 
-    // Once per world: listen to mechMove, let the player collide with the gliding platforms,
-    // and let clicks reach them.
+    // Once per world: let the player collide with the gliding platforms, and let clicks reach them.
     mechanicsHook() {
-        if (this.network && !this.mechListening) {
-            this.mechListening = true;
-            this.network.on('mechMove', (move) => this.mechanicsOnMove(move));
-        }
         const cc = this.cameraController;
         if (cc.collisionBoxGetter && cc.mechWrapped !== cc.collisionBoxGetter) {
             const base = cc.collisionBoxGetter;
@@ -507,3 +502,5 @@ Object.assign(Game.prototype, {
         }
     }
 });
+
+registerNetworkHandler('mechMove', function (move) { this.mechanicsOnMove(move); });

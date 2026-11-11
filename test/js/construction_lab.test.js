@@ -774,7 +774,9 @@ test('/build lab: it ends as planned in every turn, by blockPlace, the signs wit
         if (turns > 0) continue;
         // The server takes all of it; then undo breaks those chests, and of what each spills only what a
         // player added since is spawned, wherever the spill comes from (a fridge spills from its upper cell first).
-        const answer = game.network.handlers.constructionStockResult;
+        // What constructions.js does with the server's answer (registerNetworkHandler).
+        const [, heard] = vm.runInContext('NETWORK_HANDLERS', ctx).find(([type]) => type === 'constructionStockResult');
+        const answer = (result) => heard.call(game, result);
         for (const { payload } of stockMessages) answer({ filled: payload.fills.map(({ x, y, z }) => [x, y, z]), refused: [] });
         assert.ok(messages.some((text) => text === `Stocked ${fills.length} storage blocks`), messages.join(' | '));
         game.constructionCommand('build', ['undo']);

@@ -60,7 +60,7 @@ function loadModules() {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_SAMPLES, MICRO_ITEMS, MICRO_MAGNIFICATIONS, MICRO_DRY_SECONDS, MICRO_REVIVE_SECONDS, MICRO_TUN_SECONDS, MICRO_SLIDE_RADIUS,
-        ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, GAME_CONTENT_HOOKS, MODAL_PANELS, ITEM_USE_HANDLERS, STORAGE_KINDS, APPLIANCE_FREEZE, MICROSCOPE_KIT,
+        ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, GAME_CONTENT_HOOKS, MODAL_PANELS, ITEM_USE_HANDLERS, NETWORK_HANDLERS, STORAGE_KINDS, APPLIANCE_FREEZE, MICROSCOPE_KIT,
         microSpeciesOf, microSampleId, microSourceInTube, microPopulate, microScenery, microSlideStage, microUnfold, microFate, microBlur, microCanIdentify,
         microStep, tardigradeLegs, microDrawOrganism, microDrawPortrait, microDrawTardigrade, microDrawTardigradeMolt, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeOpenToSky, microscopeClampStage, microscopeStepPower, microscopeScale, microscopeScaleBar,
@@ -802,6 +802,10 @@ function panelGame({ lamp = false } = {}) {
     game.microscopeIdentified = (id) => game.identified.push(id);
     game.microscopeLoadPending();
     game.microscopeUpdate(0.016);
+    // What the microscope listens to (registerNetworkHandler), and nothing of the chests loaded with it.
+    for (const [type, handler] of ctx.NETWORK_HANDLERS) {
+        if (String(handler).includes('microscope')) game.network.on(type, (payload) => handler.call(game, payload));
+    }
     return game;
 }
 

@@ -141,6 +141,32 @@ function registerModalPanel(panel) {
 }
 
 // Once per frame, after the mobs moved: updater(delta) (client-side entities of a mechanic).
+// What the server says: registerNetworkHandler('glowSet', function (payload) { ... }). Any message type
+// the server sends, and 'connected' (every time the socket opens, reconnections too). Several handlers
+// may share a type; all hear it, in the order they registered. They are listening before the socket
+// opens, so nothing the server says on connecting is missed: no feature subscribes by itself.
+const NETWORK_HANDLERS = [];
+function registerNetworkHandler(type, handler) {
+    NETWORK_HANDLERS.push([type, handler]);
+}
+
+// Game.initNetwork gives its new network here, before connecting.
+function attachNetworkHandlers(game, network) {
+    for (const [type, handler] of NETWORK_HANDLERS) network.on(type, (payload) => handler.call(game, payload));
+}
+
+// Once, when the game has started: the scene, the world, the network (not yet connected), the hotbar and
+// the pause menu exist. For what a feature sets up once and needs them: a button in the pause menu, a
+// listener of the language. State with no such need is better made where it is first used.
+const GAME_INIT_HOOKS = [];
+function registerGameInit(hook) {
+    GAME_INIT_HOOKS.push(hook);
+}
+
+function runGameInit(game) {
+    for (const hook of GAME_INIT_HOOKS) hook.call(game);
+}
+
 const FRAME_UPDATERS = [];
 function registerFrameUpdate(updater) {
     FRAME_UPDATERS.push(updater);

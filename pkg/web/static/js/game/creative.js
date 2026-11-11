@@ -27,14 +27,6 @@ Object.assign(Game.prototype, {
         }
     },
 
-    // Answers from the server are wired the first time they are needed.
-    creativeListen() {
-        if (this.creativeListening || !this.network) return;
-        this.creativeListening = true;
-        this.network.on('creativeAuth', (reply) => this.creativeOnAuth(reply || {}));
-        // A remembered key is checked again on every (re)connection.
-        this.network.on('connected', () => this.creativeRecheck());
-    },
 
     creativeRecheck() {
         if (this.creativeKey && this.network && this.network.connected) {
@@ -43,7 +35,6 @@ Object.assign(Game.prototype, {
     },
 
     creativeCommand(command, key) {
-        this.creativeListen();
         const normalized = (key || '').trim().toLowerCase();
         // Turning it off needs no key check; anything else goes to the server.
         if (this.creativeMode && normalized === this.creativeKey) {
@@ -137,9 +128,7 @@ registerGameContent(function () {
     this.creativeLoad();
 });
 
-// The network exists once the game has started: listen, and check a remembered key.
-registerFrameUpdate(function () {
-    if (this.creativeListening || !this.network) return;
-    this.creativeListen();
-    this.creativeRecheck();
-});
+
+registerNetworkHandler('creativeAuth', function (reply) { this.creativeOnAuth(reply || {}); });
+// A remembered key is checked on every connection, the first one too.
+registerNetworkHandler('connected', function () { this.creativeRecheck(); });

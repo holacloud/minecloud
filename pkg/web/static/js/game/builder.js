@@ -428,16 +428,8 @@ Object.assign(Game.prototype, {
         if (!this.builderSaveTimer) save();
     },
 
-    builderListen() {
-        if (this.builderListening || !this.network) return;
-        this.builderListening = true;
-        // Broken by someone else, or put back by the server: no longer what this browser placed.
-        this.network.on('blockBreak', (payload) => payload && this.builderForget(payload.x, payload.y, payload.z));
-        this.network.on('claimRefused', (payload) => {
-            for (const block of (payload && Array.isArray(payload.blocks)) ? payload.blocks : []) {
-                if (block) this.builderForget(block.x, block.y, block.z);
-            }
-        });
+    // Once, when the game has started (registerGameInit below).
+    builderInit() {
         if (typeof onGameLangChange === 'function') {
             onGameLangChange(() => {
                 this.builderLabelPauseButton();
@@ -618,12 +610,6 @@ Object.assign(Game.prototype, {
         });
     }
 
-    const initNetwork = proto.initNetwork;
-    proto.initNetwork = function (...args) {
-        const result = initNetwork.apply(this, args);
-        this.builderListen();
-        return result;
-    };
 
     // What the server says when it refuses a placement from the palette.
     if (typeof claimRefusalText === 'function') {
@@ -647,4 +633,18 @@ registerGameContent(function () {
 
 registerFrameUpdate(function (delta) {
     this.builderUpdate(delta);
+});
+
+registerGameInit(function () {
+    this.builderInit();
+});
+
+// Broken by someone else, or put back by the server: no longer what this browser placed.
+registerNetworkHandler('blockBreak', function (payload) {
+    if (payload) this.builderForget(payload.x, payload.y, payload.z);
+});
+registerNetworkHandler('claimRefused', function (payload) {
+    for (const block of (payload && Array.isArray(payload.blocks)) ? payload.blocks : []) {
+        if (block) this.builderForget(block.x, block.y, block.z);
+    }
 });

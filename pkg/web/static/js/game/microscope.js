@@ -1302,13 +1302,6 @@ Object.assign(Game.prototype, {
 
     microscopeUpdate(delta) {
         if (!this.network) return;
-        if (!this.microscopeListening) {
-            this.microscopeListening = true;
-            this.network.on('storageResult', (outcome) => this.microscopeOnOutcome(outcome));
-            this.network.on('sampleResult', (outcome) => this.microscopeOnOutcome(outcome));
-            this.network.on('storageContents', (contents) => this.microscopeOnContents(contents));
-            this.network.on('storageClosed', (where) => this.microscopeOnClosed(where));
-        }
         // Answers that are late: the server replies from its log, or kills what never arrived.
         const now = performance.now();
         if (this.microscopePending && this.microscopePending.size > 0 && this.network.connected && now >= this.microscopeNextSync) {
@@ -2040,3 +2033,9 @@ registerGameContent(function () {
 registerFrameUpdate(function (delta) {
     this.microscopeUpdate(delta);
 });
+
+// A microscope's slide is kept as a chest is (storage.go): its answers come as a chest's do.
+registerNetworkHandler('storageResult', function (outcome) { this.microscopeOnOutcome(outcome); });
+registerNetworkHandler('sampleResult', function (outcome) { this.microscopeOnOutcome(outcome); });
+registerNetworkHandler('storageContents', function (contents) { this.microscopeOnContents(contents); });
+registerNetworkHandler('storageClosed', function (where) { this.microscopeOnClosed(where); });

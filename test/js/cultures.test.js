@@ -439,7 +439,7 @@ test('the incubator opens before a chest would, is a modal panel, and listens wi
     assert.equal(game.cultureEscape(), true);
     assert.equal(game.cultureEscape(), false);
     const source = fs.readFileSync(path.join(JS, 'game', 'cultures.js'), 'utf8');
-    for (const type of ['storageResult', 'storageContents', 'storageClosed']) assert.ok(source.includes(`network.on('${type}'`), type);
+    for (const type of ['storageResult', 'storageContents', 'storageClosed']) assert.ok(source.includes(`registerNetworkHandler('${type}'`), type);
     // Not connected: says so and opens nothing.
     const offline = panelGame();
     offline.game.network.connected = false;

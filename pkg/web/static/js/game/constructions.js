@@ -1840,7 +1840,6 @@ Object.assign(Game.prototype, {
             if (cold.length) fill.freezer = cold;
             return fill;
         });
-        this.constructionStockListen();
         this.constructionStockSent = new Map(fills.map((fill) => [constructionStockKey(fill.x, fill.y, fill.z), fill]));
         this.constructionStockUndo = this.constructionUndo;
         this.constructionStockTally = { filled: 0, refused: 0, left: Math.ceil(fills.length / CONSTRUCTION_STOCK_FILLS) };
@@ -1849,11 +1848,6 @@ Object.assign(Game.prototype, {
         }
     },
 
-    constructionStockListen() {
-        if (this.constructionStockListening || !this.network || !this.network.on) return;
-        this.constructionStockListening = true;
-        this.network.on('constructionStockResult', (result) => this.constructionOnStockResult(result || {}));
-    },
 
     // What landed is remembered with the undo, so that undoing does not spawn it.
     constructionOnStockResult({ filled, refused }) {
@@ -1897,3 +1891,5 @@ Object.assign(Game.prototype, {
 registerFrameUpdate(function (delta) {
     if (this.constructionJob || this.constructionWaiting || this.constructionScan) this.constructionUpdate(delta);
 });
+
+registerNetworkHandler('constructionStockResult', function (result) { this.constructionOnStockResult(result || {}); });

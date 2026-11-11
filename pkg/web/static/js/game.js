@@ -329,7 +329,7 @@ class Game {
         this.initHotbar();
         this.initInput();
         this.initPauseMenu();
-        if (typeof this.initIdentityPanel === 'function') this.initIdentityPanel();
+        runGameInit(this);
         this.initVoiceChat();
         this.initTitleScreen();
         
@@ -827,6 +827,9 @@ class Game {
                 this.voiceChat.handleIceCandidate(payload);
             }
         });
+
+        // What each feature listens to (registerNetworkHandler, js/extensions.js), before the socket opens.
+        attachNetworkHandlers(this, this.network);
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const wsUrl = `${wsProtocol}://${window.location.host}/ws`;

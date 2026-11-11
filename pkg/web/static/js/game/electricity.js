@@ -671,20 +671,8 @@ Object.assign(Game.prototype, {
         return true;
     },
 
-    electricListen() {
-        if (this.electricListening || !this.network) return;
-        this.electricListening = true;
-        this.network.on('powerProbe', (report) => {
-            if (!report || !this.electricProbeTarget) return;
-            const target = this.electricProbeTarget;
-            if (report.x !== target.x || report.y !== target.y || report.z !== target.z) return;
-            this.electricReport = report;
-            this.electricShowReport();
-        });
-    },
 
     electricUpdate(delta) {
-        this.electricListen();
         this.electricUpdateRotors(delta);
 
         const holding = this.handsHold('multimeter') && this.isGameplayActive();
@@ -989,4 +977,13 @@ Object.assign(Game.prototype, {
             this.electricRotors.delete(key);
         }
     }
+});
+
+// What the multimeter asked the server about the block it points at.
+registerNetworkHandler('powerProbe', function (report) {
+    if (!report || !this.electricProbeTarget) return;
+    const target = this.electricProbeTarget;
+    if (report.x !== target.x || report.y !== target.y || report.z !== target.z) return;
+    this.electricReport = report;
+    this.electricShowReport();
 });

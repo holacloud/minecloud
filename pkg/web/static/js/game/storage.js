@@ -354,13 +354,6 @@ Object.assign(Game.prototype, {
 
     storageUpdate() {
         if (!this.network) return;
-        if (!this.storageListening) {
-            this.storageListening = true;
-            this.network.on('storageResult', (outcome) => this.storageOnResult(outcome));
-            this.network.on('storageContents', (contents) => this.storageOnContents(contents));
-            this.network.on('storageClosed', (where) => this.storageOnClosed(where));
-            this.network.on('storageDrop', (drop) => this.storageOnDrop(drop));
-        }
 
         // Answers that are late: ask (after a reconnection or a reload this is what resumes them).
         const now = performance.now();
@@ -612,3 +605,8 @@ registerGameContent(function () {
 registerFrameUpdate(function () {
     this.storageUpdate();
 });
+
+registerNetworkHandler('storageResult', function (outcome) { this.storageOnResult(outcome); });
+registerNetworkHandler('storageContents', function (contents) { this.storageOnContents(contents); });
+registerNetworkHandler('storageClosed', function (where) { this.storageOnClosed(where); });
+registerNetworkHandler('storageDrop', function (drop) { this.storageOnDrop(drop); });

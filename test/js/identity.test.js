@@ -51,6 +51,7 @@ function fakePage({ lang = 'ES', clipboard = 'ok', execCommand = false } = {}) {
         window: { localStorage: { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) } }
     });
     vm.runInContext('class Game {}', context);
+    vm.runInContext(read('extensions.js'), context, { filename: 'extensions.js' });
     vm.runInContext(read('gameLang.js'), context, { filename: 'gameLang.js' });
     vm.runInContext(read('game/identity.js'), context, { filename: 'identity.js' });
     vm.runInContext('Object.assign(this, { Game, IDENTITY_TEXT, IDENTITY_LABELS, identitySay, identityCodeLooksValid, setGameLang, gameLang })', context);
@@ -63,7 +64,9 @@ function fakePage({ lang = 'ES', clipboard = 'ok', execCommand = false } = {}) {
     };
     const game = new context.Game();
     game.network = network;
-    game.initIdentityPanel();
+    // As Game does: listening before the socket opens, and the panel once the game has started.
+    vm.runInContext('attachNetworkHandlers', context)(game, network);
+    vm.runInContext('runGameInit', context)(game);
     return { context, game, network, el: element, copied };
 }
 

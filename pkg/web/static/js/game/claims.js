@@ -355,17 +355,9 @@ const CLAIM_CSS = `
 `;
 
 Object.assign(Game.prototype, {
-    claimsListen() {
-        if (this.claimListening || !this.network) return;
-        this.claimListening = true;
+    // Once, when the game has started (registerGameInit below).
+    claimsInit() {
         this.claimState = this.claimState || { claims: [], spawn: null, radius: 8, gap: 8 };
-        this.network.on('claimList', (payload) => this.claimReceiveList(payload || {}));
-        this.network.on('claimRefused', (payload) => this.claimOnRefused(payload || {}));
-        this.network.on('claimMade', () => this.claimNotice(claimSay('claimed')));
-        this.network.on('claimAdminResult', (payload) => this.claimOnAdminResult(payload || {}));
-        this.network.on('claimHomeResult', (payload) => this.claimOnHome(payload || {}));
-        this.network.on('claimGuestResult', (payload) => this.claimOnGuestResult(payload || {}));
-        this.network.on('playerList', (payload) => this.claimOnPlayerList(payload || {}));
         onGameLangChange(() => { this.claimRenderPanel(); this.claimLabelPauseButton(); });
         this.claimAddPauseButton();
     },
@@ -952,13 +944,6 @@ Object.assign(Game.prototype, {
 // player may not change. The server refuses anyway; this only saves the item and says why at once.
 (() => {
     const proto = Game.prototype;
-    const initNetwork = proto.initNetwork;
-    proto.initNetwork = function (...args) {
-        const result = initNetwork.apply(this, args);
-        // Before the socket opens: the plots arrive right after it does.
-        this.claimsListen();
-        return result;
-    };
 
     const updateMining = proto.updateMining;
     proto.updateMining = function (delta) {
@@ -1086,3 +1071,16 @@ registerFrameUpdate(function () {
     this.claimUpdateHome();
     this.claimUpdate();
 });
+
+registerGameInit(function () {
+    this.claimsInit();
+});
+
+// What the server says of the plots. The list arrives right after the socket opens.
+registerNetworkHandler('claimList', function (payload) { this.claimReceiveList(payload || {}); });
+registerNetworkHandler('claimRefused', function (payload) { this.claimOnRefused(payload || {}); });
+registerNetworkHandler('claimMade', function () { this.claimNotice(claimSay('claimed')); });
+registerNetworkHandler('claimAdminResult', function (payload) { this.claimOnAdminResult(payload || {}); });
+registerNetworkHandler('claimHomeResult', function (payload) { this.claimOnHome(payload || {}); });
+registerNetworkHandler('claimGuestResult', function (payload) { this.claimOnGuestResult(payload || {}); });
+registerNetworkHandler('playerList', function (payload) { this.claimOnPlayerList(payload || {}); });

@@ -40,7 +40,7 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         exitPointerLock() {}
     };
     const store = new Map([['minecloud-guide-lang', lang]]);
-    const hooks = { content: [], use: [], modal: [], frame: [], guards: [], textures: {}, blocks: {} };
+    const hooks = { content: [], use: [], modal: [], frame: [], guards: [], init: [], heard: [], textures: {}, blocks: {} };
     const timers = [];
     const context = vm.createContext({
         console, Math, Number, String, Array, Map, Set, Object, JSON, Promise,
@@ -56,6 +56,8 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         registerModalPanel: (panel) => hooks.modal.push(panel),
         registerFrameUpdate: (fn) => hooks.frame.push(fn),
         registerBlockEditGuard: (guard) => hooks.guards.push(guard),
+        registerGameInit: (hook) => hooks.init.push(hook),
+        registerNetworkHandler: (type, handler) => hooks.heard.push([type, handler]),
         BLOCK_EDIT_GUARDS: hooks.guards
     });
     context.now = 10000;
@@ -109,7 +111,10 @@ function fakeGame({ lang = 'ES', creative = false } = {}) {
         receiveSystemMessage(message) { this.messages.push(message.text); },
         recapturePointerLock() {}
     });
+    // As Game does: the handlers are listening before the socket opens, and then the game has started.
     game.initNetwork();
+    for (const [type, handler] of hooks.heard) game.network.on(type, (payload) => handler.call(game, payload));
+    hooks.init.forEach((hook) => hook.call(game));
     const notice = () => {
         const element = document.getElementById('claim-notice');
         return element && element.classList.contains('visible') ? element.textContent : '';

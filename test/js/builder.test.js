@@ -109,7 +109,7 @@ function load() {
     const scripts = [...HTML.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]).filter((src) => !/^(https?:)?\/\//.test(src));
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     vm.runInContext(`Object.assign(this, { Game, WorldRenderer, setGameLang, BUILDER_TEXT, BUILDER_FAMILIES, BUILDER_NOT_FAMILIES, BUILDER_NOT_ITEMS, BUILDER_MARGIN, builderPlotNear,
-        builderPaletteOf, builderSay, itemTagsOf, itemTagCatalogue, claimRefusalText, FRAME_UPDATERS, DAMAGE_MODIFIERS });`, context);
+        builderPaletteOf, builderSay, itemTagsOf, itemTagCatalogue, claimRefusalText, FRAME_UPDATERS, DAMAGE_MODIFIERS, attachNetworkHandlers });`, context);
     return context;
 }
 
@@ -176,8 +176,9 @@ function makeGame({ x = 300, z = 300, own = { stone: 5, iron_ore: 3, bread: 2 },
     game.creativeLoad();
     game.builderLoad();
     game.initHotbar();
-    game.claimsListen();
-    game.builderListen();
+    ctx.attachNetworkHandlers(game, network);
+    game.claimsInit();
+    game.builderInit();
     network.emit('claimList', plots());
     const frame = (delta = 1 / 60) => { game.claimUpdate(); game.builderUpdate(delta); flightUpdater.call(game, delta); };
     const moveTo = (nx, nz) => { position.x = nx; position.z = nz; frame(); };
