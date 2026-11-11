@@ -26,7 +26,7 @@ const TRAPS_BAITS = {
     bait_honey: { name: 'Honey Bait', color: 0xe8a92a, pile: [0xe8a92a, 0xf2c650, 0xc88a18, 0xf6d880] }
 };
 
-// Per species (the 22 in mobSpecies.js, the 9 new ones and the ant):
+// Per species (the 22 in mobSpecies.js; those with a file of their own say theirs in registerSpecies):
 //   baits  the baits it walks to   cage  a cage trap can hold it   net  what the bug net gives
 //   bucket what an empty bucket catches it as (eel.js does the catching)
 const TRAPS_SPECIES = speciesFacet('trap', {
@@ -51,19 +51,7 @@ const TRAPS_SPECIES = speciesFacet('trap', {
     firefly: { baits: [], net: 'firefly_jar' },
     shadow: { baits: [] },
     eagle: { baits: ['bait_fish'] },
-    bat: { baits: [], net: 'bat_egg' },
-    fox: { baits: ['bait_meat'], cage: true },
-    rabbit: { baits: ['bait_seeds'], cage: true },
-    owl: { baits: ['bait_meat'] },
-    vulture: { baits: ['bait_meat'] },
-    snake: { baits: ['bait_meat'], cage: true },
-    storm_golem: { baits: [] },
-    wisp: { baits: [], net: 'glow_dust' },
-    mole: { baits: ['bait_worms'], cage: true },
-    beaver: { baits: ['bait_seeds'], cage: true },
-    ant: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' },
-    eel: { baits: [], bucket: 'eel_bucket' },
-    copper_golem: { baits: [] } // a machine: no bait, no cage
+    bat: { baits: [], net: 'bat_egg' }
 });
 
 const TRAPS_BAIT_LIFE = 120;

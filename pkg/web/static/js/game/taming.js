@@ -18,7 +18,8 @@
 
 // Per species: `foods` (held item types that tame and feed it, in order of preference; types
 // that do not exist in world.blockTypes are skipped) and `chance` (of taming per item), or
-// null when it cannot be tamed (hostile, colonies, flyers and swimmers).
+// null when it cannot be tamed (hostile, colonies, flyers and swimmers). These are the species of
+// mobSpecies.js; those with a file of their own say their `diet` in registerSpecies, or none.
 const TAMING_DIET = speciesFacet('diet', {
     sheep: { foods: ['tall_grass', 'wheat', 'flower_yellow', 'leaves'], chance: 1 / 3 },
     duck: { foods: ['tall_grass', 'wheat_seeds', 'raw_fish', 'flower_yellow'], chance: 1 / 3 },
@@ -41,20 +42,7 @@ const TAMING_DIET = speciesFacet('diet', {
     firefly: null,
     shadow: null,
     eagle: null,
-    bat: null,
-    // Species built in parallel: tameable only if they walk on the ground (see above).
-    fox: { foods: ['raw_fish', 'mushroom_red'], chance: 1 / 4 },
-    rabbit: { foods: ['flower_yellow', 'tall_grass', 'flower_red'], chance: 1 / 3 },
-    owl: { foods: ['raw_fish'], chance: 1 / 4 },
-    vulture: null,
-    snake: null,
-    storm_golem: null,
-    wisp: null,
-    mole: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 },
-    beaver: null, // 'lodge': busy with its trees and dams, it does not follow goals
-    ant: null, // a colony; keep them in an ant farm instead (ants.js)
-    eel: null, // a swimmer; catch it with a bucket and keep it in an eel tank instead (eel.js)
-    copper_golem: null // built, not tamed: it already follows its builder (copper_golem.js)
+    bat: null
 });
 window.TAMING_DIET = TAMING_DIET;
 

@@ -43,10 +43,26 @@ const EEL_TANK_SCAN = 1;
 const EEL_TANK_SCALE = 0.34;
 const EEL_FEED_SECONDS = 10;
 
-MOB_SPECIES.eel = {
-    eggColor: 0x4a4a2c, tone: 140, maxHealth: 12, speed: EEL_CRUISE, group: [1, 1], limit: 2, movement: 'eel'
-};
-VoxelModels.MOB_SURFACES.eel = 'skin';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('eel', {
+    info: {
+        eggColor: 0x4a4a2c, tone: 140, maxHealth: 12, speed: EEL_CRUISE, group: [1, 1], limit: 2, movement: 'eel'
+    },
+    surface: 'skin',
+    drops: [['raw_fish', 1, 2]],
+    // No diet: a swimmer; catch it with a bucket and keep it in an eel tank instead (eel.js).
+    trap: { baits: [], bucket: 'eel_bucket' },
+    card: {
+        name: 'Electric Eel', habitat: 'Deep lakes and rivers', activity: 'Day and night (more at night)', temperament: 'Neutral',
+        hint: 'Something long lies on the bottom of deep water, and it crackles.',
+        description: 'A long, dark knifefish that cruises slowly along the bottom and rises now and then to gulp air. Touch it or strike it and it discharges: blue arcs crackle through the water and shock anyone swimming close. Catch one with a bucket and keep it in an eel tank: a living generator.'
+    },
+    cardEs: {
+        name: 'Anguila eléctrica', habitat: 'Lagos y ríos profundos',
+        hint: 'Algo largo descansa en el fondo del agua profunda, y chisporrotea.',
+        description: 'Un largo pez cuchillo, oscuro, que nada despacio por el fondo y sube de vez en cuando a tragar aire. Si lo tocas o lo golpeas, descarga: arcos azules chisporrotean en el agua y dan calambre a quien nade cerca. Atrapa uno con un cubo y tenlo en un tanque de anguila: un generador vivo.'
+    }
+});
 
 // Faces +z. Body segments are top-level parts placed every frame by eelPlaceChain, each
 // pivoted at its front joint and reaching back to the next one.

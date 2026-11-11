@@ -26,12 +26,29 @@ const _moleScale = new THREE.Vector3();
 const _moleVec = new THREE.Vector3();
 const _moleColor = new THREE.Color();
 
-MOB_SPECIES.mole = {
-    eggColor: 0x3b3a40, tone: 1500, maxHealth: 12, speed: 0.5, group: [1, 1], limit: 2,
-    movement: 'tunnel', spawnBiomes: { plains: 1, forest: 1 }
-};
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('mole', {
+    info: {
+        eggColor: 0x3b3a40, tone: 1500, maxHealth: 12, speed: 0.5, group: [1, 1], limit: 2,
+        movement: 'tunnel', spawnBiomes: { plains: 1, forest: 1 }
+    },
+    surface: 'fur',
+    drops: [['fur', 1, 2]],
+    furry: true,
+    diet: { foods: ['mushroom_brown', 'mushroom_red'], chance: 1 / 3 },
+    trap: { baits: ['bait_worms'], cage: true },
+    card: {
+        name: 'Giant Mole', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
+        hint: 'Fresh mounds of earth appear and vanish.',
+        description: 'A giant burrower that pops out of the ground, leaving mounds of soil that crumble away after a while. Watch for the mounds to find it.'
+    },
+    cardEs: {
+        name: 'Topo gigante', habitat: 'Llanuras y bosques',
+        hint: 'Aparecen y desaparecen montículos de tierra fresca.',
+        description: 'Un excavador gigante que asoma del suelo y deja montículos de tierra que se deshacen al cabo de un rato. Busca los montículos para encontrarlo.'
+    }
+});
 
-VoxelModels.MOB_SURFACES.mole = 'fur';
 
 // Faces +z, belly on the ground. The nose star is a pink disc ringed by ten tentacles
 // (tentacle0..9); the forelimbs end in broad pink palms with ivory claws.

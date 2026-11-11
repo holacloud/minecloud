@@ -84,9 +84,8 @@ file to edit is `index.html` (`<script>` after `game/mobs.js`):
 A new feature that needs to know something of every species or movement adds a field to `SPECIES_FACETS` or a
 trait (both in `extensions.js`) instead of a table of names of its own.
 
-The species older than `registerSpecies` (all but the crab) still have their rows by hand in `RESOURCE_DROPS`
-(`game/resources.js`), `TAMING_DIET`, `TRAPS_SPECIES`, `BESTIARY_ENTRIES` and `BESTIARY_ENTRIES_ES`; moving one
-is cutting its rows from there into a `registerSpecies` call in its file.
+The 22 species of `js/mobSpecies.js` (sheep, fish...) have no file of their own and keep their rows in the
+tables themselves (`RESOURCE_DROPS`, `TAMING_DIET`, `TRAPS_SPECIES`, `BESTIARY_ENTRIES`...): do not add to those.
 
 Tests: `node --test test/js/species_registry.test.js test/js/bestiary_text.test.js test/js/guide_facts.test.js`
 and the species' own.

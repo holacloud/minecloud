@@ -12,8 +12,27 @@
 const _vultureTarget = new THREE.Vector3();
 const VULTURE_SIGHT = 56;
 
-MOB_SPECIES.vulture = { eggColor: 0x2e2420, tone: 120, maxHealth: 12, speed: 2.8, group: [1, 3], limit: 4, movement: 'scavenge' };
-VoxelModels.MOB_SURFACES.vulture = 'feather';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('vulture', {
+    info: { eggColor: 0x2e2420, tone: 120, maxHealth: 12, speed: 2.8, group: [1, 3], limit: 4, movement: 'scavenge' },
+    surface: 'feather',
+    // it also sheds feathers when struck
+    drops: [['feather', 2, 3]],
+    sheds: ['feather', 0.4, 8],
+    molts: true,
+    // No diet: it cannot be tamed.
+    trap: { baits: ['bait_meat'] },
+    card: {
+        name: 'Vulture', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Passive',
+        hint: 'Dark wings circle where something has fallen.',
+        description: 'A patient scavenger that circles above every fresh kill. If it starts circling over you, your health is running low.'
+    },
+    cardEs: {
+        name: 'Buitre', habitat: 'Desiertos y rocas',
+        hint: 'Unas alas oscuras dan vueltas donde algo ha caído.',
+        description: 'Un carroñero paciente que vuela en círculos sobre cada presa recién caída. Si empieza a dar vueltas sobre ti, es que te queda poca vida.'
+    }
+});
 
 // Faces +z; 16 units per block. About 2.6 blocks of wingspan.
 VoxelModels.mobBuilders.vulture = function (b) {

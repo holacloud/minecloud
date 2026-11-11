@@ -187,66 +187,6 @@ const BESTIARY_ENTRIES_ES = speciesFacet('cardEs', {
         name: 'Murciélago', habitat: 'Bajo techos y salientes, y en túneles',
         hint: 'Mira hacia arriba, bajo los salientes y las copas de los árboles.',
         description: 'De día, los murciélagos cuelgan boca abajo bajo techos y copas de árboles, envueltos en sus alas; si te acercas demasiado, toda la colonia sale volando. De noche revolotean sin rumbo fijo, persiguiendo luciérnagas.'
-    },
-    fox: {
-        name: 'Zorro', habitat: 'Bosques y llanuras',
-        hint: 'Una cola rojiza desaparece en el bosque.',
-        description: 'Un cazador astuto que acecha a conejos y ranas. De noche se mueve a hurtadillas y roba los objetos que hay por el suelo, así que ten tus cosas cerca.'
-    },
-    rabbit: {
-        name: 'Conejo', habitat: 'Llanuras, bosques y desiertos',
-        hint: 'Unas orejas largas se mueven cerca de las madrigueras.',
-        description: 'Un saltarín tímido que vive cerca de su madriguera y se mueve a saltitos. Huye de zorros, búhos y jugadores por igual.'
-    },
-    owl: {
-        name: 'Búho', habitat: 'Bosques y árboles de las llanuras',
-        hint: 'Dos ojos redondos te siguen de noche.',
-        description: 'Un silencioso cazador nocturno que se posa en los árboles y gira la cabeza para seguirte. En la oscuridad se lanza sobre murciélagos y conejos.'
-    },
-    vulture: {
-        name: 'Buitre', habitat: 'Desiertos y rocas',
-        hint: 'Unas alas oscuras dan vueltas donde algo ha caído.',
-        description: 'Un carroñero paciente que vuela en círculos sobre cada presa recién caída. Si empieza a dar vueltas sobre ti, es que te queda poca vida.'
-    },
-    snake: {
-        name: 'Serpiente', habitat: 'Desiertos y rocas',
-        hint: 'Un siseo sube desde la arena.',
-        description: 'Se esconde en la arena, o enroscada sobre la roca, y sisea para avisar antes de atacar. Su mordedura es venenosa, y se mueve en suaves ondas.'
-    },
-    storm_golem: {
-        name: 'Golem de tormenta', habitat: 'Cualquier lugar, cuando llueve',
-        hint: 'Solo camina cuando llegan las tormentas.',
-        description: 'Una figura altísima que solo aparece con la lluvia y atrae los rayos hacia sí misma y hacia los bloques de metal cercanos. Déjala en paz: si la golpeas, te lanza rayos.'
-    },
-    wisp: {
-        name: 'Fuego fatuo', habitat: 'Cualquier lugar de noche, sobre todo junto al agua y los barrancos',
-        hint: 'Una luz débil te llama en la noche.',
-        description: 'Una luz flotante que intenta atraer a los viajeros hacia el agua o hacia un barranco. Nunca ataca, y si atrapas una, deja polvo luminoso.'
-    },
-    mole: {
-        name: 'Topo gigante', habitat: 'Llanuras y bosques',
-        hint: 'Aparecen y desaparecen montículos de tierra fresca.',
-        description: 'Un excavador gigante que asoma del suelo y deja montículos de tierra que se deshacen al cabo de un rato. Busca los montículos para encontrarlo.'
-    },
-    beaver: {
-        name: 'Castor', habitat: 'Ríos y lagos de bosques y llanuras',
-        hint: 'Un árbol junto al agua ha quedado roído hasta el tocón.',
-        description: 'Un constructor incansable de las orillas. Tala árboles pequeños cerca del agua, lleva los troncos en la boca y construye una presa en un arroyo estrecho y una madriguera con entrada bajo el agua. Si te acercas demasiado, golpea el agua con la cola y se sumerge.'
-    },
-    ant: {
-        name: 'Hormiga', habitat: 'Hormigueros en llanuras, bosques y desiertos',
-        hint: 'Filas de caminantes diminutos llevan a un montículo de tierra.',
-        description: 'Las hormigas viven en colonias de 8 a 20 alrededor de un hormiguero. De día siguen rastros de olor hasta la comida y llevan migas a casa; de noche y cuando llueve se quedan dentro. Pisa el hormiguero o aplasta una, y la colonia se te subirá a los pies a mordisquitos.'
-    },
-    eel: {
-        name: 'Anguila eléctrica', habitat: 'Lagos y ríos profundos',
-        hint: 'Algo largo descansa en el fondo del agua profunda, y chisporrotea.',
-        description: 'Un largo pez cuchillo, oscuro, que nada despacio por el fondo y sube de vez en cuando a tragar aire. Si lo tocas o lo golpeas, descarga: arcos azules chisporrotean en el agua y dan calambre a quien nade cerca. Atrapa uno con un cubo y tenlo en un tanque de anguila: un generador vivo.'
-    },
-    copper_golem: {
-        name: 'Golem de cobre', habitat: 'Allá donde vaya quien lo construyó',
-        hint: 'No se encuentra: se construye, con un núcleo de golem de cobre.',
-        description: 'Un pequeño ayudante de cobre con grandes ojos redondos, una antena pararrayos y una bobina a la espalda. Te sigue, te espera o recoge los objetos que hay por el suelo y te los trae, abriendo puertas por el camino. Funciona con carga (un bloque de batería, carbón o una batería de litio) y, con los días, su cobre se vuelve marrón y luego verde, salvo que lo enceres con panal.'
     }
 });
 

@@ -29,12 +29,28 @@ const SNAKE_PALETTES = [
     { base: 0x8f897e, dark: 0x3a342e, light: 0xbdb6a8, belly: 0xd8d2c4, bellyLine: 0xb0a898, eye: 0xd2742a, rattle: true }
 ];
 
-MOB_SPECIES.snake = {
-    eggColor: 0xb89a5a, tone: 520, hostile: true, attackDamage: 1, poison: 3, maxHealth: 6,
-    speed: 0.9, fleeSpeed: 2.6, alertDistance: 5, strikeDistance: 2.2,
-    variants: SNAKE_PALETTES.length, group: [1, 1], limit: 2, movement: 'slither'
-};
-VoxelModels.MOB_SURFACES.snake = 'skin';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('snake', {
+    info: {
+        eggColor: 0xb89a5a, tone: 520, hostile: true, attackDamage: 1, poison: 3, maxHealth: 6,
+        speed: 0.9, fleeSpeed: 2.6, alertDistance: 5, strikeDistance: 2.2,
+        variants: SNAKE_PALETTES.length, group: [1, 1], limit: 2, movement: 'slither'
+    },
+    surface: 'skin',
+    drops: [['scale', 1, 2], ['venom_sac', 1, 1, 0.6]],
+    // No diet: it cannot be tamed.
+    trap: { baits: ['bait_meat'], cage: true },
+    card: {
+        name: 'Snake', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Hostile',
+        hint: 'A hiss rises from the sand.',
+        description: 'It lies hidden in the sand, or coiled flat on rock, and hisses as a warning before it strikes. Its bite is venomous, and it moves in smooth waves.'
+    },
+    cardEs: {
+        name: 'Serpiente', habitat: 'Desiertos y rocas',
+        hint: 'Un siseo sube desde la arena.',
+        description: 'Se esconde en la arena, o enroscada sobre la roca, y sisea para avisar antes de atacar. Su mordedura es venenosa, y se mueve en suaves ondas.'
+    }
+});
 
 // Faces the +z axis. Body segments are top-level parts placed every frame by poseSnake, each
 // pivoted at its front joint and reaching back to the next one.

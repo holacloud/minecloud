@@ -65,7 +65,7 @@ for (const name of gameFiles) {
         ownFile[match[1]] = name;
         ownDefinition[match[1]] = match[2];
     }
-    for (const match of read(`game/${name}`).matchAll(/^registerSpecies\('([a-z_]+)',\s*\{\s*info:\s*\{([\s\S]*?)\},\n/gm)) {
+    for (const match of read(`game/${name}`).matchAll(/^\s*registerSpecies\('([a-z_]+)',\s*\{\s*info:\s*\{([\s\S]*?)\},\n/gm)) {
         ownFile[match[1]] = name;
         ownDefinition[match[1]] = match[2];
     }

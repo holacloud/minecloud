@@ -134,66 +134,6 @@ const BESTIARY_ENTRIES = speciesFacet('card', {
         name: 'Bat', habitat: 'Under roofs, overhangs and tunnels', activity: 'Night', temperament: 'Passive',
         hint: 'Look up under overhangs and canopies.',
         description: 'By day bats hang upside down under roofs and canopies, wrapped in their wings; come too close and the colony bursts out. At night they flit about erratically, chasing fireflies.'
-    },
-    fox: {
-        name: 'Fox', habitat: 'Forests and plains', activity: 'Day and night', temperament: 'Passive',
-        hint: 'A russet tail vanishes into the woods.',
-        description: 'A clever hunter that stalks rabbits and frogs. At night it sneaks around and steals items left lying on the ground, so keep your things close.'
-    },
-    rabbit: {
-        name: 'Rabbit', habitat: 'Plains, forests and deserts', activity: 'Day', temperament: 'Passive',
-        hint: 'Long ears twitch near the burrows.',
-        description: 'A timid hopper that lives near its burrow, moving in short jumps. It bolts from foxes, owls and players alike.'
-    },
-    owl: {
-        name: 'Owl', habitat: 'Forests and trees on the plains', activity: 'Night', temperament: 'Passive',
-        hint: 'Two round eyes follow you at night.',
-        description: 'A silent night hunter that perches in the trees and turns its head to follow you. It swoops down on bats and rabbits in the dark.'
-    },
-    vulture: {
-        name: 'Vulture', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Passive',
-        hint: 'Dark wings circle where something has fallen.',
-        description: 'A patient scavenger that circles above every fresh kill. If it starts circling over you, your health is running low.'
-    },
-    snake: {
-        name: 'Snake', habitat: 'Deserts and rocky hills', activity: 'Day', temperament: 'Hostile',
-        hint: 'A hiss rises from the sand.',
-        description: 'It lies hidden in the sand, or coiled flat on rock, and hisses as a warning before it strikes. Its bite is venomous, and it moves in smooth waves.'
-    },
-    storm_golem: {
-        name: 'Storm Golem', habitat: 'Anywhere, during rain', activity: 'Rain', temperament: 'Neutral',
-        hint: 'It only walks when storms roll in.',
-        description: 'A towering figure that appears only in the rain and draws lightning to itself and to nearby metal blocks. Leave it be: strike it and it hurls bolts back.'
-    },
-    wisp: {
-        name: 'Wisp', habitat: 'Anywhere at night, mostly by water and ravines', activity: 'Night', temperament: 'Passive',
-        hint: 'A faint light beckons in the night.',
-        description: 'A drifting light that tries to lure travellers towards water or a ravine. It never attacks, and if you catch one it leaves glowing dust behind.'
-    },
-    mole: {
-        name: 'Giant Mole', habitat: 'Plains and forests', activity: 'Day', temperament: 'Passive',
-        hint: 'Fresh mounds of earth appear and vanish.',
-        description: 'A giant burrower that pops out of the ground, leaving mounds of soil that crumble away after a while. Watch for the mounds to find it.'
-    },
-    beaver: {
-        name: 'Beaver', habitat: 'Rivers and lakes in forests and plains', activity: 'Day and night', temperament: 'Passive',
-        hint: 'A tree by the water has been gnawed to a stump.',
-        description: 'A busy builder of the riverbanks. It fells small trees near the water, carries the logs in its mouth and builds a dam across a narrow stream and a lodge with an underwater entrance. Come too close and it slaps its tail on the water and dives.'
-    },
-    ant: {
-        name: 'Ant', habitat: 'Anthills on plains, forests and deserts', activity: 'Day', temperament: 'Neutral',
-        hint: 'Lines of tiny walkers lead to a mound of soil.',
-        description: 'Ants live in colonies of 8 to 20 around an anthill. By day they follow scent trails to food and carry crumbs home; at night and in the rain they stay inside. Step on the anthill or swat one and the colony swarms over your feet with tiny bites.'
-    },
-    eel: {
-        name: 'Electric Eel', habitat: 'Deep lakes and rivers', activity: 'Day and night (more at night)', temperament: 'Neutral',
-        hint: 'Something long lies on the bottom of deep water, and it crackles.',
-        description: 'A long, dark knifefish that cruises slowly along the bottom and rises now and then to gulp air. Touch it or strike it and it discharges: blue arcs crackle through the water and shock anyone swimming close. Catch one with a bucket and keep it in an eel tank: a living generator.'
-    },
-    copper_golem: {
-        name: 'Copper Golem', habitat: 'Wherever its builder goes', activity: 'While it has charge', temperament: 'Friendly',
-        hint: 'It is not found: it is built, from a copper golem core.',
-        description: 'A small helper of copper with big round eyes, a lightning-rod antenna and a coil on its back. It follows you, waits, or gathers the items lying around and brings them to you, opening doors on its way. It runs on charge (a battery block, coal or a lithium battery), and over the days its copper turns brown and then green, unless you wax it with honeycomb.'
     }
 });
 

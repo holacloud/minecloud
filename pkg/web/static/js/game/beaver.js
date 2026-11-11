@@ -65,8 +65,24 @@ function beaverLeavesFor(woodType) {
     return woodType === 'wood' ? 'leaves' : woodType.replace('_wood', '_leaves');
 }
 
-MOB_SPECIES.beaver = { eggColor: 0x7a4a2a, tone: 340, speed: BEAVER_WADDLE, maxHealth: 12, variants: 2, group: [1, 3], limit: 4, movement: 'lodge' };
-VoxelModels.MOB_SURFACES.beaver = 'fur';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('beaver', {
+    info: { eggColor: 0x7a4a2a, tone: 340, speed: BEAVER_WADDLE, maxHealth: 12, variants: 2, group: [1, 3], limit: 4, movement: 'lodge' },
+    surface: 'fur',
+    drops: [['fur', 1, 2], ['wood', 1, 1, 0.5]],
+    // No diet: 'lodge': busy with its trees and dams, it does not follow goals.
+    trap: { baits: ['bait_seeds'], cage: true },
+    card: {
+        name: 'Beaver', habitat: 'Rivers and lakes in forests and plains', activity: 'Day and night', temperament: 'Passive',
+        hint: 'A tree by the water has been gnawed to a stump.',
+        description: 'A busy builder of the riverbanks. It fells small trees near the water, carries the logs in its mouth and builds a dam across a narrow stream and a lodge with an underwater entrance. Come too close and it slaps its tail on the water and dives.'
+    },
+    cardEs: {
+        name: 'Castor', habitat: 'Ríos y lagos de bosques y llanuras',
+        hint: 'Un árbol junto al agua ha quedado roído hasta el tocón.',
+        description: 'Un constructor incansable de las orillas. Tala árboles pequeños cerca del agua, lleva los troncos en la boca y construye una presa en un arroyo estrecho y una madriguera con entrada bajo el agua. Si te acercas demasiado, golpea el agua con la cola y se sumerge.'
+    }
+});
 
 // Faces +z: a round, low body, a blunt head with small ears and big orange incisors, short
 // front paws, strong hind legs with wide webbed feet and a flat, scaly paddle of a tail.

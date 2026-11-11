@@ -11,8 +11,25 @@
 // night spawning, the sparkles and the shared light run from a wrapper around
 // updateAmbientMobs (see the bottom of this file).
 
-MOB_SPECIES.wisp = { eggColor: 0x9ff5e0, tone: 1320, speed: 5, group: [1, 1], limit: 1, movement: 'lure' };
-VoxelModels.MOB_SURFACES.wisp = 'skin';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('wisp', {
+    info: { eggColor: 0x9ff5e0, tone: 1320, speed: 5, group: [1, 1], limit: 1, movement: 'lure' },
+    surface: 'skin',
+    // wisp.js drops its own glow_dust when caught
+    drops: [],
+    // No diet: it cannot be tamed.
+    trap: { baits: [], net: 'glow_dust' },
+    card: {
+        name: 'Wisp', habitat: 'Anywhere at night, mostly by water and ravines', activity: 'Night', temperament: 'Passive',
+        hint: 'A faint light beckons in the night.',
+        description: 'A drifting light that tries to lure travellers towards water or a ravine. It never attacks, and if you catch one it leaves glowing dust behind.'
+    },
+    cardEs: {
+        name: 'Fuego fatuo', habitat: 'Cualquier lugar de noche, sobre todo junto al agua y los barrancos',
+        hint: 'Una luz débil te llama en la noche.',
+        description: 'Una luz flotante que intenta atraer a los viajeros hacia el agua o hacia un barranco. Nunca ataca, y si atrapas una, deja polvo luminoso.'
+    }
+});
 
 // A little voxel flame; in the world it is hidden behind the glowing rig built below (the
 // model is still used for portraits and as a hit target).

@@ -139,12 +139,29 @@ function antsMoundHeight(r) {
 // ---------------------------------------------------------------------------------------
 // Species, models and items
 
-MOB_SPECIES.ant = {
-    eggColor: 0x7a2a18, tone: 2600, speed: ANT_SPEED, variants: 2, group: [8, 20], limit: ANT_COLONY_LIMIT,
-    movement: 'anthill'
-};
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('ant', {
+    info: {
+        eggColor: 0x7a2a18, tone: 2600, speed: ANT_SPEED, variants: 2, group: [8, 20], limit: ANT_COLONY_LIMIT,
+        movement: 'anthill'
+    },
+    surface: 'skin',
+    // a squashed ant leaves nothing (ants.js)
+    drops: [],
+    // No diet: a colony; keep them in an ant farm instead (ants.js).
+    trap: { baits: ['bait_seeds', 'bait_honey', 'bait_meat'], net: 'ant_colony_jar' },
+    card: {
+        name: 'Ant', habitat: 'Anthills on plains, forests and deserts', activity: 'Day', temperament: 'Neutral',
+        hint: 'Lines of tiny walkers lead to a mound of soil.',
+        description: 'Ants live in colonies of 8 to 20 around an anthill. By day they follow scent trails to food and carry crumbs home; at night and in the rain they stay inside. Step on the anthill or swat one and the colony swarms over your feet with tiny bites.'
+    },
+    cardEs: {
+        name: 'Hormiga', habitat: 'Hormigueros en llanuras, bosques y desiertos',
+        hint: 'Filas de caminantes diminutos llevan a un montículo de tierra.',
+        description: 'Las hormigas viven en colonias de 8 a 20 alrededor de un hormiguero. De día siguen rastros de olor hasta la comida y llevan migas a casa; de noche y cuando llueve se quedan dentro. Pisa el hormiguero o aplasta una, y la colonia se te subirá a los pies a mordisquitos.'
+    }
+});
 
-VoxelModels.MOB_SURFACES.ant = 'skin';
 VoxelModels.MOB_SURFACES.anthill = 'skin';
 
 // One ant, big, for the bestiary and the guide (in the world they are drawn much smaller by

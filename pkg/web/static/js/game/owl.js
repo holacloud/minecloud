@@ -21,8 +21,26 @@ const OWL_IRIS = [0xf08a1c, 0xf2c230, 0xf6d84a];
 // Shared by every owl's eyes (never disposed with a mob).
 const OWL_EYE_GEOMETRY = {};
 
-MOB_SPECIES.owl = { eggColor: 0x8a6440, tone: 340, speed: 3.4, maxHealth: 12, variants: 3, group: [1, 1], limit: 3, movement: 'nightwatch' };
-VoxelModels.MOB_SURFACES.owl = 'feather';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('owl', {
+    info: { eggColor: 0x8a6440, tone: 340, speed: 3.4, maxHealth: 12, variants: 3, group: [1, 1], limit: 3, movement: 'nightwatch' },
+    surface: 'feather',
+    drops: [['feather', 1, 3]],
+    sheds: ['feather', 0.4, 8],
+    molts: true,
+    diet: { foods: ['raw_fish'], chance: 1 / 4 },
+    trap: { baits: ['bait_meat'] },
+    card: {
+        name: 'Owl', habitat: 'Forests and trees on the plains', activity: 'Night', temperament: 'Passive',
+        hint: 'Two round eyes follow you at night.',
+        description: 'A silent night hunter that perches in the trees and turns its head to follow you. It swoops down on bats and rabbits in the dark.'
+    },
+    cardEs: {
+        name: 'Búho', habitat: 'Bosques y árboles de las llanuras',
+        hint: 'Dos ojos redondos te siguen de noche.',
+        description: 'Un silencioso cazador nocturno que se posa en los árboles y gira la cabeza para seguirte. En la oscuridad se lanza sobre murciélagos y conejos.'
+    }
+});
 
 // Round and upright, standing on its talons at the origin. Its wings hang folded at its
 // sides and spread sideways for flight; the eyes (lit) are added by js/game/owl.js, under

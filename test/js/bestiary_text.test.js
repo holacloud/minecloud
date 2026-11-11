@@ -72,7 +72,7 @@ function mobIdsInTheCode() {
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) walk(full);
             else if (entry.name.endsWith('.js')) {
-                for (const match of fs.readFileSync(full, 'utf8').matchAll(/(?:MOB_SPECIES\.|^registerSpecies\(')([a-z_]+)(?:\s*=\s*\{|',)/gm)) ids.add(match[1]);
+                for (const match of fs.readFileSync(full, 'utf8').matchAll(/(?:MOB_SPECIES\.|^\s*registerSpecies\(')([a-z_]+)(?:\s*=\s*\{|',)/gm)) ids.add(match[1]);
             }
         }
     };

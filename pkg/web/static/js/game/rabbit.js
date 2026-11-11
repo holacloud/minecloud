@@ -9,10 +9,28 @@
 // have userData.hidden set (and sit below the ground), so predators should skip them.
 // Registered as the 'burrow' movement through js/extensions.js.
 
-MOB_SPECIES.rabbit = {
-    eggColor: 0xa8825a, tone: 1500, maxHealth: 12, speed: 2.2, variants: 5, group: [2, 4], limit: 12,
-    movement: 'burrow'
-};
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('rabbit', {
+    info: {
+        eggColor: 0xa8825a, tone: 1500, maxHealth: 12, speed: 2.2, variants: 5, group: [2, 4], limit: 12,
+        movement: 'burrow'
+    },
+    surface: 'fur',
+    drops: [['fur', 1, 1]],
+    furry: true,
+    diet: { foods: ['flower_yellow', 'tall_grass', 'flower_red'], chance: 1 / 3 },
+    trap: { baits: ['bait_seeds'], cage: true },
+    card: {
+        name: 'Rabbit', habitat: 'Plains, forests and deserts', activity: 'Day', temperament: 'Passive',
+        hint: 'Long ears twitch near the burrows.',
+        description: 'A timid hopper that lives near its burrow, moving in short jumps. It bolts from foxes, owls and players alike.'
+    },
+    cardEs: {
+        name: 'Conejo', habitat: 'Llanuras, bosques y desiertos',
+        hint: 'Unas orejas largas se mueven cerca de las madrigueras.',
+        description: 'Un saltarín tímido que vive cerca de su madriguera y se mueve a saltitos. Huye de zorros, búhos y jugadores por igual.'
+    }
+});
 
 // Variants: brown, grey, white, black-and-white (Dutch) and sandy (desert).
 const RABBIT_PALETTES = [
@@ -24,7 +42,6 @@ const RABBIT_PALETTES = [
 ];
 const RABBIT_SANDY = 4;
 
-VoxelModels.MOB_SURFACES.rabbit = 'fur';
 VoxelModels.mobBuilders.rabbit = function (b, variant) {
     const c = RABBIT_PALETTES[variant % RABBIT_PALETTES.length];
     // Dutch rabbits: dark rear half and face patches, a white blaze and collar.

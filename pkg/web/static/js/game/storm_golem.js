@@ -22,8 +22,24 @@ const _golemUp = new THREE.Vector3(0, 1, 0);
 const _golemFlashColor = new THREE.Color(0xdfe9ff);
 const STORM_GOLEM_METALS = ['iron_block', 'copper_block', 'gold_block'];
 
-MOB_SPECIES.storm_golem = { eggColor: 0x3b4352, tone: 80, maxHealth: 20, speed: 0.35, group: [1, 1], limit: 1, movement: 'storm' };
-VoxelModels.MOB_SURFACES.storm_golem = 'skin';
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('storm_golem', {
+    info: { eggColor: 0x3b4352, tone: 80, maxHealth: 20, speed: 0.35, group: [1, 1], limit: 1, movement: 'storm' },
+    surface: 'skin',
+    drops: [['glow_dust', 2, 3], ['iron_ore', 1, 2]],
+    // No diet: it cannot be tamed.
+    trap: { baits: [] },
+    card: {
+        name: 'Storm Golem', habitat: 'Anywhere, during rain', activity: 'Rain', temperament: 'Neutral',
+        hint: 'It only walks when storms roll in.',
+        description: 'A towering figure that appears only in the rain and draws lightning to itself and to nearby metal blocks. Leave it be: strike it and it hurls bolts back.'
+    },
+    cardEs: {
+        name: 'Golem de tormenta', habitat: 'Cualquier lugar, cuando llueve',
+        hint: 'Solo camina cuando llegan las tormentas.',
+        description: 'Una figura altísima que solo aparece con la lluvia y atrae los rayos hacia sí misma y hacia los bloques de metal cercanos. Déjala en paz: si la golpeas, te lanza rayos.'
+    }
+});
 
 // Stacked slate blocks with dark seams; its glowing cracks are added by stormGolemAttachGlow.
 VoxelModels.mobBuilders.storm_golem = function (b) {
