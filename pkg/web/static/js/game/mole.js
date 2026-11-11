@@ -862,6 +862,7 @@ registerFrameUpdate(function (delta) {
 });
 
 registerMobBehaviour('tunnel', {
+    bodiless: true,
     update(mob, delta, player) {
         this.updateBurrowingMob(mob, delta, player);
     },

@@ -99,6 +99,7 @@ const STORM_GOLEM_CRACKS = [
 });
 
 registerMobBehaviour('storm', {
+    bodiless: true,
     update(mob, delta, player) {
         this.stormGolemUpdate(mob, delta, player);
     },

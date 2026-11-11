@@ -24,7 +24,7 @@ const BESTIARY_PORTRAIT_SIZE = 200;
 
 // One entry per species. Species not yet in MOB_SPECIES are skipped; species in
 // MOB_SPECIES but missing here still get a generic card.
-const BESTIARY_ENTRIES = {
+const BESTIARY_ENTRIES = speciesFacet('card', {
     sheep: {
         name: 'Sheep', habitat: 'Plains, rocky hills and forests', activity: 'Day', temperament: 'Passive',
         hint: 'Grazes on open grassland.',
@@ -135,11 +135,6 @@ const BESTIARY_ENTRIES = {
         hint: 'Look up under overhangs and canopies.',
         description: 'By day bats hang upside down under roofs and canopies, wrapped in their wings; come too close and the colony bursts out. At night they flit about erratically, chasing fireflies.'
     },
-    crab: {
-        name: 'Crab', habitat: 'Beaches and shores', activity: 'Day', temperament: 'Neutral',
-        hint: 'Something scuttles sideways along the shore.',
-        description: 'A shore dweller that scuttles sideways along the sand and buries itself when scared. Hit it and it pinches back with its claws.'
-    },
     fox: {
         name: 'Fox', habitat: 'Forests and plains', activity: 'Day and night', temperament: 'Passive',
         hint: 'A russet tail vanishes into the woods.',
@@ -200,10 +195,7 @@ const BESTIARY_ENTRIES = {
         hint: 'It is not found: it is built, from a copper golem core.',
         description: 'A small helper of copper with big round eyes, a lightning-rod antenna and a coil on its back. It follows you, waits, or gathers the items lying around and brings them to you, opening doors on its way. It runs on charge (a battery block, coal or a lithium battery), and over the days its copper turns brown and then green, unless you wax it with honeycomb.'
     }
-};
-
-// Movement modes whose mobs are lights or clouds: their position is all we need.
-const BESTIARY_POINT_MOVEMENTS = new Set(['glow', 'swim']);
+});
 
 const _bestiaryForward = new THREE.Vector3();
 const _bestiaryToMob = new THREE.Vector3();
@@ -380,7 +372,8 @@ Object.assign(Game.prototype, {
             if (!species || mob.userData.modelSpecies || !mob.visible || !mob.parent) continue;
             _bestiaryToMob.copy(mob.position);
             const info = getMobSpecies(species) || {};
-            if (!BESTIARY_POINT_MOVEMENTS.has(info.movement)) _bestiaryToMob.y += 0.4;
+            // Lights and shoals (`pointLike`, js/extensions.js): their position is all we need.
+            if (!mobMovementIs(info.movement, 'pointLike')) _bestiaryToMob.y += 0.4;
             _bestiaryToMob.sub(eye);
             const distance = _bestiaryToMob.length();
             if (distance > BESTIARY_SIGHT_RANGE) continue;

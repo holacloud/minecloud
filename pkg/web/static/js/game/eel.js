@@ -115,6 +115,8 @@ VoxelModels.mobBuilders.eel = function (b) {
 };
 
 registerMobBehaviour('eel', {
+    bodiless: true,
+    inWater: true,
     update(mob, delta, player) { this.eelUpdate(mob, delta, player); },
     interact(mob) { this.eelStruck(mob); },
     spawnCommand(species, x, z, player) { return this.eelSpawnCommand(x, z, player); },

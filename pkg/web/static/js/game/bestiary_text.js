@@ -77,7 +77,7 @@ const BESTIARY_BIOMES = {
 };
 
 // The mobs in Spanish. BESTIARY_ENTRIES has the English of each, with the same facts.
-const BESTIARY_ENTRIES_ES = {
+const BESTIARY_ENTRIES_ES = speciesFacet('cardEs', {
     sheep: {
         name: 'Oveja', habitat: 'Llanuras, rocas y bosques',
         hint: 'Pasta en la hierba, a campo abierto.',
@@ -188,11 +188,6 @@ const BESTIARY_ENTRIES_ES = {
         hint: 'Mira hacia arriba, bajo los salientes y las copas de los árboles.',
         description: 'De día, los murciélagos cuelgan boca abajo bajo techos y copas de árboles, envueltos en sus alas; si te acercas demasiado, toda la colonia sale volando. De noche revolotean sin rumbo fijo, persiguiendo luciérnagas.'
     },
-    crab: {
-        name: 'Cangrejo', habitat: 'Playas y orillas',
-        hint: 'Algo corretea de lado por la orilla.',
-        description: 'Un habitante de la orilla que corre de lado por la arena y se entierra cuando se asusta. Si lo golpeas, te devuelve el pellizco con sus pinzas.'
-    },
     fox: {
         name: 'Zorro', habitat: 'Bosques y llanuras',
         hint: 'Una cola rojiza desaparece en el bosque.',
@@ -253,7 +248,7 @@ const BESTIARY_ENTRIES_ES = {
         hint: 'No se encuentra: se construye, con un núcleo de golem de cobre.',
         description: 'Un pequeño ayudante de cobre con grandes ojos redondos, una antena pararrayos y una bobina a la espalda. Te sigue, te espera o recoge los objetos que hay por el suelo y te los trae, abriendo puertas por el camino. Funciona con carga (un bloque de batería, carbón o una batería de litio) y, con los días, su cobre se vuelve marrón y luego verde, salvo que lo enceres con panal.'
     }
-};
+});
 
 // What an undiscovered organism's card says in Spanish, without giving it away. The rest of what it says
 // in Spanish is the panel's: MICRO_SPECIES_ES (microscope_text.js), so both call it the same.

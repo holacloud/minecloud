@@ -37,11 +37,18 @@ function loadGame() {
     });
     vm.runInContext('class Game {}', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(read(file), context);
-    for (const file of ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js']) {
-        vm.runInContext(read(`game/${file}`), context, { filename: file });
+    // The tables of the mechanics, and with them the files that register a movement or a whole species
+    // (js/extensions.js): those say what the tables need of them (the traits of a movement, the rows of a
+    // species). All in the order the game loads them.
+    const tables = ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js'];
+    context.VoxelModels = { mobBuilders: {}, MOB_SURFACES: {} };
+    const html = fs.readFileSync(path.join(STATIC, 'index.html'), 'utf8');
+    for (const [, name] of html.matchAll(/<script src="js\/game\/([a-z_]+\.js)"/g)) {
+        if (tables.includes(name) || /^\s*register(Species|MobBehaviour)\(/m.test(read(`game/${name}`))) vm.runInContext(read(`game/${name}`), context, { filename: name });
     }
+    delete context.VoxelModels;
     vm.runInContext(`Object.assign(this, { MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
-        TAMING_DIET, TAMING_GOAL_MOVEMENTS, TRAPS_SPECIES, TRAPS_NUDGE_MODES, trapsIsLured });`, context);
+        TAMING_DIET, TRAPS_SPECIES, trapsIsLured, mobMovementIs });`, context);
     return context;
 }
 
@@ -55,6 +62,10 @@ const ownFile = {};
 const ownDefinition = {};
 for (const name of gameFiles) {
     for (const match of read(`game/${name}`).matchAll(/MOB_SPECIES\.([a-z_]+)\s*=\s*\{([\s\S]*?)\};/g)) {
+        ownFile[match[1]] = name;
+        ownDefinition[match[1]] = match[2];
+    }
+    for (const match of read(`game/${name}`).matchAll(/^registerSpecies\('([a-z_]+)',\s*\{\s*info:\s*\{([\s\S]*?)\},\n/gm)) {
         ownFile[match[1]] = name;
         ownDefinition[match[1]] = match[2];
     }
@@ -148,7 +159,7 @@ test('page 5 tells the notice of the complete notebook as the code does it', () 
 const canTame = (id) => {
     const diet = ctx.TAMING_DIET[id];
     const { movement, hostile } = info(id);
-    return Boolean(diet) && !hostile && (!movement || ctx.TAMING_GOAL_MOVEMENTS.includes(movement));
+    return Boolean(diet) && !hostile && ctx.mobMovementIs(movement, 'tameable');
 };
 
 test('no behaviour opts in to taming: if one does, the guide has to say so', () => {
@@ -190,7 +201,7 @@ test('page 3 says who has food written down but cannot be tamed; their cards no 
 function walksToBait(id) {
     if (id === 'bee' || id === 'ant') return true;
     const { movement } = info(id);
-    if (!movement || movement === 'climb' || ctx.TRAPS_NUDGE_MODES.includes(movement)) return true;
+    if (!movement || movement === 'climb' || ctx.mobMovementIs(movement, 'nudgedToBait')) return true;
     return Boolean(ownFile[id]) && read(`game/${ownFile[id]}`).includes('getMobGoal(');
 }
 

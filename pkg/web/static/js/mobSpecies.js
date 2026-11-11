@@ -37,8 +37,10 @@
 //   spawnBiomes {biome: weight} adds the species to those biomes' natural spawn tables
 //              (biomes: desert, forest, rocky, plains); see getBiomeSpawnTable
 //
-// Species defined in their own file add themselves with MOB_SPECIES.<name> = {...}, and their
-// model with VoxelModels.mobBuilders.<name> and VoxelModels.MOB_SURFACES.<name>.
+// Species defined in their own file add themselves with registerSpecies (js/extensions.js; see
+// js/game/crab.js), which also takes their model and their rows in the tables of other features. The
+// older ones do it by hand: MOB_SPECIES.<name> = {...}, VoxelModels.mobBuilders.<name>,
+// VoxelModels.MOB_SURFACES.<name>, and a row in each table.
 const MOB_SPECIES = {
     sheep: { eggColor: 0xF1EFE6, tone: 330, maxHealth: 12, speed: 0.38, group: [2, 4], grazer: true },
     duck: { eggColor: 0xF4F0D8, tone: 520, maxHealth: 12, speed: 0.55, group: [2, 4] },
@@ -63,6 +65,20 @@ const MOB_SPECIES = {
     eagle: { eggColor: 0x4a3222, tone: 2400, maxHealth: 12, speed: 4, group: [1, 1], limit: 2, movement: 'soar' },
     bat: { eggColor: 0x3a2c2a, tone: 4200, maxHealth: 12, speed: 4.5, variants: 2, group: [3, 6], limit: 12, movement: 'flutter' }
 };
+
+// What the other features ask of the built-in movements (mobMovementIs, js/extensions.js); a movement
+// registered with registerMobBehaviour says its own there.
+registerMobMovementTraits('ground', { walksToGoal: true, tameable: true });
+registerMobMovementTraits('climb', { walksToGoal: true, tameable: true });
+registerMobMovementTraits('hop', { nudgedToBait: true });
+registerMobMovementTraits('dart', { nudgedToBait: true });
+registerMobMovementTraits('amphibious', { nudgedToBait: true });
+registerMobMovementTraits('swim', { bodiless: true, inWater: true, pointLike: true });
+registerMobMovementTraits('swarm', { bodiless: true, baitOwnWay: true });
+registerMobMovementTraits('glow', { bodiless: true, pointLike: true });
+registerMobMovementTraits('flutter', { bodiless: true });
+registerMobMovementTraits('soar', { bodiless: true });
+registerMobMovementTraits('stalk', { bodiless: true });
 
 function getMobSpecies(species) {
     return MOB_SPECIES[species] || null;

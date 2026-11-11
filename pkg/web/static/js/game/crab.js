@@ -12,13 +12,9 @@ const CRAB_BURY_DEPTH = 0.38;
 const CRAB_SOFT_GROUND = new Set(['sand', 'dirt', 'grass', 'gravel', 'clay', 'snow']);
 const CRAB_DUST_COLORS = { sand: 0xd9c48c, dirt: 0x8a6a48, grass: 0x8a6a48, gravel: 0x8a8580, clay: 0x9aa0aa, snow: 0xf0f4f8 };
 
-MOB_SPECIES.crab = { eggColor: 0xd2482c, tone: 2600, speed: 0.9, maxHealth: 12, variants: 3, group: [2, 4], limit: 8, movement: 'scuttle' };
-
-VoxelModels.MOB_SURFACES.crab = 'skin';
-
 // Faces +z with the body wider than long; the claws reach forward and fold in front of the
 // mouth, the walking legs splay out to the sides with a high knee.
-VoxelModels.mobBuilders.crab = function (b, variant) {
+function crabModel(b, variant) {
     const palettes = [
         { shell: 0xc8402a, dark: 0x8a2418, light: 0xe8735a, belly: 0xf0d8b8, tip: 0x2a1410 },
         { shell: 0xe08a3a, dark: 0xa85a22, light: 0xf2b268, belly: 0xf6e6c6, tip: 0x3a2414 },
@@ -68,9 +64,31 @@ VoxelModels.mobBuilders.crab = function (b, variant) {
         }
     });
     return { legs: ['legL0', 'legL1', 'legL2', 'legL3', 'legR0', 'legR1', 'legR2', 'legR3'] };
-};
+}
+
+// The whole species: what it is and its row in every table of the other features (js/extensions.js).
+registerSpecies('crab', {
+    info: { eggColor: 0xd2482c, tone: 2600, speed: 0.9, maxHealth: 12, variants: 3, group: [2, 4], limit: 8, movement: 'scuttle' },
+    model: crabModel,
+    surface: 'skin',
+    drops: [['shell', 1, 2]],
+    // Written down, but 'scuttle' is not a tameable movement: it does not rest when told.
+    diet: { foods: ['raw_fish', 'shell'], chance: 1 / 3 },
+    trap: { baits: ['bait_fish'], cage: true },
+    card: {
+        name: 'Crab', habitat: 'Beaches and shores', activity: 'Day', temperament: 'Neutral',
+        hint: 'Something scuttles sideways along the shore.',
+        description: 'A shore dweller that scuttles sideways along the sand and buries itself when scared. Hit it and it pinches back with its claws.'
+    },
+    cardEs: {
+        name: 'Cangrejo', habitat: 'Playas y orillas',
+        hint: 'Algo corretea de lado por la orilla.',
+        description: 'Un habitante de la orilla que corre de lado por la arena y se entierra cuando se asusta. Si lo golpeas, te devuelve el pellizco con sus pinzas.'
+    }
+});
 
 registerMobBehaviour('scuttle', {
+    walksToGoal: true, // crabUpdate asks getMobGoal,
     update(mob, delta, player) { this.crabUpdate(mob, delta, player); },
     interact(mob) { this.crabStruck(mob); },
     spawnForChunk(chunkX, chunkZ, biome) { this.crabSpawnForChunk(chunkX, chunkZ, biome); }

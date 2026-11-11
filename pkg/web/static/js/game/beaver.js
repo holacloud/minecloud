@@ -155,6 +155,7 @@ VoxelModels.mobBuilders.beaver = function (b, variant) {
 };
 
 registerMobBehaviour('lodge', {
+    walksToGoal: true, // beaverUpdate asks getMobGoal,
     update(mob, delta, player) { this.beaverUpdate(mob, delta, player); },
     interact(mob) { this.beaverStruck(mob); },
     spawnForChunk(chunkX, chunkZ, biome) { this.beaverSpawnForChunk(chunkX, chunkZ, biome); }

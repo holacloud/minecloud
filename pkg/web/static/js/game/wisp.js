@@ -31,6 +31,7 @@ const WISP_NOTES = [1046.5, 1174.7, 1318.5, 1568, 1760, 2093, 2349.3];
 const _wispStep = new THREE.Vector3();
 
 registerMobBehaviour('lure', {
+    bodiless: true,
     update(mob, delta, player) { this.wispUpdate(mob, delta, player); },
     interact(mob) { this.wispStruck(mob); },
     spawnCommand(species, x, z, player) {

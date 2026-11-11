@@ -34,9 +34,16 @@ function loadGame() {
     });
     vm.runInContext('class Game {}', context);
     for (const file of ['extensions.js', 'gameLang.js', 'chunkStore.js', 'blockShapes.js', 'mobSpecies.js']) vm.runInContext(read(file), context);
-    for (const file of ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js']) {
-        vm.runInContext(read(`game/${file}`), context, { filename: file });
+    // The tables of the mechanics, and with them the files that register a movement or a whole species
+    // (js/extensions.js): those say what the tables need of them (the traits of a movement, the rows of a
+    // species). All in the order the game loads them.
+    const tables = ['bestiary_text.js', 'bestiary.js', 'resources.js', 'taming.js', 'traps.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js'];
+    context.VoxelModels = { mobBuilders: {}, MOB_SURFACES: {} };
+    const html = fs.readFileSync(path.join(STATIC, 'index.html'), 'utf8');
+    for (const [, name] of html.matchAll(/<script src="js\/game\/([a-z_]+\.js)"/g)) {
+        if (tables.includes(name) || /^\s*register(Species|MobBehaviour)\(/m.test(read(`game/${name}`))) vm.runInContext(read(`game/${name}`), context, { filename: name });
     }
+    delete context.VoxelModels;
     vm.runInContext(`Object.assign(this, { gameLang, setGameLang, Game, ITEM_TYPES, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, BESTIARY_TEMPERAMENTS,
         BESTIARY_ACTIVITIES, BESTIARY_BIOMES, BESTIARY_ORGANISM_HINTS_ES, BESTIARY_ITEMS_ES, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
         TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, TRAPS_HOOK_BAITS, trapsIsLured, bestiarySay, bestiaryItemNameEs });`, context);
@@ -65,7 +72,7 @@ function mobIdsInTheCode() {
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) walk(full);
             else if (entry.name.endsWith('.js')) {
-                for (const match of fs.readFileSync(full, 'utf8').matchAll(/MOB_SPECIES\.([a-z_]+)\s*=\s*\{/g)) ids.add(match[1]);
+                for (const match of fs.readFileSync(full, 'utf8').matchAll(/(?:MOB_SPECIES\.|^registerSpecies\(')([a-z_]+)(?:\s*=\s*\{|',)/gm)) ids.add(match[1]);
             }
         }
     };

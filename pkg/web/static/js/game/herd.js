@@ -43,8 +43,6 @@ const HERD = {
 
 // Bearing changes (radians) tried in turn when a place is no good.
 const HERD_SHIFTS = [0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4, 1.75, -1.75, 2.1, -2.1, 2.45, -2.45, Math.PI];
-// Not bodies on the ground: they neither block nor get blocked.
-const HERD_NOT_BODIES = new Set(['swim', 'swarm', 'glow', 'flutter', 'soar', 'stalk', 'anthill', 'eel', 'storm', 'lure', 'tunnel']);
 const HERD_PLAYER = { name: 'player' };
 
 let herdNextId = 1;
@@ -101,7 +99,8 @@ Object.assign(Game.prototype, {
     herdIsBody(mob) {
         const data = mob.userData;
         if (mob.visible === false || data.isHive || data.antColony || data.trapsCage) return false;
-        return !HERD_NOT_BODIES.has((getMobSpecies(data.species) || {}).movement);
+        // Not bodies on the ground (`bodiless`, js/extensions.js): they neither block nor get blocked.
+        return !mobMovementIs((getMobSpecies(data.species) || {}).movement, 'bodiless');
     },
 
     // Who this mob walks with: the player, a parent, or nobody (tamingGoal gives it no place then).

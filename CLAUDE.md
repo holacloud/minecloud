@@ -61,36 +61,35 @@ before calling it done. There is no CI: nothing else will catch a red test.
 
 ## Recipe: a new mob
 
-Example to read: `game/crab.js` (550 lines, self-contained). Everything goes in `game/<species>.js`:
+Example to read: `game/crab.js` (self-contained). Everything goes in `game/<species>.js`, and the only other
+file to edit is `index.html` (`<script>` after `game/mobs.js`):
 
-1. `MOB_SPECIES.<id> = { ... }` (fields documented in `js/mobSpecies.js`), `VoxelModels.mobBuilders.<id>`,
-   `VoxelModels.MOB_SURFACES.<id>`.
+1. `registerSpecies('<id>', { info, model, surface, drops, sheds, furry, milkable, molts, diet, trap, card,
+   cardEs })` (documented in `extensions.js`; `info` has the fields of `js/mobSpecies.js`). It is the species'
+   row in every table of the other features: loot, taming, traps, bestiary in both languages. A misspelt
+   field stops the game at load.
 2. `registerMobBehaviour('<movement>', { update, interact, spawnForChunk, spawnCommand, spawnEgg })` with a
    movement name of its own, unless a built-in one fits (`'ground'`, `'swim'`, `'hop'`...: then no behaviour).
+   **The behaviour also says its traits** (`bodiless`, `walksToGoal`, `tameable`, `inWater`...; the list is in
+   `extensions.js`): other features ask `mobMovementIs(movement, trait)` and never list movement names.
 3. When struck, use `damageMobByPlayer` / `defeatMobByPlayer` (`game/mobs.js`); do not hand-roll health,
    the `defeated` event and removal as the older species do.
 4. Natural spawning draws from `this.chunkRandom(chunkX, chunkZ, salt)`: pick salts no other file uses
    (`grep -rn "chunkRandom(" pkg/web/static/js/game`).
 5. A mob that changes blocks does it with `this.placeBlockForAll(payload)` and `this.removeBlockForAll(x, y, z)`
    (see `game/beaver.js`): they tell the server and stop by themselves in someone else's plot.
+6. Its guide pages (see "a guide page"): `guide_facts.test.js` counts the species and checks what the pages
+   say of taming and baits.
 
-Then the tables of other features, each one line:
+A new feature that needs to know something of every species or movement adds a field to `SPECIES_FACETS` or a
+trait (both in `extensions.js`) instead of a table of names of its own.
 
-| Where | What | If forgotten |
-|---|---|---|
-| `index.html` | `<script>` after `game/mobs.js` | the species does not exist |
-| `game/resources.js` `RESOURCE_DROPS` (and `RESOURCE_FURRY`, `RESOURCE_MOLTERS`) | loot, fur, feathers | drops nothing |
-| `game/taming.js` `TAMING_DIET` | what tames it; a custom movement also needs `tameable` on its behaviour | cannot be tamed |
-| `game/traps.js` `TRAPS_SPECIES` | bait and cage | `guide_facts.test.js` fails |
-| `game/bestiary.js` `BESTIARY_ENTRIES`, `game/bestiary_text.js` `BESTIARY_ENTRIES_ES` | its card, in both languages | `bestiary_text.test.js` fails |
-| guide pages | see "a guide page" | `guide_facts.test.js` may fail |
+The species older than `registerSpecies` (all but the crab) still have their rows by hand in `RESOURCE_DROPS`
+(`game/resources.js`), `TAMING_DIET`, `TRAPS_SPECIES`, `BESTIARY_ENTRIES` and `BESTIARY_ENTRIES_ES`; moving one
+is cutting its rows from there into a `registerSpecies` call in its file.
 
-**Lists of movement names that nothing checks.** A new movement must be considered for each:
-`HERD_NOT_BODIES` (`game/herd.js`: movements with no body to keep apart), `TRAPS_GOAL_MOVEMENTS` and
-`TRAPS_OWN_WAY_MOVEMENTS` (`game/traps.js`: who walks to a bait), `TAMING_GOAL_MOVEMENTS` (`game/taming.js`),
-and the water species at `game/resources.js` (`species === 'fish' || species === 'eel'`).
-
-Tests: `node --test test/js/bestiary_text.test.js test/js/guide_facts.test.js` and the species' own.
+Tests: `node --test test/js/species_registry.test.js test/js/bestiary_text.test.js test/js/guide_facts.test.js`
+and the species' own.
 
 ## Recipe: a new block or item
 

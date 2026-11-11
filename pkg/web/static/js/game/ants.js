@@ -275,6 +275,8 @@ registerGameContent(function ({ addItem, addRecipe }) {
 });
 
 registerMobBehaviour('anthill', {
+    bodiless: true,
+    baitOwnWay: true, // antsUpdateColony sends them to a pile,
     update(mob, delta, player) { this.antsUpdateColony(mob, delta, player); },
     interact(mob) { this.antsHit(mob); },
     spawnCommand(species, x, z, player) { return this.antsSpawnFromCommand(x, z, player); },
