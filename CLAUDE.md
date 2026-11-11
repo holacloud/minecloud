@@ -40,13 +40,15 @@ before calling it done. There is no CI: nothing else will catch a red test.
 - Everything is global. A feature file adds methods with `Object.assign(Game.prototype, { ... })` and registers
   itself through the `register*` functions of `extensions.js`. Handlers run with `this` set to the `Game`.
 - **Prefix every method and constant with the feature's name** (`glowOpen`, `GLOW_COLOURS`, `crabUpdate`):
-  it is one flat namespace, and a second method with the same name silently replaces the first.
+  it is one flat namespace, and a second method with the same name silently replaces the first. Two methods of
+  `Game` with one name fail `invariants.test.js`, which also checks that every file of `js/game/` has its
+  `<script>`, that every message sent has a handler on the server, and the guide's pairs and links.
 - A feature owns its CSS and markup: it creates its `<style>` and panel elements itself (see
   `game/glow_block.js`). `index.html` only gets the `<script>` tag.
 - Reaching another feature that may load later: `typeof this.otherThing === 'function' && ...`.
 - Wrapping an existing method (`const original = proto[name]`) is a last resort: a rename then disables the
-  wrap without any error. `game/builder.js` does it for many; do not add more without a test that the wrapped
-  names exist.
+  wrap without any error (`invariants.test.js` checks that the wrapped names exist). `game/builder.js` does it
+  for many; prefer a hook.
 - Text the player reads goes through `gameText({ ES, EN })` (`js/gameLang.js`); longer text lives in a
   `*_text.js` file next to the feature. Item and block `name:` fields are English.
 - Network: `this.network.send('type', payload)` to say, and `registerNetworkHandler('type', function (payload)
