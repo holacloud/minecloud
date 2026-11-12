@@ -26,6 +26,7 @@ type Config struct {
 	CreativeKey       string  `usage:"Secret key for the hidden /creative chat command (empty disables it)"`
 	VoiceMaxPeers     int     `usage:"Most players one player talks to at once in proximity voice chat"`
 	VoiceRange        float64 `usage:"Distance in blocks within which players are connected for voice chat"`
+	LogMessages       bool    `usage:"Log every message of every client, and every block placed or broken (to debug: it is a lot)"`
 }
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 		MeteredAPIKey:  config.MeteredAPIKey,
 	})
 	network.ConfigureCreative(config.CreativeKey)
+	network.ConfigureMessageLog(config.LogMessages)
 	network.ConfigureVoice(network.VoiceConfig{
 		MaxPeers:  config.VoiceMaxPeers,
 		Range:     config.VoiceRange,
@@ -65,7 +67,7 @@ func main() {
 	http.HandleFunc("/voice-test", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/voice-test.html", http.StatusFound)
 	})
-	http.Handle("/", network.SessionMiddleware(http.FileServer(http.FS(web.MustStaticFS()))))
+	http.Handle("/", network.SessionMiddleware(web.StaticHandler()))
 	http.HandleFunc("/guide/index.json", web.HandleGuideIndex)
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)

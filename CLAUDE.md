@@ -13,6 +13,7 @@ file in the same change.
 ```bash
 make build                       # bin/server
 bin/server -addr :8090           # the local server (default is :8080); static files are embedded: rebuild to see a change
+bin/server -addr :8090 -logmessages   # the same, logging every message of every client (quiet without it)
 make test                        # everything: Go, then every JS test (about 4 minutes)
 go test ./pkg/network/ -run Glow # one Go test
 node --test test/js/glow_block.test.js   # one JS test file (the glob form is needed for all: 'test/js/*.test.js')

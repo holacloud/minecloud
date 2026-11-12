@@ -296,6 +296,15 @@ func loadWorldState() error {
 	return nil
 }
 
+// Every message of every client in the log is a line for each step of each player: only to debug
+// (-logmessages), and what happens seldom (a plot claimed, a refusal) is logged regardless.
+var logMessages bool
+
+// ConfigureMessageLog turns the log of every message, and of every block placed or broken, on or off.
+func ConfigureMessageLog(on bool) {
+	logMessages = on
+}
+
 var saveMu sync.Mutex
 
 func saveWorldState() {
@@ -516,11 +525,13 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		// Never log a creative key or a recovery code.
-		if messageIsSecret(msg.Type) {
-			log.Printf("Received message: %s (payload hidden)", msg.Type)
-		} else {
-			log.Printf("Received message: %s", message)
+		if logMessages {
+			// Never log a creative key or a recovery code.
+			if messageIsSecret(msg.Type) {
+				log.Printf("Received message: %s (payload hidden)", msg.Type)
+			} else {
+				log.Printf("Received message: %s", message)
+			}
 		}
 		handleMessage(c, msg)
 	}
@@ -630,7 +641,9 @@ func placeBlock(client *Client, payload Block) (Block, bool) {
 	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 	recordSignMessage(client, payload)
 
-	log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
+	if logMessages {
+		log.Printf("Block placed at %d,%d,%d type: %s", payload.X, payload.Y, payload.Z, payload.BlockType)
+	}
 	return payload, true
 }
 
@@ -775,7 +788,9 @@ func handleBlockBreak(client *Client, msg Message) {
 	}
 	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 
-	log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
+	if logMessages {
+		log.Printf("Block broken at %d,%d,%d", payload.X, payload.Y, payload.Z)
+	}
 	broadcastToAll(createMessage("blockBreak", payload))
 	// Breaking a marker removes its plot (claims.go).
 	claimBroken(was, payload.X, payload.Y, payload.Z)

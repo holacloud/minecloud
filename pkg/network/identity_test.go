@@ -575,6 +575,9 @@ func TestIdentityOverWebSocketsTwoBrowsers(t *testing.T) {
 		return logs.Write(p)
 	}))
 	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	// With every message logged (-logmessages), which is when a code could end up in the log.
+	ConfigureMessageLog(true)
+	t.Cleanup(func() { ConfigureMessageLog(false) })
 
 	mux := http.NewServeMux()
 	mux.Handle("/", SessionMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
