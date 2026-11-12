@@ -24,9 +24,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	ID           string
-	conn         *websocket.Conn
-	send         chan []byte
+	ID   string
+	conn *websocket.Conn
+	send chan []byte
+	// What this client was last told of each player around it: the moves' round only (player_moves.go).
+	moves        map[string]*movesSeen
 	chunks       chan []byte // binary chunk frames, written after regular messages
 	done         chan struct{}
 	stream       *chunkStream
@@ -142,6 +144,9 @@ type Player struct {
 	Located bool `json:"-"`
 	// OffhandItem is what the left hand holds; clients that know nothing of it never send it.
 	OffhandItem string `json:"offhandItem,omitempty"`
+	// What tells a change from the last one each client heard of (player_moves.go): rev is new with
+	// anything of the player, look with its name or its looks.
+	rev, look uint64
 }
 
 type GameState struct {
@@ -465,6 +470,9 @@ func (c *Client) readPump() {
 
 		stateMu.Lock()
 		delete(gameState.Players, c.ID)
+		if playerClients[c.ID] == c {
+			delete(playerClients, c.ID)
+		}
 		stateMu.Unlock()
 		storage.forget(c)
 
@@ -693,36 +701,56 @@ func handlePlayerJoin(client *Client, msg Message) {
 	broadcastPlayerList()
 }
 
+// Whose each player is, and the number the next change of any player takes (stateMu, as the players).
+var (
+	playerClients  = make(map[string]*Client)
+	playerRevision uint64
+)
+
+// handlePlayerMove keeps where a client says its player is. Nobody is told here: each client hears of
+// the players around it from the moves' round (player_moves.go).
 func handlePlayerMove(client *Client, msg Message) {
 	var payload Player
 	json.Unmarshal(msg.Payload, &payload)
+	// A client moves its own player and nobody else's.
+	if payload.ID == "" || payload.ID != client.ID {
+		return
+	}
 
 	payload.Located = true
 	stateMu.Lock()
-	existing, ok := gameState.Players[payload.ID]
 	// A connection that died unnoticed takes the player's entry with it when it finally
 	// closes, after they are back on a new one; their next move brings the entry back.
-	if !ok && payload.ID != "" && payload.ID == client.ID {
-		existing, ok = Player{ID: client.ID, Username: client.username}, true
+	existing, ok := gameState.Players[payload.ID]
+	if !ok {
+		existing = Player{ID: client.ID, Username: client.username}
 	}
-	if ok {
-		if payload.Username == "" {
-			payload.Username = existing.Username
-		}
-		if payload.ShirtColor == "" {
-			payload.ShirtColor = existing.ShirtColor
-		}
-		if payload.HairStyle == "" {
-			payload.HairStyle = existing.HairStyle
-		}
-		if payload.HairColor == "" {
-			payload.HairColor = existing.HairColor
-		}
+	if payload.Username == "" {
+		payload.Username = existing.Username
+	}
+	if payload.ShirtColor == "" {
+		payload.ShirtColor = existing.ShirtColor
+	}
+	if payload.HairStyle == "" {
+		payload.HairStyle = existing.HairStyle
+	}
+	if payload.HairColor == "" {
+		payload.HairColor = existing.HairColor
+	}
+	payload.rev, payload.look = existing.rev, existing.look
+	if payload.look == 0 || payload.Username != existing.Username || payload.ShirtColor != existing.ShirtColor ||
+		payload.HairStyle != existing.HairStyle || payload.HairColor != existing.HairColor {
+		playerRevision++
+		payload.look = playerRevision
+	}
+	// The same as last time (a player standing still) is no news for anybody.
+	if payload != existing {
+		playerRevision++
+		payload.rev = playerRevision
 		gameState.Players[payload.ID] = payload
 	}
+	playerClients[payload.ID] = client
 	stateMu.Unlock()
-
-	broadcastToAll(createMessage("playerMove", payload))
 }
 
 func handleBlockBreak(client *Client, msg Message) {
@@ -1091,7 +1119,6 @@ func sendInitialState(client *Client) {
 
 	initMsg := map[string]interface{}{
 		"type":        "init",
-		"players":     gameState.Players,
 		"blocks":      blockMetadata,
 		"sprayPaints": gameState.SprayPaints,
 		"timeOfDay":   gameState.WorldTime,

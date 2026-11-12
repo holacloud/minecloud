@@ -796,6 +796,7 @@ class Game {
             }
         });
         this.network.on('otherPlayerMove', (player) => this.updateOtherPlayer(player));
+        this.network.on('otherPlayerGone', (id) => this.removeOtherPlayer(id));
         this.network.on('playerList', (payload) => this.updateRemotePlayerNames(payload));
         this.network.on('chat', (payload) => this.receiveChatMessage(payload));
         this.network.on('system', (payload) => this.receiveSystemMessage(payload));

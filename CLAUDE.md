@@ -17,6 +17,7 @@ bin/server -addr :8090 -logmessages   # the same, logging every message of every
 make test                        # everything: Go, then every JS test (about 4 minutes)
 go test ./pkg/network/ -run Glow # one Go test
 node --test test/js/glow_block.test.js   # one JS test file (the glob form is needed for all: 'test/js/*.test.js')
+go run ./cmd/loadtest -h         # players that are not there, in steps: only ever against a server on a copy of data/
 ```
 
 While working, run the test file of the feature plus the checklist tests named in its recipe; run `make test`
@@ -63,6 +64,9 @@ before calling it done. There is no CI: nothing else will catch a red test.
   may not change that column; a feature that restricts edits registers a `registerBlockEditGuard`.
 - Mobs are simulated on each client and are not sent over the network. Blocks, storage, power and plots are
   the server's.
+- Other players: a client is only told of those around it (`pkg/network/player_moves.go`: the nearest every
+  round, the rest in range now and then, `gone` when they leave it). An avatar exists only for
+  those; never broadcast something to everybody for each move of each player.
 
 ## Recipe: a new mob
 

@@ -27,6 +27,10 @@ type Config struct {
 	VoiceMaxPeers     int     `usage:"Most players one player talks to at once in proximity voice chat"`
 	VoiceRange        float64 `usage:"Distance in blocks within which players are connected for voice chat"`
 	LogMessages       bool    `usage:"Log every message of every client, and every block placed or broken (to debug: it is a lot)"`
+	PlayersNear       int     `usage:"How many of the nearest players each player is told about at the full rate"`
+	PlayersRange      float64 `usage:"Distance in blocks (|dx|+|dy|+|dz|) within which a player is told about another at all"`
+	PlayersFarSeconds float64 `usage:"Seconds between what a player is told about those in range beyond the nearest"`
+	PlayersMoveMs     int     `usage:"Milliseconds between two rounds of telling each player who moved around it (20 at least)"`
 }
 
 func main() {
@@ -39,6 +43,10 @@ func main() {
 		SessionGlobalSalt: "just-for-development",
 		VoiceMaxPeers:     8,
 		VoiceRange:        24,
+		PlayersNear:       10,
+		PlayersRange:      160,
+		PlayersFarSeconds: 1,
+		PlayersMoveMs:     50,
 	}
 	goconfig.Read(config)
 	network.ConfigureICE(network.ICEConfig{
@@ -51,6 +59,12 @@ func main() {
 	})
 	network.ConfigureCreative(config.CreativeKey)
 	network.ConfigureMessageLog(config.LogMessages)
+	network.ConfigureMoves(network.MovesConfig{
+		Near:     config.PlayersNear,
+		Range:    config.PlayersRange,
+		FarEvery: time.Duration(config.PlayersFarSeconds * float64(time.Second)),
+		Every:    time.Duration(config.PlayersMoveMs) * time.Millisecond,
+	})
 	network.ConfigureVoice(network.VoiceConfig{
 		MaxPeers:  config.VoiceMaxPeers,
 		Range:     config.VoiceRange,

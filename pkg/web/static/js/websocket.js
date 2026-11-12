@@ -1,3 +1,6 @@
+// How often a player that has not changed still says where it is.
+const PLAYER_MOVE_REPEAT_MS = 2000;
+
 class NetworkClient {
     constructor() {
         this.ws = null;
@@ -25,6 +28,12 @@ class NetworkClient {
         this.ws.onopen = () => {
             console.log('WebSocket: Connected to server');
             this.connected = true;
+            // A new connection knows nothing of where this player is, nor this one of the others.
+            this.lastMoveSaid = null;
+            for (const id of [...this.otherPlayers.keys()]) {
+                this.otherPlayers.delete(id);
+                this.emit('otherPlayerGone', id);
+            }
             this.emit('connected');
             this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor, hairStyle: this.hairStyle, hairColor: this.hairColor });
             this.updateStatus('Connected');
@@ -88,6 +97,9 @@ class NetworkClient {
                 break;
             case 'playerMove':
                 this.handlePlayerMove(message.payload);
+                break;
+            case 'playerMoves':
+                this.handlePlayerMoves(message.payload);
                 break;
             case 'blockBreak':
                 this.handleBlockBreak(message.payload);
@@ -190,6 +202,29 @@ class NetworkClient {
         this.emit('otherPlayerMove', payload);
     }
     
+    // What changed around this player since the server last said (pkg/network/player_moves.go): the
+    // players near it, and in `gone` those that are no longer in range. A player's name and looks come
+    // the first time and when they change; in between, the ones already known stand.
+    handlePlayerMoves(payload) {
+        if (!payload) return;
+        for (const entry of payload.players || []) {
+            if (!entry || entry.id === this.playerId) continue;
+            const known = this.otherPlayers.get(entry.id);
+            const player = known ? {
+                username: known.username,
+                shirtColor: known.shirtColor,
+                hairStyle: known.hairStyle,
+                hairColor: known.hairColor,
+                ...entry
+            } : entry;
+            this.otherPlayers.set(entry.id, player);
+            this.emit('otherPlayerMove', player);
+        }
+        for (const id of payload.gone || []) {
+            if (this.otherPlayers.delete(id)) this.emit('otherPlayerGone', id);
+        }
+    }
+
     handleBlockBreak(payload) {
         this.emit('blockBreak', payload);
     }
@@ -248,7 +283,7 @@ class NetworkClient {
     
     // mount: { key: "species:variant", yaw } while riding, otherwise null.
     updatePosition(position, heldItem = null, action = '', mount = null, offhandItem = null) {
-        this.send('playerMove', {
+        const payload = {
             id: this.playerId,
             username: this.username,
             x: position.x,
@@ -264,6 +299,13 @@ class NetworkClient {
             action: action || '',
             mount: mount ? mount.key : '',
             mountYaw: mount ? mount.yaw : 0
-        });
+        };
+        // A player standing still says so only now and then: enough for the server to know it is there.
+        const said = JSON.stringify(payload);
+        const now = Date.now();
+        if (said === this.lastMoveSaid && now - this.lastMoveSaidAt < PLAYER_MOVE_REPEAT_MS) return;
+        this.lastMoveSaid = said;
+        this.lastMoveSaidAt = now;
+        this.send('playerMove', payload);
     }
 }

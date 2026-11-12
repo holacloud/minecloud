@@ -292,6 +292,15 @@ Object.assign(Game.prototype, {
         }
     },
 
+    // A player the server no longer tells about: out of range (pkg/network/player_moves.go). It is still
+    // in the list of players, and comes back as a new one when it is near again.
+    removeOtherPlayer(id) {
+        const avatar = this.otherPlayerMeshes.get(id);
+        if (!avatar) return;
+        this.disposeRemoteAvatar(avatar);
+        this.otherPlayerMeshes.delete(id);
+    },
+
     disposeRemoteAvatar(avatar) {
         if (!avatar) return;
 

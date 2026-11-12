@@ -834,8 +834,21 @@ func TestPlotsOverWebSocketsWithTwoBrowsers(t *testing.T) {
 	beto.await("init")
 	ana.send("playerMove", Player{ID: "page_ana", X: 401, Y: 121.6, Z: 401})
 	beto.send("playerMove", Player{ID: "page_beto", X: 402, Y: 121.6, Z: 402})
-	ana.await("playerMove")
-	beto.await("playerMove")
+	// Each hears of the other from the moves' round (player_moves.go), which no loop runs here.
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+		stateMu.RLock()
+		located := gameState.Players["page_ana"].Located && gameState.Players["page_beto"].Located
+		stateMu.RUnlock()
+		if located {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the players never moved")
+		}
+	}
+	playerMovesTick(time.Now())
+	ana.await("playerMoves")
+	beto.await("playerMoves")
 
 	ana.send("blockPlace", Block{X: 400, Y: 120, Z: 400, BlockType: claimMarkerBlock})
 	ana.await("claimMade")
