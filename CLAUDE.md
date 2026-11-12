@@ -128,9 +128,14 @@ own file and registers itself from an `init()`; `pkg/network/registry.go` docume
    - `plotNowhere`: it acts on no cell (chat, identity).
 2. `registerLoop(run)` for a loop of its own, `registerOnConnect(tell)` for what a client must know on
    connecting, `registerPlaceFilter(filter)` for what it does to the name of a placed block.
-3. Saved state is still by hand in `websocket.go`: a field in `persistedWorldState`, read in
-   `loadWorldState`, written in `saveWorldState`. Prefer state in the block's name (`glow_block:ff0000`),
-   which travels with the chunks and needs none of this.
+3. Saved state: `registerWorldSection(worldSectionSpec{name, snapshot, load})` (`persistence.go`, examples
+   at the end of `crops.go` and `claims.go`) gives the mechanic its own file, `data/world/<name>.json`, and
+   `section.changed()` after each change has it written within 5 seconds and when the server stops.
+   `immediate: true` writes it before `changed()` returns: only for what must be on disk before it is
+   answered (chests, plots), and then never call `changed()` holding a lock its snapshot takes (`mark()`
+   is safe anywhere). The snapshot is a struct whose JSON keys no other section uses
+   (`persistence_test.go` checks). Prefer state in the block's name (`glow_block:ff0000`), which travels
+   with the chunks and needs none of this.
 
 **A block that keeps things** (a chest with a life of its own: an oven, a microscope, an incubator) is built
 on `storage.go`, which does the slots, the panels, the moves and the saving. What the mechanic adds is a
@@ -146,7 +151,7 @@ Rules every handler follows:
   refusal with `claimRefuse` (or `claimGuardRequest` for storage-like requests).
 - **Sending.** To one client: `client.trySend(data)`; to all: `broadcastToAll`. Never `client.send <- data`
   and never close that channel.
-- **Shared maps and slices** inside saved state are replaced, never changed in place: `saveWorldState` and
+- **Shared maps and slices** inside saved state are replaced, never changed in place: the save and
   the broadcasts read them after releasing the lock.
 - **Trust nothing from the client**: check reach, names and payload size as `storage.go` does.
 - Lock order: `blockEditMu` → `storage.mu` → `cropMu` → `powerMu` → `Store.mu` → `stateMu` → `clientsMu`.

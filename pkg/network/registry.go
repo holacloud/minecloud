@@ -16,7 +16,7 @@ import (
 //		registerPlaceFilter(func(x, y, z int, name string) string { return glowSanitizeName(name) })
 //	}
 //
-// What is saved in world.json is still by hand: a field in persistedWorldState (websocket.go).
+// What it saves is a section of its own, declared the same way: registerWorldSection (persistence.go).
 
 // Plots (claims.go): every message says what it has to do with them, and there is no default, so a new
 // message cannot be left open by forgetting. registerMessage panics on a spec that does not say.

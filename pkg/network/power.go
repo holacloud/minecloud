@@ -17,7 +17,7 @@ import (
 //
 // - Every electric block is a world block. Its kind is the part of the name before ':'
 //   (water_wheel:z is a water_wheel). The server remembers each one (placed or broken
-//   through setBlockTracked) and saves them in world.json ("power"), batteries with their
+//   through setBlockTracked) and saves them in data/world/power.json ("power"), batteries with their
 //   charge.
 // - Blocks that touch on a face (6 neighbours) belong to the same network. Every electric
 //   block conducts, so a lamp next to a solar panel works without a wire.
@@ -253,7 +253,7 @@ func newPowerGrid() *powerGrid {
 
 var (
 	// powerMu guards grid. Order: cropMu, then powerMu, then the chunk store, then stateMu.
-	// Never call saveWorldState while holding it.
+	// Never call changed() of an immediate world section while holding it.
 	powerMu sync.Mutex
 	grid    = newPowerGrid()
 )
@@ -458,7 +458,7 @@ func powerWindWatts(speed, peak float64) float64 {
 }
 
 // tick runs one step of dt seconds. Returns the blocks whose names changed (to broadcast) and
-// whether world.json should be saved.
+// whether the section should be saved.
 func (g *powerGrid) tick(w cropWorld, env powerEnvironment, now time.Time, dt float64) ([]Block, bool) {
 	save := false
 	if g.dirty {
@@ -530,7 +530,7 @@ func (g *powerGrid) tick(w cropWorld, env powerEnvironment, now time.Time, dt fl
 }
 
 // followLogicNames reads the logic blocks' names from the world before the networks are
-// rebuilt (after loading world.json, a lever switched in a saved chunk is what counts).
+// rebuilt (after loading the saved state, a lever switched in a saved chunk is what counts).
 func (g *powerGrid) followLogicNames(w cropWorld) {
 	for _, b := range g.blocks {
 		if powerKinds[b.Kind].Role != powerLogic {
@@ -985,7 +985,7 @@ func runPowerGrid() {
 		powerMu.Unlock()
 		if save {
 			lastSave = now
-			saveWorldState()
+			worldPower.changed()
 		}
 		// What moved first (mechanics.go), so clients carry players before the blocks arrive.
 		for _, move := range moves {
@@ -1076,7 +1076,7 @@ func powerAdoptChunk(store interface {
 	powerAdoptOldBulbs(grid, store, found)
 }
 
-// loadPower installs the electric blocks read from world.json.
+// loadPower installs the saved electric blocks.
 func loadPower(saved map[string]PowerBlock) {
 	powerMu.Lock()
 	defer powerMu.Unlock()
@@ -1112,4 +1112,22 @@ func init() {
 	registerMessage(messageSpec{plot: plotGuarded, handle: func(c *Client, m Message) { handlePowerFeed(c, m.Payload) }}, "powerFeed")
 	registerMessage(messageSpec{plot: plotOpen, why: "a multimeter only reads", handle: func(c *Client, m Message) { handlePowerProbe(c, m.Payload) }}, "powerProbe")
 	registerLoop(runPowerGrid)
+	worldPower = registerWorldSection(worldSectionSpec{
+		name:     "power",
+		snapshot: func() any { return powerSaved{Power: snapshotPower()} },
+		load: func(data []byte) error {
+			var saved powerSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			loadPower(saved.Power)
+			return nil
+		},
+	})
 }
+
+type powerSaved struct {
+	Power map[string]PowerBlock `json:"power,omitempty"`
+}
+
+var worldPower *worldSection

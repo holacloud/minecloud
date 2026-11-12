@@ -688,7 +688,7 @@ func handleMicroscopeMessage(client *Client, msg Message) {
 		return
 	}
 	if changed {
-		saveWorldState()
+		worldStorage.changed()
 	}
 	storageReply(client, outcome)
 	// A slide or a plate put on or taken off shows on the block, for everyone.

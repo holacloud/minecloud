@@ -11,7 +11,7 @@ import (
 // Culture plates with an identity. Every other item is a type and a count; a culture plate (the dish an
 // incubator gives with its colonies on it, cultureSpecies[*].Item) is one dish with what grew on it: the
 // species and how many (log N), the mould and whether it won, and the seed that places its colonies.
-// So each plate has a record here, in storageBook.plates, saved in world.json ("plates") under the same
+// So each plate has a record here, in storageBook.plates, saved with the chests (data/world/storage.json, "plates") under the same
 // lock and in the same file as the chests, keyed by an id the server issues when the plate comes into being
 // (a harvest: microbes.go). Nobody else can make a record: what a plate shows is the server's.
 //

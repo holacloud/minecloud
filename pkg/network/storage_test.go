@@ -348,11 +348,11 @@ func TestStoragePersistence(t *testing.T) {
 	book, w := newTestBook()
 	testPut(book, w, "request-1", "stone", 10)
 	blocks, outcomes := book.snapshot()
-	data, err := json.Marshal(persistedWorldState{Storage: blocks, StorageLog: outcomes})
+	data, err := json.Marshal(storageSaved{Storage: blocks, StorageLog: outcomes})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var saved persistedWorldState
+	var saved storageSaved
 	if err := json.Unmarshal(data, &saved); err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestStorageThroughMessages(t *testing.T) {
 	if seen.Slots[0] != (StorageSlot{Type: "stone", Count: 7}) || seen.Capacity != 27 {
 		t.Fatalf("bob sees: %+v", seen)
 	}
-	saved, err := os.ReadFile(worldStatePath)
+	saved, err := os.ReadFile(worldStorage.path())
 	if err != nil || !strings.Contains(string(saved), `"stone"`) {
 		t.Fatalf("not saved: %v %s", err, saved)
 	}

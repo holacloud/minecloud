@@ -177,11 +177,11 @@ func TestConstructionStockNeedsCreative(t *testing.T) {
 	if len(result.Filled) != 1 || result.Filled[0] != [3]int{2, 120, 2} || len(result.Refused) != 1 || result.Refused[0].Reason != "unknown item" {
 		t.Fatalf("result: %+v", result)
 	}
-	saved, err := os.ReadFile(worldStatePath)
+	saved, err := os.ReadFile(worldStorage.path())
 	if err != nil || !strings.Contains(string(saved), `"telescope"`) {
 		t.Fatalf("not saved: %v", err)
 	}
-	var persisted persistedWorldState
+	var persisted storageSaved
 	if err := json.Unmarshal(saved, &persisted); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 // harvested by js/game/farming.js). When a player places a growing stage the server
 // remembers it; every few seconds due crops move to their next stage through the chunk store
 // and a normal blockPlace broadcast. The last stage is ripe and is no longer tracked.
-// Tracked crops are saved in world.json ("crops"), so old worlds simply start with none.
+// Tracked crops are saved in their world section (data/world/crops.json), so old worlds simply start with none.
 
 // cropKinds maps a crop kind to its ripe stage.
 var cropKinds = map[string]int{"wheat": 3}
@@ -50,7 +51,7 @@ type cropWorld interface {
 var (
 	// cropMu guards crops and is held around chunk store writes that may touch a crop, so a
 	// growth step never resurrects a crop broken in between. Order: cropMu, then the chunk
-	// store, then stateMu. Never call saveWorldState while holding it.
+	// store, then stateMu. Never call changed() of an immediate world section while holding it.
 	cropMu sync.Mutex
 	crops  = make(map[string]Crop)
 )
@@ -77,7 +78,7 @@ func cropStageDuration(rng func() float64) time.Duration {
 }
 
 // trackBlockLocked updates the crop registry after the block at (x, y, z) became blockType
-// ("" when removed). Returns whether the registry changed (and world.json needs saving).
+// ("" when removed). Returns whether the registry changed (and needs saving).
 func trackBlockLocked(registry map[string]Crop, x, y, z int, blockType string, now time.Time, rng func() float64) bool {
 	key := blockKey(x, y, z)
 	_, had := registry[key]
@@ -147,7 +148,7 @@ func boostCropsLocked(registry map[string]Crop, lit func(x, y, z int) bool, step
 }
 
 // setBlockTracked writes a player edit to the chunk store and keeps the crop and power
-// registries in step. changed tells the caller to save world.json.
+// registries in step, marking each to be saved when it changes (persistence.go).
 func setBlockTracked(x, y, z int, blockType string) (changed bool, err error) {
 	cropMu.Lock()
 	defer cropMu.Unlock()
@@ -158,6 +159,12 @@ func setBlockTracked(x, y, z int, blockType string) (changed bool, err error) {
 	}
 	cropsChanged := trackBlockLocked(crops, x, y, z, blockType, time.Now(), rand.Float64)
 	powerChanged := grid.track(x, y, z, blockType)
+	if cropsChanged {
+		worldCrops.mark()
+	}
+	if powerChanged {
+		worldPower.mark()
+	}
 	return cropsChanged || powerChanged, nil
 }
 
@@ -170,7 +177,7 @@ func runCropGrowth() {
 		grown, changed := growCropsLocked(crops, chunkStore, time.Now(), rand.Float64)
 		cropMu.Unlock()
 		if changed {
-			saveWorldState()
+			worldCrops.changed()
 		}
 		for _, block := range grown {
 			broadcastToAll(createMessage("blockPlace", block))
@@ -178,7 +185,7 @@ func runCropGrowth() {
 	}
 }
 
-// loadCrops installs the crops read from world.json.
+// loadCrops installs the saved crops.
 func loadCrops(saved map[string]Crop) {
 	cropMu.Lock()
 	defer cropMu.Unlock()
@@ -201,6 +208,24 @@ func snapshotCrops() map[string]Crop {
 	return out
 }
 
+type cropsSaved struct {
+	Crops map[string]Crop `json:"crops,omitempty"`
+}
+
+var worldCrops *worldSection
+
 func init() {
+	worldCrops = registerWorldSection(worldSectionSpec{
+		name:     "crops",
+		snapshot: func() any { return cropsSaved{Crops: snapshotCrops()} },
+		load: func(data []byte) error {
+			var saved cropsSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			loadCrops(saved.Crops)
+			return nil
+		},
+	})
 	registerLoop(runCropGrowth)
 }

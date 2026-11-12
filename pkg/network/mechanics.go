@@ -42,7 +42,7 @@ import (
 // State lives in the world blocks, as for doors and lamps: motor_ram:e:out, sticky_ram:u,
 // ram_arm:e:plain, and where the platform is. Every change is written to the chunk store
 // (saved with the chunks) and broadcast with the normal blockPlace messages; the rams and
-// winches themselves are electric blocks, kept in world.json ("power") like any other.
+// winches themselves are electric blocks, kept in the power section (data/world/power.json) like any other.
 //
 // Before the blockPlace messages of a move, everyone gets a mechMove message (kind "push",
 // "pull" or "lift", the direction, the cells whose blocks moved and the cells they filled),
@@ -373,7 +373,7 @@ func (g *powerGrid) ramRename(p powerPos, ram ramBlock, set func(powerPos, strin
 	name := ram.String()
 	if set(p, name) {
 		g.blocks[p].Name = name
-		g.energyChanged = true // the registry's names are saved with world.json
+		g.energyChanged = true // the registry's names are saved with the power section
 	}
 }
 

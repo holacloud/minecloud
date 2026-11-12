@@ -19,13 +19,13 @@ package network
 //     stands in the middle of its own plot (and the admin, who can break anything). Overwriting the
 //     marker with another block does the same. A marker left with no plot (the admin removed the plot)
 //     is a plain block.
-//   - Kept in world.json ("claims", by id), with an index by chunk (byChunk): a plot covers at most 3 x 3
+//   - Kept in data/world/claims.json ("claims", by id), with an index by chunk (byChunk): a plot covers at most 3 x 3
 //     chunks and a chunk is touched by at most 4 plots, so finding the plot of a column is a map lookup
 //     and a few comparisons, whatever the number of plots.
 //
 // Guests (PLAN_PARCELAS.md, phase 4): the owner may invite other players to their plot, from the marker's
 // panel. A guest is kept by their stable player id (never by name) with the name they last played with,
-// in the plot's "guests" in world.json; at most claimMaxGuests. claimGuest {action, player | key} from the
+// in the plot's "guests" in that file; at most claimMaxGuests. claimGuest {action, player | key} from the
 // owner, and only the owner: "add" {player} takes the page id of a connected player (or, failing that, a
 // connected player's name when only one plays with it); "remove" {key} takes the key the owner was shown.
 // Answered with claimGuestResult {action, ok, error, name}; any change is saved and told to everyone.
@@ -797,7 +797,7 @@ func claimPlaceBlock(client *Client, payload Block, palette bool) (Block, *claim
 			log.Printf("claims: %s claimed %s at %d,%d,%d", client.ID, made.ID, made.X, made.Y, made.Z)
 			storageDeliver(client, createMessage("claimMade", claimViewOf(*made, made.Owner, nil)))
 		}
-		saveWorldState()
+		worldClaims.changed()
 		claimsBroadcast()
 	}
 	return placed, nil, true
@@ -818,7 +818,7 @@ func claimBroken(was string, x, y, z int) {
 	}
 	if c, ok := claims.removeAtMarker(x, y, z); ok {
 		log.Printf("claims: plot %s removed with its marker", c.ID)
-		saveWorldState()
+		worldClaims.changed()
 		claimsBroadcast()
 	}
 }
@@ -1001,7 +1001,7 @@ func handleClaimGuest(client *Client, payload []byte) {
 	}
 	answer["ok"] = true
 	reply()
-	saveWorldState()
+	worldClaims.changed()
 	claimsBroadcast()
 }
 
@@ -1037,7 +1037,7 @@ func claimFindConnected(who string) (id, name string) {
 // claimRenameOwner follows the name a player plays with, as an owner and as a guest (playerJoin).
 func claimRenameOwner(client *Client) {
 	if claims.rename(client.stablePlayerID(), client.username) {
-		saveWorldState()
+		worldClaims.changed()
 		claimsBroadcast()
 	}
 }
@@ -1125,7 +1125,7 @@ func handleClaimAdmin(client *Client, payload []byte) {
 			return
 		}
 		log.Printf("claims: admin %s removed plot %s of %s", client.ID, c.ID, c.Owner)
-		saveWorldState()
+		worldClaims.changed()
 		claimsBroadcast()
 	case "owner":
 		owner, name := claimFindPlayer(request.Player)
@@ -1146,7 +1146,7 @@ func handleClaimAdmin(client *Client, payload []byte) {
 			return
 		}
 		log.Printf("claims: admin %s gave plot %s to %s", client.ID, c.ID, owner)
-		saveWorldState()
+		worldClaims.changed()
 		claimsBroadcast()
 	default:
 		return
@@ -1198,6 +1198,29 @@ func claimFindPlayer(who string) (id, name string) {
 		}
 	}
 	return "", ""
+}
+
+type claimsSaved struct {
+	Claims map[string]Claim `json:"claims,omitempty"`
+}
+
+// A plot claimed is on disk before anyone is told: it is seldom, small, and nobody should lose one.
+var worldClaims *worldSection
+
+func init() {
+	worldClaims = registerWorldSection(worldSectionSpec{
+		name:      "claims",
+		immediate: true,
+		snapshot:  func() any { return claimsSaved{Claims: claims.snapshot()} },
+		load: func(data []byte) error {
+			var saved claimsSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			claims.load(saved.Claims)
+			return nil
+		},
+	})
 }
 
 func init() {

@@ -687,11 +687,11 @@ func TestAppliancesSurviveARestart(t *testing.T) {
 	applianceRun(book, w, 30)
 
 	blocks, outcomes := book.snapshot()
-	data, err := json.Marshal(persistedWorldState{Storage: blocks, StorageLog: outcomes})
+	data, err := json.Marshal(storageSaved{Storage: blocks, StorageLog: outcomes})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var saved persistedWorldState
+	var saved storageSaved
 	if err := json.Unmarshal(data, &saved); err != nil {
 		t.Fatal(err)
 	}

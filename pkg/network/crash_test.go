@@ -40,7 +40,7 @@ func TestADroppedClientCanStillBeAnswered(t *testing.T) {
 	}
 }
 
-// A vote changes a sign's votes while saveWorldState and the broadcast still read the map they were handed
+// A vote changes a sign's votes while the save and the broadcast still read the map they were handed
 // before: the map they hold must never change under them.
 func TestASignVoteLeavesTheVotesAlreadyHandedOutAlone(t *testing.T) {
 	t.Chdir(t.TempDir())

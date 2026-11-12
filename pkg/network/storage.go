@@ -11,7 +11,7 @@ import (
 )
 
 // Furniture that really stores items (js/game/storage.js draws the panel). The contents live
-// here: they are saved in world.json ("storage"), shared by all players, and every change goes
+// here: they are saved in data/world/storage.json ("storage"), shared by all players, and every change goes
 // through storageBook under one mutex, together with the chunk read that proves the block is
 // still there. So a move and a break of the same chest are always in some order: either the
 // move lands first and the items are in what the break spills, or the break lands first and
@@ -242,7 +242,7 @@ func (s *StorageBlock) holdsNothing() bool {
 
 // storageBook holds every chest's contents and who is watching them. Lock order: mu, then
 // cropMu and powerMu (setBlockTracked), then the chunk store, then stateMu and clientsMu.
-// Never call saveWorldState while holding mu.
+// Never call worldStorage.changed() while holding mu (mark() is fine).
 type storageBook struct {
 	mu      sync.Mutex
 	blocks  map[string]*StorageBlock
@@ -274,7 +274,7 @@ type storagePart struct {
 	loading func(b *storageBook)
 	clean   func(block *StorageBlock)
 	loaded  func(b *storageBook, key string, block *StorageBlock)
-	// For world.json: what of `block` the plain copy `copied` still shares with it.
+	// For saving: what of `block` the plain copy `copied` still shares with it.
 	copyState func(copied, block *StorageBlock)
 	// What a panel shows of the block at `place` besides its slots (block is nil when it holds nothing).
 	view func(b *storageBook, place storagePlace, block *StorageBlock, snapshot *storageSnapshot)
@@ -712,6 +712,8 @@ func (b *storageBook) replace(w cropWorld, x, y, z int, name string, set func() 
 			spill = append(b.spillSlotsLocked(block.Slots), b.spillSlotsLocked(block.Freezer)...)
 		}
 		delete(b.blocks, key)
+		// What spilled is saved at once by whoever broke it; a chest that held nothing, with the next round.
+		worldStorage.mark()
 		for _, part := range storageParts {
 			if part.gone != nil {
 				part.gone(b, had, key)
@@ -798,13 +800,13 @@ func storageCleanSlots(saved []StorageSlot) []StorageSlot {
 	return slots
 }
 
-// snapshot copies the chests and the log for world.json.
+// snapshot copies the chests and the log for saving.
 func (b *storageBook) snapshot() (map[string]StorageBlock, []storageOutcome) {
 	blocks, outcomes, _ := b.snapshotAll()
 	return blocks, outcomes
 }
 
-// snapshotAll copies everything for world.json: the plates with the chests that hold them, in one go.
+// snapshotAll copies everything for saving: the plates with the chests that hold them, in one go.
 func (b *storageBook) snapshotAll() (map[string]StorageBlock, []storageOutcome, map[string]PlateRecord) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -919,7 +921,7 @@ func handleStorageMessage(client *Client, msg Message) {
 		}
 		// Saved before it is answered (see the header).
 		if changed {
-			saveWorldState()
+			worldStorage.changed()
 		}
 		storageReply(client, outcome)
 
@@ -934,6 +936,37 @@ func handleStorageMessage(client *Client, msg Message) {
 			storageReply(client, outcome)
 		}
 	}
+}
+
+// What is saved of the chests: what each holds, the answers clients may still ask about, and every
+// culture plate by its id (plates.go).
+type storageSaved struct {
+	Storage    map[string]StorageBlock `json:"storage,omitempty"`
+	StorageLog []storageOutcome        `json:"storageLog,omitempty"`
+	Plates     map[string]PlateRecord  `json:"plates,omitempty"`
+}
+
+// Immediate: a move is saved before it is answered (see the header).
+var worldStorage *worldSection
+
+func init() {
+	worldStorage = registerWorldSection(worldSectionSpec{
+		name:      "storage",
+		immediate: true,
+		snapshot: func() any {
+			var saved storageSaved
+			saved.Storage, saved.StorageLog, saved.Plates = storage.snapshotAll()
+			return saved
+		},
+		load: func(data []byte) error {
+			var saved storageSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			storage.load(saved.Storage, saved.StorageLog, saved.Plates)
+			return nil
+		},
+	})
 }
 
 func init() {

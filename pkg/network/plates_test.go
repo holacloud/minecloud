@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -360,11 +359,11 @@ func TestPlatesSurviveARestartAndOldPlatesMigrate(t *testing.T) {
 	l.book.blocks[blockKey(9, 0, 0)] = full
 
 	blocks, log, plates := l.book.snapshotAll()
-	data, err := json.Marshal(persistedWorldState{Storage: blocks, StorageLog: log, Plates: plates})
+	data, err := json.Marshal(storageSaved{Storage: blocks, StorageLog: log, Plates: plates})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var reread persistedWorldState
+	var reread storageSaved
 	if err := json.Unmarshal(data, &reread); err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +464,7 @@ func TestPlatesThroughMessagesAndARestart(t *testing.T) {
 	}
 	// The server restarts from what it saved.
 	storage = newStorageBook()
-	if err := loadWorldState(); err != nil {
+	if err := worldLoad(); err != nil {
 		t.Fatal(err)
 	}
 	if o := reply("storagePut", map[string]interface{}{"x": 3, "type": g.Type, "amount": 1, "plate": g.ID, "token": g.Token, "reqId": "msg-put-3"}); o.Reason != "not yours" {
@@ -483,11 +482,11 @@ func TestPlatesThroughMessagesAndARestart(t *testing.T) {
 	if taken.Amount != 1 || len(taken.Plates) != 1 || taken.Plates[0].Culture.Main.LogN != 7.7 || taken.Plates[0].Culture.Seed != g.Culture.Seed {
 		t.Fatalf("take after restart: %+v", taken)
 	}
-	saved, err := os.ReadFile(filepath.Clean(worldStatePath))
+	saved, err := os.ReadFile(worldStorage.path())
 	if err != nil {
 		t.Fatal(err)
 	}
-	var state persistedWorldState
+	var state storageSaved
 	json.Unmarshal(saved, &state)
 	if rec, ok := state.Plates[g.ID]; !ok || rec.Token != taken.Plates[0].Token {
 		t.Fatalf("world.json: %+v", rec)
@@ -632,8 +631,8 @@ func TestPlatesRandomMovesNeverDuplicate(t *testing.T) {
 		}
 		// And all of it survives a restart unchanged.
 		blocks, log, plates := l.book.snapshotAll()
-		data, _ := json.Marshal(persistedWorldState{Storage: blocks, StorageLog: log, Plates: plates})
-		var reread persistedWorldState
+		data, _ := json.Marshal(storageSaved{Storage: blocks, StorageLog: log, Plates: plates})
+		var reread storageSaved
 		json.Unmarshal(data, &reread)
 		r := newPlateLab()
 		r.book.load(reread.Storage, reread.StorageLog, reread.Plates)

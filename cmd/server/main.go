@@ -86,6 +86,7 @@ func main() {
 		if err := network.FlushWorld(); err != nil {
 			log.Printf("Failed to save world chunks: %v", err)
 		}
+		network.SaveWorldState()
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

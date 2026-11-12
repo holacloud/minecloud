@@ -219,7 +219,7 @@ func handleConstructionStock(client *Client, payload json.RawMessage) {
 	refused = append(refused, protected...)
 	// Saved before it is answered, as any move (storage.go).
 	if len(filled) > 0 {
-		saveWorldState()
+		worldStorage.changed()
 	}
 	log.Printf("constructionStock from %s: %d filled, %d refused", client.ID, len(filled), len(refused))
 	storageDeliver(client, createMessage("constructionStockResult", map[string]interface{}{"filled": filled, "refused": refused}))

@@ -513,8 +513,8 @@ func TestPlotsSurviveARestart(t *testing.T) {
 	claimWorld(t)
 	claimAnaPlot(t)
 	before := claims.list()
-	saveWorldState()
-	data, err := os.ReadFile(worldStatePath)
+	worldSaveAll()
+	data, err := os.ReadFile(worldClaims.path())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +526,7 @@ func TestPlotsSurviveARestart(t *testing.T) {
 	}
 
 	claims = newClaimBook()
-	if err := loadWorldState(); err != nil {
+	if err := worldLoad(); err != nil {
 		t.Fatal(err)
 	}
 	after := claims.list()
@@ -1168,9 +1168,9 @@ func TestRemovingAGuestRevokesAtOnceAndTheListsSayWhoIsWhat(t *testing.T) {
 func TestGuestsSurviveARestartAndLoadCleansThem(t *testing.T) {
 	claimWorld(t)
 	claimWithGuest(t)
-	saveWorldState()
+	worldSaveAll()
 	claims = newClaimBook()
-	if err := loadWorldState(); err != nil {
+	if err := worldLoad(); err != nil {
 		t.Fatal(err)
 	}
 	if g := claims.list()[0].Guests; len(g) != 1 || g[plrBeto].Name != "Beto" {
@@ -1284,9 +1284,9 @@ func TestPlotsSavedCloserThanTheGapStayAndOnlyNewClaimsAreChecked(t *testing.T) 
 	if n := len(claims.list()); n != 3 {
 		t.Fatalf("%d plots kept", n)
 	}
-	saveWorldState()
+	worldSaveAll()
 	claims = newClaimBook()
-	if err := loadWorldState(); err != nil || len(claims.list()) != 3 {
+	if err := worldLoad(); err != nil || len(claims.list()) != 3 {
 		t.Fatalf("after a restart: %v %d", err, len(claims.list()))
 	}
 	// They protect as ever; a new one next to them is checked.

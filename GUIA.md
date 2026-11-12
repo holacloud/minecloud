@@ -681,7 +681,7 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   Una por jugador. **Zona de inicio:** x y z de −16 a 15 (32 × 32 alrededor de (0, 0)), sin dueño.
 - **Quitar:** romper el mojón (solo el dueño o el administrador, porque está dentro de su propia parcela) o taparlo con otro
   bloque quita la parcela. En el cliente, romperlo o «Quitar la parcela» en el panel preguntan antes.
-- **Guardado:** `world.json`, `claims` (por id: marcador, dueño, nombre, fecha). Al cargar se descarta lo imposible (sin dueño,
+- **Guardado:** `data/world/claims.json`, `claims` (por id: marcador, dueño, nombre, fecha). Al cargar se descarta lo imposible (sin dueño,
   segunda del mismo dueño, solapes; se queda la más antigua). Índice por chunk (`byChunk`): una parcela toca como mucho 3 × 3
   chunks y un chunk como mucho 4 parcelas, así que mirar una columna es un acceso a un mapa y unas pocas comparaciones.
 - **Protección (`claimCheck`):** se permite si la columna no es de nadie, si es de tu parcela o si eres el administrador (sesión

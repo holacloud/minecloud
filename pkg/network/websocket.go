@@ -8,8 +8,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -155,21 +153,6 @@ type GameState struct {
 	WorldDay      int                   `json:"worldDay"`
 }
 
-type persistedWorldState struct {
-	Blocks        map[string]Block      `json:"blocks"`
-	RemovedBlocks map[string]bool       `json:"removedBlocks"`
-	SprayPaints   map[string]SprayPaint `json:"sprayPaints"`
-	Crops         map[string]Crop       `json:"crops,omitempty"`
-	Power         map[string]PowerBlock `json:"power,omitempty"`
-	// What chests hold, and the answers clients may still ask about (storage.go).
-	Storage    map[string]StorageBlock `json:"storage,omitempty"`
-	StorageLog []storageOutcome        `json:"storageLog,omitempty"`
-	// Every culture plate, by its id (plates.go).
-	Plates map[string]PlateRecord `json:"plates,omitempty"`
-	// Every plot, by its id (claims.go).
-	Claims map[string]Claim `json:"claims,omitempty"`
-}
-
 var (
 	clients   = make(map[*Client]bool)
 	clientsMu sync.RWMutex
@@ -190,14 +173,12 @@ var (
 	}
 )
 
-const worldStatePath = "data/world.json"
-
 func Initialize() error {
 	if err := initializeAuditStores(); err != nil {
 		return err
 	}
 
-	if err := loadWorldState(); err != nil {
+	if err := worldLoad(); err != nil {
 		return err
 	}
 	if err := initChunkStore(); err != nil {
@@ -250,50 +231,10 @@ func pruneExpiredSprayPaintsLocked() []string {
 		if sprayPaintExpired(paint, gameState.WorldDay, gameState.WorldTime) {
 			delete(gameState.SprayPaints, key)
 			expired = append(expired, key)
+			worldPaints.mark()
 		}
 	}
 	return expired
-}
-
-func loadWorldState() error {
-	data, err := os.ReadFile(worldStatePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-
-	var persisted persistedWorldState
-	if err := json.Unmarshal(data, &persisted); err != nil {
-		return err
-	}
-
-	stateMu.Lock()
-	if persisted.Blocks != nil {
-		gameState.Blocks = persisted.Blocks
-	} else {
-		gameState.Blocks = make(map[string]Block)
-	}
-	if persisted.RemovedBlocks != nil {
-		gameState.RemovedBlocks = persisted.RemovedBlocks
-	} else {
-		gameState.RemovedBlocks = make(map[string]bool)
-	}
-	if persisted.SprayPaints != nil {
-		gameState.SprayPaints = persisted.SprayPaints
-		pruneExpiredSprayPaintsLocked()
-	} else {
-		gameState.SprayPaints = make(map[string]SprayPaint)
-	}
-	stateMu.Unlock()
-	loadCrops(persisted.Crops)
-	loadPower(persisted.Power)
-	storage.load(persisted.Storage, persisted.StorageLog, persisted.Plates)
-	claims.load(persisted.Claims)
-
-	log.Printf("Loaded %d persisted blocks, %d removed blocks and %d spray paints", len(gameState.Blocks), len(gameState.RemovedBlocks), len(gameState.SprayPaints))
-	return nil
 }
 
 // Every message of every client in the log is a line for each step of each player: only to debug
@@ -305,52 +246,82 @@ func ConfigureMessageLog(on bool) {
 	logMessages = on
 }
 
-var saveMu sync.Mutex
+// The blocks that say more than their name: the text and votes of a sign, the note of a sound block, the
+// side of a ladder. removedBlocks is from when edits were kept here and not in the chunks (chunks.go).
+type blocksSaved struct {
+	Blocks        map[string]Block `json:"blocks"`
+	RemovedBlocks map[string]bool  `json:"removedBlocks"`
+}
 
-func saveWorldState() {
-	saveMu.Lock()
-	defer saveMu.Unlock()
-	stateMu.RLock()
-	persisted := persistedWorldState{
-		Blocks:        make(map[string]Block, len(gameState.Blocks)),
-		RemovedBlocks: make(map[string]bool, len(gameState.RemovedBlocks)),
-		SprayPaints:   make(map[string]SprayPaint, len(gameState.SprayPaints)),
-	}
-	for key, block := range gameState.Blocks {
-		persisted.Blocks[key] = block
-	}
-	for key, removed := range gameState.RemovedBlocks {
-		persisted.RemovedBlocks[key] = removed
-	}
-	for key, paint := range gameState.SprayPaints {
-		persisted.SprayPaints[key] = paint
-	}
-	stateMu.RUnlock()
-	persisted.Crops = snapshotCrops()
-	persisted.Power = snapshotPower()
-	persisted.Storage, persisted.StorageLog, persisted.Plates = storage.snapshotAll()
-	persisted.Claims = claims.snapshot()
+type paintsSaved struct {
+	SprayPaints map[string]SprayPaint `json:"sprayPaints"`
+}
 
-	if err := os.MkdirAll(filepath.Dir(worldStatePath), 0o755); err != nil {
-		log.Printf("Failed to create world state directory: %v", err)
-		return
-	}
+var worldBlocks, worldPaints *worldSection
 
-	data, err := json.MarshalIndent(persisted, "", "  ")
-	if err != nil {
-		log.Printf("Failed to marshal world state: %v", err)
-		return
-	}
-
-	tmpPath := worldStatePath + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
-		log.Printf("Failed to write world state temp file: %v", err)
-		return
-	}
-
-	if err := os.Rename(tmpPath, worldStatePath); err != nil {
-		log.Printf("Failed to replace world state file: %v", err)
-	}
+func init() {
+	worldBlocks = registerWorldSection(worldSectionSpec{
+		name: "blocks",
+		snapshot: func() any {
+			stateMu.RLock()
+			defer stateMu.RUnlock()
+			saved := blocksSaved{
+				Blocks:        make(map[string]Block, len(gameState.Blocks)),
+				RemovedBlocks: make(map[string]bool, len(gameState.RemovedBlocks)),
+			}
+			for key, block := range gameState.Blocks {
+				saved.Blocks[key] = block
+			}
+			for key, removed := range gameState.RemovedBlocks {
+				saved.RemovedBlocks[key] = removed
+			}
+			return saved
+		},
+		load: func(data []byte) error {
+			var saved blocksSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			if saved.Blocks == nil {
+				saved.Blocks = make(map[string]Block)
+			}
+			if saved.RemovedBlocks == nil {
+				saved.RemovedBlocks = make(map[string]bool)
+			}
+			stateMu.Lock()
+			gameState.Blocks = saved.Blocks
+			gameState.RemovedBlocks = saved.RemovedBlocks
+			stateMu.Unlock()
+			log.Printf("Loaded %d persisted blocks and %d removed blocks", len(saved.Blocks), len(saved.RemovedBlocks))
+			return nil
+		},
+	})
+	worldPaints = registerWorldSection(worldSectionSpec{
+		name: "paints",
+		snapshot: func() any {
+			stateMu.RLock()
+			defer stateMu.RUnlock()
+			saved := paintsSaved{SprayPaints: make(map[string]SprayPaint, len(gameState.SprayPaints))}
+			for key, paint := range gameState.SprayPaints {
+				saved.SprayPaints[key] = paint
+			}
+			return saved
+		},
+		load: func(data []byte) error {
+			var saved paintsSaved
+			if err := json.Unmarshal(data, &saved); err != nil {
+				return err
+			}
+			if saved.SprayPaints == nil {
+				saved.SprayPaints = make(map[string]SprayPaint)
+			}
+			stateMu.Lock()
+			gameState.SprayPaints = saved.SprayPaints
+			pruneExpiredSprayPaintsLocked()
+			stateMu.Unlock()
+			return nil
+		},
+	})
 }
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -618,14 +589,14 @@ func placeBlock(client *Client, payload Block) (Block, bool) {
 	}
 	// What the mechanics make of the name (glow_block.go, appliances.go...).
 	payload.BlockType = placeFiltered(payload.X, payload.Y, payload.Z, payload.BlockType)
-	spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
+	spill, _, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, payload.BlockType, func() (bool, error) {
 		return setBlockTracked(payload.X, payload.Y, payload.Z, payload.BlockType)
 	})
 	if err != nil {
 		log.Printf("blockPlace: %v", err)
 		return payload, false
 	}
-	// Only blocks with metadata (signs, sound blocks, ladders) are kept in world.json.
+	// Only blocks with metadata (signs, sound blocks, ladders) are kept besides the chunks (worldBlocks).
 	key := blockKey(payload.X, payload.Y, payload.Z)
 	stateMu.Lock()
 	_, hadMetadata := gameState.Blocks[key]
@@ -635,8 +606,12 @@ func placeBlock(client *Client, payload Block) (Block, bool) {
 		delete(gameState.Blocks, key)
 	}
 	stateMu.Unlock()
-	if hadMetadata || hasBlockMetadata(payload) || cropsChanged || len(spill) > 0 {
-		saveWorldState()
+	// The crops and the power say for themselves that they changed (setBlockTracked).
+	if hadMetadata || hasBlockMetadata(payload) {
+		worldBlocks.changed()
+	}
+	if len(spill) > 0 {
+		worldStorage.changed()
 	}
 	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 	recordSignMessage(client, payload)
@@ -770,7 +745,7 @@ func handleBlockBreak(client *Client, msg Message) {
 	was, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
 
 	// The chunk store is the source of truth; never call it while holding stateMu.
-	spill, cropsChanged, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
+	spill, _, err := storage.replace(chunkStore, payload.X, payload.Y, payload.Z, "", func() (bool, error) {
 		return setBlockTracked(payload.X, payload.Y, payload.Z, "")
 	})
 	if err != nil {
@@ -783,8 +758,11 @@ func handleBlockBreak(client *Client, msg Message) {
 	delete(gameState.Blocks, key)
 	removeSprayPaintsForBlockLocked(payload.X, payload.Y, payload.Z)
 	stateMu.Unlock()
-	if hadMetadata || cropsChanged || len(spill) > 0 {
-		saveWorldState()
+	if hadMetadata {
+		worldBlocks.changed()
+	}
+	if len(spill) > 0 {
+		worldStorage.changed()
 	}
 	storageSendDrop(client, payload.X, payload.Y, payload.Z, spill)
 
@@ -838,7 +816,7 @@ func handleSprayPaint(client *Client, msg Message) {
 	key := sprayPaintKey(payload.X, payload.Y, payload.Z, payload.Face)
 	gameState.SprayPaints[key] = payload
 	stateMu.Unlock()
-	saveWorldState()
+	worldPaints.changed()
 
 	broadcastToAll(createMessage("sprayPaint", payload))
 }
@@ -993,7 +971,7 @@ func handleSignVote(client *Client, msg Message) {
 	stateMu.Lock()
 	block, ok := gameState.Blocks[key]
 	if ok && isSignBlock(block.BlockType) {
-		// A new map each time, never a change in place: saveWorldState and the broadcasts below
+		// A new map each time, never a change in place: the save (worldBlocks) and the broadcasts below
 		// read the old one with stateMu released, and a map read while written aborts the server.
 		votes := make(map[string]int, len(block.Votes)+1)
 		for emoji, count := range block.Votes {
@@ -1007,7 +985,7 @@ func handleSignVote(client *Client, msg Message) {
 	}
 	stateMu.Unlock()
 	if ok {
-		saveWorldState()
+		worldBlocks.changed()
 		broadcastToAll(createMessage("signVoteUpdate", block))
 		broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("El usuario %s ha votado %s", client.username, emojiLabel)}))
 	}
@@ -1093,6 +1071,7 @@ func removeSprayPaintsForBlockLocked(x, y, z int) {
 	for key := range gameState.SprayPaints {
 		if strings.HasPrefix(key, prefix) {
 			delete(gameState.SprayPaints, key)
+			worldPaints.mark()
 		}
 	}
 }

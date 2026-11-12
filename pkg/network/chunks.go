@@ -110,8 +110,8 @@ func takeLegacyEdits(chunkX, chunkZ int) []world.Edit {
 	}
 	stateMu.Unlock()
 
-	// Persist the shrunk legacy maps outside the store lock.
-	go saveWorldState()
+	// The shrunk legacy maps are saved with the next round, outside the store lock.
+	worldBlocks.mark()
 	return edits
 }
 

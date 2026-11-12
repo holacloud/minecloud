@@ -775,7 +775,7 @@ func handleCultureMessage(client *Client, msg Message) {
 		return
 	}
 	if changed {
-		saveWorldState()
+		worldStorage.changed()
 	}
 	storageReply(client, outcome)
 }

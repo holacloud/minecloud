@@ -239,7 +239,7 @@ Then open `http://localhost:8080` in your browser.
 
 ## Persistence
 
-- World block changes are persisted on the server in `data/world.json`.
+- What the world keeps besides its chunks is saved on the server in `data/world/`, a file for each mechanic.
 - Sign text, sign votes, sound block settings, ladder facing, and temporary spray paint are persisted with the world state on the server.
 - Spray paint expires after 1 Minecraft day and is cleaned up from the shared world state.
 - Player state snapshots are saved on graceful shutdown in `data/player-states`.
@@ -252,4 +252,4 @@ Then open `http://localhost:8080` in your browser.
 - `pkg/web/static`: embedded web client, assets, and game scripts.
 - `pkg/web/static/textures/rtx`: texture assets used by the RTX visual mode.
 - `pkg/web/static/js/voice.js`: proximity voice chat manager.
-- `data/world.json`: persisted world block state created at runtime.
+- `data/world/*.json`: chests, power, plots, crops, signs and paint, a file each, created at runtime (`data/world.json` is the old single file, read once and kept).

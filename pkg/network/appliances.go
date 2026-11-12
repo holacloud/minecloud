@@ -42,7 +42,7 @@ import (
 // the world as needing a save, at most every applianceSaveEvery. So a crash can roll back up to
 // that long of cooking, burning and chilling: a fish that was cooked is raw again and its coal is
 // back. Every save copies the whole book under the lock, so what a player moved is never lost or
-// doubled. Oven names live in the chunks, which may be ahead of world.json: the first tick after a
+// doubled. Oven names live in the chunks, which may be ahead of the saved chests: the first tick after a
 // restart sets them right.
 //
 // ovenRecipes, ovenFuels, foundryRecipes, foundryFuels, arcRecipes, chillChanges and freezeChanges
@@ -456,7 +456,7 @@ func (b *storageBook) wakeLocked(place storagePlace, block *StorageBlock) {
 }
 
 // tickAppliances runs every appliance with work to do for dt seconds. Returns the blocks whose names
-// changed, to broadcast, and whether world.json needs saving.
+// changed, to broadcast, and whether the chests need saving.
 func (b *storageBook) tickAppliances(w cropWorld, dt float64) ([]Block, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -713,7 +713,7 @@ func runAppliances() {
 		if pending && now.Sub(lastSave) >= applianceSaveEvery {
 			pending = false
 			lastSave = now
-			saveWorldState()
+			worldStorage.changed()
 		}
 		for _, block := range updates {
 			broadcastToAll(createMessage("blockPlace", block))
