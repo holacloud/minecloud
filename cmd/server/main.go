@@ -46,7 +46,7 @@ func main() {
 		PlayersNear:       10,
 		PlayersRange:      160,
 		PlayersFarSeconds: 1,
-		PlayersMoveMs:     50,
+		PlayersMoveMs:     20,
 	}
 	goconfig.Read(config)
 	network.ConfigureICE(network.ICEConfig{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -11,7 +12,7 @@ import (
 // Where the other players are, told to each client. A client says where its player is ten times a second
 // (playerMove); telling every one of those to everybody is as many messages as the square of the players,
 // and with a hundred of them each child's tablet gets a thousand a second. So nothing is passed on as it
-// comes: every movesConfig.Every (a twentieth of a second) each client gets one message, playerMoves, with
+// comes: every movesConfig.Every (a fiftieth of a second) each client gets one message, playerMoves, with
 //
 //   - the players near it that have changed since it was last told: the movesConfig.Near nearest within
 //     movesConfig.Range blocks (Manhattan), every time;
@@ -22,8 +23,12 @@ import (
 // costs nothing. A player's name and looks go with the first time a client hears of them, and again only
 // when they change (js/websocket.js keeps them).
 //
+// A move waits for its round, some more than others: told as they come out, a player walking straight
+// would be seen going in jerks. So each goes with its `age`, the milliseconds since the server heard of
+// it, and the client puts it back at its time (js/game/avatars.js).
+//
 // {players: [{id, x, y, z, yaw, pitch, heldItem?, offhandItem?, action?, mount?, mountYaw?,
-//             username?, shirtColor?, hairStyle?, hairColor?}], gone?: [id]}
+//             username?, shirtColor?, hairStyle?, hairColor?, age?}], gone?: [id]}
 
 type MovesConfig struct {
 	// How many of the nearest players a client is told about at the full rate.
@@ -37,7 +42,7 @@ type MovesConfig struct {
 	Every time.Duration
 }
 
-var movesConfig = MovesConfig{Near: 10, Range: 160, FarEvery: time.Second, Every: 50 * time.Millisecond}
+var movesConfig = MovesConfig{Near: 10, Range: 160, FarEvery: time.Second, Every: 20 * time.Millisecond}
 
 // ConfigureMoves sets who a client is told about, before the server starts. A zero or negative value
 // keeps the default.
@@ -63,6 +68,7 @@ const (
 	// A player a client already knows of stays this much further: walking along the edge of the range
 	// does not make them come and go.
 	movesRangeSlack = 16.0
+	movesAgeMost    = 2000
 )
 
 // What a client was last told of a player.
@@ -76,6 +82,7 @@ type movesSeen struct {
 type movesPlayer struct {
 	player     Player
 	client     *Client
+	age        int64 // milliseconds its move has waited, in this round
 	slim, full []byte
 }
 
@@ -99,6 +106,11 @@ func (p *movesPlayer) entry(full bool) []byte {
 		out.Username, out.ShirtColor, out.HairStyle, out.HairColor = "", "", "", ""
 	}
 	data, _ := json.Marshal(out)
+	if p.age > 0 {
+		data = append(data[:len(data)-1], `,"age":`...)
+		data = strconv.AppendInt(data, p.age, 10)
+		data = append(data, '}')
+	}
 	if full {
 		p.full = data
 	} else {
@@ -135,7 +147,9 @@ func playerMovesTick(now time.Time) {
 	for id, player := range gameState.Players {
 		// Until its first move a player is nowhere (the title screen).
 		if player.Located {
-			players = append(players, movesPlayer{player: player, client: playerClients[id]})
+			// No more than movesAgeMost: beyond it the move is old news, and when exactly says nothing.
+			age := min(max(now.Sub(player.at).Milliseconds(), 0), movesAgeMost)
+			players = append(players, movesPlayer{player: player, client: playerClients[id], age: age})
 		}
 	}
 	stateMu.RUnlock()

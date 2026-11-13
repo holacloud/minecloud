@@ -30,13 +30,17 @@ class NetworkClient {
             this.connected = true;
             // A new connection knows nothing of where this player is, nor this one of the others.
             this.lastMoveSaid = null;
-            for (const id of [...this.otherPlayers.keys()]) {
-                this.otherPlayers.delete(id);
-                this.emit('otherPlayerGone', id);
+            try {
+                for (const id of [...this.otherPlayers.keys()]) {
+                    this.otherPlayers.delete(id);
+                    this.emit('otherPlayerGone', id);
+                }
+                this.emit('connected');
+            } finally {
+                // Whatever a listener does: without this the server takes nothing from this player.
+                this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor, hairStyle: this.hairStyle, hairColor: this.hairColor });
+                this.updateStatus('Connected');
             }
-            this.emit('connected');
-            this.send('playerJoin', { playerId: this.playerId, username: this.username, shirtColor: this.shirtColor, hairStyle: this.hairStyle, hairColor: this.hairColor });
-            this.updateStatus('Connected');
         };
         
         this.ws.onclose = (e) => {
@@ -87,6 +91,16 @@ class NetworkClient {
         }
     }
     
+    // The same for one of several in a message: a listener that fails with one does not lose the others,
+    // which the server will not say again.
+    emitEach(type, payload) {
+        try {
+            this.emit(type, payload);
+        } catch (error) {
+            console.error(`WebSocket: ${type} failed`, error);
+        }
+    }
+
     handleMessage(message) {
         switch(message.type) {
             case 'init':
@@ -218,10 +232,10 @@ class NetworkClient {
                 ...entry
             } : entry;
             this.otherPlayers.set(entry.id, player);
-            this.emit('otherPlayerMove', player);
+            this.emitEach('otherPlayerMove', player);
         }
         for (const id of payload.gone || []) {
-            if (this.otherPlayers.delete(id)) this.emit('otherPlayerGone', id);
+            if (this.otherPlayers.delete(id)) this.emitEach('otherPlayerGone', id);
         }
     }
 

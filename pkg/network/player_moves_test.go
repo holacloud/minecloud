@@ -311,7 +311,7 @@ func TestConfigureMovesKeepsTheDefaultsForWhatIsNotSaid(t *testing.T) {
 		t.Fatalf("%+v", movesConfig)
 	}
 	// The time between rounds, with a floor: there is no "as it comes".
-	if movesConfig.Every != 50*time.Millisecond {
+	if movesConfig.Every != 20*time.Millisecond {
 		t.Fatalf("by default: %s", movesConfig.Every)
 	}
 	ConfigureMoves(MovesConfig{Every: 200 * time.Millisecond})
@@ -321,5 +321,47 @@ func TestConfigureMovesKeepsTheDefaultsForWhatIsNotSaid(t *testing.T) {
 	ConfigureMoves(MovesConfig{Every: time.Millisecond})
 	if movesConfig.Every != movesEveryLeast {
 		t.Fatalf("under the floor: %s", movesConfig.Every)
+	}
+}
+
+// A move goes with how long it waited for its round, and not with the time it stood still before.
+func TestAMoveSaysHowLongItWaitedForItsRound(t *testing.T) {
+	movesWorld(t)
+	ana := movesJoin("ana", 0, 70, 0)
+	beto := movesJoin("beto", 5, 70, 0)
+	playerMovesTick(time.Now())
+	movesTold(t, ana)
+
+	movesMove(beto, 6, 70, 0, "")
+	stateMu.RLock()
+	moved := gameState.Players["beto"].at
+	stateMu.RUnlock()
+	playerMovesTick(moved.Add(37 * time.Millisecond))
+	heard, _ := movesTold(t, ana)
+	if got := heard.of("beto"); got["age"] != 37.0 || got["x"] != 6.0 {
+		t.Fatalf("beto, 37 ms after moving: %+v", got)
+	}
+
+	// The same again is no move: its time stays that of the last one.
+	movesMove(beto, 6, 70, 0, "")
+	stateMu.RLock()
+	again := gameState.Players["beto"].at
+	stateMu.RUnlock()
+	if !again.Equal(moved) {
+		t.Fatal("standing still counts as having just moved")
+	}
+
+	// A round before the move (the clocks of a test), or long after: never under 0 nor over movesAgeMost.
+	movesMove(beto, 7, 70, 0, "")
+	playerMovesTick(moved.Add(-time.Hour))
+	heard, _ = movesTold(t, ana)
+	if _, said := heard.of("beto")["age"]; said {
+		t.Fatalf("an age under 0: %+v", heard.of("beto"))
+	}
+	movesMove(beto, 8, 70, 0, "")
+	playerMovesTick(moved.Add(time.Hour))
+	heard, _ = movesTold(t, ana)
+	if got := heard.of("beto"); got["age"] != float64(movesAgeMost) {
+		t.Fatalf("an hour later: %+v", got)
 	}
 }

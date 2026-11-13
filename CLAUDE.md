@@ -66,7 +66,9 @@ before calling it done. There is no CI: nothing else will catch a red test.
   the server's.
 - Other players: a client is only told of those around it (`pkg/network/player_moves.go`: the nearest every
   round, the rest in range now and then, `gone` when they leave it). An avatar exists only for
-  those; never broadcast something to everybody for each move of each player.
+  those; never broadcast something to everybody for each move of each player. Each move comes with its `age`
+  and is drawn a moment behind, between two of them (`avatarSteps*` in `game/avatars.js`): never move an
+  avatar straight to the last place heard.
 
 ## Recipe: a new mob
 

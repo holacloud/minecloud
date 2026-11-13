@@ -147,6 +147,8 @@ type Player struct {
 	// What tells a change from the last one each client heard of (player_moves.go): rev is new with
 	// anything of the player, look with its name or its looks.
 	rev, look uint64
+	// When the server heard of the move that made rev, for the others to know how long it waited.
+	at time.Time
 }
 
 type GameState struct {
@@ -737,7 +739,7 @@ func handlePlayerMove(client *Client, msg Message) {
 	if payload.HairColor == "" {
 		payload.HairColor = existing.HairColor
 	}
-	payload.rev, payload.look = existing.rev, existing.look
+	payload.rev, payload.look, payload.at = existing.rev, existing.look, existing.at
 	if payload.look == 0 || payload.Username != existing.Username || payload.ShirtColor != existing.ShirtColor ||
 		payload.HairStyle != existing.HairStyle || payload.HairColor != existing.HairColor {
 		playerRevision++
@@ -747,6 +749,7 @@ func handlePlayerMove(client *Client, msg Message) {
 	if payload != existing {
 		playerRevision++
 		payload.rev = playerRevision
+		payload.at = time.Now()
 		gameState.Players[payload.ID] = payload
 	}
 	playerClients[payload.ID] = client

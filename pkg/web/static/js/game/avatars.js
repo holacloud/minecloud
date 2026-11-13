@@ -1,6 +1,14 @@
 // Player avatars: appearance, models, name tags, animation and remote players.
 // Mixed into Game.prototype; `this` is the Game instance.
 
+// Another player is drawn where it was this long ago, between two of the places it said it was: at an
+// even pace, however unevenly the news of them come (ten a second from its client, put together by the
+// server in rounds, pkg/network/player_moves.go). It is one move of its client and one round, with room.
+const AVATAR_BEHIND_MS = 200;
+// A step never takes longer than this: someone who stood still and starts walking does not creep there
+// over all the time it was still, nor one who is far and heard of once a second.
+const AVATAR_STEP_MOST_MS = 150;
+
 Object.assign(Game.prototype, {
     updateLocalPlayerAvatar(anchor, delta) {
         if (!this.localPlayerAvatar) return;
@@ -136,6 +144,8 @@ Object.assign(Game.prototype, {
         group.userData.heldItemType = null;
         group.userData.lastPosition = new THREE.Vector3();
         group.userData.targetPosition = new THREE.Vector3();
+        // Where it said it was, and when (avatarSteps*), oldest first.
+        group.userData.steps = [];
         group.userData.targetYaw = 0;
         group.userData.targetPitch = 0;
         group.userData.targetAction = '';
@@ -316,7 +326,8 @@ Object.assign(Game.prototype, {
                 node.geometry.dispose();
             }
             if (node instanceof THREE.Mesh && node.material) {
-                node.material.dispose();
+                // A head has a material for each face.
+                for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.dispose();
             }
             if (node instanceof THREE.Sprite && node.material) {
                 if (node.material.map) {
@@ -435,11 +446,47 @@ Object.assign(Game.prototype, {
             : THREE.MathUtils.lerp(parts.head.rotation.x, targetPitch, alpha);
     },
 
+    avatarClock() {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    },
+
+    // The avatar was at `position` at the time `at` (of avatarClock): the server says how long ago it
+    // heard of each move (`age`), so what counts is when it was made and not when the news came.
+    avatarStepsAdd(avatar, position, at) {
+        const steps = avatar.userData.steps;
+        const last = steps[steps.length - 1];
+        // News never go back in time: one that says so (a clock gone odd) follows the last closely.
+        if (last && at <= last.at) at = last.at + 1;
+        steps.push({ at, position });
+        if (steps.length > 8) steps.shift();
+    },
+
+    // Puts the avatar where it was at the time `at`: on the way between the two steps around it, at the
+    // last one if `at` is beyond it (no news: it stands still, or they are late).
+    avatarStepsPlace(avatar, at) {
+        const steps = avatar.userData.steps;
+        if (steps.length === 0) return;
+        while (steps.length > 1 && steps[1].at <= at) steps.shift();
+        const from = steps[0];
+        if (steps.length === 1) {
+            // Still on its way there from wherever it was drawn last (the very first place: already there).
+            if (at >= from.at) avatar.position.copy(from.position);
+            return;
+        }
+        const to = steps[1];
+        const start = Math.max(from.at, to.at - AVATAR_STEP_MOST_MS);
+        if (at <= start) {
+            avatar.position.copy(from.position);
+            return;
+        }
+        avatar.position.lerpVectors(from.position, to.position, (at - start) / (to.at - start));
+    },
+
     updateRemotePlayers(delta) {
         const alpha = Math.min(1, delta * 10);
         for (const avatar of this.otherPlayerMeshes.values()) {
             const previousPosition = avatar.position.clone();
-            avatar.position.lerp(avatar.userData.targetPosition, alpha);
+            this.avatarStepsPlace(avatar, this.avatarClock() - AVATAR_BEHIND_MS);
             avatar.rotation.y = this.lerpAngle(avatar.rotation.y, avatar.userData.targetYaw, alpha);
             this.applyAvatarHeadPitch(avatar, avatar.userData.targetPitch, alpha);
             this.animatePlayerAvatar(avatar, previousPosition, delta, !avatar.userData.mountMob);
@@ -514,6 +561,7 @@ Object.assign(Game.prototype, {
         const feet = lying ? bedAvatarFeet(player, player.mountYaw || 0) : { x: player.x, y: player.y - avatarHeight, z: player.z };
         const nextFeetPosition = new THREE.Vector3(feet.x, feet.y, feet.z);
         if (!avatar.userData.initialized) {
+            avatar.userData.steps.length = 0;
             avatar.userData.lastPosition.copy(nextFeetPosition);
             avatar.userData.targetPosition.copy(nextFeetPosition);
             avatar.position.copy(nextFeetPosition);
@@ -523,6 +571,7 @@ Object.assign(Game.prototype, {
         }
 
         avatar.userData.targetPosition.copy(nextFeetPosition);
+        this.avatarStepsAdd(avatar, nextFeetPosition, this.avatarClock() - (player.age > 0 ? player.age : 0));
         avatar.userData.targetYaw = player.yaw + Math.PI;
         avatar.userData.targetPitch = typeof player.pitch === 'number' ? player.pitch : 0;
         avatar.userData.targetAction = this.normalizePlayerAction(player.action);

@@ -132,3 +132,104 @@ test('the server sends playerMoves and no longer every move to everybody, nor al
     const init = go('websocket.go');
     assert.doesNotMatch(init.slice(init.indexOf('initMsg := map'), init.indexOf('initMsg := map') + 400), /"players"/);
 });
+
+// ---- How another player is drawn between the places it said it was (js/game/avatars.js) ----
+
+function makeAvatars() {
+    class Vector3 {
+        constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
+        copy(v) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
+        lerpVectors(a, b, t) { this.x = a.x + (b.x - a.x) * t; this.y = a.y + (b.y - a.y) * t; this.z = a.z + (b.z - a.z) * t; return this; }
+    }
+    const context = vm.createContext({ THREE: { Vector3 }, Game: function Game() {} });
+    vm.runInContext(fs.readFileSync(path.join(JS, 'game', 'avatars.js'), 'utf8'), context);
+    const game = new context.Game();
+    const avatar = { userData: { steps: [] }, position: new Vector3() };
+    const behind = vm.runInContext('AVATAR_BEHIND_MS', context);
+    return { game, avatar, behind, step: (x, at) => game.avatarStepsAdd(avatar, new Vector3(x, 0, 0), at) };
+}
+
+test('a player walking straight is drawn at an even pace, however unevenly the rounds bring the news', () => {
+    const { game, avatar, behind } = makeAvatars();
+    // A block every 100 ms, said by its client on time; each waits for its round (0 to 50 ms) and comes
+    // with that wait as its age, as updateOtherPlayer takes it.
+    const waits = [0, 50, 10, 40, 0, 50, 30, 20, 50, 0, 45, 5];
+    const news = waits.map((wait, i) => ({ x: i, arrives: 1000 + i * 100 + wait, age: wait }));
+    const drawn = [];
+    for (let now = 1000; now <= 2100; now += 10) {
+        for (const move of news) {
+            if (move.arrives > now - 10 && move.arrives <= now) game.avatarStepsAdd(avatar, { x: move.x, y: 0, z: 0 }, move.arrives - move.age);
+        }
+        game.avatarStepsPlace(avatar, now - behind);
+        drawn.push(avatar.position.x);
+    }
+    // Once it is on its way: a tenth of a block every 10 ms, never more and never less.
+    const moving = drawn.slice(drawn.findIndex((x) => x > 0) + 1);
+    assert.ok(moving.length > 50);
+    for (let i = 1; i < moving.length; i++) {
+        assert.ok(Math.abs(moving[i] - moving[i - 1] - 0.1) < 1e-9, `from ${moving[i - 1]} to ${moving[i]}`);
+    }
+});
+
+test('a player who stood still starts at once, stops where it said, and is never drawn ahead of the news', () => {
+    const { game, avatar, behind, step } = makeAvatars();
+    const most = 150;
+    step(5, 0);
+    game.avatarStepsPlace(avatar, 0);
+    assert.equal(avatar.position.x, 5);
+    // Ten seconds later it takes a step: drawn over the last moments before it, not over the ten seconds.
+    step(6, 10000);
+    game.avatarStepsPlace(avatar, 10000 - most - 1);
+    assert.equal(avatar.position.x, 5);
+    game.avatarStepsPlace(avatar, 10000 - most / 2);
+    assert.ok(Math.abs(avatar.position.x - 5.5) < 1e-9);
+    // No more news: it stays at the last place, however long.
+    game.avatarStepsPlace(avatar, 10000 + behind);
+    game.avatarStepsPlace(avatar, 99999);
+    assert.equal(avatar.position.x, 6);
+    assert.equal(avatar.userData.steps.length, 1);
+    // News that say they are older than the last one do not take it back.
+    step(7, 500);
+    game.avatarStepsPlace(avatar, 99999);
+    assert.equal(avatar.position.x, 7);
+    // And many at once (a tab that was asleep) do not pile up.
+    for (let i = 0; i < 50; i++) step(8 + i, 200000 + i);
+    assert.ok(avatar.userData.steps.length <= 8);
+});
+
+test('THE BUG: a listener that fails as the connection opens does not keep the player from joining again', () => {
+    const { client, sent, context } = makeClient();
+    client.handleMessage({ type: 'playerMoves', payload: { players: [{ id: 'ana', x: 1, y: 70, z: 2 }] } });
+    client.on('otherPlayerGone', () => { throw new Error('an avatar that cannot be removed'); });
+    context.WebSocket = function () {};
+    client.connect('ws://nowhere');
+    assert.throws(() => client.ws.onopen());
+    assert.deepEqual(sent.map(([type]) => type), ['playerJoin'], 'without it the server takes no move of this player');
+});
+
+test('a listener that fails with one player of a message does not lose the others', () => {
+    const { client, heard } = makeClient();
+    client.on('otherPlayerMove', (player) => { if (player.id === 'ana') throw new Error('ana cannot be drawn'); });
+    client.on('otherPlayerGone', (id) => { if (id === 'ana') throw new Error('ana cannot be removed'); });
+    client.handleMessage({ type: 'playerMoves', payload: { players: [{ id: 'ana', x: 1, y: 70, z: 2 }, { id: 'beto', x: 2, y: 70, z: 2 }] } });
+    client.handleMessage({ type: 'playerMoves', payload: { players: [], gone: ['ana', 'beto'] } });
+    assert.deepEqual(heard.map(([what, said]) => `${what} ${said.id || said}`), ['move ana', 'move beto', 'gone ana', 'gone beto']);
+});
+
+test('THE BUG: an avatar whose head has a material for each face can be removed', () => {
+    class Mesh { constructor(material) { this.material = material; this.userData = {}; } }
+    class Sprite {}
+    const context = vm.createContext({ THREE: { Vector3: class {}, Mesh, Sprite }, Game: function Game() {} });
+    vm.runInContext(fs.readFileSync(path.join(JS, 'game', 'avatars.js'), 'utf8'), context);
+    const game = new context.Game();
+    const disposed = [];
+    const material = (name) => ({ dispose: () => disposed.push(name) });
+    const nodes = [new Mesh([material('face 1'), material('face 2')]), new Mesh(material('torso'))];
+    let removed = false;
+    const avatar = { userData: {}, traverse: (visit) => nodes.forEach(visit), parent: { remove: () => { removed = true; } } };
+    game.otherPlayerMeshes = new Map([['ana', avatar]]);
+    game.removeOtherPlayer('ana');
+    assert.deepEqual(disposed, ['face 1', 'face 2', 'torso']);
+    assert.ok(removed, 'out of the scene');
+    assert.equal(game.otherPlayerMeshes.size, 0);
+});

@@ -2590,7 +2590,7 @@ test('beds: others see you flat on it: the head on the pillow, and upright again
     const remote = new ctx.Game();
     const avatar = avatarStub();
     avatar.position.lerp = () => avatar.position;
-    Object.assign(avatar.userData, { initialized: true, appearanceKey: 'same', lastPosition: new Vector3(), targetPosition: new Vector3() });
+    Object.assign(avatar.userData, { initialized: true, appearanceKey: 'same', lastPosition: new Vector3(), targetPosition: new Vector3(), steps: [] });
     Object.assign(remote, {
         otherPlayerMeshes: new Map([['p', avatar]]), remotePlayerNames: new Map(),
         normalizeHairStyle: (style) => style, getPlayerAppearance: () => ({ key: 'same' }), updateAvatarNameTag() {}, updateAvatarHeldItem() {},
