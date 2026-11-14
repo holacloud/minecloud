@@ -44,6 +44,8 @@ With 60 blocks of water it comes back to life, but to swim at its ease it wants 
 - **It is hostile, in the water.** If you are in the water within **9 blocks** of it, it comes for you at
   **2 blocks a second**. You swim a little faster than that.
 - **The bite.** When its mouth reaches you it bites: **4 damage**, at most once every 1.2 seconds.
+- **Smaller animals.** With nobody in the water near it, it chases the [ammonites](267) and
+  [trilobites](266) of its water and snaps at them; they get away with a fright.
 - **On the shore you are safe.** It never leaves the water, and it does not go for a player who is out of
   it. Standing in water up to your knees counts as being in it.
 - **It does not go further** than about 6 blocks from where it was revived, unless it is after somebody:

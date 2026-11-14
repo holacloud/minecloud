@@ -98,7 +98,7 @@ function serverRows() {
 }
 
 // What the server's rows say otherwise than the species of a game that have a fossil: one line for each, that
-// names the row and the field to change. Rows of species the game does not have yet are no problem.
+// names the row and the field to change. (That no row is left over is asked of the real game below.)
 function revivalMirrorProblems(rows, game) {
     const problems = [];
     for (const [species, fossil] of Object.entries(game.FOSSIL_SPECIES)) {
@@ -149,6 +149,8 @@ test('the server has a row for each of the 41 species of the plan, with every co
 
 test('every species of the game with a fossil has its row on the server, and the row says what its file says', () => {
     assert.deepEqual(revivalMirrorProblems(serverRows(), real), []);
+    // And the other way round, now that the 41 are all here: no row for an animal the game does not have.
+    assert.deepEqual(Object.keys(serverRows()).sort(), Object.keys(plain(real.FOSSIL_SPECIES)).sort());
     // The pieces of a skeleton have one order everywhere: it is the order of the machine's slots.
     const pieces = [...GO.match(/var revivalPieces = \[3\]string\{(.+)\}/)[1].matchAll(/"(\w+)"/g)].map((match) => match[1]);
     assert.deepEqual(pieces, plain(real.FOSSIL_PIECES));

@@ -77,6 +77,9 @@ In the order they arrived in the game; the table grows with each one that arrive
 | ![](mob:deinotherium) | [Deinotherium](302) | — | 2026-11-13 |
 | ![](mob:diplodocus) | [Diplodocus](303) | — | 2026-11-13 |
 | ![](mob:tyrannosaurus) | [Tyrannosaurus](304) | — | 2026-11-13 |
+| ![](mob:megalodon) | [Megalodon](305) | — | 2026-11-13 |
+| ![](mob:anomalocaris) | [Anomalocaris](299) | — | 2026-11-13 |
+| ![](mob:meganeura) | [Meganeura](300) | — | 2026-11-13 |
 
 ## Trivia
 

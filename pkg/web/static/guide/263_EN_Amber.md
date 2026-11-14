@@ -47,4 +47,4 @@ A piece of the world you explored before stays as it was, with no amber. It only
 
 The insect in a piece of amber comes back to life in the [revival machine](264), like the animal of any fossil.
 
-See also: [Fossils](262), [Bee and hive](35), [Firefly](36), [Biomes](15).
+See also: [Fossils](262), [Hell ant](293), [Ancient bee](294), [Ancient firefly](295), [Bee and hive](35), [Firefly](36), [Biomes](15).

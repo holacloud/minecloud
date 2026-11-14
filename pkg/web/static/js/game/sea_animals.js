@@ -13,13 +13,28 @@
 //   until the way opens; over a step of the bed it rises. In a pool hardly bigger than itself it turns
 //   about on the spot and, every so often, hangs still for a moment; with no room even to turn it backs
 //   up a little and waits.
+// - A long body (over SEA.long blocks: a megalodon, js/game/megalodon.js) never stops to turn on the spot:
+//   it slows down to the speed whose turn fits the water ahead of it, and never below a crawl, so that in a
+//   lake it cruises and in a pool too small for it it circles slowly. (A step that does not fit is refused
+//   all the same, so the crawl takes it into no wall.)
+// - It looks for water only as high as the water where it is: one taller than its water (a fin out of a
+//   shallow lake) still swims where the water is as deep, and does not take the air over it for a wall.
 // - It stays around its home (`userData.home`, where it appeared): beyond `seaRange` blocks it turns
 //   back. A revived animal has the same home for every player (js/game/animals.js), and each client swims
 //   its own copy: that home and the walls of its pool are all that two players' views agree on.
 // - Struck (through damageMobByPlayer and defeatMobByPlayer, js/game/mobs.js), it darts away from the
 //   player, or rolls into a ball if its species does.
 // - A hostile one goes for a player who is in the water within its `chaseDistance` and bites; a player on
-//   the shore is safe, since it cannot leave the water.
+//   the shore is safe, since it cannot leave the water. Close to the player and with them off to one side,
+//   it slows down nearly to a stop and turns its head in, instead of circling them at the width of its
+//   turn; facing them, it comes on. After a bite it swims on past them for a moment (SEA.pass), and then
+//   turns back. Its bite reaches a little further the longer it is (its head is bigger): SEA.biteReach for
+//   one of up to 4 blocks.
+// - A hostile one also goes after the small animals of its water (seaAnimalsStalks: not much more than
+//   half its length, peaceful, within SEA.preyDistance), as long as no player is in the water near it: it
+//   chases one and snaps at it, and the other darts away, or rolls into a ball if its species does. It
+//   does not hurt it: nothing is taken from somebody's kept animal. After a snap it leaves them alone for
+//   a while.
 // - With no water (its pool was emptied) it lies on the ground and waits: it does not die, and it swims
 //   again when the water is back or there is some next to it.
 // - /mob and its egg put it in the nearest water, and say so when there is none: it is never made on land.
@@ -36,7 +51,8 @@
 //   seaRange   how many blocks from its home it roams (3 and its own length)
 //
 // What its model gives the animation, all optional: the rig's `tail` sways (and is what rolls up into a
-// ball), `wings` are its flippers in the order front-left, front-right, back-left, back-right, `legs` are
+// ball), `wings` are its flippers in the order front-left, front-right, back-left, back-right (more pairs,
+// further back, beat as a wave from the front: the flaps of js/game/anomalocaris.js), `legs` are
 // the little legs of one that walks on the bed, `arms` are tentacles that trail, `head` rises to breathe;
 // parts named `neck0`, `neck1`... bend into a turn and lift the head out of the water, and `jaw` opens to
 // bite and to breathe. The model stands on y = 0 and faces +z, as every mob's.
@@ -62,7 +78,17 @@ const SEA = {
     chase: 1.8, // times its speed after a player, unless it says chaseSpeed
     chaseDistance: 10,
     biteReach: 0.9, // from its mouth to the player's body
+    biteLong: 0.1, // and this much further for each block of its length over 4
     biteEvery: 1.2,
+    pass: 1.5, // seconds it swims on past the player after a bite, before it turns back
+    fastTurn: 2.2, // times its turn, when it flees or hunts
+    closeIn: 0.12, // the least share of its chase speed it keeps while it turns in on a player close by
+    long: 6, // blocks: a body longer than this never stops to turn on the spot
+    crawl: 0.3, // the share of its speed a long body keeps, however little room it has
+    preyShare: 0.55, // what it goes after: animals shorter than this share of its length
+    preyDistance: 5, // blocks from it
+    preyPace: 0.75, // the share of its chase speed it goes after them at
+    preyRest: 8, // and for at least so many seconds after a snap (and up to half as many more) it leaves them alone
     gulp: 3.2, // seconds its head is out of the water for a breath
     breathWait: 20, // seconds it tries to reach the air before it gives up for a while
     sideFor: 4, // seconds it keeps turning to the same side
@@ -362,6 +388,8 @@ Object.assign(Game.prototype, {
             liftX: 0, liftZ: 0, shut: 0, shutFor: 8 + Math.random() * 10,
             resting: false, restTimer: 2 + Math.random() * 4,
             flee: 0, fleeHeading: 0, curl: 0, ball: 0, hunting: false, bite: 0,
+            long: body.length > SEA.long, biteReach: SEA.biteReach + Math.max(0, body.length - 4) * SEA.biteLong,
+            prey: null, preyRest: SEA.preyRest * 0.5, aim: 0, pass: 0,
             breathEvery: breath, breath: breath ? breath[0] * (0.3 + Math.random() * 0.7) : 0, gasp: false, gaspFor: 0, gulp: 0, rise: 0,
             pulse: Math.random() * 2, thrust: 0,
             stranded: false, strandLook: 0, floor: -100, ashore: 0,
@@ -369,6 +397,9 @@ Object.assign(Game.prototype, {
             rigRoot: undefined, neck: [], jaw: null
         };
         data.sea = sea;
+        // Every sea animal of this game, for a hunter to find the small ones among (seaAnimalsStalks): a
+        // short list, where the whole of ambientMobs is long.
+        (this.seaAnimalsSwimmers || (this.seaAnimalsSwimmers = [])).push(mob);
         mob.rotation.order = 'YXZ';
         if (count * 2 > seaTryCells.length) {
             seaTryCells = new Int32Array(count * 2);
@@ -461,7 +492,9 @@ Object.assign(Game.prototype, {
         const cos = Math.cos(heading);
         const sin = Math.sin(heading);
         const by0 = Math.floor(y + SEA.feet);
-        const by1 = Math.max(by0, Math.floor(y + body.height - SEA.feet));
+        // No higher than the water where it is: what of it is out of the water here would be out there too,
+        // and is no reason to take the way for closed (seaAnimalsFits lets it be, as long as no more is out).
+        const by1 = Math.max(by0, Math.min(Math.floor(y + body.height - SEA.feet), Math.floor(sea.surface - 1e-6)));
         const across = body.half * 0.85 > 0.4 ? side * body.half * 0.85 : 0;
         SEA_PROBE.step = null;
         // The first cell just ahead of it, then one every step, and the last right at the end of its reach.
@@ -482,7 +515,7 @@ Object.assign(Game.prototype, {
                 }
                 return free;
             }
-            if (across !== 0 && !this.seaAnimalsWet(Math.floor(x + cos * (sea.lead + d) + sin * across), Math.floor(y + body.height / 2), Math.floor(z + sin * (sea.lead + d) - cos * across))) {
+            if (across !== 0 && !this.seaAnimalsWet(Math.floor(x + cos * (sea.lead + d) + sin * across), Math.min(by1, Math.floor(y + body.height / 2)), Math.floor(z + sin * (sea.lead + d) - cos * across))) {
                 return free;
             }
             if (d >= reach) return reach;
@@ -498,6 +531,7 @@ Object.assign(Game.prototype, {
         data.life += delta;
         sea.flee = Math.max(0, sea.flee - delta);
         sea.bite = Math.max(0, sea.bite - delta);
+        sea.pass = Math.max(0, sea.pass - delta);
         if (sea.curl > 0) {
             sea.curl -= delta;
             // Out of its ball, it makes off.
@@ -517,6 +551,7 @@ Object.assign(Game.prototype, {
                 this.seaAnimalsBreathe(mob, sea, delta, player);
                 this.seaAnimalsMove(mob, sea, delta);
                 if (sea.hunting) this.seaAnimalsBite(mob, sea, player);
+                else if (sea.prey) this.seaAnimalsSnap(mob, sea);
             }
         }
         this.seaAnimalsAnimate(mob, sea, delta);
@@ -571,8 +606,17 @@ Object.assign(Game.prototype, {
             pace = SEA.burst;
         } else if (this.seaAnimalsHunts(mob, sea, player, homeDistance)) {
             sea.hunting = true;
-            desired = Math.atan2(player.z - z, player.x - x);
-            pace = (info.chaseSpeed || sea.cruise * SEA.chase) / sea.cruise;
+            sea.prey = null;
+            pace = this.seaAnimalsAim(sea, x, z, player.x, player.z, (info.chaseSpeed || sea.cruise * SEA.chase) / sea.cruise);
+            desired = sea.aim;
+            // Just after a bite it swims on past them for a moment, and then turns back.
+            if (sea.pass > 0) {
+                desired = sea.heading;
+                pace = (info.chaseSpeed || sea.cruise * SEA.chase) / sea.cruise;
+            }
+        } else if (this.seaAnimalsStalks(mob, sea, homeDistance)) {
+            pace = this.seaAnimalsAim(sea, x, z, sea.prey.position.x, sea.prey.position.z, ((info.chaseSpeed || sea.cruise * SEA.chase) / sea.cruise) * SEA.preyPace);
+            desired = sea.aim;
         } else if (homeDistance > sea.range) {
             desired = sea.wander = toHome;
         } else {
@@ -607,6 +651,8 @@ Object.assign(Game.prototype, {
             sea.depth = sea.lo;
         } else if (sea.hunting) {
             sea.depth = player.y - 0.9 - body.height / 2;
+        } else if (sea.prey) {
+            sea.depth = sea.prey.position.y + (sea.prey.userData.sea.body.height - body.height) / 2;
         } else if (sea.gasp) {
             sea.depth = sea.hi;
         } else {
@@ -636,7 +682,8 @@ Object.assign(Game.prototype, {
                 sea.targetSpeed = -0.35 * sea.cruise;
                 if (sea.backFor <= 0 || heldMove) {
                     sea.backFor = 0;
-                    sea.pause = 1.5 + Math.random() * 2;
+                    // (A long body, which has no room to wait in, only draws breath.)
+                    sea.pause = sea.long ? 0.3 + Math.random() * 0.3 : 1.5 + Math.random() * 2;
                 }
             } else {
                 sea.pause -= sea.every;
@@ -700,8 +747,14 @@ Object.assign(Game.prototype, {
         } else {
             // In a pool hardly bigger than itself the way is never open: it would turn about for ever.
             // Every so often it gives up for a moment and hangs where it is, then tries the other way round.
+            // (A long body does not hang still: it goes on circling slowly.)
             sea.shut += sea.every;
-            if (wandering && sea.shut > sea.shutFor) {
+            if (wandering && sea.shut > sea.shutFor && sea.long) {
+                sea.shut = 0;
+                sea.shutFor = 8 + Math.random() * 10;
+                sea.side = Math.random() < 0.5 ? -sea.side : sea.side;
+                sea.sideTimer = SEA.sideFor;
+            } else if (wandering && sea.shut > sea.shutFor) {
                 sea.shut = 0;
                 sea.shutFor = 8 + Math.random() * 10;
                 sea.pause = 2.5 + Math.random() * 3.5;
@@ -738,7 +791,86 @@ Object.assign(Game.prototype, {
         }
 
         const room = seaClamp(ahead / look, 0, 1);
-        sea.targetSpeed = sea.cruise * pace * (room < 0.08 ? 0 : 0.25 + 0.75 * room);
+        if (sea.long) {
+            // A long body: the speed whose turn fits in the water ahead of it (the width of a turn is its
+            // speed over its turn rate), and never less than a crawl.
+            const fits = Math.max(0, ahead - body.half - 0.3) * sea.turnRate;
+            sea.targetSpeed = Math.max(sea.cruise * SEA.crawl * Math.min(pace, 1), Math.min(sea.cruise * pace, fits));
+        } else {
+            sea.targetSpeed = sea.cruise * pace * (room < 0.08 ? 0 : 0.25 + 0.75 * room);
+        }
+    },
+
+    // Where a hunter at (x, z) steers to get its mouth on what is at (tx, tz), into sea.aim, and how fast it
+    // goes there, from `pace` (times its cruising speed). Its mouth is the end of its body, `lead` from its
+    // middle, and sweeps a circle of that size when it turns on the spot. So: it steers its mouth at it;
+    // close and off to one side, it slows down nearly to a stop and turns in, its mouth sweeping round on to
+    // it (at full speed it could only circle it at the width of its turn, its mouth just out of reach); and
+    // with it nearer its middle than its mouth can reach that way (alongside it), straight on for a moment,
+    // to come round.
+    seaAnimalsAim(sea, x, z, tx, tz, pace) {
+        const distance = Math.hypot(tx - x, tz - z);
+        sea.aim = Math.atan2(tz - z - Math.sin(sea.heading) * sea.lead, tx - x - Math.cos(sea.heading) * sea.lead);
+        if (distance < sea.lead - sea.biteReach * 0.5) {
+            sea.aim = sea.heading;
+            return pace * 0.6;
+        }
+        const off = Math.abs(seaAngle(sea.aim - sea.heading));
+        const turnWidth = (sea.cruise * pace) / (sea.turnRate * SEA.fastTurn);
+        if (off > 0.4 && distance - sea.lead < turnWidth * 2) return pace * seaClamp(Math.cos(off), SEA.closeIn, 1);
+        return pace;
+    },
+
+    // Whether a hostile one goes after one of the small animals of its water now (into sea.prey): the one it
+    // was after, while it is near and in this game, or else, a few times a second, the nearest of those less
+    // than SEA.preyShare of its length, peaceful and within SEA.preyDistance of it. Not within a while of
+    // its last snap, nor so far from its home that it would be another animal for everybody else.
+    seaAnimalsStalks(mob, sea, homeDistance) {
+        sea.preyRest -= sea.every;
+        if (!sea.info.hostile || sea.preyRest > 0 || homeDistance > sea.range + SEA.preyDistance) {
+            sea.prey = null;
+            return false;
+        }
+        const position = mob.position;
+        const prey = sea.prey;
+        if (prey && prey.parent && !prey.userData.sea.stranded
+            && Math.hypot(prey.position.x - position.x, prey.position.z - position.z) < SEA.preyDistance * 1.5) return true;
+        sea.prey = null;
+        const swimmers = this.seaAnimalsSwimmers;
+        let nearest = SEA.preyDistance;
+        for (let i = swimmers.length - 1; i >= 0; i--) {
+            const other = swimmers[i];
+            if (!other.parent) {
+                swimmers.splice(i, 1);
+                continue;
+            }
+            const them = other.userData.sea;
+            if (other === mob || them.info.hostile || them.stranded || them.body.length >= sea.body.length * SEA.preyShare) continue;
+            const distance = Math.hypot(other.position.x - position.x, other.position.y - position.y, other.position.z - position.z);
+            if (distance < nearest) {
+                nearest = distance;
+                sea.prey = other;
+            }
+        }
+        return sea.prey !== null;
+    },
+
+    // Its mouth on the animal it is after: a snap, and the other darts away (or rolls up). Then it leaves
+    // them alone for a while. Every frame while it is after one, and only then.
+    seaAnimalsSnap(mob, sea) {
+        const prey = sea.prey;
+        const them = prey.userData.sea;
+        const position = mob.position;
+        const mouthX = position.x + Math.cos(sea.heading) * sea.lead;
+        const mouthZ = position.z + Math.sin(sea.heading) * sea.lead;
+        const mouthY = position.y + sea.body.height / 2;
+        const reach = sea.biteReach * 0.6 + them.body.half;
+        if (Math.hypot(prey.position.x - mouthX, prey.position.y + them.body.height / 2 - mouthY, prey.position.z - mouthZ) > reach) return;
+        sea.bite = 0.45;
+        sea.prey = null;
+        sea.preyRest = SEA.preyRest * (1 + Math.random() * 0.5);
+        this.seaAnimalsStartle(prey, them, position.x, position.z);
+        this.playNoiseBurst({ duration: 0.05, volume: 0.02, highpass: 400, lowpass: 2400 });
     },
 
     // Whether a hostile one goes for the player now: only one who is in the water, within its sight, and
@@ -762,10 +894,11 @@ Object.assign(Game.prototype, {
         const mouthY = position.y + sea.body.height / 2;
         // The player's body, from the feet to the eyes.
         const nearestY = seaClamp(mouthY, player.y - 1.6, player.y);
-        if (Math.hypot(player.x - mouthX, nearestY - mouthY, player.z - mouthZ) > SEA.biteReach) return;
+        if (Math.hypot(player.x - mouthX, nearestY - mouthY, player.z - mouthZ) > sea.biteReach) return;
         data.attackCooldown = SEA.biteEvery;
         sea.bite = 0.45;
-        this.applyDamage(sea.info.attackDamage || 1, `You were bitten by a ${data.species.replace(/_/g, ' ')}`, 'mob', position);
+        sea.pass = SEA.pass;
+        this.applyDamage(sea.info.attackDamage || 1, `You were bitten by ${/^[aeiou]/.test(data.species) ? 'an' : 'a'} ${data.species.replace(/_/g, ' ')}`, 'mob', position);
         this.playNoiseBurst({ duration: 0.07, volume: 0.03, highpass: 200, lowpass: 1400 });
     },
 
@@ -837,7 +970,7 @@ Object.assign(Game.prototype, {
 
         let turn = 0;
         if (!sea.holdTurn) {
-            const most = sea.turnRate * (fast ? 2.2 : 1) * delta;
+            const most = sea.turnRate * (fast ? SEA.fastTurn : 1) * delta;
             turn = seaClamp(seaAngle(sea.steer - sea.heading), -most, most);
         }
 
@@ -953,16 +1086,22 @@ Object.assign(Game.prototype, {
             this.defeatMobByPlayer(mob, gameText(SEA_TEXT.defeated)(this.seaAnimalsName(data.species)));
             return;
         }
+        this.seaAnimalsStartle(mob, sea, this.camera.position.x, this.camera.position.z);
+    },
+
+    // Frightened by something at (fromX, fromZ), a player's blow or a hunter's snap: whatever it was doing,
+    // that is over (its rest, its backing out of a corner, its own hunt). Away from there is where it goes,
+    // now or when it comes out of its ball. A ball is not frightened again.
+    seaAnimalsStartle(mob, sea, fromX, fromZ) {
         if (sea.curl > 0) return;
-        // Whatever it was doing, that is over: its rest, its backing out of a corner. Away from the player
-        // is where it goes, now or when it comes out of its ball.
         sea.resting = false;
         sea.backFor = 0;
         sea.pause = 0;
         sea.sense = 0;
-        sea.fleeHeading = Math.atan2(mob.position.z - this.camera.position.z, mob.position.x - this.camera.position.x);
+        sea.prey = null;
+        sea.fleeHeading = Math.atan2(mob.position.z - fromZ, mob.position.x - fromX);
         sea.wander = sea.fleeHeading;
-        if (!sea.stranded && info.seaCurl && Math.random() < info.seaCurl) {
+        if (!sea.stranded && sea.info.seaCurl && Math.random() < sea.info.seaCurl) {
             sea.curl = 3 + Math.random() * 2.5;
             return;
         }
@@ -1019,14 +1158,16 @@ Object.assign(Game.prototype, {
         }
 
         // Flippers: an up and down stroke, the blade turning to bite the water, the hind pair a little
-        // after the front one.
+        // after the front one. A row of more than two pairs (the flaps of an anomalocaris) beats as a wave
+        // that runs from the front pair to the last.
         const wings = data.wings;
         const reach = 0.16 + 0.3 * Math.min(effort, 1.6);
+        const lag = wings.length > 4 ? 0.7 : 1.7;
         for (let i = 0; i < wings.length; i++) {
             const flipper = wings[i];
             const base = flipper.userData.baseRotation;
             const side = i % 2 === 0 ? 1 : -1;
-            const phase = stroke - (i >= 2 ? 1.7 : 0);
+            const phase = stroke - (i >> 1) * lag;
             flipper.rotation.z = base.z + side * Math.sin(phase) * reach;
             flipper.rotation.x = base.x - Math.cos(phase) * (0.12 + 0.2 * Math.min(effort, 1.6));
             flipper.rotation.y = base.y + side * Math.sin(phase + 0.9) * 0.1;

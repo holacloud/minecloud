@@ -168,9 +168,9 @@ var revivalSpecies = map[string]revivalRow{
 	"tyrannosaurus": {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.4, Chase: 16, ChaseSpeed: 2.2},
 
 	// The rest of the sea and the air.
-	"megalodon":    {Pieces: 3, Water: 300, Seconds: 120, Radius: 0, Speed: 0.38, Chase: 0},
-	"anomalocaris": {Pieces: 1, Water: 16, Seconds: 45, Radius: 0, Speed: 0.38, Chase: 0},
-	"meganeura":    {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.38, Chase: 0},
+	"megalodon":    {Pieces: 3, Water: 300, Seconds: 120, Radius: 0, Speed: 1.2, Chase: 0},
+	"anomalocaris": {Pieces: 1, Water: 16, Seconds: 45, Radius: 0, Speed: 0.7, Chase: 0},
+	"meganeura":    {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 1.4, Chase: 0},
 }
 
 // The pieces of a skeleton, each in the slot of its place here (FOSSIL_PIECES in js/game/fossils.js).

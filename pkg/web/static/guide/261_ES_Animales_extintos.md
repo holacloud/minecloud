@@ -77,6 +77,9 @@ En el orden en que llegaron al juego; la tabla crece con cada uno que llega. Pul
 | ![](mob:deinotherium) | [Deinoterio](302) | — | 2026-11-13 |
 | ![](mob:diplodocus) | [Diplodocus](303) | — | 2026-11-13 |
 | ![](mob:tyrannosaurus) | [Tiranosaurio](304) | — | 2026-11-13 |
+| ![](mob:megalodon) | [Megalodón](305) | — | 2026-11-13 |
+| ![](mob:anomalocaris) | [Anomalocaris](299) | — | 2026-11-13 |
+| ![](mob:meganeura) | [Meganeura](300) | — | 2026-11-13 |
 
 ## Curiosidades
 

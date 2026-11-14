@@ -47,4 +47,4 @@ Un trozo de mundo que ya exploraste antes se queda como estaba, sin ámbar. Solo
 
 El insecto de un ámbar vuelve a la vida en la [máquina de revivir](264), como el animal de cualquier fósil.
 
-Ver también: [Fósiles](262), [Abeja y colmena](35), [Luciérnaga](36), [Biomas](15).
+Ver también: [Fósiles](262), [Hormiga infernal](293), [Abeja antigua](294), [Luciérnaga antigua](295), [Abeja y colmena](35), [Luciérnaga](36), [Biomas](15).

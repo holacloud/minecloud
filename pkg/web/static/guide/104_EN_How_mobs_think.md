@@ -11,7 +11,7 @@ Each species has a **movement mode**, which decides almost everything it does. T
 |---|---|---|
 | ground | sheep, pig, dog, cat, giraffe, spider… | Wanders, grazes and, if hostile, chases |
 | swim | fish | Schools that move together without bumping |
-| hop | frog | Jumps instead of walking and swims at the surface |
+| hop | frog, Beelzebufo | Jumps instead of walking and swims at the surface |
 | amphibious | turtle | Walks the beach and dives |
 | dart | lizard | Basks, then runs in bursts |
 | climb | goat | Leaps up 2-block ledges and seeks high ground |
@@ -33,7 +33,7 @@ Each species has a **movement mode**, which decides almost everything it does. T
 | lodge | beaver | Fells trees by the water and builds dams |
 | eel | electric eel | Cruises along the bottom, rises to gulp air and discharges |
 | helper | copper golem | Follows you, waits or brings you what lies on the ground |
-| cruise | trilobite, ammonite, plesiosaur | Lives in the water and never leaves it: walks the bed, hangs or swims in mid water |
+| cruise | trilobite, ammonite, plesiosaur, Archelon, Dunkleosteus, megalodon, Anomalocaris | Lives in the water and never leaves it: walks the bed, hangs or swims in mid water |
 | glide | Haastʼs eagle, Argentavis, pterosaur | Circles high over its home, comes down to perch and takes off again |
 
 ## The walking mobs

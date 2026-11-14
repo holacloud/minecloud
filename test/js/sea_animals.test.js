@@ -961,3 +961,145 @@ test('the ammonite goes shell first, in spurts; the plesiosaur beats its four fl
     // And its tail sways.
     assert.equal(plesiosaur.userData.tail.length, 3);
 });
+
+// ---- What the hunters, the long ones and the flappers do (the megalodon, the anomalocaris) ----
+
+test('a hostile one closes on a player who keeps still: it turns in and bites, instead of circling them just out of reach', () => {
+    // A swimmer who does not move, in a lake big enough to pass and turn in. Before, a hunter circled such a
+    // player at the width of its turn, its mouth a block away: a bite or two a minute.
+    for (const species of ['made_up_shark', 'dunkleosteus', 'megalodon']) {
+        const sea = makeSea({ water: tank(0, 34, 0, 26, 5), player: [-6.5, 13], seed: 23 });
+        const mob = sea.spawn(species, 9.5, 13);
+        const state = mob.userData.sea;
+        sea.camera.position.set(18.5, -2 + EYE, 13);
+        sea.cameraController.isInWater = true;
+        const times = [];
+        swim(sea, [mob], 60, (t) => { if (sea.hurt.length > times.length) times.push(t); });
+        log(species, 'bites a still swimmer', times.length, 'times in 60 s');
+        assert.ok(times.length >= (state.long ? 4 : 8), `${species} bit a still swimmer ${times.length} times in a minute`);
+        // Never two bites closer than its pace, and after each it swims on past for a moment.
+        for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= ctx.SEA.biteEvery - 0.05, `${species}: two bites ${(times[i] - times[i - 1]).toFixed(2)} s apart`);
+        assert.ok(times.length <= 60 / (ctx.SEA.biteEvery + ctx.SEA.pass * 0.5), `${species} bit ${times.length} times: it never lets go`);
+    }
+    // Its bite reaches further the longer it is: as far as the head of a long one really goes.
+    const reach = (id) => ctx.SEA.biteReach + Math.max(0, ctx.seaAnimalsBody(id).length - 4) * ctx.SEA.biteLong;
+    assert.equal(reach('dunkleosteus'), ctx.SEA.biteReach);
+    assert.ok(reach('megalodon') > 1.3 && reach('megalodon') < 1.5);
+});
+
+test('a long body cruises a lake, and in a pool hardly bigger than itself it circles slowly: it never freezes and never leaves the water', () => {
+    // The megalodon, 9 blocks long, in a lake and then in the least water it comes back to life with (300 blocks).
+    const info = ctx.getMobSpecies('megalodon');
+    const lake = makeSea({ water: tank(0, 30, 0, 20, 4), player: [-6.5, 10], seed: 24 });
+    const [cruise] = swim(lake, [lake.spawn('megalodon', 15, 10)], 120);
+    assert.ok(cruise.swum > info.speed * 120 * 0.6, `in a lake it swam ${cruise.swum.toFixed(1)} blocks in 120 s`);
+    assert.equal(cruise.mob.userData.sea.long, true);
+    for (const [x1, z1] of [[10, 10], [12, 10]]) {
+        const pool = makeSea({ water: tank(0, x1, 0, z1, 3), player: [-6.5, 5], seed: 25 });
+        const mob = pool.spawn('megalodon', x1 / 2, z1 / 2);
+        const state = mob.userData.sea;
+        let frozen = 0;
+        let longest = 0;
+        let turned = 0;
+        let heading = state.heading;
+        const [stat] = swim(pool, [mob], 120, () => {
+            const still = Math.abs(state.heading - heading) < 1e-4 && Math.abs(state.speed) < 1e-3;
+            turned += Math.abs(state.heading - heading);
+            heading = state.heading;
+            frozen = still ? frozen + 1 : 0;
+            longest = Math.max(longest, frozen / 30);
+        });
+        log(`megalodon in ${x1} x ${z1}: swam`, stat.swum.toFixed(1), 'turned', turned.toFixed(1), 'longest still', longest.toFixed(1), 's');
+        assert.ok(longest < 4, `in a pool of ${x1} x ${z1} it stood still for ${longest.toFixed(1)} s`);
+        assert.ok(stat.swum > 10 && turned > 10, `in a pool of ${x1} x ${z1} it swam ${stat.swum.toFixed(1)} blocks and turned ${turned.toFixed(1)} radians`);
+    }
+    // The small ones are not long: they keep their own way of turning about.
+    for (const id of FIRST) assert.ok(ctx.seaAnimalsBody(id).length <= ctx.SEA.long, id);
+});
+
+test('one taller than its water swims in it all the same, with its back out, where the water is as deep', () => {
+    // Water two blocks deep, and a megalodon 2.5 tall with its fin: it used to take the air over the water for a
+    // wall, everywhere, and never moved.
+    const sea = makeSea({ water: tank(0, 24, 0, 16, 2), player: [-6.5, 8], seed: 26 });
+    const mob = sea.spawn('megalodon', 12, 8);
+    assert.ok(ctx.seaAnimalsBody('megalodon').height > 2);
+    let swum = 0;
+    const last = mob.position.clone();
+    sea.run(60, () => {
+        assert.ok(sea.wet(mob.position.x, mob.position.y + 0.02, mob.position.z), 'its middle stays in the water');
+        swum += Math.hypot(mob.position.x - last.x, mob.position.z - last.z);
+        last.copy(mob.position);
+    });
+    assert.ok(swum > 20, `it swam ${swum.toFixed(1)} blocks in a minute`);
+    // Never into the bank: its belly stays on the bed and the cells of its body are as many out as at first.
+    assert.ok(mob.position.y >= -2 - 1e-6);
+});
+
+test('a hostile one chases the small animals of its water and snaps at them, and they get away unhurt', () => {
+    // An anomalocaris and two trilobites in a pond, and nobody in the water.
+    const sea = makeSea({ water: tank(0, 8, 0, 6, 2), player: [-6.5, 3], seed: 27 });
+    const hunter = sea.spawn('anomalocaris', 2, 3);
+    const prey = [sea.spawn('trilobite', 5.5, 2), sea.spawn('trilobite', 6, 4.5)];
+    const state = hunter.userData.sea;
+    let snaps = 0;
+    let frightened = 0;
+    let lastSnap = -Infinity;
+    let rested = Infinity;
+    const was = prey.map(() => false);
+    swim(sea, [hunter, ...prey], 120, (t) => {
+        if (state.bite > 0.44) {
+            snaps++;
+            rested = Math.min(rested, t - lastSnap);
+            lastSnap = t;
+        }
+        prey.forEach((mob, i) => {
+            const scared = mob.userData.sea.flee > 0 || mob.userData.sea.curl > 0;
+            if (scared && !was[i]) frightened++;
+            was[i] = scared;
+        });
+    });
+    log('anomalocaris: snaps', snaps, 'frights', frightened, 'least rest', rested.toFixed(1));
+    assert.ok(snaps >= 2, `${snaps} snaps in two minutes`);
+    assert.ok(frightened >= snaps, 'each snap sends one off');
+    assert.ok(rested >= ctx.SEA.preyRest, `two snaps ${rested.toFixed(1)} s apart`);
+    for (const mob of prey) assert.equal(mob.userData.health, mob.userData.maxHealth, 'unhurt');
+    assert.deepEqual(sea.hurt, []);
+    // The peaceful ones go after nobody, and nobody goes after one bigger than about half itself.
+    const pond = makeSea({ water: tank(0, 14, 0, 10, 3), player: [-6.5, 5], seed: 28 });
+    const plesiosaur = pond.spawn('plesiosaur', 7, 5);
+    const shark = pond.spawn('made_up_shark', 4, 5);
+    const ammonite = pond.spawn('ammonite', 10, 5);
+    pond.run(30);
+    assert.ok(plesiosaur.userData.sea.prey === null, 'a peaceful one hunts nothing');
+    assert.ok(shark.userData.sea.prey === null || shark.userData.sea.prey === ammonite, 'and a hunter only the small');
+});
+
+test('more than two pairs of flaps beat as a wave from the front to the back; four flippers as before', () => {
+    const sea = makeSea({ water: openSea(3), player: [0.5, 30.5], seed: 29 });
+    const mob = sea.spawn('anomalocaris', 0.5, 0.5);
+    const wings = mob.userData.wings;
+    assert.equal(wings.length, 10);
+    const lift = (wing) => wing.rotation.z - wing.userData.baseRotation.z;
+    let ahead = 0;
+    let frames = 0;
+    swim(sea, [mob], 10, () => {
+        frames++;
+        // The left flaps of the first and of the last pair are never in step.
+        if (Math.abs(lift(wings[0]) - lift(wings[8])) > 0.05) ahead++;
+        assert.ok(Math.abs(lift(wings[0]) + lift(wings[1])) < 1e-9, 'the two of a pair mirror each other');
+    });
+    assert.ok(ahead > frames * 0.8, 'a wave runs down them');
+});
+
+test('what hunts and stalks makes nothing on a frame either', () => {
+    const source = fs.readFileSync(path.join(STATIC, 'js', 'game', 'sea_animals.js'), 'utf8');
+    for (const name of ['seaAnimalsAim', 'seaAnimalsStalks', 'seaAnimalsStartle']) {
+        const start = source.indexOf(`\n    ${name}(`);
+        assert.ok(start > 0, name);
+        const body = source.slice(start, source.indexOf('\n    },\n', start));
+        assert.doesNotMatch(body, /\bnew [A-Z]|=>|\bfunction\b|\.clone\(\)|\.forEach\(|\.map\(|\.filter\(|=\s*\[|\{\s*[a-z]+:/, `${name} makes something`);
+    }
+    // Snap makes only the sound of a snap, when it snaps.
+    const snap = source.slice(source.indexOf('\n    seaAnimalsSnap('), source.indexOf('\n    },\n', source.indexOf('\n    seaAnimalsSnap(')));
+    assert.equal((snap.match(/\{\s*[a-z]+:/g) || []).length, 1);
+});

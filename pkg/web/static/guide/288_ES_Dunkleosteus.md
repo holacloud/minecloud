@@ -44,6 +44,8 @@ Con 60 bloques de agua revive, pero para nadar a gusto quiere más:
 - **Es hostil, dentro del agua.** Si estás en el agua a menos de **9 bloques** de él, va a por ti a
   **2 bloques por segundo**. Tú nadas un poco más rápido.
 - **El mordisco.** Cuando su boca te alcanza, muerde: **4 de daño**, como mucho una vez cada 1,2 segundos.
+- **Animales más pequeños.** Si no hay nadie en el agua cerca de él, persigue a los [amonites](267) y los
+  [trilobites](266) de su agua y les lanza un bocado; se escapan con un susto.
 - **En la orilla estás a salvo.** Nunca sale del agua, y no va a por un jugador que esté fuera de ella. Estar
   de pie con el agua por las rodillas cuenta como estar dentro.
 - **No se aleja** más de unos 6 bloques de donde revivió, salvo que persiga a alguien: entonces lo sigue

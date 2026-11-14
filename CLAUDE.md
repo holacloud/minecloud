@@ -140,7 +140,9 @@ on the sheets of both. What it does differently from the steps above:
   `attackDamage` make it bite a player who is in the water. Its body is measured from its model (it stands
   on y = 0, faces +z, origin in the middle of its trunk), and its rig is what is animated: `wings` are
   flippers, `tail`, `legs`, `arms` (tentacles), `head`, and parts named `neck0`, `neck1`... and `jaw`. Sizes of
-  parts in quarters of a unit. `node --test test/js/sea_animals.test.js`.
+  parts in quarters of a unit. A hostile one steers its mouth at a swimmer, bites and swims past, and snaps
+  (without harm) at the peaceful sea animals much smaller than itself when no player is in the water; a body
+  longer than 6 blocks slows down to turn instead of stopping. `node --test test/js/sea_animals.test.js`.
 - One of the air needs no behaviour of its own either: `movement: 'glide'` (`game/gliders.js`, whose header
   documents it) keeps it circling over its home, perching and taking off again, and never in a block; the
   server's row says `Radius: 0`. Example: `game/argentavis.js`. In its `info`: `glideHeight`, `glideRange`,
@@ -148,8 +150,18 @@ on the sheets of both. What it does differently from the steps above:
   Its wings lie flat along x from the shoulders (`wingL`, `wingR` in the rig). `node --test
   test/js/gliders.test.js`, which names every glider in two lists.
 
+- What several of them share is one field of `info`, not code of their own: `charge: { ... }`
+  (`game/charge.js`: struck, it aims, runs and hits what its head reaches; the mammoth, the Triceratops) and
+  `giant: { ... }` (`game/diplodocus.js`: a body many blocks long is kept from stepping its chest into a wall,
+  under a low roof or over a ledge, and pushes the player out of its legs). A mount says `mount` with numbers
+  of its own and must be tamed first (`game/titanotylopus.js`, `game/glyptodon.js`).
+- A model's sizes are multiples of a quarter of a unit (a smaller side paints nothing), and its height and
+  reach are read from its parts without their rotations (`absoluteTop` in `js/models.js`, `herdSpeciesBody` in
+  `game/herd.js`): a long chain of rotated parts floats the health bar (see the horns of `game/argali.js`).
+
 Tests: `node --test test/js/species_registry.test.js test/js/bestiary_text.test.js test/js/guide_facts.test.js`
-and the species' own.
+and the species' own. In a test, never give a mob, the game or the world to `assert.equal` or `deepEqual`: a
+failure prints both sides, and they are graphs with no end (compare an id, a number, `assert.ok(x === null)`).
 
 ## Recipe: an animal the server keeps
 
