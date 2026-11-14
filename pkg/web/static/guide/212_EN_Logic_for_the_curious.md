@@ -60,6 +60,16 @@ Adding two bits is easy:
 Look: the **Sum** column is the **XOR** table, and **Carry** is the **AND** table. With one XOR and one AND you have a
 **half adder**: the first step of a calculator. Join many and you can add huge numbers.
 
+## One gate to build them all
+
+The [NAND](209) ("not AND") is special: **with NANDs alone you can build any other gate**. Join its two inputs to the
+same wire and it does the opposite of what it gets: it is a NOT! And a NAND followed by that NOT is an AND again,
+because turning an answer upside down twice leaves it as it was. With a few more you get OR and XOR. That is why
+engineers love it: with just one kind of piece, repeated many times, you can make a whole computer. The memory in
+phones and USB sticks is called "NAND flash" after this gate.
+
+**Challenge:** place two NANDs and make an AND out of them. Check its table with two levers.
+
 ## How computers use gates
 
 - The **processor** of a computer or a phone has **billions** of tiny logic gates, made of [silicon](152)
@@ -70,8 +80,8 @@ Look: the **Sum** column is the **XOR** table, and **Carry** is the **AND** tabl
 
 ## Food for thought
 
-- With NOT and AND gates you can build **all** the others. Can you make an OR from NOT and AND? (Hint: "A or B" is
-  the same as "it is not true that neither A nor B".)
+- With NOT and AND gates you can also build **all** the others. Can you make an OR from NOT and AND? (Hint: "A or
+  B" is the same as "it is not true that neither A nor B".)
 - How many levers do you need to pick one of the 7 days of the week?
 
 See also: [Logic gates](209), [Memory and delays](210), [Programming the robot](194).

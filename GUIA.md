@@ -581,7 +581,7 @@ actual, o qué hizo la tinción.
 | Cristales | `salt`, `baking_soda`, `copper_sulfate`, `fluorite`, `pyrite`, `quicklime`, `rust_pigment`, `ice`, `ruby`, `sapphire`, los elementos S, I, C, Si, B |
 | Vidrio | `glass`, `glass_pane`, `cobalt_glass`, `<color>_stained_glass`, `<color>_stained_glass_pane` |
 | Fibras | `<color>_carpet`, `<color>_curtain`, `fur`, `feather`, `leather`, `scale`, `shell` |
-| Electrónica | las seis puertas lógicas, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, `mirror`, `wall_mirror` |
+| Electrónica | las siete puertas lógicas, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, `mirror`, `wall_mirror` |
 | Comida y plantas | `bread`, `wheat_seeds`, `honey_bottle`, `cooked_fish`, `salted_fish`, `cactus`, `moss`, `tall_grass`, `grass` |
 | Papel | `blueprint`, `written_blueprint`, `star_chart`, `breeding_notebook` |
 
@@ -715,6 +715,28 @@ Página 264 de la guía del juego. Todo lo decide el servidor (`pkg/network/revi
 - **Panel:** la barra aparece ya en su sitio al abrirlo y solo después avanza. Dice qué falta con palabras, en los dos idiomas (`revivalStatusLines`), con lo que el servidor manda en `revival` dentro de `storageContents`. El nombre del animal es "???" hasta que el jugador ha visto uno vivo.
 
 La tabla del servidor es `revivalSpecies`: por especie, `Pieces` (1 o 3), `Water`, `Seconds`, `Radius` (cuánto la pasea el servidor: más de 0 solo si su movimiento tiene `walksToGoal`), `Speed` (su `info.speed`) y `Chase`. `test/js/revival.test.js` compara cada especie que declara un fósil con su fila y dice qué campo cambiar.
+
+## Puertas lógicas
+
+Placas finas con una flecha que señala la salida (página 209). Las simula el servidor 5 veces por segundo
+(`pkg/network/logic.go`, dibujadas por `js/game/logic.js`): encendida, una puerta conduce por todas sus caras menos
+las de entrada; apagada, corta. Una entrada tiene señal si lo que la toca es un interruptor, sensor o puerta
+encendidos, o una red con electricidad.
+
+| Puerta | Entradas | Encendida cuando | Símbolo |
+|---|---|---|---|
+| `and_gate` | izquierda y derecha | las dos | `&` |
+| `nand_gate` | izquierda y derecha | todas las veces menos con las dos (sin nada conectado, encendida) | `&` con circulito |
+| `or_gate` | izquierda y derecha | alguna | `≥1` |
+| `xor_gate` | izquierda y derecha | solo una | `=1` |
+| `not_gate` | atrás | la entrada está apagada | `1` con circulito |
+
+| Resultado | Ingredientes |
+|---|---|
+| 2 de cada una | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
+
+El retardo y el biestable están en la página 210. Una NAND recién puesta se dibuja apagada hasta el siguiente tick del
+servidor (0,2 s), que la enciende.
 
 ## Bloque luminoso
 

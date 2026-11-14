@@ -1,13 +1,15 @@
 // Logic and sensors: levers, push buttons, pressure plates, sensors (daylight, proximity,
-// rain) and logic gates (AND, OR, XOR, NOT, delay, latch) that switch electric networks.
+// rain) and logic gates (AND, NAND, OR, XOR, NOT, delay, latch) that switch electric networks.
 // - The SERVER decides everything (pkg/network/logic.go), on the power tick (5 times a
 //   second): a logic block is a switch in the wire. ON, it conducts and joins the networks
 //   around it; OFF, it cuts them apart. Gates never conduct through their INPUT faces.
 // - Inputs read a SIGNAL: the block touching the input face belongs to a network with power
 //   available or with a switched-on logic block in it (a lever touching a gate is enough).
 // - Gates face the way the player looks when placing them: the arrow on top points to the
-//   output. AND, OR, XOR and the latch (SET left, RESET right) read their left and right
-//   faces; NOT and the delay read their back face. Every other face conducts while on.
+//   output. AND, NAND, OR, XOR and the latch (SET left, RESET right) read their left and right
+//   faces; NOT and the delay read their back face. Every other face conducts while on. A NAND,
+//   like a NOT, is on with nothing at its inputs: placed, it is drawn off until the server's
+//   next tick (0.2 s) switches it on.
 // - State lives in the block NAME (js/blockShapes.js states, set by the server and broadcast
 //   with blockPlace): `lever:on`, `and_gate:e:on`, `delay_gate:n:3:off`,
 //   `daylight_sensor:night:on`. LOGIC_KINDS mirrors logicKinds in logic.go
@@ -34,6 +36,7 @@ const LOGIC_KINDS = {
     proximity_sensor: { op: 'proximity', states: 'power' },
     rain_sensor: { op: 'rain', states: 'power' },
     and_gate: { op: 'and', states: 'facing,power' },
+    nand_gate: { op: 'nand', states: 'facing,power' },
     or_gate: { op: 'or', states: 'facing,power' },
     xor_gate: { op: 'xor', states: 'facing,power' },
     not_gate: { op: 'not', states: 'facing,power' },
@@ -52,13 +55,13 @@ const LOGIC_STATE_VALUES = {
 
 // Input faces of the gates, relative to their facing (as in logic.go).
 const LOGIC_INPUTS = {
-    and: ['left', 'right'], or: ['left', 'right'], xor: ['left', 'right'],
+    and: ['left', 'right'], nand: ['left', 'right'], or: ['left', 'right'], xor: ['left', 'right'],
     not: ['back'], delay: ['back'], latch: ['left', 'right'], stop: ['top']
 };
 
 // What a right click does to each (the server does it; this only says which ones take it).
 const LOGIC_PRESSABLE = new Set(['lever', 'button', 'daylight', 'delay', 'stop']);
-const LOGIC_GATE_OPS = ['and', 'or', 'xor', 'not', 'delay', 'latch'];
+const LOGIC_GATE_OPS = ['and', 'nand', 'or', 'xor', 'not', 'delay', 'latch'];
 const LOGIC_SENSOR_OPS = ['daylight', 'proximity', 'rain'];
 const LOGIC_PX = 1 / 16;
 
@@ -97,8 +100,9 @@ function logicStopLocks(world, position) {
 // ---------------------------------------------------------------------------------------
 // Textures
 
-// 3x5 glyphs for the symbols on the gates (IEC style: & is AND, ≥1 is OR, =1 is XOR, 1 with
-// a circle is NOT, SR the latch, an hourglass the delay).
+// 3x5 glyphs for the symbols on the gates (IEC style: & is AND, & with a circle is NAND, ≥1 is
+// OR, =1 is XOR, 1 with a circle is NOT, SR the latch, an hourglass the delay). The circle is
+// the IEC mark of an inverted output, drawn between the symbol and the arrow.
 const LOGIC_GLYPHS = {
     '&': ['.#.', '#.#', '.#.', '#.#', '.##'],
     '>': ['#..', '.#.', '#..', '...', '###'],
@@ -108,7 +112,12 @@ const LOGIC_GLYPHS = {
     'R': ['##.', '#.#', '##.', '#.#', '#.#'],
     'H': ['###', '#.#', '.#.', '#.#', '###']
 };
-const LOGIC_SYMBOLS = { and: '&', or: '>1', xor: '=1', not: '1', latch: 'SR', delay: 'H' };
+const LOGIC_SYMBOLS = { and: '&', nand: '&', or: '>1', xor: '=1', not: '1', latch: 'SR', delay: 'H' };
+// The gates whose output is inverted: they get the little circle.
+const LOGIC_INVERTED_OPS = ['not', 'nand'];
+// How far down (in pixels of 16) a gate's symbol is drawn: the NAND's & sits one lower, so that at
+// 16 pixels a row of board shows between it and its circle and the circle reads as one.
+const LOGIC_SYMBOL_DROP = { nand: 1 };
 
 // (u, v) of a top texture to a gate's own frame: forward (the output) is lv = 0, its right
 // hand lu = 1. Top faces map u to +x and v to +z (ChunkMesher.boxFaceUV), north is v = 0.
@@ -140,6 +149,8 @@ function logicPaintGateTop(f, s, op, facing, on, delay, seed) {
     const copper = f.rgb(on ? 0xf0a060 : 0xc87533);
     const ink = f.rgb(on ? 0xfff1c4 : 0xaab4be);
     const inputs = LOGIC_INPUTS[op];
+    const inverted = LOGIC_INVERTED_OPS.includes(op);
+    const drop = (LOGIC_SYMBOL_DROP[op] || 0) * LOGIC_PX;
     const px = 1 / s.size;
     f.each(s, (x, y, u, v) => {
         const [lu, lv] = logicLocal(u, v, facing);
@@ -153,9 +164,9 @@ function logicPaintGateTop(f, s, op, facing, on, delay, seed) {
             (inputs.includes('right') && lu > 0.86 && Math.abs(lv - 0.55) < 0.1) ||
             (inputs.includes('back') && lv > 0.86 && Math.abs(lu - 0.5) < 0.1);
         if (pad) { color = f.tone(s, copper, 0.05); h = 0.8; }
-        if (logicGlyphHit(LOGIC_SYMBOLS[op], lu, lv)) { color = ink; h = 0.85; }
-        // NOT: the little circle of the inverted output.
-        if (op === 'not' && Math.abs(Math.hypot(lu - 0.5, lv - 0.3) - 0.05) < 0.025) { color = ink; h = 0.85; }
+        if (logicGlyphHit(LOGIC_SYMBOLS[op], lu, lv - drop)) { color = ink; h = 0.85; }
+        // NOT and NAND: the little circle of the inverted output.
+        if (inverted && Math.abs(Math.hypot(lu - 0.5, lv - 0.3) - 0.05) < 0.025) { color = ink; h = 0.85; }
         // Latch: S on the left, R on the right are its inputs; delay: one dot per second.
         if (op === 'delay' && Math.abs(lv - 12.5 / 16) < 0.03) {
             for (let i = 0; i < 4; i++) {
@@ -395,6 +406,7 @@ const LOGIC_BLOCKS = [
     ['proximity_sensor', 'Proximity Sensor', 0x3A434E, {}],
     ['rain_sensor', 'Rain Sensor', 0x5A6A7A, {}],
     ['and_gate', 'AND Gate', 0x323B46, {}],
+    ['nand_gate', 'NAND Gate', 0x323B46, {}],
     ['or_gate', 'OR Gate', 0x323B46, {}],
     ['xor_gate', 'XOR Gate', 0x323B46, {}],
     ['not_gate', 'NOT Gate', 0x323B46, {}],
@@ -421,7 +433,7 @@ registerGameContent(function ({ addRecipe }) {
     addRecipe('daylight_sensor', 'Build Daylight Sensor', 'daylight_sensor', 1, [{ type: 'glass', amount: 1 }, { type: 'planks', amount: 1 }, { type: 'copper_wire', amount: 2 }]);
     addRecipe('proximity_sensor', 'Build Proximity Sensor', 'proximity_sensor', 1, [{ type: 'iron_ore', amount: 1 }, { type: 'glass', amount: 1 }, { type: 'copper_wire', amount: 2 }]);
     addRecipe('rain_sensor', 'Build Rain Sensor', 'rain_sensor', 1, [{ type: 'cobblestone', amount: 1 }, { type: 'copper_wire', amount: 3 }]);
-    [['and_gate', 'AND Gates'], ['or_gate', 'OR Gates'], ['xor_gate', 'XOR Gates'], ['not_gate', 'NOT Gates'], ['delay_gate', 'Delays']].forEach(([id, label]) => {
+    [['and_gate', 'AND Gates'], ['nand_gate', 'NAND Gates'], ['or_gate', 'OR Gates'], ['xor_gate', 'XOR Gates'], ['not_gate', 'NOT Gates'], ['delay_gate', 'Delays']].forEach(([id, label]) => {
         addRecipe(id, `Build ${label}`, id, 2, [{ type: 'element_si', amount: 1 }, { type: 'copper_wire', amount: 2 }, { type: 'cobblestone', amount: 1 }]);
     });
     addRecipe('latch', 'Build Latch (Memory)', 'latch', 1, [{ type: 'element_si', amount: 2 }, { type: 'copper_wire', amount: 2 }, { type: 'cobblestone', amount: 1 }]);

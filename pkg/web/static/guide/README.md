@@ -274,10 +274,10 @@ animal (`hiddenUntilDiscovered`, js/mobSpecies.js) is listed in page 261 instead
 | 206 | Proyectos eléctricos | Electric projects | 5 builds: crank lamp, night lights, windmill farm, water mill, night greenhouse |
 | 207 | Interruptores | Switches | lever, push_button, pressure_plate (and their `:on` states); a switch cuts or joins networks (contents 0 and items index 48) |
 | 208 | Sensores | Sensors | daylight_sensor (day/night mode), proximity_sensor, rain_sensor |
-| 209 | Puertas lógicas | Logic gates | and_gate, or_gate, xor_gate, not_gate: faces, signals, truth tables, timing |
+| 209 | Puertas lógicas | Logic gates | and_gate, nand_gate, or_gate, xor_gate, not_gate: faces, signals, truth tables, timing |
 | 210 | Memoria y retardos | Memory and delays | delay_gate (1–4 s), latch (SR); the blinker |
 | 211 | Circuitos de ejemplo | Example circuits | 4 builds: street lights, staircase light (XOR), automatic door (OR + delay), alarm (AND) |
-| 212 | Lógica para curiosos | Logic for the curious | bits, binary, Boole and Shannon, the half adder, gates in computers |
+| 212 | Lógica para curiosos | Logic for the curious | bits, binary, Boole and Shannon, the half adder, NAND builds every gate, gates in computers |
 | 213 | Anguila eléctrica | Electric eel | mob page of `eel` (arrived 2026-11-02), in the mobs index (16); knifefish, 860 V, electrocytes |
 | 214 | Tanque de anguila | Eel tank | eel_tank (`eel_tank:full` with an eel), eel_bucket: catching, the 25/50 W generator, feeding (items index 48, generators 201) |
 | 215 | Golem de cobre | Copper golem | mob page of `copper_golem` (arrived 2026-11-02; mobs index 16, contents 0): copper_golem_core and copper_wrench (items index 48), building, charge, modes, patina and wax |

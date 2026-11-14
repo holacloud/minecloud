@@ -2496,7 +2496,7 @@ for (const [color, [r, g, b]] of Object.entries(SP_COLORS)) {
     spAdd([`${color}_stained_glass`, `${color}_stained_glass_pane`], 'glass', 'stained_glass', { tint: C(r, g, b, 0.42) });
 }
 
-spAdd(['and_gate', 'or_gate', 'xor_gate', 'not_gate', 'delay_gate', 'latch'], 'circuit', 'gate', { chip: 'logic' });
+spAdd(['and_gate', 'nand_gate', 'or_gate', 'xor_gate', 'not_gate', 'delay_gate', 'latch'], 'circuit', 'gate', { chip: 'logic' });
 spAdd('rain_sensor', 'circuit', 'rain_sensor', { chip: 'comb' });
 spAdd('daylight_sensor', 'circuit', 'daylight_sensor', { chip: 'ldr' });
 spAdd(['solar_cell', 'solar_panel'], 'solar', 'solar');

@@ -161,7 +161,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:rtg) [Generador de radioisótopos](220): rtg
 - ![](item:lever) [Interruptores](207): lever, push_button, pressure_plate
 - ![](item:daylight_sensor) [Sensores](208): daylight_sensor, proximity_sensor, rain_sensor
-- ![](item:and_gate) [Puertas lógicas](209): and_gate, or_gate, xor_gate, not_gate
+- ![](item:and_gate) [Puertas lógicas](209): and_gate, nand_gate, or_gate, xor_gate, not_gate
 - ![](item:latch) [Memoria y retardos](210): delay_gate, latch
 - ![](item:motor_ram) [Empujadores](217): motor_ram, sticky_ram
 - ![](item:lift_winch) [Ascensores](218): lift_winch, lift_platform, lift_stop

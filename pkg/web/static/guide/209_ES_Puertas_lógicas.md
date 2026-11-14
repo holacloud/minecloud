@@ -13,13 +13,14 @@ Son placas finas con un dibujo encima:
 - Una **flecha** roja: señala la **salida**. Cuando colocas la puerta, la flecha apunta **hacia donde miras**. Se
   ilumina cuando la puerta está encendida.
 - Unas **almohadillas de cobre** en los bordes: son las **entradas**.
-- Un **símbolo** en el centro, el de las normas de electrónica: `&`, `≥1`, `=1`, `1`.
+- Un **símbolo** en el centro, el de las normas de electrónica: `&`, `≥1`, `=1`, `1`. Un **circulito** entre el
+  símbolo y la flecha quiere decir "la respuesta va al revés": lo llevan la NOT y la NAND.
 
 Las entradas, mirando hacia donde apunta la flecha:
 
 | Puerta | Entradas |
 |---|---|
-| AND, OR, XOR | **izquierda** (A) y **derecha** (B) |
+| AND, NAND, OR, XOR | **izquierda** (A) y **derecha** (B) |
 | NOT, [retardo](210) | **atrás** |
 | [Biestable](210) | izquierda = **SET**, derecha = **RESET** |
 
@@ -41,7 +42,7 @@ la puerta y la lámpara en otra.
 
 > El [multímetro](205) te dice si una red lleva **señal**.
 
-## Las cuatro puertas
+## Las cinco puertas
 
 En las tablas, 0 es "no" (apagado) y 1 es "sí" (encendido). Se llaman **tablas de verdad**.
 
@@ -55,6 +56,22 @@ Encendida solo si **A y B** están encendidas. Como una caja fuerte con dos llav
 | 0 | 1 | 0 |
 | 1 | 0 | 0 |
 | 1 | 1 | **1** |
+
+### NAND (NO Y) ![](item:nand_gate)
+
+La **contraria de la AND**: encendida **salvo cuando A y B están encendidas las dos**. Su símbolo es el `&` con el
+circulito. Ojo: **sin nada conectado** está **encendida**, así que enciende una lámpara en cuanto la pones junto a
+una batería.
+
+| A | B | Salida |
+|---|---|---|
+| 0 | 0 | **1** |
+| 0 | 1 | **1** |
+| 1 | 0 | **1** |
+| 1 | 1 | 0 |
+
+Parece poca cosa, pero es la puerta más famosa de todas: solo con NAND se pueden construir todas las demás (lo
+cuenta [Lógica para curiosos](212)).
 
 ### OR (O) ![](item:or_gate)
 
@@ -94,7 +111,7 @@ Las puertas son **chips de silicio** ([silicio](152), `element_si`):
 
 | Receta | Ingredientes |
 |---|---|
-| **2** `and_gate`, **2** `or_gate`, **2** `xor_gate`, **2** `not_gate` | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
+| **2** `and_gate`, **2** `nand_gate`, **2** `or_gate`, **2** `xor_gate`, **2** `not_gate` | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
 
 ## Tiempo
 

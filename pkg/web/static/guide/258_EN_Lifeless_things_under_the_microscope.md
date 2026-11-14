@@ -21,7 +21,7 @@ Under the field, a line says what it is and what the power you are using shows. 
 | ![](item:salt) Crystals | `salt`, `baking_soda`, `copper_sulfate`, `fluorite`, `pyrite`, sulfur, iodine, carbon, silicon, boron, `quicklime`, `rust_pigment`, `ice` | cubes, prisms, plates, powders | one face, one edge |
 | ![](item:ruby) Gems | `ruby`, `sapphire` | colour in straight bands | silk: needles of rutile at 60° |
 | ![](item:glass) Glass | `glass`, panes, `cobalt_glass`, every stained glass | nothing | still nothing: [the lesson](259) |
-| ![](item:and_gate) Electronics | the six logic gates, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, mirrors | tracks, chips, fingers of silver, a coiled filament | glass fibres in the board; black copper |
+| ![](item:and_gate) Electronics | the seven logic gates, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, mirrors | tracks, chips, fingers of silver, a coiled filament | glass fibres in the board; black copper |
 | ![](item:bread) Food | `bread`, `wheat_seeds`, `honey_bottle`, `cooked_fish`, `salted_fish` | holes in bread, bran, specks in honey | starch grains, pollen, muscle stripes 2 µm apart |
 | ![](item:cactus) Plants | `cactus`, `moss`, `tall_grass`, `grass` | green tissue, little leaves | chloroplasts, stomata, crystals of calcium oxalate |
 | ![](item:feather) From animals | `feather`, `fur`, `leather`, `scale`, `shell` | barbs, hairs, pores, scale outlines | hooklets, cuticle scales, collagen, nacre |

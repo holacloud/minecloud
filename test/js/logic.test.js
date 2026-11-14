@@ -85,7 +85,7 @@ test('the client tables mirror logic.go', () => {
 test('every state is a world block with its textures', () => {
     const world = makeWorld();
     const names = ['lever', 'lever:on', 'push_button:on', 'pressure_plate:on', 'daylight_sensor', 'daylight_sensor:night:on',
-        'proximity_sensor:on', 'rain_sensor:on', 'and_gate', 'and_gate:e:on', 'or_gate:s:off', 'xor_gate:w:on', 'not_gate:n:on',
+        'proximity_sensor:on', 'rain_sensor:on', 'and_gate', 'and_gate:e:on', 'nand_gate', 'nand_gate:s:on', 'or_gate:s:off', 'xor_gate:w:on', 'not_gate:n:on',
         'delay_gate', 'delay_gate:n:3:off', 'delay_gate:w:4:on', 'latch:e:on', 'lift_stop', 'lift_stop:called:off', 'lift_stop:free:on', 'lift_stop:called:on'];
     for (const name of names) {
         assert.ok(world.registry.id(name) > 0, name);
@@ -175,6 +175,54 @@ test('a right click on a lift stop calls the lift', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(sent)), [['logicPress', { x: 4, y: 1, z: 4 }]]);
 });
 
+// The ink pixels of a gate's top at 16 pixels (rows from the output's edge, facing north).
+function logicInk(op) {
+    const f = new (vm.runInContext('BlockTextureFactory', ctx))();
+    const s = f.createSurface(16, false);
+    ctx.TEXTURE_PATTERNS[`logic_top_${op}_n_off`].paint(f, s, null, 7);
+    const ink = f.rgb(0xaab4be);
+    const pixels = [];
+    for (let i = 0; i < 16 * 16; i++) {
+        if (s.color[i * 3] === ink[0] && s.color[i * 3 + 1] === ink[1] && s.color[i * 3 + 2] === ink[2]) pixels.push([i % 16, Math.floor(i / 16)]);
+    }
+    return pixels;
+}
+
+test('the NAND gate: an AND in every respect but its answer, with the & and the circle of an inverted output', () => {
+    const world = makeWorld();
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.LOGIC_KINDS.nand_gate)), { op: 'nand', states: 'facing,power' });
+    assert.deepEqual([...ctx.LOGIC_INPUTS.nand], [...ctx.LOGIC_INPUTS.and]);
+    const def = world.blockTypes.nand_gate;
+    assert.equal(def.name, 'NAND Gate');
+    assert.equal(def.category, 'electric');
+    assert.equal(ctx.ELECTRIC_KINDS.nand_gate.role, 'logic');
+    // Every facing and power is a block, as for the AND.
+    assert.equal(Object.keys(world.blockTypes).filter((name) => name.split(':')[0] === 'nand_gate').length,
+        Object.keys(world.blockTypes).filter((name) => name.split(':')[0] === 'and_gate').length);
+    assert.equal(ctx.BLOCK_SHAPES.logic_nand_gate.place({ look: { x: -1, z: 0 } })[0].state.facing, 'w');
+    assert.equal(world.getFaceTextureSpecs('nand_gate:e:on').top.pattern, 'logic_top_nand_e_on');
+    // Crafted as the AND is: two from one silicon, two wires and a cobblestone.
+    const recipes = [];
+    vm.runInContext('GAME_CONTENT_HOOKS', ctx).forEach((hook) => hook.call({}, { addItem() {}, addRecipe: (...args) => recipes.push(args) }));
+    const and = recipes.find(([id]) => id === 'and_gate');
+    const nand = recipes.find(([id]) => id === 'nand_gate');
+    assert.equal(nand[1], 'Build NAND Gates');
+    assert.equal(nand[2], 'nand_gate');
+    assert.equal(nand[3], and[3]);
+    assert.deepEqual(JSON.parse(JSON.stringify(nand[4])), JSON.parse(JSON.stringify(and[4])));
+    // Its top at 16 pixels: the &, one row lower than the AND's, and above it a circle with a row of board
+    // between them, between the & and the arrow.
+    const andInk = logicInk('and');
+    const nandInk = logicInk('nand');
+    const glyphTop = Math.min(...andInk.map(([, y]) => y));
+    assert.deepEqual(nandInk.filter(([, y]) => y > glyphTop).map(([x, y]) => `${x},${y}`).sort(),
+        andInk.map(([x, y]) => `${x},${y + 1}`).sort(), 'the same & one row lower');
+    const circle = nandInk.filter(([, y]) => y < glyphTop);
+    assert.ok(circle.length >= 2, `a circle: ${circle.length} pixels`);
+    assert.ok(circle.every(([x, y]) => y >= 4 && y < glyphTop && x >= 6 && x <= 9), 'above the &, under the arrow');
+    assert.ok(nandInk.every(([, y]) => y !== glyphTop), 'a row of board between the circle and the &');
+});
+
 test('a right click on a lever asks the server', () => {
     const world = makeWorld();
     world.setEditedBlock(4, 1, 4, 'lever');
@@ -193,4 +241,6 @@ test('a right click on a lever asks the server', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(sent)), [['logicPress', { x: 4, y: 1, z: 4 }]]);
     // Gates without a setting are not pressed (a block can be placed against them).
     assert.equal(handler.call(game, null, { position: { x: 5, y: 1, z: 4 } }), false);
+    world.setEditedBlock(6, 1, 4, 'nand_gate');
+    assert.equal(handler.call(game, null, { position: { x: 6, y: 1, z: 4 } }), false);
 });

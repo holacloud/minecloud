@@ -49,7 +49,7 @@ func init() {
 		"coal_ore", "sand", "cobblestone", "limestone", "iron_ore", "copper_ore", "tin_ore", "planks", "torch",
 		// Electricity and logic.
 		"copper_wire", "wire_post", "multimeter", "light_bulb", "electric_lamp", "battery", "battery_block", "solar_cell",
-		"lever", "push_button", "pressure_plate", "and_gate", "or_gate", "not_gate", "xor_gate", "delay_gate", "latch",
+		"lever", "push_button", "pressure_plate", "and_gate", "nand_gate", "or_gate", "not_gate", "xor_gate", "delay_gate", "latch",
 		"daylight_sensor", "proximity_sensor", "hand_crank", "copper_wrench", "iron_block", "copper_block",
 		// Food and drink.
 		"bread", "cooked_fish", "cheese", "honey_bottle", "wheat", "milk", "cold_water", "cold_milk", "cold_soda",

@@ -61,6 +61,16 @@ Sumar dos bits es fácil:
 Fíjate: la columna **Suma** es la tabla de la **XOR**, y la de **Me llevo** es la de la **AND**. Con una XOR y una
 AND tienes un **semisumador**: el primer paso de una calculadora. Juntando muchos se suman números enormes.
 
+## Una puerta para construirlas todas
+
+La [NAND](209) ("NO Y") es especial: **solo con NAND puedes construir cualquier otra puerta**. Si unes sus dos
+entradas a un mismo cable, hace lo contrario de lo que le llega: ¡es una NOT! Y una NAND seguida de esa NOT vuelve a
+ser una AND, porque darle la vuelta dos veces es dejarlo como estaba. Con unas cuantas más salen la OR y la XOR. Por
+eso a los ingenieros les gusta tanto: con un solo tipo de pieza, repetido muchas veces, se puede hacer un ordenador
+entero. La memoria de los móviles y de los pinchos USB se llama "memoria flash NAND" por esta puerta.
+
+**Reto:** coloca dos NAND y haz con ellas una AND. Comprueba su tabla con dos palancas.
+
 ## Cómo usan las puertas los ordenadores
 
 - El **procesador** de un ordenador o de un móvil tiene **miles de millones** de puertas lógicas diminutas, hechas de
@@ -72,8 +82,8 @@ AND tienes un **semisumador**: el primer paso de una calculadora. Juntando mucho
 
 ## Para pensar
 
-- Con puertas NOT y AND se pueden construir **todas** las demás. ¿Sabes hacer una OR con NOT y AND? (Pista: "A o B"
-  es lo mismo que "no es verdad que ni A ni B".)
+- Con puertas NOT y AND también se pueden construir **todas** las demás. ¿Sabes hacer una OR con NOT y AND?
+  (Pista: "A o B" es lo mismo que "no es verdad que ni A ni B".)
 - ¿Cuántas palancas necesitas para elegir uno de los 7 días de la semana?
 
 Ver también: [Puertas lógicas](209), [Memoria y retardos](210), [Programar el robot](194).

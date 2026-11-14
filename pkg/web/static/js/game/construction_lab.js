@@ -1483,7 +1483,7 @@ const LAB_STOCK = [
     [10, 1, 47, 'canteen', [['bread', 8], ['cooked_fish', 6], ['cheese', 4], ['honey_bottle', 3], ['roast_mushroom', 4], ['wheat', 9], ['raw_fish', 4]]],
     // The electrical workshop.
     [50, 1, 25, 'workshop', [['copper_wire', 64], ['wire_post', 16], ['light_bulb', 6], ['electric_lamp', 4], ['battery', 4], ['solar_cell', 4], ['multimeter', 2], ['copper_wrench', 1]]],
-    [51, 1, 25, 'workshop', [['lever', 6], ['push_button', 4], ['pressure_plate', 2], ['and_gate', 2], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 1], ['delay_gate', 2], ['latch', 2], ['daylight_sensor', 1], ['proximity_sensor', 1], ['hand_crank', 1]]],
+    [51, 1, 25, 'workshop', [['lever', 6], ['push_button', 4], ['pressure_plate', 2], ['and_gate', 2], ['nand_gate', 1], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 1], ['delay_gate', 2], ['latch', 2], ['daylight_sensor', 1], ['proximity_sensor', 1], ['hand_crank', 1]]],
     [53, 1, 12, 'workshop', [['iron_block', 8], ['copper_block', 8]]],
     [53, 1, 13, 'workshop', [['planks', 32], ['glass', 16]]],
     // The power hall: the meter and spares for the grid.
@@ -1504,7 +1504,7 @@ const LAB_STOCK = [
     [35, 7, 33, 'floor 1 cupboard', [['multimeter', 1], ['copper_wire', 16], ['light_bulb', 2]]],
     [2, 7, 45, 'library', [['blueprint', 8], ['breeding_notebook', 2], ['star_chart', 2], ['measuring_tape', 1]]],
     // Floor 2. The experiments: what the logic benches are made of.
-    [7, 14, 21, 'experiments', [['multimeter', 2], ['and_gate', 2], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 2], ['delay_gate', 2], ['latch', 2], ['lever', 4], ['push_button', 4],
+    [7, 14, 21, 'experiments', [['multimeter', 2], ['and_gate', 2], ['nand_gate', 2], ['or_gate', 2], ['not_gate', 2], ['xor_gate', 2], ['delay_gate', 2], ['latch', 2], ['lever', 4], ['push_button', 4],
         ['pressure_plate', 2], ['daylight_sensor', 1], ['proximity_sensor', 1], ['light_bulb', 6], ['battery_block', 1], ['copper_wire', 32]]],
     [35, 13, 33, 'floor 2 cupboard', [['multimeter', 1], ['copper_wire', 16], ['light_bulb', 2]]],
     // The offices: geology, astronomy, biology.

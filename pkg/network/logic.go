@@ -22,9 +22,11 @@ import (
 //   - Sensors: daylight (on by day, or by night in "night" mode), proximity (a player within
 //     logicProximityRange blocks) and rain.
 //   - Gates (oriented: the facing is the output arrow): their INPUT faces read a signal and
-//     never conduct. AND, OR and XOR read the left and right faces, NOT and the delay read
-//     the back face, the latch reads SET on the left and RESET on the right. Every other face
-//     (front, the free sides, top and bottom) conducts while the gate is on.
+//     never conduct. AND, NAND, OR and XOR read the left and right faces, NOT and the delay
+//     read the back face, the latch reads SET on the left and RESET on the right. Every other
+//     face (front, the free sides, top and bottom) conducts while the gate is on. A NAND, like a
+//     NOT, is on with nothing at its inputs: a freshly placed one (the bare name, off) switches
+//     on at the next tick and is then a signal for whatever it touches.
 //
 // A SIGNAL is "this wire is on": an input is on when the block touching it (conducting
 // towards it) belongs to a network that has power available (a working generator or charged
@@ -71,6 +73,7 @@ var logicKinds = map[string]logicKind{
 	"proximity_sensor": {Op: "proximity", States: "power"},
 	"rain_sensor":      {Op: "rain", States: "power"},
 	"and_gate":         {Op: "and", States: "facing,power"},
+	"nand_gate":        {Op: "nand", States: "facing,power"},
 	"or_gate":          {Op: "or", States: "facing,power"},
 	"xor_gate":         {Op: "xor", States: "facing,power"},
 	"not_gate":         {Op: "not", States: "facing,power"},
@@ -105,7 +108,7 @@ const (
 
 // Input faces of each gate, relative to its facing.
 var logicInputs = map[string][]string{
-	"and": {"left", "right"}, "or": {"left", "right"}, "xor": {"left", "right"},
+	"and": {"left", "right"}, "nand": {"left", "right"}, "or": {"left", "right"}, "xor": {"left", "right"},
 	"not": {"back"}, "delay": {"back"}, "latch": {"left", "right"}, "stop": {"top"},
 }
 
@@ -399,6 +402,8 @@ func (g *powerGrid) logicEvaluate(p powerPos, block logicBlock, env powerEnviron
 		return day
 	case "and":
 		return input("left") && input("right")
+	case "nand":
+		return !(input("left") && input("right"))
 	case "or":
 		return input("left") || input("right")
 	case "xor":

@@ -21,7 +21,7 @@ Bajo el campo, una línea dice qué es y qué enseña el aumento que usas. Cambi
 | ![](item:salt) Cristales | `salt`, `baking_soda`, `copper_sulfate`, `fluorite`, `pyrite`, azufre, yodo, carbono, silicio, boro, `quicklime`, `rust_pigment`, `ice` | cubos, prismas, placas, polvos | una cara, un borde |
 | ![](item:ruby) Gemas | `ruby`, `sapphire` | color en bandas rectas | seda: agujas de rutilo a 60° |
 | ![](item:glass) Vidrio | `glass`, paneles, `cobalt_glass`, todas las vidrieras | nada | sigue sin haber nada: [la lección](259) |
-| ![](item:and_gate) Electrónica | las seis puertas lógicas, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, espejos | pistas, chips, dedos de plata, un filamento enrollado | fibras de vidrio en la placa; cobre negro |
+| ![](item:and_gate) Electrónica | las siete puertas lógicas, `rain_sensor`, `daylight_sensor`, `solar_cell`, `solar_panel`, `light_bulb`, `copper_wire`, espejos | pistas, chips, dedos de plata, un filamento enrollado | fibras de vidrio en la placa; cobre negro |
 | ![](item:bread) Comida | `bread`, `wheat_seeds`, `honey_bottle`, `cooked_fish`, `salted_fish` | agujeros del pan, salvado, motas en la miel | almidón, polen, estrías del músculo cada 2 µm |
 | ![](item:cactus) Plantas | `cactus`, `moss`, `tall_grass`, `grass` | tejido verde, hojitas | cloroplastos, estomas, cristales de oxalato de calcio |
 | ![](item:feather) De animales | `feather`, `fur`, `leather`, `scale`, `shell` | barbas, pelos, poros, contornos de escamas | ganchitos, escamas de cutícula, colágeno, nácar |

@@ -13,13 +13,14 @@ They are thin boards with a drawing on top:
 - A red **arrow**: it points to the **output**. When you place the gate, the arrow points **the way you are
   looking**. It lights up while the gate is on.
 - **Copper pads** on the edges: those are the **inputs**.
-- A **symbol** in the middle, the one used in electronics standards: `&`, `≥1`, `=1`, `1`.
+- A **symbol** in the middle, the one used in electronics standards: `&`, `≥1`, `=1`, `1`. A little **circle**
+  between the symbol and the arrow means "the answer is turned upside down": NOT and NAND have it.
 
 The inputs, looking the way the arrow points:
 
 | Gate | Inputs |
 |---|---|
-| AND, OR, XOR | **left** (A) and **right** (B) |
+| AND, NAND, OR, XOR | **left** (A) and **right** (B) |
 | NOT, [delay](210) | **back** |
 | [Latch](210) | left = **SET**, right = **RESET** |
 
@@ -40,7 +41,7 @@ and the lamp on another.
 
 > The [multimeter](205) tells you whether a network carries a **signal**.
 
-## The four gates
+## The five gates
 
 In the tables 0 is "no" (off) and 1 is "yes" (on). They are called **truth tables**.
 
@@ -54,6 +55,21 @@ On only if **A and B** are on. Like a safe with two keys.
 | 0 | 1 | 0 |
 | 1 | 0 | 0 |
 | 1 | 1 | **1** |
+
+### NAND (not AND) ![](item:nand_gate)
+
+The **opposite of AND**: on **unless A and B are both on**. Its symbol is the `&` with the little circle. Careful:
+with **nothing connected** it is **on**, so it lights a lamp as soon as you place it next to a battery.
+
+| A | B | Output |
+|---|---|---|
+| 0 | 0 | **1** |
+| 0 | 1 | **1** |
+| 1 | 0 | **1** |
+| 1 | 1 | 0 |
+
+It looks like a small thing, but it is the most famous gate of all: with NANDs alone you can build every other gate
+([Logic for the curious](212) tells how).
 
 ### OR ![](item:or_gate)
 
@@ -93,7 +109,7 @@ Gates are **silicon chips** ([silicon](152), `element_si`):
 
 | Recipe | Ingredients |
 |---|---|
-| **2** `and_gate`, **2** `or_gate`, **2** `xor_gate`, **2** `not_gate` | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
+| **2** `and_gate`, **2** `nand_gate`, **2** `or_gate`, **2** `xor_gate`, **2** `not_gate` | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
 
 ## Timing
 

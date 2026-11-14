@@ -30,7 +30,7 @@ var specimenItems = []string{
 	// Glass.
 	"glass", "glass_pane", "cobalt_glass",
 	// Electronics.
-	"and_gate", "or_gate", "xor_gate", "not_gate", "delay_gate", "latch", "rain_sensor", "daylight_sensor", "solar_cell",
+	"and_gate", "nand_gate", "or_gate", "xor_gate", "not_gate", "delay_gate", "latch", "rain_sensor", "daylight_sensor", "solar_cell",
 	"solar_panel", "light_bulb", "copper_wire", "mirror", "wall_mirror",
 	// Food and plants.
 	"bread", "wheat_seeds", "honey_bottle", "cooked_fish", "salted_fish", "cactus", "moss", "tall_grass", "grass",

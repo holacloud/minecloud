@@ -91,9 +91,10 @@ func logicGateRig(gate string) (*powerGrid, fakeCropWorld) {
 
 func TestLogicTwoInputGates(t *testing.T) {
 	table := map[string][4]bool{ // outputs for inputs 00, 01, 10, 11
-		"and_gate": {false, false, false, true},
-		"or_gate":  {false, true, true, true},
-		"xor_gate": {false, true, true, false},
+		"and_gate":  {false, false, false, true},
+		"nand_gate": {true, true, true, false},
+		"or_gate":   {false, true, true, true},
+		"xor_gate":  {false, true, true, false},
 	}
 	for gate, want := range table {
 		for i, expected := range want {
@@ -116,6 +117,28 @@ func TestLogicTwoInputGates(t *testing.T) {
 				t.Errorf("%s: an input face must not conduct", gate)
 			}
 		}
+	}
+}
+
+func TestLogicNandWithNothingConnectedIsOn(t *testing.T) {
+	// A NAND placed on its own (the bare name, off) switches on at the next tick, as a NOT does, and
+	// is then a signal: a NOT whose back touches its front goes off.
+	w := fakeCropWorld{}
+	g := newTestGrid(w, map[powerPos]string{{0, 0, 0}: "nand_gate", {0, 0, -1}: "not_gate"})
+	now := time.Unix(1000, 0)
+	logicRun(g, w, powerMidnight, &now, 3)
+	if w[[3]int{0, 0, 0}] != "nand_gate:n:on" {
+		t.Fatalf("a NAND with nothing at its inputs is on: %q", w[[3]int{0, 0, 0}])
+	}
+	if w[[3]int{0, 0, -1}] != "not_gate" {
+		t.Fatalf("the NAND's output is a signal for the NOT in front of it: %q", w[[3]int{0, 0, -1}])
+	}
+	// A world saved with one off (an old save, a name written by hand) has it on at the first tick.
+	saved := fakeCropWorld{}
+	g = newTestGrid(saved, map[powerPos]string{{0, 0, 0}: "nand_gate:e:off"})
+	logicRun(g, saved, powerMidnight, &now, 1)
+	if saved[[3]int{0, 0, 0}] != "nand_gate:e:on" {
+		t.Fatalf("a saved NAND that was off follows its inputs: %q", saved[[3]int{0, 0, 0}])
 	}
 }
 
