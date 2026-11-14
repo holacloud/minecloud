@@ -599,8 +599,8 @@ Object.assign(Game.prototype, {
             if (!cage.open) continue;
             for (const mob of this.ambientMobs) {
                 const entry = TRAPS_SPECIES[mob.userData.species];
-                // Pets and the mob being ridden never end up in a cage.
-                if (!entry || !entry.cage || mob.userData.trapsCage || mob.userData.rider || mob.userData.tamed || mob === this.ridingMob || mob.userData.isHive) continue;
+                // Pets (this player's or, kept by the server, somebody else's) and the mob being ridden never end up in a cage.
+                if (!entry || !entry.cage || mob.userData.trapsCage || mob.userData.rider || mob.userData.tamed || mob.userData.animalOwnerName != null || mob === this.ridingMob || mob.userData.isHive) continue;
                 const feet = mob.position.y - (mob.userData.flyHeight || 0);
                 if (Math.abs(feet - cage.position.y) > 0.8) continue;
                 if (Math.hypot(mob.position.x - cage.position.x, mob.position.z - cage.position.z) > 0.42) continue;

@@ -381,14 +381,186 @@ function oreAt(x, y, z, surface, soilDepth) {
     return depth > soilDepth ? veinOreAt(x, y, z) : '';
 }
 
-// Block type of a terrain cell at or below the column surface.
-function blockAt(worldX, y, worldZ, surface, soilDepth = soilDepthAt(worldX, worldZ, surface)) {
-    if (y === surface.height && !surface.beach && surface.biome !== 'desert' && mossAt(worldX, worldZ, surface)) return 'moss';
-    return oreAt(worldX, y, worldZ, surface, soilDepth) || groundBlockAt(worldX, y, worldZ, surface, soilDepth);
+// Where the fossils are: everything here is explained in pkg/terrain/fossils.go, which this mirrors, and
+// fossilFingerprint in pkg/terrain/fossils_test.go holds the two together. What the rock of a chunk
+// holds is worked out from the chunk's coordinates alone, and all of it lies inside that chunk: the
+// three pieces of a skeleton are never on two sides of a border. Which animal is inside a block is not
+// said here but in js/game/fossils.js.
+const FOSSIL_ROCK = 'fossil_rock';
+const FOSSIL_ROCK_RARE = 'fossil_rock_rare';
+const AMBER_ROCK = 'amber_rock';
+const OLD_BONES = 'old_bones';
+const SKELETON_BLOCKS = ['fossil_bones_skull', 'fossil_bones_spine', 'fossil_bones_tail'];
+// ChunkSize of pkg/terrain/chunk.go: this file is also loaded where the game's own constant is not.
+const FOSSIL_CHUNK = 16;
+const FOSSIL_FLOOR = -11;
+const FOSSIL_COMMON_TOP = 2;
+const FOSSIL_COMMON_SLOTS = 3;
+const FOSSIL_COMMON_CHANCE = 0.9;
+const FOSSIL_POCKET_ONE = 0.4;
+const FOSSIL_POCKET_TWO = 0.75;
+const FOSSIL_POCKET_MARGIN = 1;
+const FOSSIL_RARE_TOP = -3;
+const FOSSIL_RARE_CHANCE = 0.8;
+const SKELETON_TOP = -4;
+const SKELETON_CHANCE = 0.075;
+const SKELETON_GAP_MIN = 2;
+const SKELETON_MARGIN = 3;
+const SKELETON_DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const AMBER_BOTTOM = 3;
+const AMBER_TOP = 12;
+const AMBER_SLOTS = 2;
+const AMBER_CHANCE = 0.75;
+const AMBER_COVER = 2;
+const OLD_BONES_MIN_DEPTH = 1;
+const OLD_BONES_MAX_DEPTH = 3;
+const OLD_BONES_BEACH_CHANCE = 1 / 110;
+const OLD_BONES_PLAINS_CHANCE = 1 / 1500;
+const SEED_SKELETON = 3300;
+const SEED_RARE = 3310;
+const SEED_COMMON = 3320;
+const SEED_AMBER = 3350;
+const SEED_OLD_BONES = 3390;
+const FOSSIL_SLOT_SEEDS = 10;
+const POCKET_SIDES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+// Whether a block is one of the fossils the world is made with.
+function isNaturalFossil(name) {
+    return name === FOSSIL_ROCK || name === FOSSIL_ROCK_RARE || name === AMBER_ROCK || name === OLD_BONES || SKELETON_BLOCKS.includes(name);
 }
 
-// What a terrain cell is made of where no moss and no ore is: the rock and the soil, which nothing
-// about ores ever changes.
+// A whole number from 0 to n - 1 out of the roll of a chunk.
+function fossilPick(chunkX, chunkZ, seed, n) {
+    return Math.floor(hash2(chunkX, chunkZ, seed) * n);
+}
+
+// A pocket of one to three blocks, into `spots`: the first at height y, the others on two different
+// sides of it, unless that leaves the layer of its kind.
+function fossilAddPocket(spots, chunkX, chunkZ, seed, y, bottom, top, block) {
+    const span = FOSSIL_CHUNK - 2 * FOSSIL_POCKET_MARGIN;
+    const lx = FOSSIL_POCKET_MARGIN + fossilPick(chunkX, chunkZ, seed + 1, span);
+    const lz = FOSSIL_POCKET_MARGIN + fossilPick(chunkX, chunkZ, seed + 2, span);
+    spots.push([lx, y, lz, block]);
+    const size = hash2(chunkX, chunkZ, seed + 4);
+    if (size < FOSSIL_POCKET_ONE) return;
+    const first = fossilPick(chunkX, chunkZ, seed + 5, POCKET_SIDES.length);
+    const sides = [first];
+    if (size >= FOSSIL_POCKET_TWO) sides.push((first + 1 + fossilPick(chunkX, chunkZ, seed + 6, POCKET_SIDES.length - 1)) % POCKET_SIDES.length);
+    for (const side of sides) {
+        const [dx, dy, dz] = POCKET_SIDES[side];
+        if (y + dy >= bottom && y + dy <= top) spots.push([lx + dx, y + dy, lz + dz, block]);
+    }
+}
+
+// What the rock of a chunk may hold, from nothing but its coordinates: spots [lx, y, lz, block] in the
+// order that wins a cell (the skeleton, the rare fossil, the common pockets, the amber).
+function fossilPlanOf(chunkX, chunkZ) {
+    const spots = [];
+    let skeleton = 0;
+    if (hash2(chunkX, chunkZ, SEED_SKELETON) < SKELETON_CHANCE) {
+        const span = FOSSIL_CHUNK - 2 * SKELETON_MARGIN;
+        const lx = SKELETON_MARGIN + fossilPick(chunkX, chunkZ, SEED_SKELETON + 1, span);
+        const lz = SKELETON_MARGIN + fossilPick(chunkX, chunkZ, SEED_SKELETON + 2, span);
+        const y = FOSSIL_FLOOR + fossilPick(chunkX, chunkZ, SEED_SKELETON + 3, SKELETON_TOP - FOSSIL_FLOOR + 1);
+        const [dx, dz] = SKELETON_DIRECTIONS[fossilPick(chunkX, chunkZ, SEED_SKELETON + 4, SKELETON_DIRECTIONS.length)];
+        const skull = SKELETON_GAP_MIN + fossilPick(chunkX, chunkZ, SEED_SKELETON + 5, 2);
+        const tail = SKELETON_GAP_MIN + fossilPick(chunkX, chunkZ, SEED_SKELETON + 6, 2);
+        spots.push([lx + dx * skull, y, lz + dz * skull, SKELETON_BLOCKS[0]]);
+        spots.push([lx, y, lz, SKELETON_BLOCKS[1]]);
+        spots.push([lx - dx * tail, y, lz - dz * tail, SKELETON_BLOCKS[2]]);
+        skeleton = SKELETON_BLOCKS.length;
+    }
+    if (hash2(chunkX, chunkZ, SEED_RARE) < FOSSIL_RARE_CHANCE) {
+        const lx = fossilPick(chunkX, chunkZ, SEED_RARE + 1, FOSSIL_CHUNK);
+        const lz = fossilPick(chunkX, chunkZ, SEED_RARE + 2, FOSSIL_CHUNK);
+        spots.push([lx, FOSSIL_FLOOR + fossilPick(chunkX, chunkZ, SEED_RARE + 3, FOSSIL_RARE_TOP - FOSSIL_FLOOR + 1), lz, FOSSIL_ROCK_RARE]);
+    }
+    for (let slot = 0; slot < FOSSIL_COMMON_SLOTS; slot++) {
+        const seed = SEED_COMMON + slot * FOSSIL_SLOT_SEEDS;
+        if (hash2(chunkX, chunkZ, seed) < FOSSIL_COMMON_CHANCE) {
+            const y = FOSSIL_FLOOR + fossilPick(chunkX, chunkZ, seed + 3, FOSSIL_COMMON_TOP - FOSSIL_FLOOR + 1);
+            fossilAddPocket(spots, chunkX, chunkZ, seed, y, FOSSIL_FLOOR, FOSSIL_COMMON_TOP, FOSSIL_ROCK);
+        }
+    }
+    for (let slot = 0; slot < AMBER_SLOTS; slot++) {
+        const seed = SEED_AMBER + slot * FOSSIL_SLOT_SEEDS;
+        if (hash2(chunkX, chunkZ, seed) < AMBER_CHANCE) {
+            // Likelier the lower: most forest ground has no rock much above y = 5.
+            const roll = hash2(chunkX, chunkZ, seed + 3);
+            const y = AMBER_BOTTOM + Math.floor(roll * roll * (AMBER_TOP - AMBER_BOTTOM + 1));
+            fossilAddPocket(spots, chunkX, chunkZ, seed, y, AMBER_BOTTOM, AMBER_TOP, AMBER_ROCK);
+        }
+    }
+    return { chunkX, chunkZ, spots, skeleton, skeletonChecked: false, skeletonWhole: false };
+}
+
+// Whether the three pieces of the chunk's skeleton all lie in plain rock: if an ore would take one,
+// none of it is there.
+function skeletonIsWhole(plan) {
+    for (let i = 0; i < plan.skeleton; i++) {
+        const [lx, y, lz] = plan.spots[i];
+        const x = plan.chunkX * FOSSIL_CHUNK + lx;
+        const z = plan.chunkZ * FOSSIL_CHUNK + lz;
+        const surface = columnSurface(x, z);
+        const soil = soilDepthAt(x, z, surface);
+        if (surface.height - y <= soil || oreAt(x, y, z, surface, soil)) return false;
+    }
+    return true;
+}
+
+// Whether this cell of the soil of a column, `depth` blocks under its top, is old bones: under dry
+// land, in the sand of a beach outside the desert or, far less often, in the soil of a plain.
+function oldBonesAt(x, z, surface, depth) {
+    if (depth < OLD_BONES_MIN_DEPTH || depth > OLD_BONES_MAX_DEPTH || surface.height < WATER_LEVEL) return false;
+    let chance;
+    if (surface.beach && surface.biome !== 'desert') chance = OLD_BONES_BEACH_CHANCE;
+    else if (surface.biome === 'plains' && !surface.beach) chance = OLD_BONES_PLAINS_CHANCE;
+    else return false;
+    if (hash2(x, z, SEED_OLD_BONES) >= chance) return false;
+    return depth === OLD_BONES_MIN_DEPTH + Math.floor(hash2(x, z, SEED_OLD_BONES + 1) * (OLD_BONES_MAX_DEPTH - OLD_BONES_MIN_DEPTH + 1));
+}
+
+// The plan of the chunk asked about last: a column is asked cell after cell, so nearly every question
+// is about the same chunk as the one before. It only saves time.
+let fossilPlanLast = null;
+
+// The fossil at a cell of a column at or below its surface where no moss and no ore is, or ''.
+function fossilAt(x, y, z, surface, soilDepth) {
+    const depth = surface.height - y;
+    if (depth <= soilDepth) return oldBonesAt(x, z, surface, depth) ? OLD_BONES : '';
+    if (y < FOSSIL_FLOOR || y > AMBER_TOP) return '';
+    const chunkX = Math.floor(x / FOSSIL_CHUNK);
+    const chunkZ = Math.floor(z / FOSSIL_CHUNK);
+    if (!fossilPlanLast || fossilPlanLast.chunkX !== chunkX || fossilPlanLast.chunkZ !== chunkZ) fossilPlanLast = fossilPlanOf(chunkX, chunkZ);
+    const plan = fossilPlanLast;
+    const lx = x - chunkX * FOSSIL_CHUNK;
+    const lz = z - chunkZ * FOSSIL_CHUNK;
+    for (let i = 0; i < plan.spots.length; i++) {
+        const spot = plan.spots[i];
+        if (spot[0] !== lx || spot[1] !== y || spot[2] !== lz) continue;
+        if (i < plan.skeleton) {
+            if (!plan.skeletonChecked) {
+                plan.skeletonWhole = skeletonIsWhole(plan);
+                plan.skeletonChecked = true;
+            }
+            if (!plan.skeletonWhole) continue;
+        }
+        if (spot[3] === AMBER_ROCK && (surface.biome !== 'forest' || depth < soilDepth + AMBER_COVER)) continue;
+        return spot[3];
+    }
+    return '';
+}
+
+// Block type of a terrain cell at or below the column surface: moss, then an ore, then a fossil, and
+// the ground where none of them is.
+function blockAt(worldX, y, worldZ, surface, soilDepth = soilDepthAt(worldX, worldZ, surface)) {
+    if (y === surface.height && !surface.beach && surface.biome !== 'desert' && mossAt(worldX, worldZ, surface)) return 'moss';
+    return oreAt(worldX, y, worldZ, surface, soilDepth) || fossilAt(worldX, y, worldZ, surface, soilDepth) ||
+        groundBlockAt(worldX, y, worldZ, surface, soilDepth);
+}
+
+// What a terrain cell is made of where no moss, no ore and no fossil is: the rock and the soil, which
+// nothing about them ever changes.
 function groundBlockAt(worldX, y, worldZ, surface, soilDepth) {
     const { biome, height, beach } = surface;
     const depth = height - y;

@@ -57,9 +57,14 @@ package network
 //   - Robots, beavers and copper golems live in their owner's browser and act through that client's
 //     blockPlace and blockBreak, so they are checked as their owner.
 //
+//   - The animals the server keeps (animals.go): one with no owner is not struck, taken or tamed away by a
+//     stranger inside a plot (animalHurt, animalGone, animalAdopt), and nobody leaves an animal to stay
+//     where they may not build (animalSet).
+//
 // What is not checked, on purpose: sampleTake (the water or the moss stays where it was), signVote (a
-// visitor may read and vote a sign), powerProbe (reading), soundBlockPlay (a sound). What cannot be
-// checked: whatever the browser decides alone, because the server never hears of it: pets and tamed animals, mobs, traps and cages,
+// visitor may read and vote a sign), powerProbe (reading), soundBlockPlay (a sound), animalAt (in a plot
+// that is not the sender's it only sends the animal back to where it stood). What cannot be checked:
+// whatever the browser decides alone, because the server never hears of it: wild mobs, traps and cages,
 // ant jars, pickups, the inventory. A pressure plate or a proximity sensor reacts to whoever stands on or
 // near it, by design.
 //

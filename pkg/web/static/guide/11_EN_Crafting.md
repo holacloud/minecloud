@@ -37,7 +37,7 @@ colour. A recipe has the tags of what it makes.
 | Electricity and machines | `#electric`, `#logic`, `#mechanism`, `#transport` |
 | Gear | `#tool`, `#weapon`, `#armor` |
 | Eating and growing | `#food`, `#drink`, `#farming`, `#plant` |
-| Animals | `#animal`, `#egg`, `#bait` |
+| Animals | `#animal`, `#egg`, `#fossil`, `#bait` |
 | Science | `#chemistry`, `#element`, `#science`, `#microscope`, `#sample` |
 | Colours | `#white`, `#light-gray`, `#gray`, `#black`, `#brown`, `#red`, `#orange`, `#yellow`, `#lime`, `#green`, `#cyan`, `#light-blue`, `#blue`, `#purple`, `#magenta`, `#pink` |
 

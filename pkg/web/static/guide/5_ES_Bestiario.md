@@ -1,6 +1,6 @@
 # Bestiario
 
-Un cuaderno de campo con todo lo que vive en el mundo: **35 animales y criaturas** y **17 organismos microscópicos**, 52 tarjetas en total. Todo lo que dice está en el idioma del juego.
+Un cuaderno de campo con todo lo que vive en el mundo: **35 animales y criaturas** y **17 organismos microscópicos**, 52 tarjetas en total. Todo lo que dice está en el idioma del juego. Aparte van los [animales extintos](261), que tienen su propia sección.
 
 - **Abrir:** tecla **B**, o el botón "Bestiario (B)" del menú de pausa.
 - **Cerrar:** Escape, B, el botón "Cerrar" o un clic fuera del panel.
@@ -38,9 +38,24 @@ Los 17 organismos de [el mundo pequeño](237) y [sus cultivos](255) son tarjetas
 
 Su ficha enseña su dibujo, vivo, desde qué aumento se ve ("Se ve desde 40×"), su **Tamaño real**, su **Grupo**, dónde **Vive** y cuántas **Identificaciones** llevas, con un botón a su página de la guía. No tienen temperamento, ni dieta, ni botín, y nadie los derrota.
 
+## Animales extintos
+
+Al final del panel, bajo el título **Animales extintos**, están los que ya no viven en ninguna parte. Nadie se los
+cruza por ahí: solo se ven cuando alguien encuentra su fósil y lo devuelve a la vida. Ver [Animales extintos](261).
+
+- **Son un secreto hasta que ves uno.** Mientras tanto su tarjeta es igual para todos: una silueta con un "?", sin
+  nombre y sin hábitat. Su ficha solo dice: "Un animal extinto. Encuentra su fósil y devuélvelo a la vida para verlo."
+- **Se descubren como los demás**, viendo uno de cerca, lo haya revivido quien lo haya revivido. Desde entonces su
+  tarjeta es una más, con la etiqueta "Extinto".
+- **Llevan su propia cuenta**, junto al título: cuántos llevas "vistos con vida". No suman en el contador de arriba.
+- **Evolución:** si uno es antepasado, o pariente antiguo, de un animal que vive hoy, la ficha de los dos enseña
+  un pequeño árbol: sus retratos unidos por una flecha, con "Extinto" o "Vive hoy" debajo. El que aún no has
+  descubierto sale sin nombre. Pulsa un retrato para ir a su tarjeta.
+
 ## El cuaderno completo
 
-El contador de arriba suma **todas** las tarjetas, las 52. Pero el cuaderno se da por completo con **los 35 animales y criaturas**, sin los organismos. Al descubrir el último, el chat avisa: "¡Tu bestiario está completo! Hay algo escrito en su última página...", y junto al contador aparece un código para la guía. Por eso puedes verlo con el contador en "35 / 52 descubiertas".
+El contador de arriba suma **todas** las tarjetas de lo que vive hoy, las 52. Pero el cuaderno se da por completo con **los 35 animales y criaturas**, sin los organismos. Al descubrir el último, el chat avisa: "¡Tu bestiario está completo! Hay algo escrito en su última página...", y junto al contador aparece un código para la guía. Por eso puedes verlo con el contador en "35 / 52 descubiertas".
 
 - Identificar organismos ni adelanta ni retrasa ese aviso: siguen siendo su propia colección.
+- Los animales extintos tampoco: ni cuentan en el contador ni hacen falta para el aviso.
 - Uno de los 35 no aparece solo: el [golem de cobre](215) hay que construirlo, o sacarlo de su [huevo](74).

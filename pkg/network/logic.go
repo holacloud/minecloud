@@ -239,7 +239,9 @@ func (g *powerGrid) conducts(p, q powerPos) bool {
 		return false
 	}
 	if powerKinds[b.Kind].Role != powerLogic {
-		return true
+		// A machine that reads a start signal on its top face (revival.go) does not conduct through it, as
+		// a gate does not through its inputs: what stands on it never joins the network that feeds it.
+		return !(powerKinds[b.Kind].SignalTop && q == powerPos{p[0], p[1] + 1, p[2]})
 	}
 	block, ok := logicParse(b.Name)
 	if !ok || !block.on() {
@@ -549,6 +551,14 @@ func logicPlayers() [][3]float64 {
 		players = append(players, [3]float64{player.X, player.Y, player.Z})
 	}
 	return players
+}
+
+// logicInputAt says whether the face of the block at this cell towards d receives a signal now, for a
+// mechanic that does not run on the grid's own tick (revival.go). The networks are those of the last tick.
+func logicInputAt(cell [3]int, d powerPos) bool {
+	powerMu.Lock()
+	defer powerMu.Unlock()
+	return grid.logicInput(powerPos(cell), d)
 }
 
 // logicPressAt presses the logic block at (x, y, z) for everyone (players' right clicks and,

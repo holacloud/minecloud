@@ -46,4 +46,6 @@ Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las 
 
 Y para criar hormigas en casa: [Granja de hormigas](136).
 
-Y más pequeños que todos ellos, en [el mundo pequeño](237): ![](mob:tardigrade) [tardígrados](240), y otros quince que solo se conocen a través de un [microscopio](238).
+Y los que ya no viven en ninguna parte, hasta que alguien los devuelve a la vida: [Animales extintos](261).
+
+Y más pequeños que todos ellos, en [el mundo pequeño](237): ![](mob:tardigrade) [tardígrados](240), y otros dieciséis que solo se conocen a través de un [microscopio](238).

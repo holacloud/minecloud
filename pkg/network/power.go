@@ -70,6 +70,9 @@ type powerKind struct {
 	Levels int
 	// Consumers that ask for their Watts only while they have work (powerGrid.asks).
 	OnDemand bool
+	// Consumers that read a start signal on their top face (revival.go): like the input of a gate, that
+	// face never conducts, so what stands on it is their signal and never their power (logic.go, conducts).
+	SignalTop bool
 }
 
 // Game time runs fast (a day is 240 s, a night about 120 s), so the numbers are scaled for
@@ -108,6 +111,10 @@ var powerKinds = map[string]powerKind{
 	// while it has something to sterilise.
 	"incubator": {Role: powerConsumer, Watts: 20, OnDemand: true},
 	"autoclave": {Role: powerConsumer, Watts: 40, OnDemand: true},
+	// --- The revival machine (revival.go) ---
+	// 100 W while it brings an animal back: one hand crank being turned, or a water wheel with three wet
+	// sides, runs it alone. Power comes in through its sides and from below: its top face is its signal.
+	"revival_machine": {Role: powerConsumer, Watts: 100, OnDemand: true, SignalTop: true},
 }
 
 const (

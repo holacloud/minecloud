@@ -1,6 +1,9 @@
 // Node tests for what the bestiary says (js/game/bestiary_text.js) in the language of the game
 // (js/gameLang.js). A species, a label or an item shown that lacks a language fails here, and so does any
 // English left on the panel when it is walked through in Spanish on a fake page. Nothing here runs a browser.
+// What is pinned by name or by number is about the living species. The extinct animals
+// (`hiddenUntilDiscovered`, js/mobSpecies.js) follow rules of their own, checked for whichever there are, so
+// that one more breaks nothing; made-up ones show that the rules bite ("The extinct animals", below).
 // Run with: node --test test/js/bestiary_text.test.js
 
 const test = require('node:test');
@@ -29,7 +32,7 @@ function loadGame() {
     loadSpeciesTables(context, ['game/furniture.js', 'game/storage.js', 'game/appliances.js', 'game/microbes.js', 'game/microscope_text.js']);
     vm.runInContext(`Object.assign(this, { gameLang, setGameLang, Game, ITEM_TYPES, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_ENTRIES_ES, BESTIARY_TEXT, BESTIARY_TEMPERAMENTS,
         BESTIARY_ACTIVITIES, BESTIARY_BIOMES, BESTIARY_ORGANISM_HINTS_ES, BESTIARY_ITEMS_ES, MICRO_SPECIES, MICRO_SPECIES_ES, MICROSCOPE_ITEMS_ES,
-        TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, TRAPS_HOOK_BAITS, trapsIsLured, bestiarySay, bestiaryItemNameEs });`, context);
+        TAMING_DIET, RESOURCE_DROPS, TRAPS_SPECIES, TRAPS_BAITS, TRAPS_HOOK_BAITS, trapsIsLured, bestiarySay, bestiaryItemNameEs, registerSpecies });`, context);
     // The species other files add join the table here, without loading those files.
     for (const id of mobIdsInTheCode()) if (!context.MOB_SPECIES[id]) context.MOB_SPECIES[id] = ownSpeciesFacts(id);
     return context;
@@ -69,6 +72,11 @@ function mobIdsInTheCode() {
 const ctx = loadGame();
 const mobIds = Object.keys(ctx.MOB_SPECIES);
 const organismIds = Object.keys(ctx.MICRO_SPECIES);
+const isExtinct = (context, id) => Boolean(context.MOB_SPECIES && context.MOB_SPECIES[id] && context.MOB_SPECIES[id].hiddenUntilDiscovered);
+const livingIds = mobIds.filter((id) => !isExtinct(ctx, id));
+const extinctIds = mobIds.filter((id) => isExtinct(ctx, id));
+// The living as the panel has always laid them out: in the order of their cards.
+const livingOrder = Object.keys(ctx.BESTIARY_ENTRIES).filter((id) => !isExtinct(ctx, id));
 
 // Runs `work` with the game in this language, and leaves it in English.
 function inLang(context, lang, work) {
@@ -93,7 +101,10 @@ function problemsOf(context, mobs, organisms) {
         if (!en) problems.push(`${id} has no English entry`);
         if (!es) problems.push(`${id} has no Spanish entry`);
         if (!en || !es) continue;
-        for (const field of ['name', 'habitat', 'hint', 'description']) {
+        // An extinct animal has no hint: its secret card says the same line for all, and a found one shows none.
+        const extinct = isExtinct(context, id);
+        if (extinct && ('hint' in en || 'hint' in es)) problems.push(`${id}.hint would never be shown: an extinct animal has none`);
+        for (const field of extinct ? ['name', 'habitat', 'description'] : ['name', 'habitat', 'hint', 'description']) {
             if (!isText(en[field])) problems.push(`${id}.${field} has no English`);
             if (!isText(es[field])) problems.push(`${id}.${field} has no Spanish`);
             if (field !== 'name' && en[field] === es[field]) problems.push(`${id}.${field} is the same in both`);
@@ -116,7 +127,7 @@ function problemsOf(context, mobs, organisms) {
 }
 
 test('every species, the mobs and the organisms, says everything in both languages', () => {
-    assert.ok(mobIds.length >= 35, `${mobIds.length} mobs found in the code`);
+    assert.ok(livingIds.length >= 35, `${livingIds.length} living mobs found in the code`);
     assert.equal(organismIds.length, 17);
     assert.deepEqual(problemsOf(ctx, mobIds, organismIds), []);
     // Nothing is written for a species that is gone, either.
@@ -218,12 +229,15 @@ function guideText() {
 }
 
 test('every creature is called what the guide calls it', () => {
-    const index = guidePage(16);
-    const named = Object.fromEntries([...index.matchAll(/!\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\)/g)].map((match) => [match[1], { name: match[2], page: match[3] }]));
+    // The index of the living is page 16, and that of the extinct animals page 261: a row of either is the same.
+    const rows = (page) => Object.fromEntries([...guidePage(page).matchAll(/!\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\)/g)].map((match) => [match[1], { name: match[2], page: match[3] }]));
+    const living = rows(16);
+    const extinct = rows(261);
     // The bee's page covers the hive too, so its index row and its title say more than its card.
     const titled = { bee: 'Abeja' };
     for (const id of mobIds) {
-        assert.ok(named[id], `${id} is not in the guide's index of mobs`);
+        const named = isExtinct(ctx, id) ? extinct : living;
+        assert.ok(named[id], `${id} is not in the guide's index of ${isExtinct(ctx, id) ? 'extinct animals (261)' : 'mobs (16)'}`);
         const name = ctx.BESTIARY_ENTRIES_ES[id].name;
         if (titled[id]) {
             assert.equal(name, titled[id], id);
@@ -239,7 +253,7 @@ test('every creature is called what the guide calls it', () => {
 test('a hint does not give away the name, in Spanish either', () => {
     // It says what it is made from: there is no other way to get one.
     const exempt = new Set(['copper_golem']);
-    for (const id of mobIds) {
+    for (const id of livingIds) {
         if (exempt.has(id)) continue;
         const { name, hint } = ctx.BESTIARY_ENTRIES_ES[id];
         assert.ok(!hint.toLowerCase().includes(name.split(' ')[0].toLowerCase()), `${id}: ${hint}`);
@@ -255,7 +269,9 @@ test('the Spanish keeps the facts: numbers and punctuation', () => {
         const en = ctx.BESTIARY_ENTRIES[id];
         const es = ctx.BESTIARY_ENTRIES_ES[id];
         assert.deepEqual(es.description.match(/\d+/g), en.description.match(/\d+/g), `${id} numbers`);
-        for (const field of ['hint', 'description']) {
+        // An extinct animal's habitat says when it lived: the same years in both.
+        if (isExtinct(ctx, id)) assert.deepEqual(es.habitat.match(/\d+/g), en.habitat.match(/\d+/g), `${id} numbers of its habitat`);
+        for (const field of isExtinct(ctx, id) ? ['description'] : ['hint', 'description']) {
             assert.match(es[field], /^[¡¿A-ZÁÉÍÓÚÑ]/, `${id}.${field}`);
             assert.match(es[field], /\.$/, `${id}.${field}`);
         }
@@ -280,7 +296,10 @@ function fakeElement(page) {
         append(...children) { for (const child of children) typeof child === 'string' ? (text += child) : element.appendChild(child); },
         appendChild(child) { element.children.push(child); child.parentNode = element; return child; },
         removeChild(child) { element.children = element.children.filter((other) => other !== child); },
-        addEventListener() {},
+        // A click on it runs what listens for one.
+        clicked: [],
+        addEventListener(type, work) { if (type === 'click') element.clicked.push(work); },
+        click() { for (const work of element.clicked) work(); },
         getContext: () => anyStub(),
         toDataURL: () => 'data:image/png;base64,drawn',
         querySelector(selector) {
@@ -376,6 +395,16 @@ function englishWords(context) {
         add(item.replace(/_/g, ' '));
         if (context.ITEM_TYPES[item]) add(context.ITEM_TYPES[item].name);
     }
+    // An extinct animal is often called the same in both languages, by its scientific name (Titanoboa), and
+    // lived in places that are too (Colombia): whatever its Spanish name says, and the capitalised words that
+    // its two cards share, are no English. Nobody keeps a list of them.
+    const proper = (card) => new Set(Object.values(card).join(' ').match(/\b[A-Z][a-z]+/g) || []);
+    for (const [id, entry] of Object.entries(context.BESTIARY_ENTRIES)) {
+        const spanish = context.BESTIARY_ENTRIES_ES[id];
+        if (!isExtinct(context, id) || !spanish) continue;
+        for (const word of String(spanish.name).toLowerCase().match(/[a-záéíóúüñ]+/g) || []) words.delete(word);
+        for (const word of proper(entry)) if (proper(spanish).has(word)) words.delete(word.toLowerCase());
+    }
     return words;
 }
 
@@ -457,7 +486,7 @@ test('English still reads as it always did', () => {
     game.bestiarySelected = 'sheep';
     game.bestiaryRender();
     const panel = game.bestiaryPanel;
-    assert.equal(panel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${mobIds.length + Object.keys(ctx.MICRO_SPECIES).length} discovered`);
+    assert.equal(panel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${livingIds.length + Object.keys(ctx.MICRO_SPECIES).length} discovered`);
     const seen = readable(panel.querySelector('#bestiary-detail')).join(' | ');
     for (const said of ['Sheep', 'Passive', 'Active: Day', 'Habitat', 'Plains, rocky hills and forests', 'Diet', 'Drops', 'Lured by', 'Encounters', 'Defeated', 'First seen', '< Back']) assert.ok(seen.includes(said), `${said} in: ${seen}`);
     assert.match(seen, /Mar 5, 2026/);
@@ -502,6 +531,314 @@ test('a species with no entry gets a generic card in the language of the game, w
     assert.equal(entry.name, 'Made Up Beast');
     assert.equal(entry.habitat, 'Deserts');
     assert.equal(entry.description, 'Little is known about this creature yet.');
+});
+
+// ---- The extinct animals ----
+
+// What is wrong with the rows these extinct animals have in the tables of the other mechanics. Each says its
+// baits (none is `baits: []`), and has neither a diet that does not tame it nor a bait it never comes to: the
+// living have a few of those, written in the guide one by one, and an extinct animal adds none.
+function extinctRowProblems(context, game, ids) {
+    const problems = [];
+    for (const id of ids) {
+        const trap = context.TRAPS_SPECIES[id];
+        if (!trap || !Array.isArray(trap.baits)) problems.push(`${id} has no trap row: at least { baits: [] }`);
+        else if (trap.baits.length && !context.trapsIsLured(id)) problems.push(`${id} has baits it never comes to`);
+        if (context.TAMING_DIET[id] && !game.tamingCanTame(id)) problems.push(`${id} has a diet that does not tame it`);
+    }
+    return problems;
+}
+
+test('the extinct animals there are say everything their rules ask, and no more', () => {
+    assert.deepEqual(problemsOf(ctx, extinctIds, []), []);
+    assert.deepEqual(extinctRowProblems(ctx, installed, extinctIds), []);
+    for (const id of extinctIds) assert.equal(ctx.MOB_SPECIES[id].spawnBiomes, undefined, `${id} would spawn by itself`);
+});
+
+// Three made-up ones, to see the rules at work whatever the game has: two ancestors of the horse, one of them
+// tamed and lured as a horse is, and one with no living relative, called the same in both languages and from a
+// place that is too.
+const MADE_UP = {
+    made_up_dawn_horse: {
+        info: { eggColor: 0x8a6a4a, speed: 0.5, maxHealth: 12, hiddenUntilDiscovered: true, ancestorOf: 'horse' },
+        drops: [['leather', 1, 1]],
+        diet: { foods: ['tall_grass', 'wheat'], chance: 1 / 3 },
+        trap: { baits: ['bait_seeds'], cage: true },
+        card: {
+            name: 'Dawn Horse', habitat: 'Forests of Europe, 50 million years ago', activity: 'Day', temperament: 'Passive',
+            description: 'A horse no bigger than a fox, with 4 toes on each front foot.'
+        },
+        cardEs: { name: 'Caballo del alba', habitat: 'Bosques de Europa, hace 50 millones de años', description: 'Un caballo no más grande que un zorro, con 4 dedos en cada pata delantera.' }
+    },
+    made_up_tall_horse: {
+        info: { eggColor: 0x5a4a3a, speed: 0.6, maxHealth: 16, hostile: true, hiddenUntilDiscovered: true, ancestorOf: 'horse' },
+        trap: { baits: [] },
+        card: {
+            name: 'Thunder Horse', habitat: 'Plains of Asia, 5 million years ago', activity: 'Night', temperament: 'Hostile',
+            description: 'A horse as tall as a giraffe that kicked before it asked.'
+        },
+        cardEs: { name: 'Caballo del trueno', habitat: 'Llanuras de Asia, hace 5 millones de años', description: 'Un caballo tan alto como una jirafa, que primero coceaba y luego preguntaba.' }
+    },
+    made_up_boa: {
+        info: { eggColor: 0x4a5a3a, speed: 0.4, maxHealth: 16, hiddenUntilDiscovered: true },
+        trap: { baits: [] },
+        card: {
+            name: 'Fictoboa', habitat: 'Swamps of Colombia, 60 million years ago', activity: 'Day and night', temperament: 'Neutral',
+            description: 'Fictoboa was a snake 13 blocks long that spent the day in the water.'
+        },
+        cardEs: { name: 'Fictoboa', habitat: 'Pantanos de Colombia, hace 60 millones de años', description: 'La Fictoboa era una serpiente de 13 bloques de largo que pasaba el día en el agua.' }
+    }
+};
+const madeUpIds = Object.keys(MADE_UP);
+
+// A game of its own with these species registered as a file of theirs would, before the game is built.
+function extinctGame(species = MADE_UP) {
+    const context = loadGame();
+    for (const [id, definition] of Object.entries(species)) context.registerSpecies(id, definition);
+    const game = fakeGame(context);
+    game.bestiaryOpen = true;
+    return { context, game, extinct: Object.keys(context.BESTIARY_ENTRIES).filter((id) => isExtinct(context, id)) };
+}
+
+const cardOf = (game, id) => game.bestiaryPanel.querySelector('#bestiary-grid').children.find((child) => child.dataset.species === id);
+const sheetLines = (game) => readable(game.bestiaryPanel.querySelector('#bestiary-detail'));
+const lineageOf = (game) => game.bestiaryPanel.querySelector('#bestiary-detail').children.find((child) => child.className === 'bestiary-lineage');
+const seen = { firstSeen: '2026-03-05T12:00:00Z', encounters: 1, defeated: 0 };
+
+test('with no extinct animal the panel is as it always was: no section, no tag, no tree', () => {
+    const context = loadGame();
+    for (const id of Object.keys(context.MOB_SPECIES)) if (isExtinct(context, id)) delete context.MOB_SPECIES[id];
+    const game = fakeGame(context);
+    game.bestiaryOpen = true;
+    assert.deepEqual([...game.bestiaryExtinctList()], []);
+    assert.deepEqual([...game.bestiaryMobList()], livingOrder);
+    for (const lang of ['ES', 'EN']) {
+        inLang(context, lang, () => walkPanel(game, (lines, step) => {
+            const grid = game.bestiaryPanel.querySelector('#bestiary-grid');
+            assert.equal(grid.children.length, livingIds.length + organismIds.length, step);
+            assert.ok(grid.children.every((child) => child.className.split(' ')[0] === 'bestiary-card'), step);
+            for (const key of ['extinctTitle', 'extinctTag', 'extinctSecret', 'lineageTitle', 'lineageLiving']) assert.ok(!lines.includes(context.bestiarySay(key)), `${lang} ${step}: ${key}`);
+        }));
+    }
+});
+
+test('the extinct animals have a section of their own at the end, with its own count, and change no other', () => {
+    const { context, game, extinct } = extinctGame();
+    assert.deepEqual([...game.bestiaryMobList()], livingOrder, 'the living are the same, in the same order');
+    assert.deepEqual([...game.bestiaryExtinctList()], extinct);
+    assert.deepEqual(extinct.slice(-3), madeUpIds);
+    assert.deepEqual([...game.bestiarySpeciesList()], [...livingOrder, ...organismIds, ...extinct]);
+    game.bestiaryData = { sheep: seen, tardigrade: seen };
+    for (const [lang, title, count, progress] of [['EN', 'Extinct animals', `0 / ${extinct.length} seen alive`, 'discovered'], ['ES', 'Animales extintos', `0 / ${extinct.length} vistos con vida`, 'descubiertas']]) {
+        inLang(context, lang, () => {
+            game.bestiaryRender();
+            const grid = game.bestiaryPanel.querySelector('#bestiary-grid');
+            const order = grid.children.map((child) => child.dataset.species || child.className);
+            assert.deepEqual(order, [...livingOrder, ...organismIds, 'bestiary-section', ...extinct], lang);
+            const heading = readable(grid.children.find((child) => child.className === 'bestiary-section')).join(' ').replace(/\s+/g, ' ').trim();
+            assert.equal(heading, `${title} ${count}`, lang);
+            // The counter at the top is of what lives today, as ever.
+            assert.equal(game.bestiaryPanel.querySelector('#bestiary-progress').innerHTML, `<b>2</b> / ${livingIds.length + organismIds.length} ${progress}`, lang);
+        });
+    }
+});
+
+test('a secret card gives nothing away, in either language: no name, no habitat, no portrait, no tree', () => {
+    const { context, game, extinct } = extinctGame();
+    // Everything else is known, the horse they are ancestors of too.
+    const others = () => Object.fromEntries(game.bestiarySpeciesList().filter((id) => !madeUpIds.includes(id)).map((id) => [id, seen]));
+    for (const [lang, generic] of [['EN', 'An extinct animal. Find its fossil and bring it back to life to see it.'], ['ES', 'Un animal extinto. Encuentra su fósil y devuélvelo a la vida para verlo.']]) {
+        inLang(context, lang, () => {
+            game.bestiaryData = others();
+            game.bestiarySelected = null;
+            game.bestiaryRender();
+            const own = madeUpIds.flatMap((id) => [...Object.values(context.BESTIARY_ENTRIES[id]), ...Object.values(context.BESTIARY_ENTRIES_ES[id])])
+                .filter((text) => !context.BESTIARY_TEMPERAMENTS[text] && !context.BESTIARY_ACTIVITIES[text]);
+            assert.equal(own.length, 3 * 6);
+            const nothingOfTheirs = (step) => {
+                const text = readable(game.bestiaryPanel).join('\n');
+                for (const said of own) assert.ok(!text.includes(said), `${lang} ${step}: ${said}`);
+                assert.doesNotMatch(text, /made_up|Made Up/, `${lang} ${step}`);
+            };
+            nothingOfTheirs('the grid');
+            for (const id of madeUpIds) {
+                const card = cardOf(game, id);
+                assert.equal(card.className, 'bestiary-card unknown secret', id);
+                assert.equal(card.children[0].textContent, '?', id);
+                assert.equal(card.children[0].children.length, 0, `${id}: not even its shape`);
+                assert.equal(card.children[1].textContent, '???', id);
+                assert.equal(card.children[2].textContent, '', id);
+                card.click();
+                assert.equal(game.bestiarySelected, id);
+                assert.deepEqual(sheetLines(game), [context.bestiarySay('back'), '?', '???', generic], `${lang} ${id}`);
+                const preview = game.bestiaryPanel.querySelector('#bestiary-detail').children.find((child) => child.className.startsWith('bestiary-preview'));
+                assert.equal(preview.className, 'bestiary-preview secret');
+                assert.equal(preview.children.length, 0);
+                assert.equal(lineageOf(game), undefined, `${id}: a tree would say whose ancestor it is`);
+                nothingOfTheirs(`the sheet of ${id}`);
+            }
+            // The sheet of the horse shows them in its tree, and still says nothing of theirs.
+            cardOf(game, 'horse').click();
+            assert.ok(lineageOf(game));
+            nothingOfTheirs('the sheet of the horse');
+            assert.deepEqual([...game.bestiaryPortraitQueue].filter((id) => madeUpIds.includes(id)), [], 'no portrait is even asked for');
+            assert.equal(readable(cardOf(game, extinct[extinct.length - 1])).join(), '?,???');
+        });
+    }
+});
+
+test('seeing one reveals it: a card like the rest with its tag, and the count of its section goes up', () => {
+    const { context, game, extinct } = extinctGame();
+    const known = () => extinct.filter((id) => game.bestiaryData[id]).length;
+    game.bestiaryData = { sheep: seen };
+    game.bestiaryEncounter('made_up_boa');
+    assert.ok(readable(context.document.getElementById('bestiary-toast')).includes('Fictoboa'), 'the notice names it now');
+    for (const [lang, name, count, tag, where] of [['EN', 'Fictoboa', 'Seen 1x', 'Extinct', 'Swamps of Colombia, 60 million years ago'],
+        ['ES', 'Fictoboa', 'Encuentros: 1', 'Extinto', 'Pantanos de Colombia, hace 60 millones de años']]) {
+        inLang(context, lang, () => {
+            game.bestiaryRender();
+            const card = cardOf(game, 'made_up_boa');
+            assert.equal(card.className, 'bestiary-card');
+            assert.deepEqual(readable(card).slice(-2), [name, count], lang);
+            assert.ok(game.bestiaryPortraitQueue.includes('made_up_boa'), 'and its portrait is asked for');
+            assert.ok(readable(game.bestiaryPanel.querySelector('#bestiary-grid')).join(' ').replace(/\s+/g, ' ').includes(`${known()} / ${extinct.length} `), lang);
+            card.click();
+            const detail = game.bestiaryPanel.querySelector('#bestiary-detail');
+            const tags = detail.children.find((child) => child.className === 'bestiary-tags');
+            assert.deepEqual(tags.children.map((child) => child.className), ['bestiary-tag neutral', 'bestiary-tag', 'bestiary-tag extinct']);
+            assert.equal(tags.children[2].textContent, tag);
+            const lines = sheetLines(game);
+            for (const said of [name, where, context.BESTIARY_TEXT.factHabitat[lang], context.BESTIARY_TEXT.factEncounters[lang], (lang === 'ES' ? context.BESTIARY_ENTRIES_ES : context.BESTIARY_ENTRIES).made_up_boa.description]) {
+                assert.ok(lines.includes(said), `${lang}: ${said}`);
+            }
+            assert.ok(!lines.includes(context.bestiarySay('extinctSecret')));
+            assert.equal(lineageOf(game), undefined, 'it has no living relative: no tree');
+            // The others are as secret as before, and a living one has no such tag. (Among its tags: the
+            // tree of a living one with an extinct relative in the game says the word under that relative.)
+            assert.equal(cardOf(game, 'made_up_dawn_horse').className, 'bestiary-card unknown secret');
+            cardOf(game, 'sheep').click();
+            const sheepTags = game.bestiaryPanel.querySelector('#bestiary-detail').children.find((child) => child.className === 'bestiary-tags');
+            assert.ok(sheepTags.children.length > 0 && !sheepTags.children.some((child) => child.textContent === tag), lang);
+        });
+    }
+    // The one it defeats unseen is found too, as any mob is.
+    game.bestiaryOnDefeated({ userData: { species: 'made_up_tall_horse' } }, 'player');
+    assert.equal(game.bestiaryData.made_up_tall_horse.defeated, 1);
+    assert.equal(cardOf(game, 'made_up_tall_horse').className, 'bestiary-card');
+});
+
+test('the complete notebook is of the living alone: an extinct animal neither fills it nor holds it back', () => {
+    const { context, game, extinct } = extinctGame();
+    const progress = () => { game.bestiaryRender(); return game.bestiaryPanel.querySelector('#bestiary-progress').innerHTML; };
+    const notices = () => { for (const work of context.timers.splice(0)) work(); return game.said.filter((text) => text === context.bestiarySay('complete')).length; };
+    // Every extinct animal found, and one living mob to go: nothing yet.
+    game.bestiaryData = Object.fromEntries([...extinct, ...livingIds.filter((id) => id !== 'sheep')].map((id) => [id, seen]));
+    assert.doesNotMatch(progress(), /B31X/);
+    delete game.bestiaryData.made_up_boa;
+    game.bestiaryEncounter('made_up_boa');
+    assert.equal(notices(), 0, 'the last extinct animal does not complete it');
+    // The last living one does, with every made-up one still to find.
+    for (const id of madeUpIds) delete game.bestiaryData[id];
+    game.bestiaryEncounter('sheep');
+    assert.equal(notices(), 1);
+    assert.equal(progress(), `<b>${livingIds.length}</b> / ${livingIds.length + organismIds.length} discovered · on the last page, in faded ink: <b>B31X</b>`.replace(' · ', ' &middot; '));
+    // And an extinct animal found after that says nothing again.
+    game.bestiaryEncounter('made_up_dawn_horse');
+    assert.equal(notices(), 1);
+    assert.match(progress(), /B31X/);
+});
+
+test('the tree of evolution is on the sheets of both, and each animal in it leads to its card', () => {
+    const { context, game } = extinctGame();
+    // The tree of the open sheet: its title, what each of these animals says in it, and the one to click. (The
+    // horse may have ancestors of its own in the game, which are in the tree too and are not looked at here.)
+    const tree = () => {
+        const lineage = lineageOf(game);
+        if (!lineage) return null;
+        const [title, row] = lineage.children;
+        assert.deepEqual(row.children.map((child) => child.className.split(' ')[0]).slice(-2), ['bestiary-lineage-arrow', 'bestiary-kin'], 'the living one is last, after the arrow');
+        const ours = row.children.filter((child) => child.className === 'bestiary-lineage-arrow' || child.dataset.species === 'horse' || madeUpIds.includes(child.dataset.species));
+        const says = ours.map((child) => (child.dataset.species ? `${child.dataset.species}: ${child.className.replace('bestiary-kin', '').trim()}: ${readable(child).join(' | ')}` : child.textContent));
+        return { title: title.textContent, says, kin: (id) => row.children.find((child) => child.dataset.species === id) };
+    };
+    game.bestiaryData = { horse: seen, sheep: seen };
+    game.bestiaryRender();
+    // The living one, with its two ancestors still secret.
+    cardOf(game, 'horse').click();
+    assert.equal(tree().title, 'Evolution');
+    assert.deepEqual(tree().says, ['made_up_dawn_horse: unknown secret: ? | ??? | Extinct', 'made_up_tall_horse: unknown secret: ? | ??? | Extinct', '→', 'horse: current: ? | Horse | Alive today']);
+    assert.equal(tree().kin('horse').clicked.length, 0, 'the sheet it is on leads nowhere');
+    // A click on a secret one goes to its card, which stays secret.
+    tree().kin('made_up_dawn_horse').click();
+    assert.equal(game.bestiarySelected, 'made_up_dawn_horse');
+    assert.ok(cardOf(game, 'made_up_dawn_horse').className.includes('selected'));
+    assert.equal(tree(), null);
+    // Found: its own sheet has the same tree, and leads back to the horse.
+    game.bestiaryEncounter('made_up_dawn_horse');
+    assert.deepEqual(tree().says, ['made_up_dawn_horse: current: ? | Dawn Horse | Extinct', 'made_up_tall_horse: unknown secret: ? | ??? | Extinct', '→', 'horse: : ? | Horse | Alive today']);
+    tree().kin('horse').click();
+    assert.equal(game.bestiarySelected, 'horse');
+    assert.deepEqual(tree().says, ['made_up_dawn_horse: : ? | Dawn Horse | Extinct', 'made_up_tall_horse: unknown secret: ? | ??? | Extinct', '→', 'horse: current: ? | Horse | Alive today']);
+    // The living one not found yet: on its ancestor's sheet it is a dark shape with no name, as its card is.
+    delete game.bestiaryData.horse;
+    tree().kin('made_up_dawn_horse').click();
+    assert.deepEqual(tree().says.slice(2), ['→', 'horse: unknown: ? | ??? | Alive today']);
+    tree().kin('horse').click();
+    assert.equal(game.bestiarySelected, 'horse');
+    assert.equal(tree(), null, 'a sheet not found yet has no tree');
+    // In Spanish, and nothing for those with no relative in the game.
+    inLang(context, 'ES', () => {
+        cardOf(game, 'made_up_dawn_horse').click();
+        assert.equal(tree().title, 'Evolución');
+        assert.deepEqual(tree().says, ['made_up_dawn_horse: current: ? | Caballo del alba | Extinto', 'made_up_tall_horse: unknown secret: ? | ??? | Extinto', '→', 'horse: unknown: ? | ??? | Vive hoy']);
+    });
+    game.bestiaryEncounter('made_up_boa');
+    cardOf(game, 'made_up_boa').click();
+    assert.equal(tree(), null);
+    // A living one with no ancestor in the game has none either.
+    const { game: plain } = extinctGame({});
+    for (const id of livingOrder) {
+        plain.bestiaryData = { [id]: seen };
+        plain.bestiarySelected = id;
+        plain.bestiaryRender();
+        assert.equal(Boolean(lineageOf(plain)), extinctIds.some((extinct) => ctx.MOB_SPECIES[extinct].ancestorOf === id), id);
+    }
+});
+
+test('their cards follow the rules, and walked in Spanish they leave nothing English: a scientific name and a place are let through by themselves', () => {
+    const { context, game, extinct } = extinctGame();
+    assert.deepEqual(problemsOf(context, madeUpIds, []), []);
+    assert.deepEqual(extinctRowProblems(context, game, madeUpIds), []);
+    const words = englishWords(context);
+    for (const word of ['dawn', 'horse', 'thunder', 'swamps', 'snake']) assert.ok(words.has(word), word);
+    for (const word of ['fictoboa', 'colombia']) assert.ok(!words.has(word), `${word} is no English: both cards say it`);
+    let looks = 0;
+    inLang(context, 'ES', () => walkPanel(game, (lines, step) => {
+        looks++;
+        for (const line of lines) assert.deepEqual(englishIn(line, words), [], `${step}: ${line}`);
+    }));
+    assert.equal(looks, 2 + 2 * (livingIds.length + organismIds.length + extinct.length));
+});
+
+test('an extinct animal that breaks its rules is caught', () => {
+    const good = MADE_UP.made_up_boa;
+    const { context, game } = extinctGame({
+        // A hint nobody would read, a habitat left as it was, and a Spanish that is not all Spanish.
+        made_up_hinted: { ...good, card: { ...good.card, hint: 'Something long.' }, cardEs: { ...good.cardEs, habitat: good.card.habitat, description: 'Una snake de 13 bloques.' } },
+        // No row for the traps; a diet though it is hostile; a bait though it swims and never walks to one.
+        made_up_rowless: { ...good, trap: undefined },
+        made_up_fierce: { ...good, info: { ...good.info, hostile: true }, diet: { foods: ['raw_fish'], chance: 1 / 3 } },
+        made_up_swimmer: { ...good, info: { ...good.info, movement: 'swim' }, trap: { baits: ['bait_worms'] } }
+    });
+    const problems = problemsOf(context, ['made_up_hinted'], []);
+    for (const problem of ['made_up_hinted.hint would never be shown: an extinct animal has none', 'made_up_hinted.habitat is the same in both']) assert.ok(problems.includes(problem), `${problem}: ${problems.join()}`);
+    assert.deepEqual(extinctRowProblems(context, game, ['made_up_hinted', 'made_up_rowless', 'made_up_fierce', 'made_up_swimmer']),
+        ['made_up_rowless has no trap row: at least { baits: [] }', 'made_up_fierce has a diet that does not tame it', 'made_up_swimmer has baits it never comes to']);
+    const words = englishWords(context);
+    let english = [];
+    inLang(context, 'ES', () => walkPanel(game, (lines) => { english = english.concat(lines.flatMap((line) => englishIn(line, words))); }));
+    // (Its habitat, left in English, shows too: all but the words both cards write with a capital.)
+    assert.deepEqual([...new Set(english)].sort(), ['ago', 'million', 'of', 'snake', 'years']);
 });
 
 // ---- The change of language ----
@@ -632,7 +969,7 @@ test('a sheet shows a diet only where it tames: never on the species tamingCanTa
             for (const id of Object.keys(ctx.BESTIARY_ENTRIES)) {
                 const hasDiet = sheetOf(game, id).includes(ctx.bestiarySay('factDiet'));
                 assert.equal(hasDiet, game.tamingCanTame(id), `${lang} ${id}`);
-                if (hasDiet) shown[lang].push(id);
+                if (hasDiet && !isExtinct(ctx, id)) shown[lang].push(id);
             }
         });
     }
@@ -659,7 +996,8 @@ const NEVER_COME = ['fox', 'rabbit', 'owl', 'vulture', 'eagle', 'snake', 'mole',
 
 test('a sheet shows baits only on species that come to them, and fish theirs as hook bait', () => {
     const game = installed;
-    assert.deepEqual(Object.keys(ctx.TRAPS_SPECIES).filter((id) => ctx.TRAPS_SPECIES[id].baits.length && !ctx.trapsIsLured(id)).sort(), NEVER_COME.slice().sort());
+    const neverCome = Object.keys(ctx.TRAPS_SPECIES).filter((id) => ctx.TRAPS_SPECIES[id].baits.length && !ctx.trapsIsLured(id));
+    assert.deepEqual(neverCome.filter((id) => !isExtinct(ctx, id)).sort(), NEVER_COME.slice().sort());
     for (const [lang, hookLabel, worms, fishBait] of [['ES', 'Cebo de anzuelo', 'Cebo de gusanos', 'Cebo de pescado'], ['EN', 'Hook bait', 'Worm Bait', 'Fish Bait']]) {
         inLang(ctx, lang, () => {
             for (const id of Object.keys(ctx.BESTIARY_ENTRIES)) {
@@ -708,7 +1046,9 @@ test('the chat notice names only those who come to the bait', () => {
     const lures = (type) => {
         said.length = 0;
         game.trapsPlaceBait(type, {});
-        return /Lures: (.*)$/.exec(said[0])[1].split(', ').sort();
+        // The lists below are of the living: an extinct animal that comes to a bait is named too, and is not theirs.
+        const extinct = new Set(extinctIds.map((id) => id.replace(/_/g, ' ')));
+        return /Lures: (.*)$/.exec(said[0])[1].split(', ').filter((name) => !extinct.has(name)).sort();
     };
     assert.deepEqual(lures('bait_meat'), ['ant', 'cat', 'cave monster', 'dog', 'spider']);
     assert.deepEqual(lures('bait_worms'), ['duck', 'frog', 'lizard', 'pig', 'scorpion', 'turtle']);

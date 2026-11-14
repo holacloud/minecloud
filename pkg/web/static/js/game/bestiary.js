@@ -11,6 +11,11 @@
 // portrait is their own 2D drawing, animated on the sheet. A card says what applies to something that
 // has no temper and cannot be fought: its real size and the power it takes. They do not count for the
 // complete notebook of the mobs (page B31X): there is no reward for a tardigrade.
+// The extinct animals (`hiddenUntilDiscovered`, js/mobSpecies.js) are mobs with a section of their own at the
+// end of the panel and their own count: nobody meets one unless it is brought back to life, so they count
+// neither for the counter at the top nor for the complete notebook. Until the player sees one, its card is a
+// secret: the same shape with a question mark for all of them, and not a word of its own. A species that
+// says `ancestorOf` and the living one it names show a small tree on the sheets of both (bestiaryRenderLineage).
 // Every word on the panel comes from js/game/bestiary_text.js, in the language of the game: a change of
 // language rewrites what is on screen at once (bestiaryOnLang). BESTIARY_ENTRIES is the English; its
 // temperament and activity are also the keys of the tags.
@@ -151,6 +156,7 @@ const BESTIARY_CSS = `
 #bestiary-panel .bestiary-body{display:flex;gap:14px;min-height:0;flex:1}
 #bestiary-grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:max-content;gap:10px;overflow:auto;min-height:0;padding-right:2px}
 .bestiary-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#fff;cursor:pointer;text-align:center;font:12px/1.2 'Consolas',monospace}
+.bestiary-card>div{max-width:100%;overflow-wrap:anywhere}
 .bestiary-card.selected{border-color:rgba(151,212,255,.9);box-shadow:0 0 0 2px rgba(151,212,255,.22)}
 .bestiary-card.unknown{color:#7d8ba0}
 .bestiary-card-portrait{width:72px;height:72px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:radial-gradient(circle at 50% 40%,rgba(120,160,210,.35),rgba(20,28,44,.6));background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:24px;color:rgba(255,255,255,.25)}
@@ -158,6 +164,11 @@ const BESTIARY_CSS = `
 .bestiary-card-portrait img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .bestiary-card.unknown .bestiary-card-portrait img{filter:brightness(0);opacity:.7}
 .bestiary-card-meta{color:#a9bdd5;font-size:10px}
+.bestiary-section{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-top:8px;padding:12px 2px 2px;border-top:1px solid rgba(255,255,255,.16);color:#f0e2bc;font:700 13px/1.2 'Consolas',monospace}
+.bestiary-section span{color:#a9bdd5;font-size:12px;font-weight:400}
+.bestiary-section b{color:#9fe3b4}
+.bestiary-card.secret .bestiary-card-portrait,.bestiary-kin.secret .bestiary-card-portrait,#bestiary-detail .bestiary-preview.secret{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23070b13'%3E%3Cellipse cx='48' cy='54' rx='28' ry='17'/%3E%3Ccircle cx='76' cy='38' r='13'/%3E%3Crect x='26' y='60' width='10' height='26' rx='5'/%3E%3Crect x='58' y='60' width='10' height='26' rx='5'/%3E%3Cpath d='M24 50C12 46 8 36 10 26l7 2c-1 7 2 13 11 16z'/%3E%3C/g%3E%3C/svg%3E") center/82% no-repeat,radial-gradient(circle at 50% 40%,rgba(120,100,70,.45),rgba(20,16,12,.75));color:#f0e2bc;font-weight:700;text-shadow:0 0 6px #000,0 0 2px #000}
+.bestiary-card.secret .bestiary-card-meta{min-height:12px}
 #bestiary-detail{width:300px;flex:none;display:none;flex-direction:column;gap:10px;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(5,9,16,.68);overflow:auto;min-height:0;box-sizing:border-box}
 #bestiary-panel.detail-open #bestiary-detail{display:flex}
 #bestiary-detail .bestiary-preview{align-self:center;width:200px;height:200px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:radial-gradient(circle at 50% 40%,rgba(120,160,210,.35),rgba(20,28,44,.6));display:flex;align-items:center;justify-content:center;font-size:48px;color:rgba(255,255,255,.2);overflow:hidden;flex:none}
@@ -169,10 +180,20 @@ const BESTIARY_CSS = `
 .bestiary-tag.hostile{background:rgba(220,70,70,.28);color:#ffc4c4}
 .bestiary-tag.neutral{background:rgba(230,170,60,.25);color:#ffe0a8}
 .bestiary-tag.passive,.bestiary-tag.friendly{background:rgba(70,180,110,.25);color:#bff0cf}
+.bestiary-tag.extinct{background:rgba(190,160,100,.25);color:#f0e2bc}
 .bestiary-description{color:#d9e6f7;font-size:12px;line-height:1.45}
 .bestiary-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;color:#c7d7ec}
 .bestiary-facts dt{color:#8ea3bd}
 .bestiary-facts dd{margin:0}
+.bestiary-lineage{display:flex;flex-direction:column;gap:6px}
+.bestiary-lineage-title{color:#8ea3bd;font-size:12px}
+.bestiary-lineage-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.bestiary-lineage-arrow{color:#a9bdd5;font-size:18px}
+.bestiary-kin{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1 1 0;min-width:60px;max-width:84px;padding:6px 4px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#fff;cursor:pointer;text-align:center;font:11px/1.2 'Consolas',monospace;overflow-wrap:anywhere;box-sizing:border-box}
+.bestiary-kin.unknown{color:#7d8ba0}
+.bestiary-kin.current{cursor:default;border-color:rgba(151,212,255,.9)}
+.bestiary-kin .bestiary-card-portrait{width:52px;height:52px;font-size:20px}
+.bestiary-kin.unknown .bestiary-card-portrait img{filter:brightness(0);opacity:.7}
 #bestiary-panel .bestiary-back{display:none;align-self:flex-start}
 #bestiary-toast{position:fixed;left:50%;top:14%;transform:translate(-50%,-10px);padding:10px 18px;border-radius:10px;border:1px solid rgba(159,227,180,.4);background:rgba(8,12,20,.88);color:#fff;font:700 14px 'Consolas',monospace;pointer-events:none;z-index:300;opacity:0;transition:opacity .4s,transform .4s}
 #bestiary-toast.visible{opacity:1;transform:translate(-50%,0)}
@@ -252,18 +273,38 @@ Object.assign(Game.prototype, {
         return record;
     },
 
-    // The mobs listed in the guide: known entries whose species exists, then any other species.
-    bestiaryMobList() {
+    // Every mob, living or extinct, in the order of the guide: known entries whose species exists, then any
+    // other species.
+    bestiaryEveryMob() {
         const species = typeof MOB_SPECIES === 'object' ? MOB_SPECIES : {};
         const list = Object.keys(BESTIARY_ENTRIES).filter((id) => species[id]);
         Object.keys(species).forEach((id) => { if (!BESTIARY_ENTRIES[id]) list.push(id); });
         return list;
     },
 
-    // Every card: the mobs, then the organisms of the microscope, which arrived last.
+    // The mobs alive today. The notebook is complete with these alone (page B31X).
+    bestiaryMobList() {
+        return this.bestiaryEveryMob().filter((id) => !mobSpeciesIsExtinct(id));
+    },
+
+    // The extinct animals: the section at the end, with its own count.
+    bestiaryExtinctList() {
+        return this.bestiaryEveryMob().filter((id) => mobSpeciesIsExtinct(id));
+    },
+
+    bestiaryOrganismList() {
+        return typeof MICRO_SPECIES === 'object' ? Object.keys(MICRO_SPECIES) : [];
+    },
+
+    // Every card, as the panel lays them out: the living mobs, the organisms of the microscope, which arrived
+    // after them, and the extinct animals.
     bestiarySpeciesList() {
-        const organisms = typeof MICRO_SPECIES === 'object' ? Object.keys(MICRO_SPECIES) : [];
-        return [...this.bestiaryMobList(), ...organisms];
+        return [...this.bestiaryMobList(), ...this.bestiaryOrganismList(), ...this.bestiaryExtinctList()];
+    },
+
+    // An extinct animal the player has not seen yet: nothing on the panel may give it away.
+    bestiaryIsSecret(species) {
+        return !this.bestiaryData[species] && mobSpeciesIsExtinct(species);
     },
 
     // The catalogue's entry of an organism, or null for a mob.
@@ -330,7 +371,9 @@ Object.assign(Game.prototype, {
         this.bestiarySave();
         if (isNew) {
             this.bestiaryAnnounce(species);
-            if (!this.bestiaryOrganism(species) && this.bestiaryMobList().every((other) => this.bestiaryData[other])) {
+            // The notebook is complete with the living mobs: neither an organism nor an extinct animal fills it.
+            const living = this.bestiaryMobList();
+            if (living.includes(species) && living.every((other) => this.bestiaryData[other])) {
                 setTimeout(() => this.receiveSystemMessage({ text: bestiarySay('complete') }), 3500);
             }
             if (this.bestiaryOpen) this.bestiaryRender();
@@ -465,43 +508,71 @@ Object.assign(Game.prototype, {
     },
 
     bestiaryRender() {
-        const list = this.bestiarySpeciesList();
-        const discovered = list.filter((species) => this.bestiaryData[species]).length;
+        const known = (species) => Boolean(this.bestiaryData[species]);
+        const mobs = this.bestiaryMobList();
+        const extinct = this.bestiaryExtinctList();
+        // The counter is of what lives today, mobs and organisms: the extinct animals have their own, below.
+        const counted = [...mobs, ...this.bestiaryOrganismList()];
         const progress = this.bestiaryPanel.querySelector('#bestiary-progress');
-        // A full notebook of mobs reveals a code for the guide's secret pages.
-        const complete = this.bestiaryMobList().every((species) => this.bestiaryData[species]) ? bestiarySay('lastPage', 'B31X') : '';
-        progress.innerHTML = `${bestiarySay('discovered', discovered, list.length)}${complete}`;
+        // A full notebook of living mobs reveals a code for the guide's secret pages.
+        const complete = mobs.every(known) ? bestiarySay('lastPage', 'B31X') : '';
+        progress.innerHTML = `${bestiarySay('discovered', counted.filter(known).length, counted.length)}${complete}`;
 
         const grid = this.bestiaryPanel.querySelector('#bestiary-grid');
         grid.innerHTML = '';
-        list.forEach((species) => {
-            const known = Boolean(this.bestiaryData[species]);
-            const entry = this.bestiaryEntry(species);
-            const card = document.createElement('div');
-            card.className = 'bestiary-card' + (known ? '' : ' unknown') + (this.bestiarySelected === species ? ' selected' : '');
-            card.dataset.species = species;
-            const portrait = document.createElement('div');
-            portrait.className = 'bestiary-card-portrait';
-            this.bestiaryFillPortrait(portrait, species);
-            const name = document.createElement('div');
-            name.textContent = known ? entry.name : '???';
-            const meta = document.createElement('div');
-            meta.className = 'bestiary-card-meta';
-            const seen = entry.organism ? 'identifiedCount' : 'seenCount';
-            meta.textContent = known ? bestiarySay(seen, this.bestiaryData[species].encounters || 1) : entry.habitat;
-            card.append(portrait, name, meta);
-            card.addEventListener('click', () => {
-                this.bestiarySelected = species;
-                this.bestiaryRender();
-                this.playTone({ frequency: 620, duration: 0.04, type: 'triangle', volume: 0.016, release: 0.05 });
-            });
-            grid.appendChild(card);
-        });
+        for (const species of counted) grid.appendChild(this.bestiaryCard(species));
+        if (extinct.length > 0) {
+            const heading = document.createElement('div');
+            heading.className = 'bestiary-section';
+            heading.innerHTML = `${bestiarySay('extinctTitle')} <span>${bestiarySay('extinctProgress', extinct.filter(known).length, extinct.length)}</span>`;
+            grid.appendChild(heading);
+            for (const species of extinct) grid.appendChild(this.bestiaryCard(species));
+        }
         this.bestiaryRenderDetail();
     },
 
-    // The cached portrait, or a placeholder that fills in once the portrait is rendered.
+    // One card of the grid. A secret one says nothing of its own: no name, no habitat.
+    bestiaryCard(species) {
+        const record = this.bestiaryData[species];
+        const secret = this.bestiaryIsSecret(species);
+        const card = document.createElement('div');
+        card.className = 'bestiary-card' + (record ? '' : secret ? ' unknown secret' : ' unknown') + (this.bestiarySelected === species ? ' selected' : '');
+        card.dataset.species = species;
+        const portrait = document.createElement('div');
+        portrait.className = 'bestiary-card-portrait';
+        this.bestiaryFillPortrait(portrait, species);
+        const name = document.createElement('div');
+        const meta = document.createElement('div');
+        meta.className = 'bestiary-card-meta';
+        name.textContent = '???';
+        if (!secret) {
+            const entry = this.bestiaryEntry(species);
+            if (record) name.textContent = entry.name;
+            meta.textContent = record ? bestiarySay(entry.organism ? 'identifiedCount' : 'seenCount', record.encounters || 1) : entry.habitat;
+        }
+        card.append(portrait, name, meta);
+        card.addEventListener('click', () => this.bestiarySelect(species));
+        return card;
+    },
+
+    // Goes to a card. From the tree of another sheet, the grid follows to where that card is.
+    bestiarySelect(species, fromSheet = false) {
+        this.bestiarySelected = species;
+        this.bestiaryRender();
+        if (fromSheet) {
+            const card = this.bestiaryPanel.querySelector(`.bestiary-card[data-species="${species}"]`);
+            if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+        }
+        this.playTone({ frequency: 620, duration: 0.04, type: 'triangle', volume: 0.016, release: 0.05 });
+    },
+
+    // The cached portrait, or a placeholder that fills in once the portrait is rendered. A secret has
+    // none: its question mark stays, on the shape the styles give to every one of them.
     bestiaryFillPortrait(element, species) {
+        if (this.bestiaryIsSecret(species)) {
+            element.textContent = '?';
+            return;
+        }
         if (this.bestiaryOrganism(species)) {
             // A drawing is ready at once. An unknown one is painted on nothing, for the silhouette.
             const drawn = this.bestiaryOrganismPortrait(species, !this.bestiaryData[species]);
@@ -542,10 +613,11 @@ Object.assign(Game.prototype, {
             const url = this.bestiaryRenderPortrait(species);
             this.bestiaryPortraits.set(species, url);
             if (this.bestiaryOpen) {
-                const card = this.bestiaryPanel.querySelector(`.bestiary-card[data-species="${species}"] .bestiary-card-portrait`);
-                if (card && url) {
-                    card.textContent = '';
-                    this.bestiaryFillPortrait(card, species);
+                // Its card, and its place in the tree of the sheet that is open.
+                const holders = url ? this.bestiaryPanel.querySelectorAll(`[data-species="${species}"] > .bestiary-card-portrait`) : [];
+                for (const holder of holders) {
+                    holder.textContent = '';
+                    this.bestiaryFillPortrait(holder, species);
                 }
                 if (this.bestiarySelected === species && !this.bestiaryData[species]) this.bestiaryRenderDetail();
             }
@@ -730,6 +802,7 @@ Object.assign(Game.prototype, {
         }
         this.bestiaryPanel.classList.add('detail-open');
         const record = this.bestiaryData[species];
+        const secret = this.bestiaryIsSecret(species);
         const entry = this.bestiaryEntry(species);
 
         const keepPreview = record && this.bestiaryPreviewSpecies === species;
@@ -748,12 +821,14 @@ Object.assign(Game.prototype, {
         detail.appendChild(back);
 
         const preview = previewHost || document.createElement('div');
-        preview.className = 'bestiary-preview';
+        preview.className = secret ? 'bestiary-preview secret' : 'bestiary-preview';
         detail.appendChild(preview);
         if (!keepPreview) {
             preview.textContent = '?';
             if (record) {
                 this.bestiaryStartPreview(preview, species);
+            } else if (secret) {
+                // The question mark is all there is to see.
             } else if (entry.organism) {
                 preview.textContent = '';
                 const img = document.createElement('img');
@@ -777,7 +852,7 @@ Object.assign(Game.prototype, {
         if (!record) {
             const hint = document.createElement('div');
             hint.className = 'bestiary-description';
-            hint.textContent = bestiarySay('undiscovered', entry.hint, entry.habitat);
+            hint.textContent = secret ? bestiarySay('extinctSecret') : bestiarySay('undiscovered', entry.hint, entry.habitat);
             detail.appendChild(hint);
             return;
         }
@@ -796,12 +871,19 @@ Object.assign(Game.prototype, {
         activity.className = 'bestiary-tag';
         activity.textContent = bestiaryActivityLabel(entry.activity);
         tags.append(temperament, activity);
+        if (mobSpeciesIsExtinct(species)) {
+            const extinct = document.createElement('span');
+            extinct.className = 'bestiary-tag extinct';
+            extinct.textContent = bestiarySay('extinctTag');
+            tags.appendChild(extinct);
+        }
         detail.appendChild(tags);
 
         const description = document.createElement('div');
         description.className = 'bestiary-description';
         description.textContent = entry.description;
         detail.appendChild(description);
+        this.bestiaryRenderLineage(detail, species);
 
         const facts = document.createElement('dl');
         facts.className = 'bestiary-facts';
@@ -828,6 +910,50 @@ Object.assign(Game.prototype, {
         addFact(bestiarySay('factDefeated'), String(record.defeated || 0));
         addFact(bestiarySay('factFirstSeen'), this.bestiaryFormatDate(record.firstSeen));
         detail.appendChild(facts);
+    },
+
+    // The small tree of evolution of a sheet: the extinct animals that came before, an arrow, and the one
+    // alive today. It is the same on the sheet of each of them, and nothing for a species with no ancestor in
+    // the game. Who is whose ancestor was worked out once (mobAncestorsOf, js/mobSpecies.js).
+    bestiaryRenderLineage(detail, species) {
+        const info = getMobSpecies(species);
+        const living = (info && info.ancestorOf) || species;
+        const ancestors = mobAncestorsOf(living);
+        if (ancestors.length === 0) return;
+        const lineage = document.createElement('div');
+        lineage.className = 'bestiary-lineage';
+        const title = document.createElement('div');
+        title.className = 'bestiary-lineage-title';
+        title.textContent = bestiarySay('lineageTitle');
+        const row = document.createElement('div');
+        row.className = 'bestiary-lineage-row';
+        for (const ancestor of ancestors) row.appendChild(this.bestiaryKin(ancestor, species));
+        const arrow = document.createElement('div');
+        arrow.className = 'bestiary-lineage-arrow';
+        arrow.textContent = '→';
+        row.append(arrow, this.bestiaryKin(living, species));
+        lineage.append(title, row);
+        detail.appendChild(lineage);
+    },
+
+    // One animal of the tree, as its card shows it, so a secret stays one: portrait, name, and whether it lives
+    // today. A click goes to its card, but on the one whose sheet this is.
+    bestiaryKin(species, current) {
+        const record = this.bestiaryData[species];
+        const kin = document.createElement('div');
+        kin.className = 'bestiary-kin' + (record ? '' : this.bestiaryIsSecret(species) ? ' unknown secret' : ' unknown') + (species === current ? ' current' : '');
+        kin.dataset.species = species;
+        const portrait = document.createElement('div');
+        portrait.className = 'bestiary-card-portrait';
+        this.bestiaryFillPortrait(portrait, species);
+        const name = document.createElement('div');
+        name.textContent = record ? this.bestiaryEntry(species).name : '???';
+        const meta = document.createElement('div');
+        meta.className = 'bestiary-card-meta';
+        meta.textContent = bestiarySay(mobSpeciesIsExtinct(species) ? 'extinctTag' : 'lineageLiving');
+        kin.append(portrait, name, meta);
+        if (species !== current) kin.addEventListener('click', () => this.bestiarySelect(species, true));
+        return kin;
     },
 
     // The rest of an organism's sheet: no temper, no diet, no drops, and nobody defeats it.

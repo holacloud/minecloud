@@ -103,6 +103,7 @@ var mechFixed = map[string]bool{
 	"bedrock": true, "lift_platform": true, "sign": true, "ladder": true, "sound_block": true,
 	"bed": true, "farmland": true, "chest": true, "barrel": true, "wardrobe": true,
 	"fridge": true, "chest_freezer": true, "claim_marker": true, "oven": true, "foundry": true, "arc_furnace": true, "microscope": true, "incubator": true, "autoclave": true, "floor_lamp": true, "bathtub": true,
+	"revival_machine": true,
 }
 
 // mechMovable reports whether a ram may push or pull the block `name`.

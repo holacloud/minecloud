@@ -932,7 +932,7 @@ Object.assign(Game.prototype, {
         if (protectedHere) return { ok: false, error: protectedHere };
         const duration = this.world.getBreakDurationForType(type);
         if (!duration && duration !== 0) return { ok: false, error: `I can't dig ${this.robotName(type)}: it is unbreakable` };
-        const drop = this.world.getDropTypeForBlock(type);
+        const drop = this.world.getDropTypeForBlock(type, cell.x, cell.y, cell.z);
         if (drop && ROBOT_LOGIC.room(robot.inventory, drop) <= 0) return { ok: false, error: 'My inventory is full! Take my things out first' };
         // The other half of a door or a bed goes with it, as when a player breaks it (one drops).
         const typeAt = (x, y, z) => this.world.getBlockTypeAt(x, y, z);

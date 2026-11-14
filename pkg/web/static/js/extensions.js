@@ -8,6 +8,10 @@
 //   spawnEgg(species, position)          egg used on block `position`; return true if handled
 //                                        (it must consume the egg itself)
 //   spawnForChunk(chunkX, chunkZ, biome) natural spawning, once per chunk
+//   spawnKept(species, position, options) the body of an animal the server keeps (js/game/animals.js):
+//                                        returns the mob, already in ambientMobs, or null when it
+//                                        cannot be made there yet. options is { variant }. A movement
+//                                        with a behaviour that does not say cannot be kept with no owner
 //   worksWithoutChunk                    true: update also runs over a chunk that is not loaded,
 //                                        where a mob otherwise just waits for it
 // And what the rest of the game has to know of the movement, which it asks with mobMovementIs: no other
@@ -51,12 +55,27 @@ function mobMovementIs(movement, trait) {
 //       diet: { foods: [...], chance: 1 / 3 },          // what tames it (taming.js); none: not tameable
 //       trap: { baits: ['bait_fish'], cage: true },     // traps.js; a species with no bait says baits: []
 //       card: { name, habitat, activity, temperament, hint, description },   // bestiary.js, English
-//       cardEs: { name, habitat, hint, description }                         // and Spanish
+//       cardEs: { name, habitat, hint, description },                        // and Spanish
+//       fossil: { source: 'rock', rarity: 'rare' }      // an extinct animal: where its fossil is found (fossils.js)
 //   });
+//
+// An extinct animal says so in its `info`: `hiddenUntilDiscovered: true` (its card in the bestiary is a
+// secret until the player sees one, so it has no `hint`) and, if it is the ancestor of a living species or
+// an ancient relative of it, `ancestorOf: '<id of that species>'`. Both are checked when the game is built,
+// with every species in (mobAncestors, js/mobSpecies.js): a wrong one stops it there.
 //
 // Only `info` is required. The tables are those of each feature (RESOURCE_DROPS, TAMING_DIET...), which
 // take these rows with speciesFacet whichever file loads first.
-const SPECIES_FACETS = { drops: null, sheds: null, furry: null, milkable: null, molts: null, diet: null, trap: null, card: null, cardEs: null };
+//
+// `fossil` is all a species says to be found in the rock and brought back; its items come from it
+// (`fossil_<id>`, or `fossil_<id>_skull`, `_spine` and `_tail` for a skeleton: fossilItemsOf). Its fields:
+//   source    'rock', 'amber', 'bones' (recent bones, near the surface) or 'skeleton' (three pieces to find)
+//   rarity    'common', 'rare' or 'legendary'. In the rock a common one is in fossil_rock and the others in
+//             fossil_rock_rare; amber, bones and skeletons each share one kind of block
+//   weight    its chance against the other species found in the same kind of block (1)
+//   water     a sea animal: how many joined blocks of water it needs to be revived in (0: a land animal)
+//   seconds   how long it takes to revive (by rarity: 20, 45 or 120)
+const SPECIES_FACETS = { drops: null, sheds: null, furry: null, milkable: null, molts: null, diet: null, trap: null, card: null, cardEs: null, fossil: null };
 const SPECIES_FACETS_WAITING = {};
 function registerSpecies(id, species) {
     if (!species || !species.info) throw new Error(`registerSpecies ${id}: no info`);
@@ -65,6 +84,7 @@ function registerSpecies(id, species) {
         if (key === 'info' || key === 'model' || key === 'surface') continue;
         if (!(key in SPECIES_FACETS)) throw new Error(`registerSpecies ${id}: unknown field ${key}`);
         (SPECIES_FACETS[key] || (SPECIES_FACETS_WAITING[key] = SPECIES_FACETS_WAITING[key] || {}))[id] = species[key];
+        if (SPECIES_FACET_ADDED[key]) SPECIES_FACET_ADDED[key](id, species[key]);
     }
     MOB_SPECIES[id] = species.info;
     if (species.model) VoxelModels.mobBuilders[id] = species.model;
@@ -73,10 +93,18 @@ function registerSpecies(id, species) {
 
 // The feature that owns a table keyed by species gives it here: it gets the rows registered so far, and
 // the ones to come are written straight into it. Returns the table.
-function speciesFacet(name, table) {
+// `added(id, row)`, optional, is told of every row once it is in the table: those said so far, now, and each
+// one to come as its species registers. For a feature that makes something of a row wherever the species'
+// script is, or refuses a misspelt one by throwing (js/game/fossils.js: the items of a species' fossil).
+const SPECIES_FACET_ADDED = {};
+function speciesFacet(name, table, added) {
     if (!(name in SPECIES_FACETS) || SPECIES_FACETS[name]) throw new Error(`speciesFacet ${name}: unknown, or owned twice`);
     SPECIES_FACETS[name] = Object.assign(table, SPECIES_FACETS_WAITING[name]);
     delete SPECIES_FACETS_WAITING[name];
+    if (added) {
+        SPECIES_FACET_ADDED[name] = added;
+        for (const id of Object.keys(table)) added(id, table[id]);
+    }
     return table;
 }
 
@@ -88,13 +116,31 @@ function registerMobUseHandler(handler) {
 }
 
 // Where a ground mob wants to walk instead of wandering: provider(mob, delta) returns a
-// THREE.Vector3 (or null for no opinion). The first one that answers wins.
+// THREE.Vector3 (or null for no opinion). The first one that answers wins. The vector may carry
+// `stopDistance` (how close is there; 1) and `speed` (blocks a second, instead of its walk: the built-in
+// ground movement honours it, js/game/mobs.js).
 const MOB_GOAL_PROVIDERS = [];
 function registerMobGoal(provider) {
     MOB_GOAL_PROVIDERS.push(provider);
 }
 
-// Events: 'spawned' (mob), 'hit' (mob), 'defeated' (mob, cause), 'removed' (mob).
+// The same, asked before every other whatever order the scripts load in: for what a species does by itself
+// for a moment even where something else walks it, an animal the server keeps among them (the dodo comes up
+// to whoever stands near, js/game/dodo.js). Such a provider answers for its own species alone, with null for
+// a pet of this player's, and never takes the animal far: every client walks its own copy of a kept one.
+function registerMobGoalFirst(provider) {
+    MOB_GOAL_PROVIDERS.unshift(provider);
+}
+
+// Who may strike a mob, asked before a blow of the player does anything: guard(mob) returns a line
+// saying why not (it is somebody's pet, js/game/animals.js), or null.
+const MOB_STRIKE_GUARDS = [];
+function registerMobStrikeGuard(guard) {
+    MOB_STRIKE_GUARDS.push(guard);
+}
+
+// Events: 'spawned' (mob), 'hit' (mob), 'damaged' (mob, damage: a blow of the player took that much of
+// its health), 'defeated' (mob, cause), 'removed' (mob).
 const MOB_EVENT_LISTENERS = {};
 function onMobEvent(event, listener) {
     (MOB_EVENT_LISTENERS[event] = MOB_EVENT_LISTENERS[event] || []).push(listener);
@@ -179,6 +225,8 @@ function registerFrameUpdate(updater) {
 //   cross                         drawn as crossed planes like tall grass (alpha cutout, sways)
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
+//   dropAt(type, x, y, z)         what breaking the one in that cell drops, when it depends on where
+//                                 the block is (js/game/fossils.js); dropType still answers with no cell
 //   glow                          emissive strength: the block lights up its own texture
 //   lightEmission                 gives light to the world around it: true (as a torch, 14) or
 //                                 a level from 1 to 14

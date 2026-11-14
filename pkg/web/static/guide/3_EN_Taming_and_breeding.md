@@ -32,8 +32,16 @@ and it follows you already.
 - **Sit and stay:** right click with an empty hand. Another click has them follow you again.
   - On the horse it is **Shift + click**, because a plain click rides it.
 - **They never despawn** when you walk away, unlike wild ones.
-- **They are saved** in your browser: when the page reloads they come back to their place, sitting ones and young
-  ones included. They are not shared with other players.
+- **The server keeps them:** other players see them, and they wait for you on any browser you play from as the
+  same player. When you come in, the ones that follow you appear by your side; sitting ones, babies included, are
+  where you left them.
+- **They obey only you:** nobody else can make them sit, feed them, ride them, hurt them or take them. The others see
+  them follow you, or sitting at their place.
+- **They cannot be left sitting** in another player's plot (unless you are their guest) or in the spawn zone: there
+  they only follow you.
+- The server keeps up to **100** animals of each player. Any beyond that live in your browser only, as before.
+- The ones you tamed before the server kept them were in your browser: they move to the server by themselves as soon
+  as you are back near where you left them.
 - Dogs and cats still make friends with you on their own, as before. Taming them also lets them sit.
 - A tamed goat stops ramming you and follows you, leaping over the rocks.
 

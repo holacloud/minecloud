@@ -2,7 +2,7 @@
 
 ![Horse](mob:horse)
 
-The [horse](34) is the only animal you can ride. It lives on the plains in herds of 2 to 4.
+The [horse](34) is the only animal of today you can ride (some [extinct animals](261), once revived and tamed, can be ridden too: their page says so). It lives on the plains in herds of 2 to 4.
 
 ## Getting on and off
 

@@ -46,4 +46,6 @@ To find out where each one lives, see [Biomes](15). To keep track of the ones yo
 
 And to keep ants at home: [Ant farm](136).
 
-And smaller than any of them, in [the small world](237): ![](mob:tardigrade) [tardigrades](240), and fifteen others you can only meet through a [microscope](238).
+And the ones that no longer live anywhere, until somebody brings them back to life: [Extinct animals](261).
+
+And smaller than any of them, in [the small world](237): ![](mob:tardigrade) [tardigrades](240), and sixteen others you can only meet through a [microscope](238).

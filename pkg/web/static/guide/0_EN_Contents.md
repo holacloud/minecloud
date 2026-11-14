@@ -29,6 +29,7 @@ the pages. On a phone or tablet, see [Touch controls](222).
 ## Sections
 
 - [Mobs](16): one page for every species in the world.
+- [Extinct animals](261): the ones that only return if somebody brings them back to life, and their tree of evolution.
 - [Items](48): blocks, tools, resources and traps.
 - [Curiosities](98): oddities and secrets of the world.
 - [Growing wheat](107): the hoe, seeds, the wheat field and bread.
@@ -51,6 +52,8 @@ the pages. On a phone or tablet, see [Touch controls](222).
   [lights](228), [stained glass](229), [carpets and curtains](230), [paintings and a clock](231), [mirrors](232),
   an [oven that cooks](233), and a [fridge and freezer](234) that run on electricity.
 - [How to find metals](248) and [how they are smelted](249).
+- [Fossils](262) in the deep rock and [amber](263) under the forests: what is left of the animals of millions of years ago.
+- The [revival machine](264): with a fossil, power and a signal, it brings an extinct animal back to life.
 - A workshop for materials: the coal-fired [foundry](235), and the [electric arc furnace](236) that makes silicon.
 - [The small world](237): the [microscope](238), [samples](239), [tardigrades](240) and [cryptobiosis](241), [cells](242), [protozoa and algae](243) and [bacteria](244), with [stains](246), [filters and dark-field](247); and [lifeless things](258) under it, [opaque, clear or amorphous](259).
 - [Cultures and the incubator](253): agar plates, the [growth curve](254) and temperature, and [sterilising](255) with the autoclave, the filter and Fleming's mould.

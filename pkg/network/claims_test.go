@@ -322,13 +322,27 @@ func claimPaths() []claimPath {
 		{kind: "cultureInoculate", payload: req(map[string]interface{}{"x": 99, "z": 99, "slot": 0, "source": "sample_moss_a"}), answer: "storageResult"},
 		{kind: "cultureHarvest", payload: req(map[string]interface{}{"x": 99, "z": 99, "slot": 0}), answer: "storageResult"},
 		{kind: "cultureSet", payload: req(map[string]interface{}{"x": 99, "z": 99, "target": 30}), answer: "storageResult"},
+		// The animals of claimFurnish: three that are nobody's, in the plot, and Ana's own.
+		{kind: "animalHurt", payload: func() interface{} { return map[string]interface{}{"id": 1, "damage": 4} }},
+		{kind: "animalGone", payload: func() interface{} { return map[string]interface{}{"id": 2} }},
+		{kind: "animalAdopt", payload: func() interface{} { return map[string]interface{}{"id": 3, "ref": "t1"} }},
+		{kind: "animalSet", payload: func() interface{} {
+			return map[string]interface{}{"id": 4, "mode": animalStay, "x": 103.5, "y": 120, "z": 103.5}
+		}},
 	}
 }
 
 // Ana's plot with something to change in it: a chest with dirt, a block to break, a curtain, a glow block,
-// a lever, a microscope and an incubator.
+// a lever, a microscope and an incubator, three animals that are nobody's (1, 2, 3) and one of Ana's (4).
 func claimFurnish(t *testing.T) {
 	t.Helper()
+	animalsWorldKeepingPlayers(t)
+	for i := 0; i < 3; i++ {
+		if _, ok := animalSpawn(animalSpawnSpec{Species: "pig", X: 102.5 + float64(i), Y: 120, Z: 106.5, Radius: 4}); !ok {
+			t.Fatal("no pig for the plot")
+		}
+	}
+	animals.add(Animal{Species: "dog", Mode: animalFollow, X: 101.5, Y: 120, Z: 101.5, HomeX: 101.5, HomeY: 120, HomeZ: 101.5, Owner: plrAna, OwnerName: "Ana"})
 	for _, block := range []Block{
 		{X: 103, Y: 120, Z: 103, BlockType: "chest"}, {X: 105, Y: 120, Z: 105, BlockType: "dirt"},
 		{X: 106, Y: 120, Z: 106, BlockType: "red_curtain:s:closed"}, {X: 107, Y: 120, Z: 107, BlockType: "glow_block"},
@@ -389,6 +403,9 @@ func TestEveryProtectedPathRefusesAStrangerAndLetsTheOwnerAndTheAdmin(t *testing
 		t.Errorf("the stranger took from the chest: %+v", slots)
 	}
 	storage.mu.Unlock()
+	if a := animals.byID; len(a) != 4 || a[1].Hurt != 0 || a[3].Owner != "" || a[4].Mode != animalFollow {
+		t.Errorf("the stranger struck, took, tamed or sat down an animal of the plot: %d left", len(a))
+	}
 
 	// The owner and the admin go through: never a claimRefused.
 	for _, who := range []*Client{ana, admin} {
@@ -402,6 +419,9 @@ func TestEveryProtectedPathRefusesAStrangerAndLetsTheOwnerAndTheAdmin(t *testing
 	}
 	if claimBlockAt(t, 104, 120, 104) != "stone" || claimBlockAt(t, 105, 120, 105) != "air" {
 		t.Error("the owner's place and break did not land")
+	}
+	if a := animals.byID; a[1].Hurt != 16 || a[2] != nil || a[3].Owner != plrAna || a[4].Mode != animalStay {
+		t.Errorf("the owner's and the admin's blows, taking, taming and sitting down did not land: %+v", a)
 	}
 }
 

@@ -20,8 +20,16 @@ const METALS = { copper_ore: 'copper_block', tin_ore: 'element_sn', zinc_ore: 'e
 function loadGenerator() {
     const context = vm.createContext({ Math });
     vm.runInContext(fs.readFileSync(path.join(JS, 'terrainGen.js'), 'utf8'), context);
-    vm.runInContext('Object.assign(this, { columnSurface, blockAt, soilDepthAt, groundBlockAt, oreAt, treeAt, WATER_LEVEL, BEDROCK_Y, hash3 })', context);
+    vm.runInContext('Object.assign(this, { columnSurface, blockAt, soilDepthAt, groundBlockAt, oreAt, treeAt, isNaturalFossil, WATER_LEVEL, BEDROCK_Y, hash3 })', context);
     return context;
+}
+
+// The block of a cell with any fossil taken back to the rock or the soil it lies in, as withoutFossil does in
+// pkg/terrain/fossils_test.go: the fingerprints of the ores are older than the fossils and say that not an
+// ore moved when they came (test/js/fossils.test.js has the fingerprint of the fossils).
+function blockWithoutFossil(generator, x, y, z, surface, soil) {
+    const name = generator.blockAt(x, y, z, surface, soil);
+    return generator.isNaturalFossil(name) ? generator.groundBlockAt(x, y, z, surface, soil) : name;
 }
 
 const read = (...parts) => fs.readFileSync(path.join(...parts), 'utf8');
@@ -38,7 +46,7 @@ test('terrainGen.js makes the same ores as terrain.Generate, block for block', (
             const surface = generator.columnSurface(x, z);
             const soil = generator.soilDepthAt(x, z, surface);
             for (let y = generator.BEDROCK_Y; y <= surface.height; y++) {
-                const name = generator.blockAt(x, y, z, surface, soil);
+                const name = blockWithoutFossil(generator, x, y, z, surface, soil);
                 if (name.endsWith('_ore')) seen[name] = (seen[name] || 0) + 1;
                 hash.update(`${name}\n`);
             }
@@ -59,7 +67,7 @@ test('from y = 2 up nothing moved when the world went deeper, on this side too',
         for (let z = z0; z < z1; z++) {
             const surface = generator.columnSurface(x, z);
             const soil = generator.soilDepthAt(x, z, surface);
-            for (let y = from; y <= surface.height; y++) hash.update(`${generator.blockAt(x, y, z, surface, soil)}\n`);
+            for (let y = from; y <= surface.height; y++) hash.update(`${blockWithoutFossil(generator, x, y, z, surface, soil)}\n`);
         }
     }
     assert.equal(hash.digest('hex'), fingerprint);
@@ -148,8 +156,9 @@ test('every new ore is a block that breaks and drops as the old ones do, with it
     const textures = read(JS, 'blockTextures.js');
     for (const pattern of ['ore(s, tint, seed)', 'ore_cubes(s, tint, seed)', 'ore_crystals(s, tint, seed)']) assert.ok(textures.includes(pattern), pattern);
     // They drop themselves: nothing in getDropTypeForBlock turns ore into anything else.
-    const drops = world.slice(world.indexOf('getDropTypeForBlock(type)'), world.indexOf('getDropTypeForBlock(type)') + 400);
-    assert.ok(!drops.includes('_ore'));
+    const at = world.indexOf('getDropTypeForBlock(type, x, y, z) {');
+    assert.ok(at > 0, 'getDropTypeForBlock is where it was');
+    assert.ok(!world.slice(at, at + 600).includes('_ore'));
 });
 
 test('the C menu smelts each ore with coal, and no recipe went away', () => {

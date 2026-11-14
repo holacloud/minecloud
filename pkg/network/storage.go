@@ -35,7 +35,8 @@ import (
 //
 // A move is applied, saved, and only then answered. The log of answers is saved in the same
 // file as the contents, so after a crash they still agree. Ovens, foundries, arc furnaces and cold
-// furniture are chests that also change what they hold on their own: appliances.go.
+// furniture are chests that also change what they hold on their own: appliances.go. The revival machine is
+// a chest of three fossils that uses them up to make an animal: revival.go.
 //
 // A culture plate is the exception: each is one plate with a record of what grew on it (plates.go).
 // It lies alone in its slot (StorageSlot.Plate), a put names it with `plate` and the `token` its holder
@@ -52,17 +53,18 @@ import (
 // js/game/storage.js (test/js/furniture.test.js).
 
 var storageKinds = map[string]int{
-	"arc_furnace":   3,
-	"autoclave":     3,
-	"barrel":        18,
-	"chest":         27,
-	"chest_freezer": 36,
-	"foundry":       3,
-	"fridge":        18,
-	"incubator":     3,
-	"microscope":    1,
-	"oven":          3,
-	"wardrobe":      45,
+	"arc_furnace":     3,
+	"autoclave":       3,
+	"barrel":          18,
+	"chest":           27,
+	"chest_freezer":   36,
+	"foundry":         3,
+	"fridge":          18,
+	"incubator":       3,
+	"microscope":      1,
+	"oven":            3,
+	"revival_machine": 3,
+	"wardrobe":        45,
 }
 
 // storageFreezers: kinds with a second compartment, "freezer", and how many slots it has.
@@ -130,6 +132,9 @@ type StorageBlock struct {
 	Plates []*CulturePlate `json:"plates,omitempty"`
 	Target float64         `json:"target,omitempty"`
 	Inside *float64        `json:"inside,omitempty"`
+	// A revival machine (revival.go): the animal it is bringing back and how far it has got. Not nil in
+	// every one that holds a fossil.
+	Revival *RevivalWork `json:"revival,omitempty"`
 }
 
 // storageOutcome answers one request: how many items moved (0 when refused).
@@ -179,6 +184,8 @@ type storageSnapshot struct {
 	Microscope *microscopeView `json:"microscope,omitempty"`
 	// An incubator: its temperatures, light and plates.
 	Incubator *incubatorView `json:"incubator,omitempty"`
+	// A revival machine: what its fossils make, what it still needs and how far it has got.
+	Revival *revivalView `json:"revival,omitempty"`
 	// What lies on each culture plate in it, by the plate's id (plates.go).
 	Cultures map[string]*CulturePlate `json:"cultures,omitempty"`
 }
@@ -260,6 +267,7 @@ type storageBook struct {
 	applianceBook
 	microscopeBook
 	incubatorBook
+	revivalBook
 }
 
 // storagePart is what a mechanic built on the chests adds to them (a machine that works by itself, a
@@ -296,7 +304,7 @@ type storagePart struct {
 
 // The mechanics built on the chests. A new one adds its part here, its book (if it keeps any state out of
 // the blocks) to storageBook, and its saved fields to StorageBlock: nothing else in this file names it.
-var storageParts = []storagePart{appliancePart, microscopePart, incubatorPart}
+var storageParts = []storagePart{appliancePart, microscopePart, incubatorPart, revivalPart}
 
 func newStorageBook() *storageBook {
 	b := &storageBook{

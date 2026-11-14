@@ -18,6 +18,12 @@ const PLAYER_SWORD_DAMAGE = { wood: 5, stone: 6, iron: 7, gold: 8 };
 // What a sword in the left hand adds to the strike of one in the right (guide page 251).
 const PLAYER_LEFT_SWORD_SHARE = 0.5;
 
+// From how many blocks a hostile mob comes for the player when its species does not say (`chaseDistance`),
+// and from how many a `nocturnal` one does by day. The server is told both of an animal it keeps
+// (animalsChaseOf, js/game/animals.js).
+const MOB_CHASE_DISTANCE = 16;
+const MOB_CHASE_DISTANCE_BY_DAY = 3.5;
+
 Object.assign(Game.prototype, {
     // `modelSpecies` builds a different model than the species' own (a bee colony's hive).
     createMob(species, position, { variant = null, modelSpecies = null } = {}) {
@@ -170,7 +176,8 @@ Object.assign(Game.prototype, {
     },
 
     // A registered goal for a ground mob (bait, a mate, its owner...), or null to wander.
-    // A goal may carry `stopDistance` (default 1): the mob stands still once that close.
+    // A goal may carry `stopDistance` (default 1): the mob stands still once that close; and `speed`, the
+    // blocks a second it goes there at instead of its walk (one that runs after somebody, animals.js).
     getMobGoal(mob, delta) {
         for (const provider of MOB_GOAL_PROVIDERS) {
             const goal = provider.call(this, mob, delta);
@@ -379,7 +386,17 @@ Object.assign(Game.prototype, {
         if (!(data.maxHealth > 1)) return false;
         data.health -= damage;
         this.updateMobHealthBar(mob);
+        this.emitMobEvent('damaged', mob, damage);
         return data.health <= 0;
+    },
+
+    // Why the player may not strike this mob (registerMobStrikeGuard, js/extensions.js), or null.
+    mobStrikeRefusal(mob) {
+        for (const guard of MOB_STRIKE_GUARDS) {
+            const why = guard.call(this, mob);
+            if (why) return why;
+        }
+        return null;
     },
 
     // The player defeated `mob`: loot, bestiary and scavengers hear of it ('defeated'), then
@@ -398,6 +415,11 @@ Object.assign(Game.prototype, {
     },
 
     interactWithMob(mob) {
+        const refusal = this.mobStrikeRefusal(mob);
+        if (refusal) {
+            this.receiveSystemMessage({ text: refusal });
+            return;
+        }
         this.offhandNoteStrike();
         this.emitMobEvent('hit', mob);
         // A 'hit' listener may have taken it already (a fish caught by hand, resources.js).
@@ -565,8 +587,10 @@ Object.assign(Game.prototype, {
             const mobFlatPosition = new THREE.Vector3(mob.position.x, 0, mob.position.z);
             const distanceToPlayer = mobFlatPosition.distanceTo(playerPosition);
             const info = getMobSpecies(mob.userData.species);
-            const chaseDistance = info.nocturnal && !this.isNightTime() ? 3.5 : info.chaseDistance || 16;
+            const chaseDistance = info.nocturnal && !this.isNightTime() ? MOB_CHASE_DISTANCE_BY_DAY : info.chaseDistance || MOB_CHASE_DISTANCE;
             const keepDistance = info.keepDistance || 0;
+            // `hostile` is this copy's own: an animal the server keeps comes for the player only on the
+            // client of the one the server says it is after (js/game/animals.js).
             const isChasing = mob.userData.hostile && !this.titleScreenOpen && !this.respawnPending && distanceToPlayer < chaseDistance;
             const isFollowingDog = mob.userData.species === 'dog' && this.followingDog === mob;
             const isFollowingCat = mob.userData.species === 'cat' && this.followingCat === mob;
@@ -574,11 +598,12 @@ Object.assign(Game.prototype, {
             const walksAlone = !mob.userData.tamed;
             let goal = null;
 
-            if (mob.userData.species === 'dog' && !this.followingDog && distanceToPlayer <= 10) {
+            // (Never somebody else's animal, nor one that lives where the server says: js/game/animals.js.)
+            if (mob.userData.species === 'dog' && !this.followingDog && distanceToPlayer <= 10 && !mob.userData.animalForeign) {
                 this.followingDog = mob;
                 this.receiveSystemMessage({ text: 'An adorable dog is now your friend' });
             }
-            if (mob.userData.species === 'cat' && !this.followingCat && distanceToPlayer <= 7) {
+            if (mob.userData.species === 'cat' && !this.followingCat && distanceToPlayer <= 7 && !mob.userData.animalForeign) {
                 this.followingCat = mob;
                 this.receiveSystemMessage({ text: 'A tiny cat decided you are acceptable' });
             }
@@ -604,7 +629,7 @@ Object.assign(Game.prototype, {
             }
             mob.userData.resting = Math.max(0, (mob.userData.resting || 0) - delta);
 
-            const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : info.speed * (mob.userData.geneticsSpeed || 1);
+            const moveSpeed = isChasing ? info.chaseSpeed : isFollowingDog ? 0.95 : isFollowingCat ? 0.72 : goal && goal.speed ? goal.speed : info.speed * (mob.userData.geneticsSpeed || 1);
             const goalReached = goal && Math.hypot(goal.x - mob.position.x, goal.z - mob.position.z) <= (goal.stopDistance ?? 1);
             const moveScale = mob.userData.resting > 0 || goalReached || (isChasing && distanceToPlayer <= keepDistance) || (walksAlone && isFollowingDog && distanceToPlayer <= 2.1) || (walksAlone && isFollowingCat && distanceToPlayer <= 1.1) ? 0 : 1;
             const move = new THREE.Vector3(Math.cos(mob.userData.direction), 0, Math.sin(mob.userData.direction)).multiplyScalar(moveSpeed * moveScale * delta);

@@ -5,13 +5,13 @@ página cuenta cuáles son.
 
 ## Formas de moverse
 
-Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **24**:
+Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **26**:
 
 | Modo | Quién | Qué hace |
 |---|---|---|
 | a pie | oveja, cerdo, perro, gato, jirafa, araña… | Pasea, pasta y, si es hostil, persigue |
 | nadar | pez | Bancos que se mueven juntos sin chocar |
-| saltar | rana | Salta en vez de andar y nada en la superficie |
+| saltar | rana, Beelzebufo | Salta en vez de andar y nada en la superficie |
 | anfibio | tortuga | Pasea por la playa y bucea |
 | sprint | lagarto | Toma el sol y corre a ráfagas |
 | escalar | cabra | Salta repisas de 2 bloques y busca lo alto |
@@ -33,6 +33,8 @@ Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. 
 | presa | castor | Tala árboles junto al agua y construye presas |
 | anguila | anguila eléctrica | Nada por el fondo, sube a tragar aire y da descargas |
 | ayudante | golem de cobre | Te sigue, te espera o te trae lo que hay por el suelo |
+| surcar | trilobites, amonites, plesiosaurio, arquelón, Dunkleosteus, megalodón, Anomalocaris | Vive dentro del agua y nunca sale: camina por el fondo, flota o nada a media agua |
+| cernerse | águila de Haast, Argentavis, pterosaurio | Da vueltas muy alto sobre su casa, baja a posarse y vuelve a despegar |
 
 ## Los mobs que andan
 

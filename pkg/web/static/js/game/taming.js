@@ -5,16 +5,20 @@
 // need Shift + right click, so that a plain right click still rides them). Feeding a tamed
 // adult again puts it in love for a while: two adults of the same species in love walk to each
 // other and have a baby that grows up in a few minutes, following its parents; its colour, adult
-// size and speed come from both parents' genes (js/game/genetics.js). Tamed mobs are
-// kept in localStorage and come back when the world around them has loaded.
+// size and speed come from both parents' genes (js/game/genetics.js).
 //
 // Only mobs that walk to registerMobGoal targets can be tamed: ground mobs and goats ('climb'),
 // whose movements are `tameable` (js/mobSpecies.js); a behaviour registered with registerMobBehaviour
 // can opt in with `tameable: true` if its update() honours getMobGoal and `userData.resting`.
 //
-// Mobs are not synced between players, so tamed mobs live in this browser only (`owner` is
-// informative). Mixed into Game.prototype; everything runs once per frame after the mobs
-// moved (registerFrameUpdate below).
+// Tamed mobs are kept by the server (js/game/animals.js, pkg/network/animals.go): the other players
+// see them, and they are there on any device their owner plays from. This file still walks them, for
+// their owner only: everything here is about the mobs with `userData.tamed`, which are this player's.
+// What the server needs to know (tamed, born, sat down, grown, fed) it is told by animalsOwnerSync, from
+// tamingSave. A mob the server has not taken (no connection, or it keeps as many as it can) is saved in
+// localStorage as they all were once, and those found there from before are offered to the server and
+// leave the browser as it takes them. Mixed into Game.prototype; everything runs once per frame after
+// the mobs moved (registerFrameUpdate below).
 
 // Per species: `foods` (held item types that tame and feed it, in order of preference; types
 // that do not exist in world.blockTypes are skipped) and `chance` (of taming per item), or
@@ -55,8 +59,21 @@ const TAMING = {
     breedDistance: 1.8,
     breedCooldown: 120,
     growTime: 300,
-    babyScale: 0.5
+    babyScale: 0.5,
+    // A baby's age and a breeding rest are told to the server in steps of these seconds: a clock that
+    // runs is no news every second.
+    keptStep: 60
 };
+
+// The name the server knows an animal by while it has no number (animalKeep's ref), for one saved in
+// the browser before it had any: the same every time the list is read, so that an animal offered twice
+// (the page closed before it could note that the server took it) is kept once.
+function tamingSavedRef(entry, index) {
+    const text = `${index}:${JSON.stringify(entry)}`;
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    return `m${(hash >>> 0).toString(36)}`;
+}
 
 registerFrameUpdate(function (delta) {
     this.tamingUpdate(delta);
@@ -109,6 +126,12 @@ Object.assign(Game.prototype, {
             return true;
         }
         if (!this.tamingCanTame(species) || !this.tamingFoods(species).includes(item)) return false;
+        // Somebody else's, or the animal of a plot that is not the player's (js/game/animals.js): no food is spent.
+        const refusal = typeof this.animalsTameRefusal === 'function' ? this.animalsTameRefusal(mob) : null;
+        if (refusal) {
+            this.receiveSystemMessage({ text: refusal });
+            return true;
+        }
 
         if (!data.tamed) {
             if (!this.consumeSelectedBlock()) return false;
@@ -169,6 +192,13 @@ Object.assign(Game.prototype, {
 
     tamingSetSitting(mob, sitting) {
         const data = mob.userData;
+        // An animal is not left to stay where its owner may not build: the server would not have it
+        // (pkg/network/animals.go).
+        const refusal = sitting ? this.blockEditRefusal(Math.floor(mob.position.x), Math.floor(mob.position.z)) : null;
+        if (refusal) {
+            this.receiveSystemMessage({ text: refusal });
+            return;
+        }
         data.tamingSitting = sitting;
         data.home.copy(mob.position);
         data.resting = sitting ? 1 : 0;
@@ -236,11 +266,9 @@ Object.assign(Game.prototype, {
                 if (data.tamingAge >= TAMING.growTime) {
                     data.tamingAge = null;
                     data.tamingParent = null;
-                    mob.scale.setScalar(this.tamingAdultScale(mob));
                     this.tamingSaveSoon();
-                } else {
-                    mob.scale.setScalar(this.tamingAdultScale(mob) * (TAMING.babyScale + (1 - TAMING.babyScale) * data.tamingAge / TAMING.growTime));
                 }
+                this.tamingGrow(mob);
             }
 
             if (data.tamingLove > 0) {
@@ -350,13 +378,44 @@ Object.assign(Game.prototype, {
         return mob.userData.geneticsScale || 1;
     },
 
+    // The size of its age: half of its grown-up size when born, all of it when it has grown.
+    tamingGrow(mob) {
+        const age = mob.userData.tamingAge;
+        mob.scale.setScalar(this.tamingAdultScale(mob) * (age == null ? 1 : TAMING.babyScale + (1 - TAMING.babyScale) * age / TAMING.growTime));
+    },
+
+    // What the server keeps with a tamed animal besides where it is and how it fares (its `extra`,
+    // pkg/network/animals.go): its age while a baby, its rest after breeding, its genes. Only this file
+    // and genetics.js know what is in it.
+    tamingKeptExtra(mob) {
+        const data = mob.userData;
+        const extra = {};
+        if (this.tamingIsBaby(mob)) extra.age = Math.floor(data.tamingAge / TAMING.keptStep) * TAMING.keptStep;
+        if (data.tamingBreedCooldown > 0) extra.cooldown = Math.ceil(data.tamingBreedCooldown / TAMING.keptStep) * TAMING.keptStep;
+        const genetics = this.geneticsSave ? this.geneticsSave(mob) : undefined;
+        if (genetics) extra.genetics = genetics;
+        return extra;
+    },
+
+    // Puts on a mob what such an extra says: on a pet of this player's as it comes back, and on
+    // somebody else's for its looks (a baby's size, the colour and size of its genes). Whoever wrote
+    // it, nothing in it is taken on trust.
+    tamingKeptApply(mob, extra) {
+        const data = mob.userData;
+        const age = Number(extra.age);
+        data.tamingAge = typeof extra.age === 'number' && age >= 0 && age < TAMING.growTime ? age : null;
+        data.tamingBreedCooldown = Math.max(0, Math.min(TAMING.breedCooldown, Number(extra.cooldown) || 0));
+        if (this.geneticsRestore && extra.genetics && typeof extra.genetics === 'object') this.geneticsRestore(mob, extra.genetics);
+        this.tamingGrow(mob);
+    },
+
     tamingSpawnBaby(species, position, variant, age, owner) {
         const baby = this.createMob(species, position, { variant });
         this.tamingTame(baby, { quiet: true });
         baby.userData.owner = owner || baby.userData.owner;
         baby.userData.tamingAge = age;
         baby.userData.tamingBreedCooldown = 0;
-        baby.scale.setScalar(TAMING.babyScale + (1 - TAMING.babyScale) * age / TAMING.growTime);
+        this.tamingGrow(baby);
         this.ambientMobs.push(baby);
         return baby;
     },
@@ -446,7 +505,9 @@ Object.assign(Game.prototype, {
         });
     },
 
-    // Persistence: tamed mobs (and ones not restored yet) are kept in localStorage.
+    // Persistence. The server keeps the tamed mobs (js/game/animals.js); localStorage holds only those
+    // it has not taken: the ones saved here before it kept any, until they are back in the world and
+    // it takes them, and the ones it cannot take.
     tamingStart() {
         this.tamingStarted = true;
         try {
@@ -455,11 +516,17 @@ Object.assign(Game.prototype, {
         } catch (error) {
             this.tamingPending = [];
         }
+        this.tamingPending.forEach((entry, index) => {
+            if (typeof entry.ref !== 'string' || !/^[a-z0-9]{1,16}$/.test(entry.ref)) entry.ref = tamingSavedRef(entry, index);
+        });
+        // Their names are noted in the browser before the server hears any of them.
+        if (this.tamingPending.length) this.tamingSaveSoon();
         window.addEventListener('beforeunload', () => this.tamingSave());
     },
 
     tamingRestore() {
         if (!this.tamingPending || !this.tamingPending.length) return;
+        const waiting = this.tamingPending.length;
         this.tamingPending = this.tamingPending.filter((entry) => {
             const { chunkX, chunkZ } = this.world.getChunkCoords(entry.x, entry.z);
             if (!this.world.generatedChunks.has(this.world.chunkKey(chunkX, chunkZ))) return true;
@@ -477,6 +544,7 @@ Object.assign(Game.prototype, {
                 this.ambientMobs.push(mob);
             }
             if (this.geneticsRestore) this.geneticsRestore(mob, entry.genetics);
+            mob.userData.animalRef = entry.ref;
             mob.userData.tamingBreedCooldown = entry.cooldown || 0;
             if (entry.sitting) {
                 mob.userData.tamingSitting = true;
@@ -484,6 +552,8 @@ Object.assign(Game.prototype, {
             }
             return false;
         });
+        // Back in the world: the server is offered them with the next save.
+        if (this.tamingPending.length !== waiting) this.tamingSaveSoon();
     },
 
     tamingSaveSoon() {
@@ -493,9 +563,12 @@ Object.assign(Game.prototype, {
     tamingSave() {
         this.tamingSaveTimer = 5;
         if (!this.tamingStarted || !this.ambientMobs) return;
-        const live = this.ambientMobs.filter((mob) => mob.userData.tamed).map((mob) => {
+        // The server first: what it has taken by now is no longer the browser's to keep.
+        if (typeof this.animalsOwnerSync === 'function') this.animalsOwnerSync();
+        const live = this.ambientMobs.filter((mob) => mob.userData.tamed && !mob.userData.animalId).map((mob) => {
             const data = mob.userData;
             return {
+                ref: data.animalRef || undefined,
                 species: data.species,
                 variant: data.variant,
                 x: Math.round(mob.position.x * 100) / 100,
@@ -509,7 +582,9 @@ Object.assign(Game.prototype, {
             };
         });
         try {
-            window.localStorage.setItem(TAMING.storageKey, JSON.stringify(live.concat(this.tamingPending || [])));
+            const kept = live.concat(this.tamingPending || []);
+            if (kept.length) window.localStorage.setItem(TAMING.storageKey, JSON.stringify(kept));
+            else window.localStorage.removeItem(TAMING.storageKey);
         } catch (error) {
             // Storage full or disabled: tamed mobs just do not survive a reload.
         }

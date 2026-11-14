@@ -29,6 +29,7 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 ## Secciones
 
 - [Mobs](16): una página por cada especie del mundo.
+- [Animales extintos](261): los que solo vuelven si alguien los devuelve a la vida, y su árbol de la evolución.
 - [Objetos](48): bloques, herramientas, recursos y trampas.
 - [Curiosidades](98): rarezas y secretos del mundo.
 - [Cultivar trigo](107): la azada, las semillas, el trigal y el pan.
@@ -51,6 +52,8 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
   [luces](228), [vidrieras](229), [alfombras y cortinas](230), [cuadros y un reloj](231), [espejos](232),
   un [horno que cocina](233), y una [nevera y un congelador](234) que van con electricidad.
 - [Cómo encontrar metales](248) y [cómo se funden](249).
+- [Fósiles](262) en la roca honda y [ámbar](263) bajo los bosques: lo que queda de los animales de hace millones de años.
+- La [máquina de revivir](264): con un fósil, corriente y una señal, devuelve a la vida a un animal extinto.
 - Un taller para los materiales: la [fundición](235) de carbón, y el [horno de arco eléctrico](236) que hace silicio.
 - [El mundo pequeño](237): el [microscopio](238), las [muestras](239), los [tardígrados](240) y la [criptobiosis](241), las [células](242), [protozoos y algas](243) y [bacterias](244), con [tinciones](246), [filtros y campo oscuro](247); y [lo que no vive](258) bajo él, [opaco, transparente o amorfo](259).
 - [Cultivos e incubadora](253): placas de agar, la [curva de crecimiento](254) y la temperatura, y [esterilizar](255) con el autoclave, el filtro y el moho de Fleming.

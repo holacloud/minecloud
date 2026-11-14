@@ -1,6 +1,6 @@
 # Bestiary
 
-A field guide to everything alive in the world: **35 animals and creatures** and **17 microscopic organisms**, 52 cards in all. Everything it says is in the language of the game.
+A field guide to everything alive in the world: **35 animals and creatures** and **17 microscopic organisms**, 52 cards in all. Everything it says is in the language of the game. The [extinct animals](261) are kept apart, in a section of their own.
 
 - **Open:** the **B** key, or the "Bestiary (B)" button in the pause menu.
 - **Close:** Escape, B, the "Close" button or a click outside the panel.
@@ -38,9 +38,26 @@ The 17 organisms of [the small world](237) and [its cultures](255) are cards lik
 
 Their sheet shows their drawing, alive, the power they are seen from ("Seen from 40×"), their **Real size**, their **Group**, where they **Live** and how many times they were **Identified**, with a button to their page of the guide. They have no temperament, no diet and no drops, and nobody defeats them.
 
+## Extinct animals
+
+At the end of the panel, under the title **Extinct animals**, are the ones that no longer live anywhere. Nobody
+runs into them: they are only seen when somebody finds their fossil and brings it back to life. See
+[Extinct animals](261).
+
+- **They are a secret until you see one.** Until then its card is the same for all of them: a silhouette with a "?",
+  with no name and no habitat. Its sheet only says: "An extinct animal. Find its fossil and bring it back to life to see it."
+- **You discover them like the rest**, by seeing one up close, whoever revived it. From then on its card is one
+  more, with the "Extinct" tag.
+- **They keep their own count**, next to the title: how many you have "seen alive". They do not add to the counter
+  at the top.
+- **Evolution:** if one is the ancestor, or an ancient relative, of an animal that lives today, the sheet of both
+  shows a small tree: their portraits joined by an arrow, with "Extinct" or "Alive today" underneath. The one you
+  have not discovered yet has no name. Click a portrait to go to its card.
+
 ## The complete notebook
 
-The counter at the top adds up **all** the cards, the 52. But the notebook counts as complete with **the 35 animals and creatures**, without the organisms. When you discover the last one, the chat says: "Your bestiary is complete! Something is written on its last page...", and a code for the guide appears next to the counter. That is why you can see it with the counter at "35 / 52 discovered".
+The counter at the top adds up **all** the cards of what lives today, the 52. But the notebook counts as complete with **the 35 animals and creatures**, without the organisms. When you discover the last one, the chat says: "Your bestiary is complete! Something is written on its last page...", and a code for the guide appears next to the counter. That is why you can see it with the counter at "35 / 52 discovered".
 
 - Identifying organisms neither brings that notice forward nor holds it back: they are a collection of their own.
+- Nor do the extinct animals: they neither count on the counter nor are needed for the notice.
 - One of the 35 never appears by itself: the [copper golem](215) has to be built, or hatched from its [egg](74).

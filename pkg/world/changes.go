@@ -253,8 +253,11 @@ func (ix *ChangeIndex) compactLocked() {
 // of the next one up, and with nothing under it. Chunks saved back then keep that floor.
 const savedFloorY = -5
 
-// oreHostGround is what terrain.Generate may put an ore in place of.
+// oreHostGround is what terrain.Generate may put an ore in place of, and a fossil too.
 var oreHostGround = map[string]bool{"stone": true, "cobblestone": true, "grass": true, "dirt": true, "sand": true}
+
+// fossilHostGround is what a fossil lies in: rock, or for old bones the soil of a plain or a beach.
+var fossilHostGround = map[string]bool{"stone": true, "dirt": true, "sand": true}
 
 // diffSurface compares a chunk with the generated one. Blocks in the returned columns and
 // summaries are indices into stored.Palette.
@@ -272,12 +275,16 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 	}
 	// A chunk saved before the generator changed its ores differs from today's in all of them, and
 	// nobody touched it. So ores, in either chunk, count as the ground they lie in, and so does the
-	// old floor of the world (see onSavedFloor). The columns below still say what is really on top of
-	// a chunk that has changed.
+	// old floor of the world (see onSavedFloor). Fossils are the same case: a chunk saved before the
+	// world had them, or before their numbers were tuned, has plain ground where today's has one, or
+	// one where today's has plain ground. The columns below still say what is really on top of a
+	// chunk that has changed.
 	storedOre := make([]bool, len(stored.Palette))
+	storedFossil := make([]bool, len(stored.Palette))
 	storedGround := make([]bool, len(stored.Palette))
 	for i, name := range stored.Palette {
 		storedOre[i] = terrain.IsNaturalOre(name)
+		storedFossil[i] = terrain.IsNaturalFossil(name)
 		storedGround[i] = oreHostGround[name]
 	}
 	storedBedrock := int32(-1)
@@ -286,21 +293,27 @@ func diffSurface(stored, generated *terrain.Chunk, skip func(string) bool) (chan
 			storedBedrock = int32(i)
 		}
 	}
-	generatedOre := make([]bool, len(generated.Palette))
+	// A deposit is an ore or a fossil: what today's generator puts in the ground.
+	generatedDeposit := make([]bool, len(generated.Palette))
 	generatedStone := make([]bool, len(generated.Palette))
+	generatedFossilGround := make([]bool, len(generated.Palette))
 	for i, name := range generated.Palette {
-		generatedOre[i] = terrain.IsNaturalOre(name)
+		generatedDeposit[i] = terrain.IsNaturalOre(name) || terrain.IsNaturalFossil(name)
 		generatedStone[i] = name == "stone"
+		generatedFossilGround[i] = fossilHostGround[name]
 	}
 	for i, id := range stored.Blocks {
 		gen := generated.Blocks[i]
 		if same[id] == int32(gen) {
 			continue
 		}
-		if generatedOre[gen] && (storedOre[id] || storedGround[id]) {
+		if generatedDeposit[gen] && (storedOre[id] || storedFossil[id] || storedGround[id]) {
 			continue
 		}
 		if storedOre[id] && generatedStone[gen] {
+			continue
+		}
+		if storedFossil[id] && generatedFossilGround[gen] {
 			continue
 		}
 		if onSavedFloor(stored, i, id, storedBedrock) {

@@ -1622,8 +1622,11 @@ class WorldRenderer {
         return def ? def.color : 0xFFFFFF;
     }
 
-    getDropTypeForBlock(type) {
+    // What breaking a block gives (null: nothing). Whoever breaks one says the cell it was in, as a block
+    // type may give by where it is (`dropAt`, js/extensions.js).
+    getDropTypeForBlock(type, x, y, z) {
         const def = this.blockTypes[type];
+        if (def && def.dropAt && x !== undefined) return def.dropAt(type, x, y, z);
         if (def && Object.prototype.hasOwnProperty.call(def, 'dropType')) return def.dropType;
         switch (type) {
             case 'stone': return 'cobblestone';

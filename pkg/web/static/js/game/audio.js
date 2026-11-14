@@ -80,13 +80,15 @@ Object.assign(Game.prototype, {
     },
 
     playMiningSound(blockType) {
-        const isHard = ['stone', 'cobblestone', 'brick'].includes(blockType) || String(blockType).endsWith('_ore');
+        const isHard = ['stone', 'cobblestone', 'brick'].includes(blockType) || String(blockType).endsWith('_ore') ||
+            (typeof fossilBlockIsRock === 'function' && fossilBlockIsRock(blockType));
         this.playNoiseBurst({ duration: isHard ? 0.07 : 0.05, volume: isHard ? 0.032 : 0.022, highpass: isHard ? 480 : 220, lowpass: isHard ? 1800 : 1400 });
         this.playTone({ frequency: isHard ? 185 : 145, duration: 0.045, type: 'square', volume: isHard ? 0.028 : 0.02, release: 0.05, detune: (Math.random() - 0.5) * 50 });
     },
 
     playPlaceSound(blockType) {
-        const isHard = ['stone', 'cobblestone', 'brick'].includes(blockType) || String(blockType).endsWith('_ore');
+        const isHard = ['stone', 'cobblestone', 'brick'].includes(blockType) || String(blockType).endsWith('_ore') ||
+            (typeof fossilBlockIsRock === 'function' && fossilBlockIsRock(blockType));
         this.playTone({ frequency: isHard ? 210 : 170, duration: 0.06, type: 'triangle', volume: 0.028, release: 0.07 });
         this.playNoiseBurst({ duration: 0.04, volume: 0.016, highpass: 180, lowpass: isHard ? 2000 : 1200 });
     },

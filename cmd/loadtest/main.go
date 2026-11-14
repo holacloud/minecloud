@@ -1,7 +1,9 @@
 // A load test of the game server: players that are not there. Each one connects, joins, says where it
 // is ten times a second as a real client does (js/game.js), and asks for the chunks around it as it
 // walks. The players come in steps; for each step it reports what the server spent, what each player was
-// sent, and how long a move took to reach the players that were told of it.
+// sent, and how long a move took to reach the players that were told of it. What the kept animals around
+// the players cost (pkg/network/animals.go) is counted apart, in bytes a second for each player: the
+// bots keep none, so it is that of the animals the world already has where they walk.
 //
 //	bin/server -addr :8091                      # a server of its own, in a copy of data/: never the real one
 //	go run ./cmd/loadtest -url ws://localhost:8091/ws -pid $(pgrep -x server) -steps 10,50,100,200
@@ -46,6 +48,7 @@ var (
 
 type counters struct {
 	messages, bytes, chunks, chunkBytes, sent atomic.Int64
+	animalFrames, animalBytes                 atomic.Int64 // the rounds of the kept animals, which are binary too
 	entries                                   atomic.Int64 // players told about, in all the messages
 	gone                                      atomic.Int64 // players the server dropped or lost
 	mu                                        sync.Mutex
@@ -182,6 +185,8 @@ func (b *bot) run() {
 	}
 }
 
+var animalsMagic = []byte("MCA1")
+
 func (b *bot) read() {
 	moves := []byte(`"type":"playerMoves"`)
 	for {
@@ -191,6 +196,12 @@ func (b *bot) read() {
 			return
 		}
 		if kind == websocket.BinaryMessage {
+			// The magic says what a binary frame is (animals.go; anything else is a chunk).
+			if bytes.HasPrefix(data, animalsMagic) {
+				stats.animalFrames.Add(1)
+				stats.animalBytes.Add(int64(len(data)))
+				continue
+			}
 			stats.chunks.Add(1)
 			stats.chunkBytes.Add(int64(len(data)))
 			continue
@@ -302,7 +313,7 @@ func main() {
 	}
 
 	fmt.Printf("# %s explore=%.2f still=%.2f spread=%.0f radius=%d move=%s hold=%s\n", *label, *explore, *still, *spread, *radius, *moveRate, *hold)
-	fmt.Println("players  alive  cpu%   rss_mb  msgs/player/s  told/player/s  mbit_out/s  kbit/player  chunks/s  delay_p50  delay_p99  delay_max")
+	fmt.Println("players  alive  cpu%   rss_mb  msgs/player/s  told/player/s  mbit_out/s  kbit/player  chunks/s  animals_B/player/s  delay_p50  delay_p99  delay_max")
 	started := 0
 	for _, target := range targets {
 		for started < target {
@@ -322,6 +333,7 @@ func main() {
 		stats.echoes = stats.echoes[:0]
 		stats.mu.Unlock()
 		messages, textBytes, chunks, chunkBytes, entries := stats.messages.Load(), stats.bytes.Load(), stats.chunks.Load(), stats.chunkBytes.Load(), stats.entries.Load()
+		animalBytes := stats.animalBytes.Load()
 		cpu, _ := serverUsage()
 		begin := time.Now()
 		time.Sleep(*hold)
@@ -333,14 +345,16 @@ func main() {
 		stats.mu.Unlock()
 		sort.Slice(echoes, func(i, j int) bool { return echoes[i] < echoes[j] })
 		alive := started - int(stats.gone.Load())
-		out := float64(stats.bytes.Load()-textBytes+stats.chunkBytes.Load()-chunkBytes) * 8 / seconds
+		animalsOut := float64(stats.animalBytes.Load() - animalBytes)
+		out := (float64(stats.bytes.Load()-textBytes+stats.chunkBytes.Load()-chunkBytes) + animalsOut) * 8 / seconds
 		players := math.Max(1, float64(alive))
-		fmt.Printf("%7d  %5d  %5.0f  %6.0f  %13.1f  %13.1f  %10.1f  %11.0f  %8.0f  %9s  %9s  %9s\n",
+		fmt.Printf("%7d  %5d  %5.0f  %6.0f  %13.1f  %13.1f  %10.1f  %11.0f  %8.0f  %18.1f  %9s  %9s  %9s\n",
 			target, alive,
 			100*(cpuAfter-cpu).Seconds()/seconds, float64(rss)/1e6,
 			float64(stats.messages.Load()-messages)/seconds/players, float64(stats.entries.Load()-entries)/seconds/players,
 			out/1e6, out/players/1e3,
 			float64(stats.chunks.Load()-chunks)/seconds,
+			animalsOut/seconds/players,
 			percentile(echoes, 0.5).Round(time.Millisecond), percentile(echoes, 0.99).Round(time.Millisecond),
 			percentile(echoes, 1).Round(time.Millisecond))
 	}

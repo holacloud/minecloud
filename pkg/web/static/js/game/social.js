@@ -241,6 +241,10 @@ Object.assign(Game.prototype, {
             case 'give':
                 this.creativeGive(normalized, args);
                 break;
+            // An animal the server keeps, for everybody to see (js/game/animals.js).
+            case 'animal':
+                this.animalsCommand(normalized, args);
+                break;
             case 'microkit':
                 this.microscopeKit(normalized);
                 break;

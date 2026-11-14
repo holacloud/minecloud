@@ -200,6 +200,7 @@ func Generate(chunkX, chunkZ int) *Chunk {
 
 	// 1. Terrain, water and single-column decoration inside the chunk.
 	veins := newVeinMemo()
+	fossils := &fossilMemo{}
 	for lx := range ChunkSize {
 		for lz := range ChunkSize {
 			worldX := minX + lx
@@ -208,7 +209,7 @@ func Generate(chunkX, chunkZ int) *Chunk {
 			soilDepth := soilDepthAt(worldX, worldZ, s)
 
 			for y := BedrockY; y <= s.Height; y++ {
-				put(worldX, y, worldZ, blockAtWith(worldX, y, worldZ, s, soilDepth, veins), false)
+				put(worldX, y, worldZ, blockAtWith(worldX, y, worldZ, s, soilDepth, veins, fossils), false)
 			}
 			for y := s.Height + 1; y <= WaterLevel; y++ {
 				put(worldX, y, worldZ, "water", false)

@@ -91,7 +91,14 @@ registerMobBehaviour('scuttle', {
     walksToGoal: true, // crabUpdate asks getMobGoal,
     update(mob, delta, player) { this.crabUpdate(mob, delta, player); },
     interact(mob) { this.crabStruck(mob); },
-    spawnForChunk(chunkX, chunkZ, biome) { this.crabSpawnForChunk(chunkX, chunkZ, biome); }
+    spawnForChunk(chunkX, chunkZ, biome) { this.crabSpawnForChunk(chunkX, chunkZ, biome); },
+    // A crab the server keeps (js/game/animals.js) is a crab like any other: what it needs besides its
+    // body it makes on its first frame (crabState).
+    spawnKept(species, position, options) {
+        const mob = this.createMob(species, position, options);
+        this.ambientMobs.push(mob);
+        return mob;
+    }
 });
 
 // The last crab gone: drop any sand puffs still in the air (they are animated by the crabs).

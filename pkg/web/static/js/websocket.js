@@ -1,6 +1,17 @@
 // How often a player that has not changed still says where it is.
 const PLAYER_MOVE_REPEAT_MS = 2000;
 
+// What a binary frame of the server is, by the four bytes it starts with: 'MCA1' the kept animals around
+// the player (js/game/animals.js, pkg/network/animals.go); anything else is a chunk ('MCK1',
+// js/chunkDecoder.js).
+function binaryFrameKind(buffer) {
+    if (buffer.byteLength >= 4) {
+        const magic = new Uint8Array(buffer, 0, 4);
+        if (magic[0] === 77 && magic[1] === 67 && magic[2] === 65 && magic[3] === 49) return 'animalData';
+    }
+    return 'chunkData';
+}
+
 class NetworkClient {
     constructor() {
         this.ws = null;
@@ -22,7 +33,7 @@ class NetworkClient {
     connect(url) {
         console.log('WebSocket: Connecting to', url);
         this.ws = new WebSocket(url);
-        // Chunk data arrives as binary frames.
+        // Chunks and the animals around arrive as binary frames.
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
@@ -53,7 +64,7 @@ class NetworkClient {
         
         this.ws.onmessage = (event) => {
             if (event.data instanceof ArrayBuffer) {
-                this.emit('chunkData', event.data);
+                this.emit(binaryFrameKind(event.data), event.data);
                 return;
             }
             this.handleMessage(JSON.parse(event.data));

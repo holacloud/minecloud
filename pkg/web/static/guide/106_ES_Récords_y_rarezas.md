@@ -4,10 +4,10 @@ Datos curiosos sacados directamente de las tripas del juego. Algunos son útiles
 
 ## Los números del mundo
 
-- **35 especies** de animales y criaturas, y **16 organismos** que solo se ven al [microscopio](238). Ver [Bestiario](5).
+- **35 especies** de animales y criaturas, y **17 organismos** que solo se ven al [microscopio](238). Ver [Bestiario](5).
 - **36 bloques de elementos** químicos, del **hidrógeno** al **plomo**, y todos se fabrican igual: un bloque de
   piedra y uno de carbón. Ver [Bloques de elementos](60).
-- **24 formas de moverse** distintas para los mobs. Ver [Cómo piensan los mobs](104).
+- **26 formas de moverse** distintas para los mobs. Ver [Cómo piensan los mobs](104).
 - Un **día completo dura 4 minutos**: 2 de día y 2 de noche.
 - El mundo mide **256 bloques de alto** y se reparte en trozos de **16 × 16**. Ver [Cómo nace el mundo](99).
 - Nunca hay más de **64 mobs** a tu alrededor a la vez.

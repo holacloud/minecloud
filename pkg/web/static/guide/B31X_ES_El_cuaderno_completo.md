@@ -6,7 +6,7 @@
 ## Enhorabuena, naturalista
 
 Has visto de cerca a **todas** las criaturas de MineCloud: las que pastan al sol y las que solo salen de noche,
-las que viven bajo tierra y las que nacen de un rayo. Muy pocos exploradores llenan el cuaderno entero. Los 16 organismos del [microscopio](238) no hacen falta: son otra colección.
+las que viven bajo tierra y las que nacen de un rayo. Muy pocos exploradores llenan el cuaderno entero. Los 17 organismos del [microscopio](238) no hacen falta: son otra colección.
 
 Para tenerlas todas has tenido que pisar los cuatro biomas, quedarte despierto de noche, mojarte bajo la
 tormenta, construir un [golem de cobre](215) y, probablemente, caer al menos una vez en la trampa de un fuego fatuo.

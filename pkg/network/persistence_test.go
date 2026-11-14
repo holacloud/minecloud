@@ -17,6 +17,7 @@ func persistenceWorld(t *testing.T) {
 	fresh := func() {
 		storage = newStorageBook()
 		claims = newClaimBook()
+		animals = newAnimalBook()
 		loadCrops(nil)
 		loadPower(nil)
 		stateMu.Lock()

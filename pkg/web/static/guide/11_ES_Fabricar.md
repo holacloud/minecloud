@@ -40,7 +40,7 @@ de cada objeto y su color. Una receta tiene las etiquetas de lo que fabrica.
 | Electricidad y máquinas | `#eléctrico`, `#lógica`, `#mecanismo`, `#transporte` |
 | Equipo | `#herramienta`, `#arma`, `#armadura` |
 | Comer y cultivar | `#comida`, `#bebida`, `#cultivo`, `#planta` |
-| Animales | `#animal`, `#huevo`, `#cebo` |
+| Animales | `#animal`, `#huevo`, `#fósil`, `#cebo` |
 | Ciencia | `#química`, `#elemento`, `#ciencia`, `#microscopio`, `#muestra` |
 | Colores | `#blanco`, `#gris-claro`, `#gris`, `#negro`, `#marrón`, `#rojo`, `#naranja`, `#amarillo`, `#lima`, `#verde`, `#cian`, `#azul-claro`, `#azul`, `#morado`, `#magenta`, `#rosa` |
 

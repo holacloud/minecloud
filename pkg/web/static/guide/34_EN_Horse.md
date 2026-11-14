@@ -2,7 +2,7 @@
 
 ![Horse](mob:horse)
 
-A calm animal that grazes in herds on the plains. It is the **only mount** in the game: climb on and you will
+A calm animal that grazes in herds on the plains. It is the **only mount** among the animals of today: climb on and you will
 cross the map at a gallop.
 
 ## Where it lives

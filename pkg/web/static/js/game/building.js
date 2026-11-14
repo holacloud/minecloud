@@ -297,7 +297,7 @@ Object.assign(Game.prototype, {
 
     finishBreakingBlock(position) {
         const blockType = this.world.getBlockTypeAt(position.x, position.y, position.z);
-        const dropType = this.world.getDropTypeForBlock(blockType);
+        const dropType = this.world.getDropTypeForBlock(blockType, position.x, position.y, position.z);
         if (!this.world.removeBlockAt(position.x, position.y, position.z)) return false;
         // The block is gone: drop its shaking stand-in right away.
         this.disposeMiningBlockVisual();
@@ -337,7 +337,8 @@ Object.assign(Game.prototype, {
             return saplings[Math.floor(Math.random() * saplings.length)];
         }
         if ((blockType === 'tall_grass' || blockType.includes('leaves')) && Math.random() < 0.035) {
-            const species = Object.keys(MOB_SPECIES);
+            // Of a living species: an extinct animal comes back from its fossil, never out of the grass.
+            const species = Object.keys(MOB_SPECIES).filter((id) => !mobSpeciesIsExtinct(id));
             return `${species[Math.floor(Math.random() * species.length)]}_egg`;
         }
         return null;

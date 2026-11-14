@@ -2,7 +2,7 @@
 
 ![Caballo](mob:horse)
 
-El [caballo](34) es el único animal que se puede montar. Vive en manadas de 2 a 4 en las llanuras.
+El [caballo](34) es el único animal de hoy que se puede montar (algunos [animales extintos](261), una vez revividos y domesticados, también: su página lo dice). Vive en manadas de 2 a 4 en las llanuras.
 
 ## Subir y bajar
 
