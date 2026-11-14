@@ -2100,6 +2100,59 @@ function withoutItemHandlers(run) {
     }
 }
 
+test('a block placed on a small plant takes its place, not the cell its sprite looks at', () => {
+    withoutItemHandlers(() => {
+        const up = { x: 0, y: 1, z: 0 };
+        // The sprites of grass, flowers and mushrooms are crossed planes that look diagonally; a crop's look along an axis.
+        const diagonal = { x: Math.SQRT1_2, y: 0, z: Math.SQRT1_2 };
+        const clickPlant = (plant, item, normal, look) => {
+            const world = makeWorld();
+            world.rebuildAfterChange = () => {};
+            put(world, 3, 0, 3, 'grass');
+            put(world, 3, 1, 3, plant);
+            const placing = makePlacingGame(world, item, { x: 3, y: 1, z: 3 }, normal, look);
+            // The ray meets the plant's sprite, somewhere in the middle of its cell.
+            placing.game.raycastBlock = () => ({ object: { userData: { blockPosition: { x: 3, y: 1, z: 3 } } }, faceIndex: 0, point: new Vector3(3.5, 1.4, 3.5), face: { normal } });
+            placing.game.placeBlock();
+            return { world, ...placing };
+        };
+        for (const plant of ['tall_grass', 'flower_red', 'flower_yellow', 'mushroom_red', 'mushroom_brown', 'wheat_2']) {
+            const { world, sent, counts } = clickPlant(plant, 'stone', plant === 'wheat_2' ? { x: 1, y: 0, z: 0 } : diagonal);
+            assert.equal(world.getBlockTypeAt(3, 1, 3), 'stone', `${plant} gives way`);
+            assert.ok(world.getBlockTypeAt(4, 1, 4) === null && world.getBlockTypeAt(4, 1, 3) === null, `${plant}: nothing next to it`);
+            assert.equal(world.getBlockTypeAt(3, 0, 3), 'grass');
+            assert.deepEqual(sent.map((message) => [message.type, message.payload.x, message.payload.y, message.payload.z, message.payload.blockType]), [['blockPlace', 3, 1, 3, 'stone']], plant);
+            assert.equal(counts.stone, 2, 'one block spent');
+        }
+        // A shaped piece is placed as on the top of what the plant grew on: stairs stand the right way up,
+        // whatever height of the sprite was clicked, and a chair goes there too.
+        const stairs = clickPlant('tall_grass', 'oak_stairs', diagonal);
+        const placed = String(stairs.world.getBlockTypeAt(3, 1, 3));
+        assert.ok(/^oak_stairs/.test(placed) && !placed.includes('top'), placed);
+        assert.equal(stairs.sent.length, 1);
+        const chair = clickPlant('flower_red', 'oak_chair', diagonal);
+        assert.match(String(chair.world.getBlockTypeAt(3, 1, 3)), /^oak_chair/);
+        // A ladder needs a wall, and a plant is none: nothing happens, and the plant stays.
+        const ladder = clickPlant('tall_grass', 'ladder', diagonal);
+        assert.equal(ladder.world.getBlockTypeAt(3, 1, 3), 'tall_grass');
+        assert.equal(ladder.sent.length, 0);
+        // A torch is no plant: a block clicked against it goes next to it, as against any block.
+        const torch = clickPlant('torch', 'stone', { x: 1, y: 0, z: 0 });
+        assert.equal(torch.world.getBlockTypeAt(3, 1, 3), 'torch');
+        assert.equal(torch.world.getBlockTypeAt(4, 1, 3), 'stone');
+        // Where the player stands nothing is placed, plant or no plant.
+        const world = makeWorld();
+        world.rebuildAfterChange = () => {};
+        put(world, 3, 0, 3, 'grass');
+        put(world, 3, 1, 3, 'tall_grass');
+        const standing = makePlacingGame(world, 'stone', { x: 3, y: 1, z: 3 }, diagonal);
+        standing.game.cameraController.intersectsBody = (eye, x, y, z) => x === 3 && y === 1 && z === 3;
+        standing.game.placeBlock();
+        assert.equal(world.getBlockTypeAt(3, 1, 3), 'tall_grass');
+        assert.equal(standing.sent.length, 0);
+    });
+});
+
 test('signs: on the ground a post that looks at the player, against a side a board on the wall', () => {
     const world = makeWorld();
     const place = (click) => world.getPlacementBlocks('sign', 3, 1, 3, { normal: { x: 0, y: 1, z: 0 }, hit: { x: 3, y: 1, z: 3 }, look: { x: 0, y: -0.5, z: -1 }, ...click })[0].blockType;

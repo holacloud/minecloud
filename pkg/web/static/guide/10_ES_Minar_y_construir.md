@@ -59,6 +59,8 @@ Por ejemplo, un pico de oro rompe la piedra en unos 0,3 s. La [espada](71) no ac
   cara donde quieras ponerlo, hasta 4,5 bloques.
 - **E** abre el inventario completo.
 - No puedes poner un bloque sólido donde estás de pie.
+- La `tall_grass`, las flores, las setas y el trigo sembrado **no estorban**: si haces clic sobre una de esas
+  plantas con un bloque en la mano, el bloque ocupa su sitio y la planta desaparece (no deja nada).
 - Algunos objetos hacen algo especial al colocarlos: la [cama](63) fija tu punto de reaparición, el
   [cartel](64) pide un texto, un [brote](55) se convierte en árbol y un [huevo](74) hace nacer su animal.
 - **Bloques con orientación:** las [escaleras](196), las [puertas y trampillas](197) y los

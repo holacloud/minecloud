@@ -1,6 +1,9 @@
 // Block targeting, mining feedback and block placement.
 // Mixed into Game.prototype; `this` is the Game instance.
 
+// The face a click on a small plant counts as: the top of what the plant grows on (placeBlock).
+const BUILDING_UP = Object.freeze({ x: 0, y: 1, z: 0 });
+
 Object.assign(Game.prototype, {
     updateBlockInspector(worldPos) {
         const inspector = document.getElementById('block-inspector');
@@ -500,13 +503,19 @@ Object.assign(Game.prototype, {
         const worldPos = this.world.getBlockPositionFromIntersection(hit);
         if (!worldPos || !hit.face) return;
 
+        const clickedType = this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z);
+        // A small plant (grass, a flower, a mushroom, a crop) gives way. Its sprites look sideways, so a click
+        // on one would put the block next to it: it counts as a click on the top of what the plant grows on,
+        // and what is placed takes the plant's place.
+        const onPlant = this.world.isCrossGeometry(clickedType) && clickedType !== 'torch';
         // A face inside a hollow block looks at a neighbour that may be taken.
-        const clickedDef = this.world.blockTypes[this.world.getBlockTypeAt(worldPos.x, worldPos.y, worldPos.z)];
+        const clickedDef = this.world.blockTypes[clickedType];
         const clickedShape = clickedDef && clickedDef.shape ? BLOCK_SHAPES[clickedDef.shape] : null;
-        const normal = clickedShape && clickedShape.clickFace
-            ? clickedShape.clickFace(clickedDef.state, { x: hit.point.x - worldPos.x, y: hit.point.y - worldPos.y, z: hit.point.z - worldPos.z }, hit.face.normal)
-            : hit.face.normal;
-        const newPos = {
+        const normal = onPlant ? BUILDING_UP
+            : clickedShape && clickedShape.clickFace
+                ? clickedShape.clickFace(clickedDef.state, { x: hit.point.x - worldPos.x, y: hit.point.y - worldPos.y, z: hit.point.z - worldPos.z }, hit.face.normal)
+                : hit.face.normal;
+        const newPos = onPlant ? { x: worldPos.x, y: worldPos.y, z: worldPos.z } : {
             x: Math.round(worldPos.x + normal.x),
             y: Math.round(worldPos.y + normal.y),
             z: Math.round(worldPos.z + normal.z)

@@ -60,6 +60,8 @@ For example, a gold pickaxe breaks stone in about 0.3 s. The [sword](71) does no
   want it, up to 4.5 blocks away.
 - **E** opens the full inventory.
 - You cannot place a solid block where you are standing.
+- `tall_grass`, flowers, mushrooms and sown wheat are **never in the way**: right click one of those plants
+  with a block in your hand and the block takes its place; the plant is gone (it leaves nothing).
 - Some items do something special when placed: the [bed](63) sets your respawn point, the [sign](64) asks
   for a text, a [sapling](55) becomes a tree and an [egg](74) hatches its animal.
 - **Blocks with a direction:** [stairs](196), [doors and trapdoors](197) and [gates](199) are placed
