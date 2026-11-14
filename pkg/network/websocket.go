@@ -28,7 +28,13 @@ type Client struct {
 	conn *websocket.Conn
 	send chan []byte
 	// What this client was last told of each player around it: the moves' round only (player_moves.go).
-	moves        map[string]*movesSeen
+	moves map[string]*movesSeen
+	// What it was last told of each kept animal around it, under animals.mu (animals.go).
+	animals map[uint32]animalSeen
+	// When its player last died: for a while no animal the server keeps goes after it (animals.go).
+	diedAt atomic.Int64
+	// When it last said where its player is: a client that has gone quiet is not watching (animals.go).
+	movedAt      atomic.Int64
 	chunks       chan []byte // binary chunk frames, written after regular messages
 	done         chan struct{}
 	stream       *chunkStream
@@ -519,8 +525,13 @@ func (c *Client) readPump() {
 func (c *Client) writePump() {
 	defer c.conn.Close()
 
+	// A frame of bytes (animals.go) goes in its turn among the messages, as what it is.
 	writeText := func(message []byte) bool {
-		return c.conn.WriteMessage(websocket.TextMessage, message) == nil
+		kind := websocket.TextMessage
+		if isBinaryFrame(message) {
+			kind = websocket.BinaryMessage
+		}
+		return c.conn.WriteMessage(kind, message) == nil
 	}
 
 	for {
@@ -716,6 +727,7 @@ func handlePlayerMove(client *Client, msg Message) {
 	if payload.ID == "" || payload.ID != client.ID {
 		return
 	}
+	client.movedAt.Store(time.Now().UnixNano())
 
 	payload.Located = true
 	stateMu.Lock()
@@ -979,6 +991,7 @@ func handlePlayerDeath(client *Client, msg Message) {
 	if reason == "" {
 		reason = "died"
 	}
+	client.diedAt.Store(time.Now().UnixNano())
 	broadcastToAll(createMessage("system", map[string]string{"text": fmt.Sprintf("%s %s", client.username, reason)}))
 }
 

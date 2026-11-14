@@ -27,7 +27,7 @@
 // (test/js/furniture.test.js checks them).
 // Mixed into Game.prototype; the panel is a modal panel (see registerModalPanel).
 
-const STORAGE_KINDS = { arc_furnace: 3, autoclave: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, incubator: 3, microscope: 1, oven: 3, wardrobe: 45 };
+const STORAGE_KINDS = { arc_furnace: 3, autoclave: 3, barrel: 18, chest: 27, chest_freezer: 36, foundry: 3, fridge: 18, incubator: 3, microscope: 1, oven: 3, revival_machine: 3, wardrobe: 45 };
 // Kinds with a second compartment, and how many slots it has.
 const STORAGE_FREEZERS = { fridge: 9 };
 const STORAGE_FREEZER_TAB = 'freezer';
@@ -223,8 +223,8 @@ Object.assign(Game.prototype, {
         const at = this.storageAt;
         if (!at || !this.network.connected) return;
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
-        const reqId = this.storageNewRequestId();
         if (plate) {
+            const reqId = this.storageNewRequestId();
             if (!this.plateTakeOut(type, plate.id)) return;
             this.storagePending.set(reqId, { op: 'put', type, amount: 1, plate, at: performance.now() });
             this.storageSavePending();
@@ -233,14 +233,34 @@ Object.assign(Game.prototype, {
             return;
         }
         const plain = this.plateLegacyCount && plateIdentified(type) ? this.plateLegacyCount(type) : this.getInventoryCount(type);
-        const amount = storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, plain);
-        if (amount <= 0) return;
+        this.storageSendPut(at, type, storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, plain), tab);
+    },
+
+    // The two steps of a move into the block at `at`, whichever panel is showing it: this one, or one of its
+    // own over a block that keeps things (js/game/revival.js). The items leave the inventory first, and
+    // storageOnResult gives back what the server says did not land. Returns the id of the request, or null
+    // when nothing was sent.
+    storageSendPut(at, type, amount, extra = {}) {
+        if (!at || !(amount > 0) || !this.network || !this.network.connected) return null;
+        const reqId = this.storageNewRequestId();
         this.storagePending.set(reqId, { op: 'put', type, amount, at: performance.now() });
         this.storageSavePending();
         // Out of the inventory first, so the same items can never go anywhere else meanwhile.
         this.inventoryCounts[type] = this.getInventoryCount(type) - amount;
         this.storageInventoryChanged();
-        this.network.send('storagePut', { ...at, type, amount, reqId, ...tab });
+        this.network.send('storagePut', { ...at, type, amount, reqId, ...extra });
+        return reqId;
+    },
+
+    // And out of it: storageOnResult adds only what the server says left the block. `note` is kept with the
+    // pending move (`hold`: what comes out goes to the hand).
+    storageSendTake(at, slot, type, amount, extra = {}, note = {}) {
+        if (!at || !(amount > 0) || !this.network || !this.network.connected) return null;
+        const reqId = this.storageNewRequestId();
+        this.storagePending.set(reqId, { op: 'take', type, amount, at: performance.now(), ...note });
+        this.storageSavePending();
+        this.network.send('storageTake', { ...at, slot, type, amount, reqId, ...extra });
+        return reqId;
     },
 
     storageTake(index) {
@@ -255,15 +275,11 @@ Object.assign(Game.prototype, {
         }
         // A culture plate comes out as itself: the request names it.
         const amount = slot.plate ? 1 : storageClickAmount(this.storageMode ?? STORAGE_DEFAULT_AMOUNT, slot.count);
-        if (amount <= 0) return;
-        const reqId = this.storageNewRequestId();
         // What the autoclave has sterilised goes to the hand, as what the incubator hands over (only for this
         // session's request: one resumed after a reload does not take the hand).
         const hold = this.storageKind === 'autoclave' && !this.storageTab && index === STORAGE_AUTOCLAVE_RESULT_SLOT;
-        this.storagePending.set(reqId, { op: 'take', type: slot.type, amount, at: performance.now(), ...(hold ? { hold: true } : {}) });
-        this.storageSavePending();
         const tab = this.storageTab ? { compartment: this.storageTab } : {};
-        this.network.send('storageTake', { ...at, slot: index, type: slot.type, amount, reqId, ...tab, ...(slot.plate ? { plate: slot.plate } : {}) });
+        this.storageSendTake(at, index, slot.type, amount, { ...tab, ...(slot.plate ? { plate: slot.plate } : {}) }, hold ? { hold: true } : {});
     },
 
     // The slots of the tab on show.

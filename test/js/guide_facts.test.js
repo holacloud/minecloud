@@ -1,6 +1,9 @@
 // Node tests for what the guide says of the mobs, against the code that makes it true: how many there are,
 // what the bestiary's panel says, who can be tamed, who really walks to a bait, where each one lives and what
 // each one is called. A number or a list that drifts from the code fails here. Nothing here runs a browser.
+// Those numbers and lists are of the living species. An extinct animal (`hiddenUntilDiscovered`,
+// js/mobSpecies.js) has its index in page 261 and rules of its own ("The extinct animals", below), checked for
+// whichever there are: one more changes no page of the living, and no number here.
 // Run with: node --test test/js/guide_facts.test.js
 
 const test = require('node:test');
@@ -22,6 +25,11 @@ function page(id, lang) {
     return fs.readFileSync(path.join(GUIDE, file), 'utf8');
 }
 
+// The same, or null where there is no such page.
+function pageIfAny(id, lang) {
+    return guideFiles.some((name) => name.startsWith(`${id}_${lang}_`)) ? page(id, lang) : null;
+}
+
 function loadGame() {
     const values = new Map();
     const context = vm.createContext({
@@ -36,7 +44,11 @@ function loadGame() {
 }
 
 const ctx = loadGame();
-const mobIds = Object.keys(ctx.BESTIARY_ENTRIES);
+// Every species has its card. `mobIds` are the living ones, which is what the pages count and list.
+const everyMobId = Object.keys(ctx.BESTIARY_ENTRIES);
+const isExtinct = (id) => Boolean(ctx.MOB_SPECIES[id] && ctx.MOB_SPECIES[id].hiddenUntilDiscovered);
+const mobIds = everyMobId.filter((id) => !isExtinct(id));
+const extinctIds = everyMobId.filter(isExtinct);
 const organismIds = Object.keys(ctx.MICRO_SPECIES);
 
 // Each species a file of its own adds: the file that says so, and what it says.
@@ -81,6 +93,14 @@ test('the catalogue is the size the guide says, on every page that counts it', (
     assert.match(page(74, 'EN'), new RegExp(`the ${mobs}!`));
     assert.ok(page(106, 'ES').includes(`**${mobs} especies**`));
     assert.ok(page(106, 'EN').includes(`**${mobs} species**`));
+    // And the organisms, wherever they are counted.
+    assert.ok(page(106, 'ES').includes(`**${organisms} organismos**`));
+    assert.ok(page(106, 'EN').includes(`**${organisms} organisms**`));
+    assert.ok(page('B31X', 'ES').includes(`Los ${organisms} organismos`));
+    assert.ok(page('B31X', 'EN').includes(`The ${organisms} organisms`));
+    const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
+    assert.ok(guia.includes(`${mobs} animales y criaturas y ${organisms} organismos microscópicos, ${mobs + organisms} tarjetas`));
+    assert.ok(guia.includes(`"${mobs} / ${mobs + organisms}"`) && guia.includes(`Los ${organisms} organismos`));
     for (const lang of ['ES', 'EN']) {
         const rows = [...page('B31X', lang).matchAll(/^\| \d+ \| !\[[^\]]*\]\(mob:([a-z_]+)\)/gm)].map((match) => match[1]);
         assert.deepEqual(sorted(rows), sorted(mobIds), `B31X ${lang}`);
@@ -89,10 +109,32 @@ test('the catalogue is the size the guide says, on every page that counts it', (
     }
 });
 
+test('page 74: the egg that tall grass and leaves give is of a living species, any of them', () => {
+    const context = vm.createContext({ console, Math: Object.create(Math), performance: { now: () => 0 }, THREE: anyStub(), document: anyStub(), navigator: {}, window: { addEventListener() {} } });
+    loadSpeciesTables(context, ['game/building.js']);
+    vm.runInContext('Object.assign(this, { MOB_SPECIES, registerSpecies, Game })', context);
+    for (const id of mobIds) if (!context.MOB_SPECIES[id]) context.MOB_SPECIES[id] = {};
+    context.registerSpecies('made_up_boa', { info: { hiddenUntilDiscovered: true } });
+    const all = Object.keys(context.MOB_SPECIES);
+    assert.ok(all.length > mobIds.length);
+    // Every draw there is: the one that gives an egg, then the one that picks the species.
+    const eggs = new Set();
+    for (const leaf of ['tall_grass', 'leaves']) {
+        for (let i = 0; i < all.length * 4; i++) {
+            const draws = leaf === 'leaves' ? [0.5, 0, (i + 0.5) / (all.length * 4)] : [0, (i + 0.5) / (all.length * 4)];
+            context.Math.random = () => draws.shift();
+            eggs.add(context.Game.prototype.getExpansionBonusDrop(leaf));
+        }
+    }
+    assert.deepEqual(sorted(eggs), sorted(mobIds.map((id) => `${id}_egg`)));
+    assert.equal(eggs.size, 35);
+});
+
 test('the ways of moving of page 104 are the ones in the code', () => {
+    // Of every species, the extinct ones too: one that moves in a way of its own adds a row.
     const modes = new Set(['ground']);
-    for (const id of mobIds) if (info(id).movement) modes.add(info(id).movement);
-    assert.equal(modes.size, 24, [...modes].join());
+    for (const id of everyMobId) if (info(id).movement) modes.add(info(id).movement);
+    assert.equal(modes.size, 26, [...modes].join());
     for (const lang of ['ES', 'EN']) {
         const text = page(104, lang);
         const section = text.slice(text.indexOf('|---|'), text.indexOf('\n\n', text.indexOf('|---|')));
@@ -104,12 +146,20 @@ test('the ways of moving of page 104 are the ones in the code', () => {
 
 // ---- The bestiary's page ----
 
+// What the panel says of the extinct animals: the title of their section and the words of its count, the line of a
+// secret sheet, the tag, and the tree.
+function extinctSaid(lang) {
+    const text = ctx.BESTIARY_TEXT;
+    const counted = text.extinctProgress[lang]('', '').replace(/<\/?b>/g, '').replace(/^[\s/]+/, '');
+    return [text.extinctTitle, text.extinctSecret, text.extinctTag, text.lineageTitle, text.lineageLiving].map((line) => line[lang]).concat(counted);
+}
+
 test('page 5 quotes the panel in its own language, and not in the other', () => {
     const said = (lang) => {
         const text = ctx.BESTIARY_TEXT;
         return [text.pauseButton, text.close, text.factHabitat, text.factDiet, text.factDrops, text.factLures, text.factHookBait, text.factEncounters, text.factDefeated, text.factFirstSeen,
             text.factSize, text.factGroup, text.factIdentified, text.complete].map((line) => line[lang])
-            .concat(text.newEntry[lang].trim(), text.discovered[lang](12, 52).replace(/<\/?b>/g, ''), text.seenFrom[lang](40));
+            .concat(text.newEntry[lang].trim(), text.discovered[lang](12, 52).replace(/<\/?b>/g, ''), text.seenFrom[lang](40), extinctSaid(lang));
     };
     for (const [lang, other] of [['ES', 'EN'], ['EN', 'ES']]) {
         const text = page(5, lang);
@@ -124,10 +174,12 @@ test('page 5 quotes the panel in its own language, and not in the other', () => 
 
 test('page 5 tells the notice of the complete notebook as the code does it', () => {
     const code = read('game/bestiary.js');
-    // The notice and the code look at the mobs alone; the counter, at every card.
-    assert.match(code, /!this\.bestiaryOrganism\(species\) && this\.bestiaryMobList\(\)\.every/);
-    assert.match(code, /const complete = this\.bestiaryMobList\(\)\.every/);
-    assert.match(code, /const list = this\.bestiarySpeciesList\(\);\s+const discovered = list\.filter/);
+    // The notice and the code look at the living mobs alone; the counter, at them and the organisms; neither, at
+    // the extinct animals (test/js/bestiary_text.test.js sees it happen).
+    assert.match(code, /bestiaryMobList\(\) \{\s+return this\.bestiaryEveryMob\(\)\.filter\(\(id\) => !mobSpeciesIsExtinct\(id\)\);/);
+    assert.match(code, /const living = this\.bestiaryMobList\(\);\s+if \(living\.includes\(species\) && living\.every/);
+    assert.match(code, /const mobs = this\.bestiaryMobList\(\);[\s\S]{0,400}const counted = \[\.\.\.mobs, \.\.\.this\.bestiaryOrganismList\(\)\];[\s\S]{0,300}const complete = mobs\.every\(known\)/);
+    assert.match(code, /bestiarySay\('discovered', counted\.filter\(known\)\.length, counted\.length\)/);
     assert.ok(page(5, 'ES').includes(ctx.BESTIARY_TEXT.discovered.ES(mobIds.length, mobIds.length + organismIds.length).replace(/<\/?b>/g, '')));
     assert.ok(page(5, 'EN').includes(ctx.BESTIARY_TEXT.discovered.EN(mobIds.length, mobIds.length + organismIds.length).replace(/<\/?b>/g, '')));
     for (const lang of ['ES', 'EN']) {
@@ -197,7 +249,7 @@ test('the species that have a bait written down but never walk to it are the one
 });
 
 test('what cards and notices promise (trapsIsLured) is what the code does: read from each behaviour', () => {
-    for (const id of mobIds) {
+    for (const id of everyMobId) {
         // The species other files add are not loaded here: they join the table with what their file says.
         if (!ctx.MOB_SPECIES[id]) ctx.MOB_SPECIES[id] = info(id);
         assert.equal(ctx.trapsIsLured(id), ctx.TRAPS_SPECIES[id].baits.length > 0 && walksToBait(id), id);
@@ -317,6 +369,148 @@ test('no card sends you to a place the world does not have, and the wisp is anyw
     assert.match(ctx.BESTIARY_ENTRIES.wisp.habitat, /^Anywhere/);
     assert.match(ctx.BESTIARY_ENTRIES_ES.wisp.habitat, /^Cualquier/);
     assert.match(read('game/wisp.js'), /if \(plain && Math\.random\(\) < 0\.4\) this\.wispSpawnAt/, 'it can appear with no water or drop near');
+});
+
+// ---- The extinct animals ----
+
+// A row of their index (page 261): its portrait, its name linked to its page, the living species it is the ancestor
+// of with its portrait and its page (a dash, if none), and the day it arrived.
+const EXTINCT_ROW = /^\| !\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\) \| (.+?) \| (\d{4}-\d{2}-\d{2}) \|$/gm;
+const EXTINCT_HEAD = { ES: '| | Animal extinto | Antepasado de | Llegó |', EN: '| | Extinct animal | Ancestor of | Arrived |' };
+
+// What is wrong with what the guide says of these extinct species. `facts` says of each what the code does: its
+// name in a language, the living species it names, its foods and its baits. `read(id, lang)` gives a page, or null.
+function extinctGuideProblems(ids, facts, read) {
+    const problems = [];
+    const rowsOf = (lang) => Object.fromEntries([...read(261, lang).matchAll(EXTINCT_ROW)].map((row) => [row[1], { name: row[2], page: row[3], kin: row[4], arrived: row[5] }]));
+    for (const lang of ['ES', 'EN']) {
+        const rows = rowsOf(lang);
+        if (!read(261, lang).includes(`${EXTINCT_HEAD[lang]}\n|---|---|---|---|\n`)) problems.push(`261 ${lang}: the head of its table is gone`);
+        if (read(261, lang).split('\n').filter((line) => line.startsWith('| ![')).length !== Object.keys(rows).length) problems.push(`261 ${lang}: a row is not written as the others, or is there twice`);
+        for (const id of Object.keys(rows)) if (!ids.includes(id)) problems.push(`261 ${lang} lists ${id}, which is no extinct animal`);
+        const pageOfLiving = Object.fromEntries([...read(16, lang).matchAll(/^\| !\[\]\(mob:([a-z_]+)\) \| \[[^\]]+\]\((\d+)\)/gm)].map((row) => [row[1], row[2]]));
+        for (const id of ids) {
+            const row = rows[id];
+            if (!row) { problems.push(`261 ${lang} has no row for ${id}`); continue; }
+            // One name per thing: its row, the title of its page and its card.
+            if (row.name !== facts.name(id, lang)) problems.push(`261 ${lang}: ${id} is called "${row.name}", and its card "${facts.name(id, lang)}"`);
+            const living = facts.ancestorOf(id);
+            const kin = /^!\[\]\(mob:([a-z_]+)\) \[([^\]]+)\]\((\d+)\)$/.exec(row.kin);
+            if (!living && row.kin !== '—') problems.push(`261 ${lang}: ${id} is the ancestor of nothing in the game: a dash`);
+            if (living && !(kin && kin[1] === living && kin[3] === pageOfLiving[living] && kin[2].toLowerCase() === facts.name(living, lang).toLowerCase())) {
+                problems.push(`261 ${lang}: ${id} is the ancestor of ${living}: ![](mob:${living}) [${facts.name(living, lang)}](${pageOfLiving[living]})`);
+            }
+            const own = read(row.page, lang);
+            if (!own) { problems.push(`261 ${lang}: there is no page ${row.page} for ${id}`); continue; }
+            if (own.split('\n')[0] !== `# ${row.name}`) problems.push(`${row.page} ${lang}: its title is not "${row.name}", as its row of 261 says`);
+            // What tames it and what brings it over is said on its own page, by id (`wheat`) or with its picture
+            // (item:wheat): the shared pages are of the living.
+            for (const item of [...facts.foods(id), ...facts.baits(id)]) {
+                if (!own.includes(`\`${item}\``) && !own.includes(`(item:${item})`)) problems.push(`${row.page} ${lang}: the page of ${id} does not name ${item}`);
+            }
+        }
+        for (const [number, row] of [[16, /^\| !\[\]\(mob:([a-z_]+)\) \|/gm], ['B31X', /^\| \d+ \| !\[[^\]]*\]\(mob:([a-z_]+)\)/gm]]) {
+            for (const match of read(number, lang).matchAll(row)) if (ids.includes(match[1])) problems.push(`${number} ${lang} lists ${match[1]}: an extinct animal goes in 261`);
+        }
+    }
+    const es = rowsOf('ES');
+    const en = rowsOf('EN');
+    for (const id of ids) if (es[id] && en[id] && (es[id].page !== en[id].page || es[id].arrived !== en[id].arrived)) problems.push(`261: ${id} has another page or another date in each language`);
+    return problems;
+}
+
+const extinctFacts = {
+    name: (id, lang) => (lang === 'ES' ? nameEs(id) : nameEn(id)),
+    ancestorOf: (id) => ctx.MOB_SPECIES[id].ancestorOf,
+    foods: (id) => (ctx.TAMING_DIET[id] ? [...ctx.TAMING_DIET[id].foods] : []),
+    baits: (id) => (ctx.TRAPS_SPECIES[id] ? [...ctx.TRAPS_SPECIES[id].baits] : [])
+};
+
+test('page 261 lists the extinct animals and no other: each with its page, whose ancestor it is and its date, in both languages', () => {
+    assert.deepEqual(extinctGuideProblems(extinctIds, extinctFacts, pageIfAny), []);
+});
+
+test('the rules of page 261 bite: made-up extinct animals with everything right, and then wrong one thing at a time', () => {
+    const made = { made_up_dawn_horse: { ES: 'Caballo del alba', EN: 'Dawn Horse' }, made_up_boa: { ES: 'Fictoboa', EN: 'Fictoboa' } };
+    const facts = {
+        name: (id, lang) => (made[id] ? made[id][lang] : extinctFacts.name(id, lang)),
+        ancestorOf: (id) => (made[id] ? (id === 'made_up_dawn_horse' ? 'horse' : undefined) : extinctFacts.ancestorOf(id)),
+        foods: (id) => (made[id] ? (id === 'made_up_dawn_horse' ? ['tall_grass', 'wheat'] : []) : extinctFacts.foods(id)),
+        baits: (id) => (made[id] ? (id === 'made_up_dawn_horse' ? ['bait_seeds'] : []) : extinctFacts.baits(id))
+    };
+    const ids = [...extinctIds, ...Object.keys(made)];
+    const rows = {
+        ES: ['| ![](mob:made_up_dawn_horse) | [Caballo del alba](9001) | ![](mob:horse) [Caballo](34) | 2026-11-20 |', '| ![](mob:made_up_boa) | [Fictoboa](9002) | — | 2026-11-21 |'],
+        EN: ['| ![](mob:made_up_dawn_horse) | [Dawn Horse](9001) | ![](mob:horse) [Horse](34) | 2026-11-20 |', '| ![](mob:made_up_boa) | [Fictoboa](9002) | — | 2026-11-21 |']
+    };
+    // The guide as it is, with their two rows in the index and their two pages; `change` rewrites a page of it.
+    const problems = (change = {}) => {
+        const pages = {
+            '9001 ES': '# Caballo del alba\n\n![Caballo del alba](mob:made_up_dawn_horse)\n\nSe domestica con `tall_grass` o `wheat`, y acude al ![](item:bait_seeds) cebo de semillas.\n',
+            '9001 EN': '# Dawn Horse\n\n![Dawn Horse](mob:made_up_dawn_horse)\n\nTamed with `tall_grass` or `wheat`; it comes to ![](item:bait_seeds) seed bait.\n',
+            '9002 ES': '# Fictoboa\n', '9002 EN': '# Fictoboa\n'
+        };
+        for (const lang of ['ES', 'EN']) pages[`261 ${lang}`] = page(261, lang).replace('|---|---|---|---|\n', `|---|---|---|---|\n${rows[lang].join('\n')}\n`);
+        for (const [key, rewrite] of Object.entries(change)) pages[key] = rewrite(pages[key] ?? page(...key.split(' ')));
+        return extinctGuideProblems(ids, facts, (id, lang) => pages[`${id} ${lang}`] ?? pageIfAny(id, lang));
+    };
+    assert.deepEqual(problems(), []);
+    const wrong = [
+        [{ '261 EN': (text) => text.replace(`${rows.EN[1]}\n`, '') }, ['261 EN has no row for made_up_boa']],
+        [{ '261 ES': (text) => text.replace('[Caballo del alba]', '[Caballo del amanecer]') }, ['261 ES: made_up_dawn_horse is called "Caballo del amanecer", and its card "Caballo del alba"', '9001 ES: its title is not "Caballo del amanecer", as its row of 261 says']],
+        [{ '9002 EN': () => '# The boa that never was\n' }, ['9002 EN: its title is not "Fictoboa", as its row of 261 says']],
+        [{ '261 ES': (text) => text.replace('[Fictoboa](9002)', '[Fictoboa](9003)') }, ['261 ES: there is no page 9003 for made_up_boa', '261: made_up_boa has another page or another date in each language']],
+        [{ '261 EN': (text) => text.replace('[Horse](34)', '[Horse](33)') }, ['261 EN: made_up_dawn_horse is the ancestor of horse: ![](mob:horse) [Horse](34)']],
+        [{ '261 ES': (text) => text.replace('![](mob:horse) [Caballo](34)', '—') }, ['261 ES: made_up_dawn_horse is the ancestor of horse: ![](mob:horse) [Caballo](34)']],
+        [{ '261 EN': (text) => text.replace('(9002) | —', '(9002) | ![](mob:snake) [Snake](42)') }, ['261 EN: made_up_boa is the ancestor of nothing in the game: a dash']],
+        [{ '261 ES': (text) => text.replace('2026-11-21', 'ayer') }, ['261 ES: a row is not written as the others, or is there twice', '261 ES has no row for made_up_boa']],
+        [{ '261 EN': (text) => text.replace(rows.EN[1], '| ![](mob:sheep) | [Sheep](17) | — | 2026-05-15 |\n' + rows.EN[1]) }, ['261 EN lists sheep, which is no extinct animal']],
+        [{ '9001 EN': (text) => text.replace('`wheat`', 'wheat seeds') }, ['9001 EN: the page of made_up_dawn_horse does not name wheat']],
+        [{ '9001 ES': (text) => text.replace('item:bait_seeds', 'item:bait_meat') }, ['9001 ES: the page of made_up_dawn_horse does not name bait_seeds']],
+        [{ '16 ES': (text) => `${text}\n| ![](mob:made_up_boa) | [Fictoboa](9002) | una serpiente | 2026-11-21 |\n` }, ['16 ES lists made_up_boa: an extinct animal goes in 261']],
+        [{ 'B31X EN': (text) => `${text}\n| 36 | ![Fictoboa](mob:made_up_boa) [Fictoboa](9002) | 21 November 2026 |\n` }, ['B31X EN lists made_up_boa: an extinct animal goes in 261']],
+        [{ '261 EN': (text) => text.replace(EXTINCT_HEAD.EN, '| | Animal | Ancestor of | Arrived |') }, ['261 EN: the head of its table is gone']]
+    ];
+    for (const [change, expected] of wrong) assert.deepEqual(problems(change), expected, Object.keys(change).join());
+});
+
+test('an extinct animal never appears by itself: no biome for its card to name, and nothing in its file that spawns it', () => {
+    const where = spawnBiomes();
+    for (const id of extinctIds) {
+        assert.ok(ownFile[id], `${id}: write registerSpecies('${id}', {\\n    info: { ... },\\n as js/game/crab.js does, so that it is found`);
+        assert.equal(where[id], undefined, `${id} has spawnBiomes`);
+        assert.doesNotMatch(read(`game/${ownFile[id]}`), /\bspawnForChunk\b|\bmobMarkNatural\(|\bchunkRandom\(/, `${ownFile[id]} spawns something by itself`);
+    }
+    // Nor does any of them take a row of the living: who is tamed (page 3) and who comes to a bait (4, 93, 96).
+    for (const lang of ['ES', 'EN']) {
+        for (const number of [3, 4, 93, 96, 74]) for (const id of extinctIds) assert.ok(!page(number, lang).includes(`(mob:${id})`), `${number} ${lang}: ${id}`);
+    }
+});
+
+test('pages 5 and 261 tell of the extinct animals as the panel does, and never how many there are', () => {
+    const escaped = (line) => line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (const [lang, other] of [['ES', 'EN'], ['EN', 'ES']]) {
+        for (const number of [5, 261]) {
+            const text = page(number, lang);
+            for (const line of extinctSaid(lang)) assert.ok(text.includes(line), `${number} ${lang} should say: ${line}`);
+            for (const line of extinctSaid(other)) assert.ok(!new RegExp(`(^|[^\\p{L}])${escaped(line)}([^\\p{L}]|$)`, 'u').test(text), `${number} ${lang} still says: ${line}`);
+            // A number of them would be wrong the day one more arrives.
+            assert.doesNotMatch(text, /\d+ (animales extintos|extinct animals)/i, `${number} ${lang}`);
+            assert.ok(!text.includes('B31X'), `${number} ${lang} gives the secret away`);
+        }
+        // The section of page 5 on them has no number at all but those of its links.
+        const whole = page(5, lang);
+        const start = whole.indexOf(`\n## ${ctx.BESTIARY_TEXT.extinctTitle[lang]}\n`);
+        assert.ok(start > 0, `5 ${lang} has its section`);
+        assert.doesNotMatch(whole.slice(start, whole.indexOf('\n## ', start + 1)).replace(/\]\(\d+\)/g, ']'), /\d/, `5 ${lang}`);
+        // And the pages lead to one another.
+        for (const [from, to] of [[5, 261], [16, 261], [0, 261], [261, 5], [261, 16]]) assert.ok(page(from, lang).includes(`](${to})`), `${from} ${lang} links ${to}`);
+    }
+    const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
+    const section = guia.slice(guia.indexOf('\n### Animales extintos\n'), guia.indexOf('\n## Cultivos\n'));
+    for (const line of extinctSaid('ES')) assert.ok(section.includes(line), `GUIA.md should say: ${line}`);
+    for (const field of ['hiddenUntilDiscovered', 'ancestorOf']) assert.ok(section.includes(field), field);
+    assert.doesNotMatch(section, /\d+ animales extintos/i);
 });
 
 // ---- One name per thing ----

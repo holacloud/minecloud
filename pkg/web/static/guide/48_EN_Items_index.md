@@ -12,6 +12,8 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:water) [Water](52)
 - ![](item:coal_ore) [Ores](53)
 - ![](item:copper_ore) [How to find metals](248): copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore, and [how they are smelted](249)
+- ![](item:fossil_rock) [Fossils](262): fossil_rock, fossil_rock_rare, fossil_bones_skull, fossil_bones_spine, fossil_bones_tail, old_bones
+- ![](item:amber_rock) [Amber](263): amber_rock, amber
 
 ## Trees and plants
 
@@ -63,6 +65,7 @@ How they are made: see [Crafting](11). How they are broken and placed: see [Mini
 - ![](item:fridge) [Fridge and freezer](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
 - ![](item:foundry) [Foundry](235): foundry, what it smelts and its yields
 - ![](item:arc_furnace) [Electric arc furnace](236): arc_furnace, silicon and steel, the power it needs
+- ![](item:revival_machine) [Revival machine](264): revival_machine, the fossils it takes, the signal, the power and the water it needs
 
 ## Tools
 

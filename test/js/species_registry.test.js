@@ -51,6 +51,60 @@ test('a species that says something nobody reads, says nothing, or is there alre
     assert.throws(() => ctx.speciesFacet('wings', {}), /unknown/);
 });
 
+// ---- The extinct animals (js/mobSpecies.js) ----
+
+// Builds the game as far as the species go: what Game does with every hook of registerGameContent.
+function build(ctx) {
+    for (const hook of vm.runInContext('GAME_CONTENT_HOOKS', ctx)) hook.call({}, { addItem() {}, addRecipe() {} });
+}
+
+test('an extinct animal says which living species it is the ancestor of, and the table of ancestors is made once', () => {
+    const ctx = load();
+    vm.runInContext('Object.assign(this, { getMobSpecies, mobSpeciesIsExtinct, mobAncestors, mobAncestorsOf })', ctx);
+    ctx.registerSpecies('made_up_dawn_horse', { info: { speed: 1, hiddenUntilDiscovered: true, ancestorOf: 'horse' } });
+    ctx.registerSpecies('made_up_boa', { info: { speed: 1, hiddenUntilDiscovered: true } });
+    // The living one may come from a file that loads later: nothing is looked up until the game is built.
+    ctx.registerSpecies('made_up_owl_kin', { info: { speed: 1, hiddenUntilDiscovered: true, ancestorOf: 'made_up_owl' } });
+    ctx.registerSpecies('made_up_owl', { info: { speed: 1 } });
+    ctx.registerSpecies('made_up_tall_horse', { info: { speed: 1, hiddenUntilDiscovered: true, ancestorOf: 'horse' } });
+    assert.doesNotThrow(() => build(ctx));
+
+    assert.equal(ctx.getMobSpecies('made_up_dawn_horse').ancestorOf, 'horse', 'any file can ask');
+    assert.deepEqual([...ctx.mobAncestorsOf('horse')], ['made_up_dawn_horse', 'made_up_tall_horse']);
+    assert.deepEqual([...ctx.mobAncestorsOf('made_up_owl')], ['made_up_owl_kin']);
+    for (const id of ['sheep', 'made_up_boa', 'made_up_dawn_horse', 'no_such_thing', 'toString']) assert.deepEqual([...ctx.mobAncestorsOf(id)], [], id);
+    assert.equal(ctx.mobAncestors(), ctx.mobAncestors(), 'the same table every time');
+    assert.equal(ctx.mobAncestorsOf('sheep'), ctx.mobAncestorsOf('pig'), 'and nothing is made to say there are none');
+    assert.deepEqual(['made_up_boa', 'made_up_dawn_horse', 'horse', 'made_up_owl', 'no_such_thing'].map((id) => ctx.mobSpeciesIsExtinct(id)), [true, true, false, false, false]);
+});
+
+test('a wrong ancestorOf stops the game when it is built, and so does an extinct animal that would spawn by itself', () => {
+    const stops = (info, why) => {
+        const ctx = load();
+        // Its file loads without a word: the species it names may not be there yet.
+        ctx.registerSpecies('made_up_boa', { info: { speed: 1, hiddenUntilDiscovered: true } });
+        ctx.registerSpecies('made_up_wrong', { info });
+        assert.throws(() => build(ctx), why);
+    };
+    stops({ hiddenUntilDiscovered: true, ancestorOf: 'unicorn' }, /species made_up_wrong: ancestorOf names unicorn, and there is no such species/);
+    stops({ hiddenUntilDiscovered: true, ancestorOf: 'toString' }, /no such species/);
+    stops({ hiddenUntilDiscovered: true, ancestorOf: ['horse'] }, /no such species/);
+    stops({ hiddenUntilDiscovered: true, ancestorOf: 'made_up_boa' }, /ancestorOf names made_up_boa, which is extinct too/);
+    stops({ hiddenUntilDiscovered: true, ancestorOf: 'made_up_wrong' }, /extinct too/);
+    stops({ ancestorOf: 'horse' }, /ancestorOf is for an extinct animal/);
+    stops({ hiddenUntilDiscovered: true, spawnBiomes: { plains: 1 } }, /does not spawn by itself/);
+    // With nothing wrong, and with no extinct animal at all, the game is built.
+    assert.doesNotThrow(() => build(load()));
+});
+
+test('an extinct animal says so through registerSpecies, never the older way', () => {
+    // A species added by hand (MOB_SPECIES.<name> = {...}) is in a file the tests of the guide and of the
+    // bestiary do not load: they would take it for a living one.
+    for (const name of gameFiles) {
+        assert.doesNotMatch(read(`game/${name}`), /MOB_SPECIES\.[a-z_]+\s*=\s*\{[^;]*\b(hiddenUntilDiscovered|ancestorOf)\b/, `${name}: registerSpecies (js/extensions.js)`);
+    }
+});
+
 test('a movement says its own traits; one with none, or unknown, has none; no movement is the ground one', () => {
     const ctx = load();
     ctx.registerMobBehaviour('scuttle', { walksToGoal: true, update() {} });

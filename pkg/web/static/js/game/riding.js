@@ -2,7 +2,8 @@
 // the saddle: the camera controller takes over the mount's speed, size and jumps, the mob
 // follows the player's position, and Shift gets off. Other players see the mount under the
 // rider: playerMove carries `mount` ("species:variant") and `mountYaw`, and each remote avatar
-// keeps its own copy of the mount's model.
+// keeps its own copy of the mount's model. A mount the server keeps (js/game/animals.js) is told
+// to be ridden, so the others hide their copy of it meanwhile; somebody else's is not ridden.
 // Mixed into Game.prototype.
 
 Object.assign(Game.prototype, {
@@ -11,6 +12,11 @@ Object.assign(Game.prototype, {
         if (this.ridingMob || this.seated) return false;
         const mob = this.raycastMob(4);
         if (!mob || !getMobSpecies(mob.userData.species).mount) return false;
+        const refusal = typeof this.animalsRideRefusal === 'function' ? this.animalsRideRefusal(mob) : null;
+        if (refusal) {
+            this.receiveSystemMessage({ text: refusal });
+            return true;
+        }
         const controller = this.cameraController;
         const position = controller.camera.position;
         const previous = { x: position.x, y: position.y, z: position.z };
@@ -34,6 +40,7 @@ Object.assign(Game.prototype, {
         mob.userData.clop = 0;
         this.playNeigh(mob);
         this.receiveSystemMessage({ text: `Riding a ${mob.userData.species}: Space jumps, Shift gets off` });
+        if (typeof this.animalsOwnerSync === 'function') this.animalsOwnerSync();
         return true;
     },
 
@@ -59,6 +66,7 @@ Object.assign(Game.prototype, {
                 break;
             }
         }
+        if (typeof this.animalsOwnerSync === 'function') this.animalsOwnerSync();
     },
 
     // What playerMove reports about the mount, or null when on foot.

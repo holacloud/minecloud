@@ -7,7 +7,7 @@
 
 You have seen **every** creature in MineCloud up close: the ones that graze in the sun and the ones that only
 come out at night, the ones that live underground and the ones born from a bolt of lightning. Very few
-explorers fill the whole notebook. The 16 organisms of the [microscope](238) are not needed: they are another collection.
+explorers fill the whole notebook. The 17 organisms of the [microscope](238) are not needed: they are another collection.
 
 To get them all you have had to walk the four biomes, stay up through the night, get soaked in the storm, build a [copper golem](215) and,
 most likely, fall for a wisp's trap at least once.

@@ -36,6 +36,7 @@ const ITEM_TAG_FAMILIES = {
     nature: { EN: 'nature', ES: 'naturaleza', also: ['terreno', 'terrain'] },
     animal: { EN: 'animal', ES: 'animal' },
     egg: { EN: 'egg', ES: 'huevo', also: ['mob', 'mob-egg', 'huevo-mob'] },
+    fossil: { EN: 'fossil', ES: 'fósil', also: ['fossils', 'fósiles'] },
     bait: { EN: 'bait', ES: 'cebo' },
     chemistry: { EN: 'chemistry', ES: 'química' },
     element: { EN: 'element', ES: 'elemento' },
@@ -72,7 +73,8 @@ const ITEM_TAG_SHORT = {
     building: ['build', 'const.'], wood: ['wood', 'madera'], stone: ['stone', 'piedra'], metal: ['metal', 'metal'], ore: ['ore', 'miner.'], glass: ['glass', 'vidrio'],
     wool: ['wool', 'lana'], furniture: ['furn.', 'mueble'], storage: ['stor.', 'almac.'], light: ['light', 'luz'], electric: ['elec.', 'eléc.'], logic: ['logic', 'lógica'],
     mechanism: ['mech.', 'mecan.'], tool: ['tool', 'herr.'], weapon: ['weapon', 'arma'], armor: ['armor', 'armad.'], food: ['food', 'comida'], drink: ['drink', 'bebida'],
-    farming: ['farm', 'cult.'], plant: ['plant', 'planta'], nature: ['nature', 'natur.'], animal: ['animal', 'animal'], egg: ['egg', 'huevo'], bait: ['bait', 'cebo'],
+    farming: ['farm', 'cult.'], plant: ['plant', 'planta'], nature: ['nature', 'natur.'], animal: ['animal', 'animal'], egg: ['egg', 'huevo'], fossil: ['fossil', 'fósil'],
+    bait: ['bait', 'cebo'],
     chemistry: ['chem.', 'quím.'], element: ['elem.', 'elem.'], science: ['sci.', 'cien.'], microscope: ['micro.', 'micro.'], sample: ['sample', 'muest.'],
     decoration: ['decor', 'decor.'], transport: ['trans.', 'trans.'],
     white: ['white', 'blanco'], light_gray: ['l.gray', 'gr.cl.'], gray: ['gray', 'gris'], black: ['black', 'negro'], brown: ['brown', 'marrón'], red: ['red', 'rojo'],
@@ -93,7 +95,7 @@ const ITEM_TAG_NOT_ITEMS = ['air'];
 const ITEM_TAG_METAL_ELEMENTS = /^(Li|Be|Na|Mg|Al|K|Ca|Ti|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ag|Sn|W|Pt|Au|Hg|Pb)$/;
 const ITEM_TAG_COLOR_PATTERN = new RegExp(`(?:^|_)(${Object.keys(ITEM_TAG_COLORS).sort((a, b) => b.length - a.length).join('|')})(?:_|$)`);
 // Machines with slots, but nobody keeps things in them.
-const ITEM_TAG_NOT_STORAGE = ['oven', 'foundry', 'arc_furnace', 'microscope', 'incubator', 'autoclave'];
+const ITEM_TAG_NOT_STORAGE = ['oven', 'foundry', 'arc_furnace', 'microscope', 'incubator', 'autoclave', 'revival_machine'];
 
 // Patterns of the id: id -> what it says.
 const ITEM_TAG_PATTERNS = [
@@ -136,12 +138,14 @@ const ITEM_TAG_TABLE = {
     nature: ['grass', 'dirt', 'sand', 'water', 'bedrock', 'ice'],
     animal: ['glow_dust', 'feather', 'leather', 'fur', 'milk', 'honeycomb', 'raw_fish', 'shell', 'scale', 'venom_sac', 'shadow_essence', 'ant_farm', 'ant_colony_jar',
         'eel_bucket', 'eel_tank', 'firefly_jar', 'breeding_notebook'],
+    // The machine that takes the fossils is found with them (js/game/revival.js).
+    fossil: ['revival_machine'],
     chemistry: ['water_flask', 'soda_water', 'salt', 'steel_ingot', 'bronze_ingot', 'brass_ingot', 'fertilizer', 'helium_balloon', 'rust_pigment', 'ruby', 'sapphire', 'solar_cell',
         'copper_sulfate', 'gold_leaf', 'baking_soda', 'quicklime', 'pyrite', 'iodine_tincture', 'fluorite', 'battery', 'meteoric_iron', 'lab_bench', 'neon_lamp', 'argon_lamp',
         'cobalt_glass', 'mirror', 'foundry', 'arc_furnace', 'methylene_blue'],
     science: ['thermometer', 'barometer', 'anemometer', 'telescope', 'star_chart', 'weather_station', 'breeding_notebook', 'multimeter', 'lab_bench', 'microscope', 'ant_farm',
         'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop',
-        'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter'],
+        'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter', 'revival_machine'],
     microscope: ['microscope', 'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop', 'moss',
         'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter'],
     decoration: ['sign', 'flower_pot', 'vase', 'wall_clock', 'wall_mirror', 'mirror', 'sound_block', 'spray_paint', 'glow_block'],
@@ -157,7 +161,8 @@ const ITEM_TAG_EXCEPT = {
 };
 
 // A piece of furniture, a machine or a lamp is made of materials, but it is not something to build walls with.
-const ITEM_TAG_NOT_BUILDING = ['furniture', 'decoration', 'science', 'microscope', 'electric', 'light'];
+// Nor is the rock of a fossil: it is mined like stone, and what comes out of it is the fossil.
+const ITEM_TAG_NOT_BUILDING = ['furniture', 'decoration', 'science', 'microscope', 'electric', 'light', 'fossil'];
 const ITEM_TAG_NOT_STONE = [...ITEM_TAG_NOT_BUILDING, 'metal'];
 
 function itemTagFold(text) {
@@ -229,6 +234,8 @@ function itemTagsDerived(id, def) {
         if (def.food) tags.add('food');
         if (def.bottle) tags.add('drink');
         if (def.eggSpecies) tags.add('egg');
+        if (def.fossilSource) tags.add('fossil');
+        if (def.revives) tags.add('animal');
         if (def.saplingWood || def.cropStage !== undefined) tags.add('plant').add('farming');
         if (def.ore) tags.add('ore');
         if (def.seat) tags.add('furniture');

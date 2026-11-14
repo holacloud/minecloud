@@ -69,7 +69,7 @@ func TestStorageDoesNotNameTheMechanicsBuiltOnIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	named := regexp.MustCompile(`\b(appliance[A-Z]\w*\(|machines\[|microscopeKind|incubatorKind|microscope[A-Z]\w*\(|incubator[A-Z]\w*\(|culture(CleanLoaded|CopyPlates)\(|wakeLocked|stopAskingLocked|settleOnOpenLocked|emptiedLocked)`)
+	named := regexp.MustCompile(`\b(appliance[A-Z]\w*\(|machines\[|microscopeKind|incubatorKind|microscope[A-Z]\w*\(|incubator[A-Z]\w*\(|culture(CleanLoaded|CopyPlates)\(|wakeLocked|stopAskingLocked|settleOnOpenLocked|emptiedLocked|revivalKind|revival[A-Z]\w*\()`)
 	for i, line := range strings.Split(string(source), "\n") {
 		if code := strings.SplitN(line, "//", 2)[0]; named.MatchString(code) {
 			t.Errorf("storage.go:%d names a mechanic built on it; give it a hook of storagePart instead: %s", i+1, strings.TrimSpace(line))

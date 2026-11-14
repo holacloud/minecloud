@@ -15,7 +15,8 @@ import (
 // says heights, biomes, soil, water, trees, plants and moss did not move by a single block.
 //
 // The value did not change when bedrock went from y=-5 to y=-14: TestOnlyOresMoved puts the old floor
-// back under each column before hashing, and everything else still has to match.
+// back under each column before hashing, and everything else still has to match. Nor did it change
+// with the fossils, which are taken back to the ground they lie in as the ores are.
 const worldWithoutOresFingerprint = "4ff0416f0b9bb99d0352bbf5b1a057fde98982b0"
 
 func jsBlockIDs() map[string]uint16 {
@@ -53,8 +54,8 @@ func TestOnlyOresMoved(t *testing.T) {
 					}
 					name = groundBlockAt(x, y, z, s, soilDepthAt(x, z, s))
 				}
-				// An ore replaces only what groundBlockAt says is there.
-				if IsNaturalOre(name) {
+				// An ore replaces only what groundBlockAt says is there, and so does a fossil (fossils.go).
+				if IsNaturalOre(name) || IsNaturalFossil(name) {
 					lx, y, lz := chunkCell(i)
 					x, z := c.X*ChunkSize+lx, c.Z*ChunkSize+lz
 					s := ColumnSurface(x, z)

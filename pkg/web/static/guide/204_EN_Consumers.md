@@ -59,6 +59,10 @@ Furniture that works on electricity: see [Fridge and freezer](234). Without powe
 
 A machine that melts sand and coal into silicon: see [Electric arc furnace](236). It draws **150 W**, the most of any consumer, and only while it has work: idle, it asks for nothing. One 80 W [radioisotope generator](220) is not enough, two are.
 
+## Revival machine
+
+It brings an extinct animal back to life from its fossil: see [Revival machine](264). It draws **100 W**, and only while it works. Power comes in through its sides or from below: its top face is for the signal that starts it.
+
 ## All or nothing
 
 If the network cannot give every consumer what it needs, **they all switch off** (see [Electricity](200)). At noon a

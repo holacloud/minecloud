@@ -32,8 +32,16 @@ se gasta. El [golem de cobre](215) tampoco: se construye, y ya te sigue.
 - **Sentarse y quedarse quietos:** clic derecho con la mano vacía. Otro clic vuelve a ponerlos a seguirte.
   - En el caballo es **Shift + clic**, porque el clic normal lo monta.
 - **No desaparecen** al alejarte, a diferencia de los salvajes.
-- **Se guardan** en el navegador: al recargar la página vuelven a su sitio, incluidos los sentados y las crías. No
-  se comparten con otros jugadores.
+- **Los guarda el servidor:** los ven los demás jugadores, y te esperan en cualquier navegador desde el que entres
+  como el mismo jugador. Al entrar, los que te siguen aparecen a tu lado; los sentados siguen donde los dejaste, crías
+  incluidas.
+- **Solo te hacen caso a ti:** nadie más puede sentarlos, darles de comer, montarlos, golpearlos ni llevárselos. Los
+  demás los ven seguirte, o sentados en su sitio.
+- **No se pueden dejar sentados** en la parcela de otro jugador (salvo que te haya invitado) ni en la zona de inicio:
+  ahí solo te siguen.
+- El servidor guarda hasta **100** animales de cada jugador. Los que pasen de ahí viven solo en tu navegador, como antes.
+- Los que domesticaste antes de que el servidor los guardara estaban en tu navegador: pasan al servidor solos en cuanto
+  vuelves a estar cerca de donde los dejaste.
 - El perro y el gato siguen haciéndose amigos tuyos solos, como antes. Domesticarlos permite además sentarlos.
 - Una cabra domesticada deja de embestirte y te sigue saltando por las rocas.
 

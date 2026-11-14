@@ -32,10 +32,19 @@
 //              daylight or torchlight); see js/game/shadows.js
 //              'flutter' (hangs under a roof by day, flies erratically at night); see
 //              js/game/bats.js
+//              'cruise' (an animal of the sea: it swims or walks the bed, and never leaves the water); see
+//              js/game/sea_animals.js, which documents the `sea...` fields of a species that moves so
+//              'glide' (a big flyer: it circles over its home, perches and takes off again); see
+//              js/game/gliders.js, which documents the `glide...` fields of a species that moves so
 //              Any other mode is handled by the behaviour registered for it with
 //              registerMobBehaviour (js/extensions.js).
 //   spawnBiomes {biome: weight} adds the species to those biomes' natural spawn tables
 //              (biomes: desert, forest, rocky, plains); see getBiomeSpawnTable
+//   hiddenUntilDiscovered  true: an extinct animal. Nobody meets one unless it is brought back to life,
+//              so it never spawns by itself (no spawnBiomes), and its card in the bestiary is a secret, in
+//              a section of its own, until the player sees one (js/game/bestiary.js)
+//   ancestorOf the living species (its id) this extinct one is the ancestor of, or an ancient relative:
+//              the bestiary draws them side by side on the sheets of both. Several may name the same one
 //
 // Species defined in their own file add themselves with registerSpecies (js/extensions.js; see
 // js/game/crab.js), which also takes their model and their rows in the tables of other features. The
@@ -83,6 +92,43 @@ registerMobMovementTraits('stalk', { bodiless: true });
 function getMobSpecies(species) {
     return MOB_SPECIES[species] || null;
 }
+
+// Whether a species is an extinct one (`hiddenUntilDiscovered`): what sets it apart is asked here.
+function mobSpeciesIsExtinct(species) {
+    const info = MOB_SPECIES[species];
+    return Boolean(info && info.hiddenUntilDiscovered);
+}
+
+// Who came before whom: for each living species, the extinct ones that name it in `ancestorOf`, in the
+// order of the catalogue. Worked out once, the first time it is asked, which the game does while it is
+// built (below): every species is in by then, whichever file it comes from, and one that says something
+// wrong of itself stops the game there, as registerSpecies (js/extensions.js) does at a misspelt field.
+let MOB_ANCESTORS = null;
+function mobAncestors() {
+    if (MOB_ANCESTORS) return MOB_ANCESTORS;
+    const has = (id) => Object.prototype.hasOwnProperty.call(MOB_SPECIES, id);
+    const table = Object.create(null);
+    for (const [id, info] of Object.entries(MOB_SPECIES)) {
+        const extinct = Boolean(info.hiddenUntilDiscovered);
+        if (extinct && info.spawnBiomes) throw new Error(`species ${id}: an extinct animal (hiddenUntilDiscovered) does not spawn by itself, so no spawnBiomes`);
+        const living = info.ancestorOf;
+        if (living === undefined) continue;
+        if (!extinct) throw new Error(`species ${id}: ancestorOf is for an extinct animal (hiddenUntilDiscovered: true)`);
+        if (typeof living !== 'string' || !has(living)) throw new Error(`species ${id}: ancestorOf names ${living}, and there is no such species`);
+        if (MOB_SPECIES[living].hiddenUntilDiscovered) throw new Error(`species ${id}: ancestorOf names ${living}, which is extinct too; it has to be a living one`);
+        (table[living] = table[living] || []).push(id);
+    }
+    MOB_ANCESTORS = table;
+    return table;
+}
+
+// The extinct species that are ancestors of this living one: a list nobody changes, empty for most.
+const MOB_NO_ANCESTORS = [];
+function mobAncestorsOf(species) {
+    return mobAncestors()[species] || MOB_NO_ANCESTORS;
+}
+
+registerGameContent(() => { mobAncestors(); });
 
 window.MOB_SPECIES = MOB_SPECIES;
 window.getMobSpecies = getMobSpecies;

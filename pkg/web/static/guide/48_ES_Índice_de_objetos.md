@@ -12,6 +12,8 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:water) [Agua](52)
 - ![](item:coal_ore) [Minerales](53)
 - ![](item:copper_ore) [Cómo encontrar metales](248): copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore, y [cómo se funden](249)
+- ![](item:fossil_rock) [Fósiles](262): fossil_rock, fossil_rock_rare, fossil_bones_skull, fossil_bones_spine, fossil_bones_tail, old_bones
+- ![](item:amber_rock) [Ámbar](263): amber_rock, amber
 
 ## Árboles y plantas
 
@@ -63,6 +65,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:fridge) [Nevera y congelador](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
 - ![](item:foundry) [Fundición](235): foundry, qué funde y cuánto da
 - ![](item:arc_furnace) [Horno de arco eléctrico](236): arc_furnace, silicio y acero, la corriente que pide
+- ![](item:revival_machine) [Máquina de revivir](264): revival_machine, los fósiles que lleva, la señal, la corriente y el agua que pide
 
 ## Herramientas
 

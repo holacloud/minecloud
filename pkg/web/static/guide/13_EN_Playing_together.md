@@ -9,13 +9,14 @@ time.
 - **The time:** day and night are the same for everyone. If someone sleeps in a bed, dawn comes for
   everyone. See [Day, night and weather](8).
 - **Signs, sound blocks and graffiti** (see below).
+- **Tamed animals:** the server keeps them. The others see yours follow you or sit at their place, and you see
+  theirs, but each obeys only its owner. See [Taming and breeding](3).
 
 ## What is yours alone
 
-- **Animals and creatures** live in your browser: another player may see different animals in the same
+- **Wild animals and creatures** live in your browser: another player may see different animals in the same
   spot.
-- Your **tamed pets**, your **cages** and your **firefly jars** are only saved in your browser. See
-  [Taming and breeding](3) and [Baits and traps](4).
+- Your **cages** and your **firefly jars** are only saved in your browser. See [Baits and traps](4).
 - Your **inventory**, your bed as respawn point and your settings.
 - The **rain**.
 

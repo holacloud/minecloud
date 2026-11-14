@@ -25,7 +25,7 @@ sin contar la altura. Lo que venga de un lado o de la espalda entra entero.
 
 | Daño | Con escudo |
 |---|---|
-| ![Monstruo de cueva](mob:cave_monster) [Monstruo de cueva](21), [sombra errante](37), [araña](20), [escorpión](31), [serpiente](42), abeja, cangrejo, cabra, [topo gigante](47) | La mitad, de frente |
+| ![Monstruo de cueva](mob:cave_monster) [Monstruo de cueva](21), [sombra errante](37), [araña](20), [escorpión](31), [serpiente](42), abeja, cangrejo, cabra, [topo gigante](47), [Kubanochoerus](269) | La mitad, de frente |
 | ![Golem de tormenta](mob:storm_golem) El rayo que te lanza un [golem de tormenta](43) | La mitad, de frente |
 | Veneno (los puntos que van cayendo tras la picadura) | Nada: la picadura sí se reduce, el veneno no |
 | Caídas y vacío | Nada |

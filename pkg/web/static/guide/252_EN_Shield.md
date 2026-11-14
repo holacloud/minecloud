@@ -25,7 +25,7 @@ height aside. What comes from a side or from behind gets through whole.
 
 | Damage | With a shield |
 |---|---|
-| ![Cave monster](mob:cave_monster) [Cave monster](21), [wandering shadow](37), [spider](20), [scorpion](31), [snake](42), bee, crab, goat, [giant mole](47) | Half, from the front |
+| ![Cave monster](mob:cave_monster) [Cave monster](21), [wandering shadow](37), [spider](20), [scorpion](31), [snake](42), bee, crab, goat, [giant mole](47), [Kubanochoerus](269) | Half, from the front |
 | ![Storm golem](mob:storm_golem) The bolt a [storm golem](43) throws at you | Half, from the front |
 | Poison (the points that keep falling after the bite) | Nothing: the bite is reduced, the poison is not |
 | Falls and the void | Nothing |

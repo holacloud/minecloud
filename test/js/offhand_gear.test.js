@@ -428,7 +428,8 @@ test('which attacks give a source: all but those with no direction', () => {
     const withType = (type) => calls.filter((call) => call.includes(`'${type}'`));
     assert.equal(calls.length, withType('mob').length + withType('poison').length + withType('fall').length + withType('lightning').length + withType('void').length, calls.join('\n'));
     const mob = withType('mob');
-    assert.equal(mob.length, 10, mob.join('\n'));
+    // How many there are is no rule (each species with a blow of its own adds one): that each has a front is.
+    assert.ok(mob.length >= 10, mob.join('\n'));
     const unsourced = mob.filter((call) => /'mob'$/.test(call)).map((call) => call.split(':')[0]).sort();
     assert.deepEqual(unsourced, ['ants.js', 'eel.js'], 'a swarm on your legs and a discharge have no front');
     for (const type of ['poison', 'fall', 'lightning', 'void']) {

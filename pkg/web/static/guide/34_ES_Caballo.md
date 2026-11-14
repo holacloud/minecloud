@@ -2,7 +2,7 @@
 
 ![Caballo](mob:horse)
 
-Un animal tranquilo que pasta en manadas por las praderas. Es la **única montura** del juego: súbete encima y
+Un animal tranquilo que pasta en manadas por las praderas. Es la **única montura** entre los animales de hoy: súbete encima y
 cruzarás el mapa al galope.
 
 ## Dónde vive

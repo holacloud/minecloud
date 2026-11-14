@@ -5,7 +5,7 @@ página cuenta cuáles son.
 
 ## Formas de moverse
 
-Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **24**:
+Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. Hay **26**:
 
 | Modo | Quién | Qué hace |
 |---|---|---|
@@ -33,6 +33,8 @@ Cada especie tiene un **modo de movimiento**, que decide casi todo lo que hace. 
 | presa | castor | Tala árboles junto al agua y construye presas |
 | anguila | anguila eléctrica | Nada por el fondo, sube a tragar aire y da descargas |
 | ayudante | golem de cobre | Te sigue, te espera o te trae lo que hay por el suelo |
+| surcar | trilobites, amonites, plesiosaurio | Vive dentro del agua y nunca sale: camina por el fondo, flota o nada a media agua |
+| cernerse | águila de Haast, Argentavis, pterosaurio | Da vueltas muy alto sobre su casa, baja a posarse y vuelve a despegar |
 
 ## Los mobs que andan
 

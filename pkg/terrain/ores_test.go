@@ -17,6 +17,9 @@ var allOres = []string{"coal_ore", "iron_ore", "copper_ore", "tin_ore", "zinc_or
 //
 // It was 721f90e4... until bedrock went from y=-5 to y=-14 and veins into the new rock: it hashes from
 // BedrockY up, so it had to change. oreAboveFingerprint says what did not.
+//
+// Fossils came later and did not change it: both tests take them back to the rock they lie in before
+// hashing (withoutFossil), so it still says that not an ore has moved. fossils_test.go has theirs.
 const oreFingerprint = "cd2220f3ea9e00b8d46a86d62f68d0dfb501c439"
 
 // oreAboveFingerprint is the same from y=2 up. It was taken on the generator with bedrock still at
@@ -36,7 +39,7 @@ func TestOresMatchJavaScript(t *testing.T) {
 			s := ColumnSurface(x, z)
 			soil := soilDepthAt(x, z, s)
 			for y := BedrockY; y <= s.Height; y++ {
-				name := blockAt(x, y, z, s, soil)
+				name := withoutFossil(blockAt(x, y, z, s, soil), x, y, z, s, soil)
 				if IsNaturalOre(name) {
 					seen[name]++
 				}
@@ -61,7 +64,7 @@ func TestNothingMovedAboveTheDeepRock(t *testing.T) {
 			s := ColumnSurface(x, z)
 			soil := soilDepthAt(x, z, s)
 			for y := oreAboveY; y <= s.Height; y++ {
-				h.Write([]byte(blockAt(x, y, z, s, soil) + "\n"))
+				h.Write([]byte(withoutFossil(blockAt(x, y, z, s, soil), x, y, z, s, soil) + "\n"))
 			}
 		}
 	}

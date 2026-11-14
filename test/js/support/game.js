@@ -21,9 +21,12 @@ function gameScripts() {
 
 // Anything at all: a function, an object, a constructor, a number. For THREE, document and the like
 // when the test does not care what they do.
+// To whoever prints it (a failed assertion's message) it is one word: answering anything to anything, it would
+// otherwise be a graph with no end, and node once took 22 GB to describe a mob made of these.
+const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 function anyStub() {
     return new Proxy(function () {}, {
-        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : key === 'prototype' ? {} : anyStub()),
+        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : key === INSPECT ? () => '[stub]' : key === 'prototype' ? {} : anyStub()),
         apply: () => anyStub(), construct: () => anyStub(), set: () => true
     });
 }

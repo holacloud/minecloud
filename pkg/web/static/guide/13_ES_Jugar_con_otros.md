@@ -9,13 +9,14 @@ vez.
 - **La hora:** el día y la noche son iguales para todos. Si alguien duerme en una cama, amanece para todos.
   Ver [Día, noche y clima](8).
 - **Carteles, bloques de sonido y grafitis** (ver abajo).
+- **Los animales domesticados:** los guarda el servidor. Los demás ven los tuyos seguirte o sentados en su sitio, y
+  tú los suyos, pero cada uno solo obedece a su dueño. Ver [Domesticar y criar](3).
 
 ## Lo que es solo tuyo
 
-- **Los animales y criaturas** viven en tu navegador: otro jugador puede ver animales distintos en el mismo
-  sitio.
-- Tus **mascotas domesticadas**, tus **jaulas** y tus **frascos de luciérnagas** se guardan solo en tu
-  navegador. Ver [Domesticar y criar](3) y [Cebos y trampas](4).
+- **Los animales y criaturas salvajes** viven en tu navegador: otro jugador puede ver animales distintos en el
+  mismo sitio.
+- Tus **jaulas** y tus **frascos de luciérnagas** se guardan solo en tu navegador. Ver [Cebos y trampas](4).
 - Tu **inventario**, tu cama como punto de reaparición y tus ajustes.
 - La **lluvia**.
 

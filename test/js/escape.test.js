@@ -358,7 +358,8 @@ test('every window frees the pointer on opening', () => {
         'game/robot.js': ['this.robotPanelOpen = true;'], 'game/genetics.js': ['this.geneticsOpen = true;'], 'game/astronomy.js': ['this.astroChartOpen = true;'],
         'game/chemistry.js': ['this.chemistryOpen = true;'], 'game/storage.js': ['this.storageOpenedAt ='], 'game/glow_block.js': ['this.glowAt ='],
         'game/microscope.js': ['microscopeShowPanel(asking) {'], 'game/cultures.js': ['cultureTryOpen(position) {'], 'game/cinematic.js': ['this.cinematicPanelOpen = true;'],
-        'game/claims.js': ['claimOpenPanel(claim, asking = false) {']
+        'game/claims.js': ['claimOpenPanel(claim, asking = false) {'],
+        'game/revival.js': ['revivalTryOpen(position) {']
     };
     for (const [file, marks] of Object.entries(opening)) {
         const text = read(file);

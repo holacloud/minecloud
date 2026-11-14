@@ -52,7 +52,10 @@ const ELECTRIC_KINDS = {
     arc_furnace: { role: 'consumer', watts: 150, onDemand: true },
     // Cultures (js/game/cultures.js): they ask only while they have work.
     incubator: { role: 'consumer', watts: 20, onDemand: true },
-    autoclave: { role: 'consumer', watts: 40, onDemand: true }
+    autoclave: { role: 'consumer', watts: 40, onDemand: true },
+    // --- The revival machine (js/game/revival.js) ---
+    // 100 W while it brings an animal back. Its top face is its signal: it takes no power through it.
+    revival_machine: { role: 'consumer', watts: 100, onDemand: true, signalTop: true }
 };
 
 const ELECTRIC_PX = 1 / 16;

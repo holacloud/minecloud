@@ -2,7 +2,8 @@
 // BESTIARY_ENTRIES (bestiary.js) and that of each organism in MICRO_SPECIES (microbes.js); here is the
 // Spanish of both, and every label of the panel. What another mechanic owns (the diet of taming.js, the
 // drops of resources.js, the baits of traps.js) is left as it is and only named here, by item id.
-// A creature is called what the guide calls it (pages *_ES_*, starting with the index of mobs, page 16).
+// A creature is called what the guide calls it (pages *_ES_*, starting with the index of mobs, page 16, and
+// that of the extinct animals, page 261).
 // test/js/bestiary_text.test.js fails if a species, a label or an item shown lacks a language.
 
 // bestiarySay(key, ...args) reads this. A function takes the same arguments in both languages.
@@ -30,6 +31,18 @@ const BESTIARY_TEXT = {
     temperamentTag: { ES: (temperament) => `Temperamento: ${temperament}`, EN: (temperament) => temperament },
     seenFrom: { ES: (power) => `Se ve desde ${power}×`, EN: (power) => `Seen from ${power}×` },
     microscopeOnly: { ES: (hint) => `Solo se ve con un microscopio. ${hint}`, EN: (hint) => `Only a microscope shows it. ${hint}` },
+
+    // The extinct animals: their section and its count, what a secret sheet says, the same for all of them,
+    // and the tree of a sheet.
+    extinctTitle: { ES: 'Animales extintos', EN: 'Extinct animals' },
+    extinctProgress: { ES: (found, total) => `<b>${found}</b> / ${total} vistos con vida`, EN: (found, total) => `<b>${found}</b> / ${total} seen alive` },
+    extinctSecret: {
+        ES: 'Un animal extinto. Encuentra su fósil y devuélvelo a la vida para verlo.',
+        EN: 'An extinct animal. Find its fossil and bring it back to life to see it.'
+    },
+    extinctTag: { ES: 'Extinto', EN: 'Extinct' },
+    lineageTitle: { ES: 'Evolución', EN: 'Evolution' },
+    lineageLiving: { ES: 'Vive hoy', EN: 'Alive today' },
 
     // The facts of a sheet.
     factHabitat: { ES: 'Hábitat', EN: 'Habitat' },

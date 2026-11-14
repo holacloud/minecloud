@@ -20,7 +20,7 @@ vacía cada vez que se abre el panel.
 | Electricidad y máquinas | `#eléctrico`, `#lógica`, `#mecanismo`, `#transporte` |
 | Equipo | `#herramienta`, `#arma`, `#armadura` |
 | Comer y cultivar | `#comida`, `#bebida`, `#cultivo`, `#planta` |
-| Animales | `#animal`, `#huevo`, `#cebo` |
+| Animales | `#animal`, `#huevo`, `#fósil`, `#cebo` |
 | Ciencia | `#química`, `#elemento`, `#ciencia`, `#microscopio`, `#muestra` |
 | Colores | `#blanco`, `#gris-claro`, `#gris`, `#negro`, `#marrón`, `#rojo`, `#naranja`, `#amarillo`, `#lima`, `#verde`, `#cian`, `#azul-claro`, `#azul`, `#morado`, `#magenta`, `#rosa` |
 
@@ -184,8 +184,16 @@ aves rapaces, abejas, hormigas, murciélagos, fuego fatuo…) no se pueden domes
 - **Sentarse y quedarse quietos:** clic derecho con la mano vacía. Otro clic vuelve a ponerlos a seguirte.
   - En el caballo es **Shift + clic**, porque el clic normal lo monta.
 - **No desaparecen** al alejarte, a diferencia de los salvajes.
-- **Se guardan** en el navegador: al recargar la página vuelven a su sitio, incluidos los sentados y las crías. No
-  se comparten con otros jugadores.
+- **Los guarda el servidor:** los ven los demás jugadores, y te esperan en cualquier navegador desde el que entres
+  como el mismo jugador. Al entrar, los que te siguen aparecen a tu lado; los sentados siguen donde los dejaste, crías
+  incluidas.
+- **Solo te hacen caso a ti:** nadie más puede sentarlos, darles de comer, montarlos, golpearlos ni llevárselos. Los
+  demás los ven seguirte, o sentados en su sitio.
+- **No se pueden dejar sentados** en la parcela de otro jugador (salvo que te haya invitado) ni en la zona de inicio:
+  ahí solo te siguen.
+- El servidor guarda hasta **100** animales de cada jugador. Los que pasen de ahí viven solo en tu navegador, como antes.
+- Los que domesticaste antes de que el servidor los guardara estaban en tu navegador: pasan al servidor solos en cuanto
+  vuelves a estar cerca de donde los dejaste.
 - El perro y el gato siguen haciéndose amigos tuyos solos, como antes. Domesticarlos permite además sentarlos.
 - Una cabra domesticada deja de embestirte y te sigue saltando por las rocas.
 
@@ -324,8 +332,8 @@ Los frascos colocados se guardan al recargar la página.
 
 ## Bestiario
 
-Un cuaderno de campo con todo lo que vive en el mundo: 35 animales y criaturas y 16 organismos microscópicos, 51 tarjetas
-en total, en el idioma del juego (`js/game/bestiary_text.js`).
+Un cuaderno de campo con todo lo que vive en el mundo: 35 animales y criaturas y 17 organismos microscópicos, 52 tarjetas
+en total, en el idioma del juego (`js/game/bestiary_text.js`). Los [animales extintos](#animales-extintos) van aparte.
 
 - **Abrir:** tecla **B**, o el botón "Bestiario (B)" del menú de pausa.
 - **Cerrar:** Escape, B, el botón "Cerrar" o un clic fuera del panel.
@@ -341,7 +349,7 @@ Derrotar a una criatura que aún no conocías también la descubre.
 - **Cuadrícula de tarjetas:**
   - Las especies descubiertas aparecen con su retrato en color, hecho con su propio modelo.
   - Las que faltan salen como una silueta negra con "???" y una pista de dónde encontrarlas.
-  - Arriba se ve el progreso, por ejemplo "12 / 51 descubiertas".
+  - Arriba se ve el progreso, por ejemplo "12 / 52 descubiertas".
 - **Ficha de cada especie:**
   - El modelo girando en 3D.
   - Una descripción de su comportamiento y de cómo interactuar con ella.
@@ -355,11 +363,72 @@ Derrotar a una criatura que aún no conocías también la descubre.
 Solo cuentan como derrotadas las criaturas que derrota el jugador, no las que cazan otros animales. El progreso
 se guarda en el navegador.
 
-Los 16 organismos del [microscopio](#microscopio-y-tardígrados) son tarjetas más, pero solo se descubren
+Los 17 organismos del [microscopio](#microscopio-y-tardígrados) son tarjetas más, pero solo se descubren
 identificándolos en su panel. Su ficha enseña su dibujo animado y su tamaño real, sin temperamento, dieta, objetos ni
-derrotas. No cuentan para el cuaderno completo: el contador suma las 51 tarjetas, pero el aviso "¡Tu bestiario está
+derrotas. No cuentan para el cuaderno completo: el contador suma las 52 tarjetas, pero el aviso "¡Tu bestiario está
 completo!" y el código de la última página (`B31X`) solo miran los 35 animales y criaturas, y pueden salir con el contador
-en "35 / 51". Uno de esos 35, el golem de cobre, no aparece solo: hay que construirlo, o sacarlo de su huevo.
+en "35 / 52". Uno de esos 35, el golem de cobre, no aparece solo: hay que construirlo, o sacarlo de su huevo.
+
+### Animales extintos
+
+Una especie con `hiddenUntilDiscovered: true` en su `info` (`js/mobSpecies.js`) es un animal extinto: no aparece por su
+cuenta, y solo se ve cuando alguien encuentra su fósil y lo devuelve a la vida. En el bestiario van al final del panel,
+bajo el título **Animales extintos**, y solo si hay alguno en el juego:
+
+- **Tarjeta secreta.** Mientras no hayas visto uno vivo, su tarjeta es igual para todos: una silueta con un "?", sin
+  nombre y sin hábitat, y su ficha solo dice "Un animal extinto. Encuentra su fósil y devuélvelo a la vida para verlo.".
+- **Descubrirlo** es verlo de cerca, como a cualquier otro; vale el que haya revivido otro jugador. Entonces su tarjeta
+  es como las demás, con la etiqueta "Extinto", y su hábitat dice dónde y cuándo vivió de verdad.
+- **Cuenta propia.** Junto al título pone cuántos llevas "vistos con vida". No suman en el contador de arriba ni hacen
+  falta para el cuaderno completo ni para el código `B31X`.
+- **Evolución.** Si la especie dice `ancestorOf: '<especie viva>'`, es su antepasado o un pariente antiguo, y la ficha de
+  las dos enseña un pequeño árbol: los retratos de los extintos, una flecha y el del animal que vive hoy, con "Extinto"
+  o "Vive hoy" debajo. El que aún no has descubierto sale sin nombre (el extinto, con su "?"). Un clic en un retrato
+  lleva a su tarjeta. Varias especies extintas pueden nombrar a la misma viva.
+- La hierba alta y las hojas no dan nunca el huevo de un animal extinto; `/mob` sí lo hace aparecer.
+
+La guía los reúne en la página 261, con una fila por especie; no salen en el índice de mobs (16).
+
+Los que hay en el juego (su fósil, de qué animal de hoy son antepasados y cómo se portan):
+
+| Animal | Página | Antepasado de | Fósil | Cómo es en el juego |
+|---|---|---|---|---|
+| Dodo (`dodo`) | 265 | — | `fossil_dodo`, en `old_bones` | Pasea y picotea; confiado: va andando hasta el jugador más cercano que esté a menos de 6 bloques (y a menos de 8 de su casa) y se para a 1,7. 12 de vida, 1–2 `feather`. Se domestica con `wheat_seeds`, `wheat`, `mushroom_brown` o `flower_red` (1 de 2). Sin cebo; cabe en la jaula. |
+| Eohippus (`eohippus`) | 268 | caballo | `fossil_eohippus`, en `fossil_rock_rare` | Un caballito del tamaño de un perro que pasta. 8 de vida, 1 `leather`. Se domestica con lo que come el caballo (`tall_grass`, `wheat`, `flower_yellow`, `honeycomb`; 1 de 3) y no se puede montar. Sin cebo; cabe en la jaula. |
+| Kubanochoerus (`kubanochoerus`) | 269 | cerdo | `fossil_kubanochoerus`, en `fossil_rock_rare` | Un cerdo gigante con un cuerno en la frente; hoza. Neutral: si le pegas, agacha la cabeza 0,7 s y carga unos 3 bloques en línea recta (3 de daño y un empujón, solo a quien le pegó). 24 de vida, 2–4 `leather`. No se domestica, ni cebo ni jaula. |
+| Trilobites (`trilobite`) | 266 | — | roca, común; 4 bloques de agua | Marino. Camina por el fondo, sube escalones de un bloque y descansa a menudo; al golpearlo, 6 veces de cada 10 se enrolla en una bola de 3 a 5,5 s. 2 golpes. Pacífico |
+| Amonites (`ammonite`) | 267 | — | roca, común; 6 bloques de agua | Marino. Flota a media agua y avanza a chorros con la concha por delante. 3 golpes; deja 1 `shell`. Pacífico |
+| Plesiosaurio (`plesiosaur`) | 270 | — | esqueleto (3 piezas), legendario, peso 2; 120 bloques de agua | Marino, 5 bloques de largo. Nada con cuatro aletas a 1,1 bloques/s y cada 35 a 60 s sube a sacar la cabeza del agua para respirar. 10 golpes. Pacífico |
+| Lobo terrible (`dire_wolf`) | 271 | perro | `fossil_dire_wolf`, en `fossil_rock_rare` | Un lobo grande y pesado. Hostil de día y de noche: va a por el jugador más cercano a menos de 16 bloques (el mismo para todos; lo elige el servidor), corre a 2,4 bloques/s y muerde 3 de daño; suelta a más de 24 bloques de él o de 32 de su casa. 16 de vida, 1–2 `fur`. No se domestica, ni cebo ni jaula. |
+| Esmilodón (`smilodon`) | 272 | gato | `fossil_smilodon`, en `fossil_rock_rare` | El felino de dientes de sable. Hostil de día y de noche: viene desde 12 bloques, corre a 2 bloques/s y pega 5 de daño; suelta a más de 18 bloques de él o de 26 de su casa. 20 de vida, 1–2 `fur` y 1 `leather` (50 %). No se domestica, ni cebo ni jaula. |
+| Sivaterio (`sivatherium`) | 273 | jirafa | `fossil_sivatherium`, en `fossil_rock_rare` | Una jirafa con cuerpo de alce, de 2,8 bloques hasta la punta de los cuernos; pasta. Pacífico. 28 de vida, 2–4 `leather`. Se domestica con las hojas de la jirafa (`acacia_leaves`, `leaves`, `jungle_leaves`, `birch_leaves`; 1 de 4). Sin cebo ni jaula. |
+| Titanotylopus (`titanotylopus`) | 274 | camello | `fossil_titanotylopus`, en `fossil_rock_rare` | Un camello gigante de 3,4 bloques; pasta y se tumba como el camello. Pacífico. 30 de vida, 2–4 `leather` y 1–2 `fur`. Se domestica con lo que come el camello (`cactus`, `tall_grass`, `wheat`; 1 de 3) y entonces **se monta** (su propio `mount`: ojos a 3,5 bloques, 7,5 bloques/s, salto de unos 2 bloques, 4 bloques libres de altura). Sin cebo ni jaula. |
+| Castoroides (`castoroides`) | 292 | castor | `fossil_castoroides`, en `fossil_rock_rare` | Un castor del tamaño de un oso, con dos incisivos naranjas; anda despacio y no construye nada. Pacífico. 20 de vida, 2–3 `fur`. No se domestica, ni cebo ni jaula. |
+| Myotragus (`myotragus`) | 275 | cabra | `fossil_myotragus`, en `fossil_rock_rare` | La cabra-ratón: medio bloque de alto, con los dos ojos al frente. Pasta y camina despacio (a la mitad del paso de una cabra); no trepa ni embiste. 10 de vida, 1 `leather`; `fur` con las tijeras. Se domestica con lo que come la cabra (`leaves`, `tall_grass`, `wheat`; 1 de 3). Sin cebo; cabe en la jaula. |
+| Argali gigante (`argali`) | 276 | oveja | `fossil_argali`, en `fossil_rock_rare` | Una oveja salvaje enorme con los cuernos en espiral; pasta. Neutral: si le pegas, agacha los cuernos 0,8 s y carga unos 4 bloques en línea recta (2 de daño y un empujón más fuerte que el de la cabra, solo a quien le pegó). 20 de vida, 1–2 `leather` y 1–2 `fur`; `fur` con las tijeras. No se domestica, ni cebo ni jaula. |
+| Nuralagus (`nuralagus`) | 277 | conejo | `fossil_nuralagus`, en `fossil_rock_rare` | El conejo gigante que no sabe saltar: camina despacio y pasta, sin madriguera y sin huir. 12 de vida, 1–2 `fur`; `fur` con las tijeras. Se domestica con `flower_yellow`, `tall_grass` o `flower_red` (1 de 3). Sin cebo; cabe en la jaula. |
+| Onychonycteris (`onychonycteris`) | 283 | murciélago | `fossil_onychonycteris`, en `fossil_rock_rare` | Un murciélago primitivo con una garra en cada dedo. Es un mob de tierra con `flyHeight`: revolotea a 1,4 bloques del suelo y, cuando lleva 1,5 s sin ir a ninguna parte, baja, pliega las alas y se posa; despega para moverse o si le pegan. 6 de vida, 1 `leather` la mitad de las veces. Pacífico; no se domestica, ni cebo ni jaula. |
+| Titanoboa (`titanoboa`) | 284 | serpiente | `fossil_titanoboa`, en `fossil_rock_rare` | La serpiente más grande: 7 bloques de cuerpo que sigue el rastro de la cabeza, sin veneno. Aparece enroscada. Hostil: va a por el jugador más cercano a menos de 10 bloques, a 1,3 bloques/s (anda a 0,5), se yergue y sisea a menos de 5 y muerde a 1,2 (4 de daño); lo deja a más de 15 bloques, o a más de 23 de su casa. 28 de vida, 2–4 `scale`. No se domestica, ni cebo ni jaula. |
+| Megalania (`megalania`) | 285 | lagarto | `fossil_megalania`, en `fossil_rock_rare` | Un varano de 4 bloques con la cola pesada; saca la lengua bífida cada 2,5 a 6 s (sin parar cuando caza). Hostil: va a por el jugador más cercano a menos de 12 bloques, a 1,5 bloques/s (anda a 0,4), y muerde (3 de daño, sin veneno); lo deja a más de 18 bloques, o a más de 26 de su casa. 20 de vida, 2–4 `scale`. No se domestica, ni cebo ni jaula. |
+| Arquelón (`archelon`) | 286 | tortuga | roca, raro; 60 bloques de agua | Marino, 3 bloques de largo y 3,5 de aleta a aleta. Rema con las aletas a 0,75 bloques/s, descansa a ratos y cada 45 a 80 s sube a sacar la cabeza del agua para respirar. 28 de vida (7 golpes); deja 1–2 `leather`. Pacífico |
+| Beelzebufo (`beelzebufo`) | 287 | rana | `fossil_beelzebufo`, en `fossil_rock_rare` | Una rana de 1 bloque con cuernecitos; salta, nada y croa como la rana (movimiento `hop`: cada cliente mueve su copia, a menos de unos 8 bloques de su casa). Neutral: si le pegas se aparta, abre la boca 0,6 s y salta hasta 3 bloques hacia donde estabas (2 de daño si su boca cae a menos de 0,9 bloques; solo a quien le pegó, y no dentro del agua). 16 de vida; no deja nada. No se domestica, ni cebo ni jaula. |
+| Dunkleosteus (`dunkleosteus`) | 288 | pez | roca, raro; 60 bloques de agua | Marino, 3,5 bloques de largo: un pez acorazado con cuchillas de hueso en vez de dientes. Nada a 0,9 bloques/s. Hostil solo dentro del agua: va a por un jugador que esté en ella a menos de 9 bloques, a 2 bloques/s, y muerde (4 de daño); en la orilla estás a salvo. 30 de vida (8 golpes); deja 2–3 `raw_fish` |
+| Pulmonoscorpius (`pulmonoscorpius`) | 289 | escorpión | `fossil_pulmonoscorpius`, en `fossil_rock_rare` | Un escorpión de 1,7 bloques con ojos grandes. Hostil de día y de noche: va a por el jugador más cercano a menos de 10 bloques, a 1,2 bloques/s, y lanza la cola (2 de daño y veneno: 4 puntos más). 12 de vida, 1–2 `venom_sac` y, la mitad de las veces, 1 `shell`. No se domestica, ni cebo ni jaula. |
+| Mongolarachne (`mongolarachne`) | 290 | araña | `fossil_mongolarachne`, en `fossil_rock_rare` | Una araña de patas largas con manchas doradas. Neutral: si le pegas, se gira, levanta las patas de delante 0,6 s y muerde a quien siga a menos de 1,7 bloques (1 de daño, solo a quien le pegó). 8 de vida, 1–2 `white_wool`. No se domestica; sin cebo; cabe en la jaula. |
+| Callichimaera (`callichimaera`) | 291 | cangrejo | `fossil_callichimaera`, en `fossil_rock_rare` | Un cangrejo diminuto de ojos enormes que anda hacia delante remando con sus patas planas; ni corre de lado ni se entierra. Pacífica. 6 de vida, 1 `shell`. No se domestica; sin cebo; cabe en la jaula. |
+| Hormiga infernal (`hell_ant`) | 293 | hormiga | `fossil_hell_ant`, en `amber_rock` | Una sola hormiga grande, sin colonia, con un cuerno y dos mandíbulas que se cierran hacia arriba. Hostil de día y de noche: va a por el jugador más cercano a menos de 6 bloques, a 1,4 bloques/s, y muerde (1 de daño). 6 de vida; no deja nada. No se domestica; sin cebo; cabe en la jaula. |
+| Abeja antigua (`ancient_bee`) | 294 | abeja | `fossil_ancient_bee`, en `amber_rock` | Una sola abeja, sin colmena. Vuela a 1 bloque del suelo sin parar las alas y, si lleva 4 s sin tener adónde ir, se posa y las pliega. Pacífica: no pica. 6 de vida; no deja nada. No se domestica; sin cebo; cabe en la jaula. |
+| Luciérnaga antigua (`ancient_firefly`) | 295 | luciérnaga | `fossil_ancient_firefly`, en `amber_rock` | Un solo escarabajo con cuerpo. Vuela a 0,9 bloques del suelo y, si lleva 5 s sin tener adónde ir, se posa y cierra las cubiertas de las alas. De 18:00 a 6:00 su farol brilla y da un destello cada 2,5 a 4,5 s; no ilumina los bloques. Pacífica. 6 de vida, 1 `glow_dust`. No se domestica; sin cebo; cabe en la jaula. |
+| Vegavis (`vegavis`) | 278 | pato | `fossil_vegavis`, en `fossil_rock_rare` | Un pato fino y bajo de pico puntiagudo; pasea y picotea el suelo. Pacífico. 8 de vida, 1–2 `feather` (y suelta plumas). Se domestica con lo que come el pato (`tall_grass`, `wheat_seeds`, `raw_fish`, `flower_yellow`; 1 de 3). Sin cebo; cabe en la jaula. |
+| Loro Heracles (`heracles`) | 279 | guacamayo | `fossil_heracles`, en `fossil_rock_rare` | Un loro de 1 bloque de alto que no vuela; pasea despacio. Neutral: si le pegas, se gira, abre las alas y el pico 0,6 s y muerde a quien siga a menos de 1,9 bloques (2 de daño, solo a quien le pegó). 16 de vida, 1–3 `feather`. No se domestica, ni cebo ni jaula. |
+| Búho gigante de Cuba (`giant_owl`) | 282 | búho | `fossil_giant_owl`, en `fossil_rock_rare` | Un búho de 1,1 bloques sobre patas largas; anda al paso de una cabra, de día y de noche, y no vuela. Neutral: si le pegas, se gira, abre las alas 0,5 s y da una patada a quien siga a menos de 2 bloques (2 de daño y un empujón, solo a quien le pegó). 16 de vida, 1–3 `feather`. No se domestica, ni cebo ni jaula. |
+| Águila de Haast (`haast_eagle`) | 280 | águila | `fossil_haast_eagle`, en `fossil_rock_rare` | Voladora (movimiento `glide`), 2,6 bloques de punta a punta. Da vueltas a unos 8 bloques del suelo, a menos de 12 de su casa; cada 35 a 70 s baja a posarse de 10 a 22 s. Hostil: si estás en el suelo debajo, a menos de 10 bloques y sin techo, chilla (y lo dice el chat), a los 1,6 s se lanza a 9 bloques/s (2 de daño si te alcanza) y no repite en 25 a 40 s. 16 de vida, 2–3 `feather`. No se domestica, ni cebo ni jaula. |
+| Argentavis (`argentavis`) | 281 | buitre | `fossil_argentavis`, en `fossil_rock_rare` | Volador (movimiento `glide`), 5 bloques de punta a punta: un cóndor gigante. Da vueltas anchas y lentas a unos 10 bloques del suelo, a menos de 14 de su casa, aleteando solo cada 10 a 20 s; cada 60 a 120 s baja a posarse de 15 a 30 s. Pacífico. 20 de vida, 2–4 `feather`. No se domestica, ni cebo ni jaula. |
+| Pterosaurio (`pterosaur`) | 298 | — | `fossil_pterosaur`, en `fossil_rock_rare` | Volador (movimiento `glide`), 5 bloques de punta a punta: un reptil de alas de piel, pico sin dientes y cresta, con 2 colores. Da vueltas a unos 9 bloques del suelo, a menos de 14 de su casa; cada 50 a 100 s baja a posarse de 12 a 25 s. Pacífico; no pesca. 16 de vida, 1–2 `leather`. No se domestica, ni cebo ni jaula. |
+
+**Los animales marinos** (`js/game/sea_animals.js`, el movimiento `cruise`, uno para todos). Solo reviven junto al agua que pide su fósil (`water`), aparecen dentro de ella y no salen nunca: miran por delante tanto como mide su cuerpo, frenan y giran antes de una pared, del fondo o de la superficie, y no atraviesan ni la roca ni el vidrio. Cada especie dice en su `info` dónde le gusta estar: `seaDepth` (`'bed'`, camina por el fondo, o de 0 a 1, a qué altura del agua nada), `seaBreath` (cada cuántos segundos sube a respirar aire), `seaJet` (avanza a chorros, de espaldas), `seaIdle` (qué parte del tiempo pasa quieto), `seaCurl` (con qué probabilidad se hace una bola al golpearlo) y `seaRange` (cuánto se aleja de donde revivió: por defecto, 3 bloques más su largo). Golpeados huyen a 2,4 veces su velocidad. Uno hostil (con `hostile` y `attackDamage`) solo va a por un jugador que esté dentro del agua: en la orilla estás a salvo. Si se quedan sin agua esperan tumbados en el suelo, sin morir, hasta que vuelve. `/mob` y el huevo los ponen en el agua más cercana, y avisan si no la hay. Cada cliente mueve su copia: lo que comparten todos es el sitio donde revivió y las paredes de su estanque.
+
+**Los grandes voladores** (`js/game/gliders.js`, el movimiento `glide`, uno para todos). Reviven en el suelo, junto a la máquina, y a los pocos segundos despegan: suben 2 bloques en vertical, abren las alas y dan vueltas sobre su casa, planeando, con unos aleteos de vez en cuando; se inclinan en los giros, y giran según el tamaño de sus alas (uno grande necesita círculos anchos). Cada cierto tiempo bajan a posarse en el sitio más alto que ven cerca de su casa, o en el suelo, y vuelven a despegar. Nunca salen de su radio ni se meten en un bloque: su cuerpo es una fila de puntos de punta a punta de las alas, y un paso solo se da si ninguno entra en un bloque (el agua cuenta); unas pocas veces por segundo miran lo que tienen delante y el suelo, pasan por encima de lo bajo y rodean lo alto. Con un techo encima no vuelan: en el suelo salen revoloteando de debajo si hay cielo abierto a menos de 4 bloques, y si no se quedan; un techo puesto encima mientras vuelan (algo a menos de 5 bloques sobre su lomo durante 4 s) los hace bajar despacio. Golpeados despegan y no se posan en 20 s. Cada especie dice en su `info` `glideHeight` (a qué altura sobre el suelo vuela: 8), `glideRange` (cuánto se aleja de su casa: 12), `glideAloft` (segundos en el aire entre dos posadas), `glidePerch` (segundos posado) y `glideBeat` (segundos de planeo entre dos tandas de aleteos); su envergadura se lee de su modelo. Uno hostil (con `hostile` y `attackDamage`) se lanza en picado, una vez, sobre un jugador que esté en el suelo debajo de él, a menos de `chaseDistance` bloques y cerca de su casa: antes chilla y lo dice el chat, y no se lanza si el jugador tiene un bloque a menos de 5 sobre la cabeza, está en el agua o no lo ve. Cada cliente mueve su copia, y el picado es de cada cliente: lo que comparten todos es la casa. El servidor los crea con `Radius: 0`. `/mob` y el huevo los ponen posados en el suelo.
 
 ## Cultivos
 
@@ -584,6 +653,59 @@ Las recetas antiguas (*Refine* para los bloques de metal y *Synthesize* para los
 
 Un mundo guardado conserva sus chunks: las vetas nuevas solo salen en los que aún no se habían generado.
 
+## Fósiles y ámbar
+
+Páginas 262 y 263 de la guía del juego. Los hace `pkg/terrain/fossils.go` con el terreno, y `js/terrainGen.js` hace lo mismo; los bloques, los objetos y qué animal hay dentro son de `js/game/fossils.js`.
+
+Lo que hay en la roca de un chunk se decide solo con sus coordenadas y cabe entero en él. Un fósil solo sustituye a piedra normal (los huesos recientes, a tierra o arena): nunca a un mineral ni a la roca madre, ni a nada por debajo de y = −11, ni al bloque de arriba de una columna.
+
+| Bloque | Dónde | Altura | Cuántos |
+|---|---|---|---|
+| `fossil_rock` | piedra, cualquier bioma | de y = −11 a y = 2 | dos o tres bolsas en casi todos los chunks (tres intentos al 90 %), de 1 a 3 bloques que se tocan; unos 4,7 bloques por chunk |
+| `fossil_rock_rare` | piedra, cualquier bioma | de y = −11 a y = −3 | un bloque en 4 de cada 5 chunks |
+| `fossil_bones_skull`, `fossil_bones_spine`, `fossil_bones_tail` | piedra, cualquier bioma | de y = −11 a y = −4 | un esqueleto en 1 de cada 14 chunks: tres bloques en línea a lo largo de x o de z, a la misma altura, la columna en medio y cada extremo a 2 o 3 bloques de ella; si un mineral ocupara una de las tres casillas, no hay esqueleto |
+| `amber_rock` | piedra bajo columnas de bosque, con al menos un bloque de piedra encima | de y = 3 a y = 12, casi todo de 3 a 5 | bolsas de 1 a 3; hay en 2 de cada 5 chunks de bosque |
+| `old_bones` | de 1 a 3 bloques bajo el suelo, en tierra seca: arena de playa (fuera del desierto) o tierra de llanura | la del suelo | 1 columna de cada 110 en la playa, 1 de cada 1500 en la llanura |
+
+Estas cantidades no se ajustaron por chunk, sino a lo que encuentra quien cava una galería de 1 × 2: ve los dos bloques de cada paso y los seis que los tocan. En roca profunda, con los pies entre y = −10 e y = −6, sale un fósil común cada 140 pasos más o menos (un bloque cada 90), uno raro cada 360 y un bloque de esqueleto cada 1200 (un esqueleto cada 1900). Diez minutos de galería, unos 400 pasos, dan dos fósiles comunes o más casi 9 veces de cada 10 y enseñan uno raro 2 veces de cada 3. Bajo un bosque, con los pies en y = 3 o en y = 4, sale ámbar cada 150 o cada 220 pasos. Lo mide `TestATunnelMeetsFossilsAsOftenAsItWasTunedTo` (`pkg/terrain/fossils_test.go`) con márgenes amplios; los recuentos por chunk están fijados al 15 %.
+
+Al romperlo, un bloque nunca se da a sí mismo: da el fósil del animal que tiene dentro (`fossilItemAt`, por el `dropAt` del bloque; el robot recibe lo mismo). El animal sale de la posición del bloque, con los pesos de las especies de su clase: `fossil_rock` elige entre las de roca comunes, `fossil_rock_rare` entre las raras y legendarias, `amber_rock` entre las de ámbar y `old_bones` entre las de huesos. Los tres bloques de un esqueleto eligen por su chunk, así que dan el cráneo, la columna y la cola de un mismo animal. Mientras ninguna especie tenga un fósil de esa clase, dan `cobblestone`, `amber` (un objeto sin receta) y `dirt`.
+
+Una especie dice su fósil al registrarse, con el campo `fossil` de `registerSpecies` (`js/extensions.js`):
+
+| Campo | Valores | Por defecto |
+|---|---|---|
+| `source` | `rock`, `amber`, `bones` (huesos recientes), `skeleton` (tres piezas) | obligatorio |
+| `rarity` | `common`, `rare`, `legendary` | obligatorio |
+| `weight` | probabilidad frente a las demás especies del mismo bloque | 1 |
+| `water` | bloques de agua unidos que necesita para revivir (animal marino) | 0 |
+| `seconds` | lo que tarda en revivir | 20, 45 o 120 según la rareza |
+
+De ahí salen sus objetos: `fossil_<especie>`, o `fossil_<especie>_skull`, `_spine` y `_tail` si es un esqueleto (`fossilItemsOf`). Cada uno lleva `revives` (la especie), `rarity` y, en los esqueletos, `piece`. Se buscan con `#fósil`.
+
+Un mundo guardado conserva sus chunks: los fósiles solo salen en los que aún no se habían generado.
+
+## Máquina de revivir
+
+Página 264 de la guía del juego. Todo lo decide el servidor (`pkg/network/revival.go`); `js/game/revival.js` tiene el bloque, la receta y el panel.
+
+| Resultado | Ingredientes |
+|---|---|
+| `revival_machine` | 4 `iron_block` + 4 `glass` + 6 `copper_wire` + 1 `electric_motor` + 1 `water_bucket` |
+
+- **Qué es:** un cofre de tres huecos (`storage.go`) que solo admite fósiles, y un consumidor eléctrico de **100 W** que solo los pide mientras trabaja. No tiene mensajes propios del cliente: los fósiles entran y salen con `storagePut` y `storageTake`, que ya se rechazan en la parcela de otro.
+- **Huecos:** `fossil_<especie>` va al primero; `fossil_<especie>_skull`, `_spine` y `_tail`, cada uno al suyo. Hacen un juego cuando son todos de un mismo animal y no falta ninguna pieza. Caben varios iguales por hueco: cada animal gasta uno de cada.
+- **Corriente:** entra por los cuatro lados y por debajo. Una manivela girando (100 W) o una noria con tres lados mojados (105 W) bastan; un generador de radioisótopos (80 W), no. Sin corriente espera y conserva lo hecho.
+- **Señal:** su cara de **arriba** es su entrada de señal y no conduce (`SignalTop` en `powerKinds`, `conducts` en `logic.go`): lo que tiene encima nunca se une a la red que la alimenta. Hay señal cuando el bloque de encima es eléctrico, conduce hacia abajo y su red lleva señal: una palanca activada, un pulsador pulsado (1,5 s), una placa, un sensor o una puerta encendidos, o un cable cuya red tiene corriente o un bloque lógico encendido.
+- **Arranque, por nivel:** en el primer tick (cada 200 ms) en que hay juego completo, señal, agua si hace falta y menos de 12 animales guardados a 32 bloques o menos. Desde ahí ya no necesita la señal. Con la palanca activada arranca al meter el fósil, y con varios fósiles hace un animal tras otro.
+- **Trabajo:** cuenta los segundos con corriente hasta los de su especie (20, 45 o 120). Sacar un fósil lo para y se pierde lo hecho. Mientras trabaja de verdad el servidor la nombra `revival_machine:on` (brilla, luz de nivel 9).
+- **Agua:** un animal marino necesita que la máquina toque tantos bloques de `water` unidos como diga su fila (4, 6, 16, 60, 120 o 300), contados por inundación desde sus seis caras, a 16 bloques o menos hacia cada lado.
+- **El animal:** al terminar se gastan los fósiles y el servidor crea un animal guardado (`animalSpawn`, origen `revival`), sin dueño. El de tierra aparece en una casilla libre a 3 bloques o menos, a la altura de la máquina si puede ser, con suelo debajo, dos casillas libres y otra al lado a la que andar; solo si no hay ninguna, encima de la máquina. El marino, en la casilla de su agua con más agua alrededor, a 4 bloques o menos. Esa casilla es su hogar. Nunca en otra parcela o zona que la de la máquina. Sin sitio, espera con el trabajo hecho y vuelve a mirar cada segundo.
+- **Aviso:** `revivalDone {x, y, z, species, id, at}` a los jugadores a 48 bloques o menos: sonido a menos de 40, chispas a menos de 24, y a menos de 16 la especie queda descubierta en el bestiario (`bestiaryEncounter`).
+- **Panel:** dice qué falta con palabras, en los dos idiomas (`revivalStatusLines`), con lo que el servidor manda en `revival` dentro de `storageContents`. El nombre del animal es "???" hasta que el jugador ha visto uno vivo.
+
+La tabla del servidor es `revivalSpecies`: por especie, `Pieces` (1 o 3), `Water`, `Seconds`, `Radius` (cuánto la pasea el servidor: más de 0 solo si su movimiento tiene `walksToGoal`), `Speed` (su `info.speed`) y `Chase`. `test/js/revival.test.js` compara cada especie que declara un fósil con su fila y dice qué campo cambiar.
+
 ## Bloque luminoso
 
 Un cubo decorativo que brilla solo (página 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un
@@ -700,8 +822,13 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   cuentan si están en esa zona. El mojón no se mueve (`mechFixed`).
 - **Ayudantes:** robot, castor y golem de cobre actúan desde el navegador de su dueño, con sus mensajes: el servidor los trata
   como a él, y además preguntan `claimRefusalAt` antes de actuar.
+- **Animales que guarda el servidor** (`animals.go`): uno con dueño solo lo cambia, golpea o quita su dueño (`animalSet`,
+  `animalHurt`, `animalGone`); uno sin dueño no lo golpea, quita ni domestica (`animalAdopt`) un extraño dentro de una parcela
+  ajena o de la zona de inicio, y nadie deja sentado un animal donde no puede construir (`animalSet` con modo quieto). Al
+  rechazado se le vuelve a contar el animal entero, para que su copia quede como es. `animalAt` (dónde se paró la copia de un
+  cliente) no se rechaza a nadie, pero en una parcela ajena solo sirve para devolver el animal a donde estaba.
 - **Sin proteger, a propósito:** `sampleTake` (el agua o el musgo siguen ahí), `signVote`, `powerCrank`, `powerFeed`,
-  `powerProbe`, `soundBlockPlay`. **Imposible de proteger** (lo decide el navegador y el servidor no lo ve): mascotas y mobs,
+  `powerProbe`, `soundBlockPlay`. **Imposible de proteger** (lo decide el navegador y el servidor no lo ve): mobs salvajes,
   trampas y jaulas, hormigueros de tarro, objetos tirados, el inventario. Placas de presión y sensores de proximidad reaccionan a
   cualquiera, como deben.
 - **Lista:** `claimList {claims, spawn, radius}` al conectar, tras recuperar el jugador y tras cada cambio; cada parcela con su
