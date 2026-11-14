@@ -71,6 +71,10 @@ In the order they arrived in the game; the table grows with each one that arrive
 | ![](mob:haast_eagle) | [Haastʼs eagle](280) | ![](mob:eagle) [Eagle](33) | 2026-11-13 |
 | ![](mob:argentavis) | [Argentavis](281) | ![](mob:vulture) [Vulture](40) | 2026-11-13 |
 | ![](mob:pterosaur) | [Pterosaur](298) | — | 2026-11-13 |
+| ![](mob:mammoth) | [Mammoth](296) | — | 2026-11-13 |
+| ![](mob:triceratops) | [Triceratops](297) | — | 2026-11-13 |
+| ![](mob:glyptodon) | [Glyptodon](301) | — | 2026-11-13 |
+| ![](mob:deinotherium) | [Deinotherium](302) | — | 2026-11-13 |
 
 ## Trivia
 

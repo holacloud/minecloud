@@ -71,6 +71,10 @@ En el orden en que llegaron al juego; la tabla crece con cada uno que llega. Pul
 | ![](mob:haast_eagle) | [Águila de Haast](280) | ![](mob:eagle) [Águila](33) | 2026-11-13 |
 | ![](mob:argentavis) | [Argentavis](281) | ![](mob:vulture) [Buitre](40) | 2026-11-13 |
 | ![](mob:pterosaur) | [Pterosaurio](298) | — | 2026-11-13 |
+| ![](mob:mammoth) | [Mamut](296) | — | 2026-11-13 |
+| ![](mob:triceratops) | [Triceratops](297) | — | 2026-11-13 |
+| ![](mob:glyptodon) | [Gliptodonte](301) | — | 2026-11-13 |
+| ![](mob:deinotherium) | [Deinoterio](302) | — | 2026-11-13 |
 
 ## Curiosidades
 

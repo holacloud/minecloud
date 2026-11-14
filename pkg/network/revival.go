@@ -158,10 +158,10 @@ var revivalSpecies = map[string]revivalRow{
 	"ancient_firefly": {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.5, Chase: 0},
 
 	// The big ones of the land.
-	"mammoth":      {Pieces: 3, Water: 0, Seconds: 45, Radius: 8, Speed: 0.38, Chase: 0},
-	"deinotherium": {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.38, Chase: 0},
-	"glyptodon":    {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.38, Chase: 0},
-	"triceratops":  {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.38, Chase: 0},
+	"mammoth":      {Pieces: 3, Water: 0, Seconds: 45, Radius: 8, Speed: 0.4, Chase: 0},
+	"deinotherium": {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.42, Chase: 0},
+	"glyptodon":    {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.25, Chase: 0},
+	"triceratops":  {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.36, Chase: 0},
 
 	// The giants.
 	"diplodocus":    {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.38, Chase: 0},

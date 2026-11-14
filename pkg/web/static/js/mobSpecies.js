@@ -19,6 +19,7 @@
 //   grazer     lowers its head to graze while idle
 //   restDrop   lies down now and then, folding its legs and lowering its body this far
 //   tailStrike attacks by lunging its curled tail forward
+//   charge     struck, it turns on the player and charges once: the numbers of js/game/charge.js
 //   mount      can be ridden (right click): rider eye height, seat height above its feet,
 //              speed, jump strength; see js/game/riding.js
 //   movement   'ground' (default), 'swim' (lives in water), 'hop' (jumps instead of
