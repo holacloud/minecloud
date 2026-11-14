@@ -1054,3 +1054,57 @@ func TestAStrangerCannotUseAMachineInSomebodysPlot(t *testing.T) {
 		}
 	}
 }
+
+// The whole table, one animal at a time: its fossils go in (one, or the three pieces of a skeleton), the
+// machine has power and its signal, and a sea animal the water its row asks for and no less. The animal
+// that comes out is the one of the row, told to animalSpawn as the row says, and the fossils are used up.
+func TestEveryAnimalOfTheTableComesBackToLifeFromItsFossils(t *testing.T) {
+	if len(revivalSpecies) != 41 {
+		t.Fatalf("the table has %d animals, and the plan 41", len(revivalSpecies))
+	}
+	for species, row := range revivalSpecies {
+		rig := newRevivalRig(t)
+		rig.power, rig.signal = true, true
+		items := []string{"fossil_" + species}
+		if row.Pieces == 3 {
+			items = nil
+			for _, piece := range revivalPieces {
+				items = append(items, "fossil_"+species+"_"+piece)
+			}
+		}
+		for _, item := range items {
+			if outcome := rig.put(item, 1); outcome.Amount != 1 {
+				t.Fatalf("%s: the machine did not take %s: %+v", species, item, outcome)
+			}
+		}
+		if row.Water > 0 {
+			// With no water at all it must wait, however long.
+			if news, _ := rig.run(row.Seconds + 5); len(news) != 0 || rig.work().started() {
+				t.Fatalf("%s: a sea animal started with no water", species)
+			}
+			// A pool that touches the machine: ten by seven and as deep as it takes.
+			deep := (row.Water + 69) / 70
+			revivalFill(rig.w, 1, 10, 1-deep, 0, -3, 3, "water")
+		}
+		news, _ := rig.run(row.Seconds + 3)
+		if len(news) != 1 || len(rig.made) != 1 {
+			t.Fatalf("%s: %d animals after its %v seconds (panel: %+v)", species, len(rig.made), row.Seconds, rig.view())
+		}
+		spec := rig.made[0]
+		if spec.Species != species || spec.Origin != "revival" || spec.Radius != row.Radius || spec.Speed != row.Speed ||
+			spec.Chase != row.Chase || spec.ChaseDay != row.ChaseDay || spec.ChaseSpeed != row.ChaseSpeed {
+			t.Fatalf("%s: animalSpawn was told %+v, and its row is %+v", species, spec, row)
+		}
+		at := [3]int{int(math.Floor(spec.X)), int(math.Floor(spec.Y)), int(math.Floor(spec.Z))}
+		if here := rig.w[at]; (row.Water > 0) != (here == "water") || (row.Water == 0 && here != "") {
+			t.Fatalf("%s: it appears at %v, which is %q", species, at, here)
+		}
+		if block := rig.block(); block != nil {
+			for _, slot := range block.Slots {
+				if slot.Count > 0 {
+					t.Fatalf("%s: its fossils are still in the machine: %+v", species, block.Slots)
+				}
+			}
+		}
+	}
+}
