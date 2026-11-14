@@ -4,6 +4,8 @@
 // - A right click opens the panel (crouch to build against the chest). It shows the chest's slots
 //   and the player's items; a click or tap moves the amount picked in the row above them. Other
 //   players' moves appear live, as the server sends every watcher the new contents.
+// - A block that keeps things and has a panel of its own says `storagePanel: false`: this one never opens
+//   for it (js/game/revival.js).
 // - Moving is two steps so that nothing is lost or duplicated. Putting takes the items out of the
 //   inventory first and gives back whatever the server says did not land; taking adds only what
 //   the server says left the chest. Until the answer arrives the move is `pending` (saved in the
@@ -174,7 +176,7 @@ Object.assign(Game.prototype, {
     storageTryOpen(position) {
         const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
         const def = type && this.world.blockTypes[type];
-        if (!def || !def.storageSlots) return false;
+        if (!def || !def.storageSlots || def.storagePanel === false) return false;
         if (!this.network || !this.network.connected) {
             this.receiveSystemMessage({ text: 'Not connected: chests live on the server' });
             return true;

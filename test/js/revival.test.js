@@ -72,7 +72,7 @@ function loadGame(species = '') {
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, Game, MOB_SPECIES, ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, TEXTURE_PATTERNS, GAME_CONTENT_HOOKS, ITEM_USE_HANDLERS, MODAL_PANELS,
         NETWORK_HANDLERS, FOSSIL_SPECIES, FOSSIL_PIECES, STORAGE_KINDS, ELECTRIC_KINDS, REVIVAL_KIND, REVIVAL_PIECES, REVIVAL_TEXT, REVIVAL_GUIDE_PAGE, REVIVAL_HEAR_RANGE,
-        REVIVAL_WITNESS_RANGE, fossilItemsOf, mobMovementIs, itemTagsOf, setGameLang, gameLang, revivalStatusLines, revivalProgress, revivalRefusalLine, revivalSpeciesOfItem,
+        REVIVAL_WITNESS_RANGE, REVIVAL_LIGHTS, REVIVAL_LIGHT_ROWS, REVIVAL_LIGHT_MS, REVIVAL_LIGHT_COLOURS, revivalBuildsOnTop, revivalLightPixels, revivalPaintLights, fossilItemsOf, mobMovementIs, itemTagsOf, setGameLang, gameLang, revivalStatusLines, revivalProgress, revivalRefusalLine, revivalSpeciesOfItem,
         revivalIsComplete, revivalIsDone, revivalSay });`, context);
     return context;
 }
@@ -270,6 +270,85 @@ test('its faces are painted: a cap, a glass with something in it and a base, and
     assert.ok(onG > liquidG + 30 && onG > onR, 'the liquid glows');
 });
 
+// A 2D context that keeps what is painted on it: 'x,y' -> colour.
+function paintedPixels() {
+    const pixels = new Map();
+    const context = {
+        fillStyle: '',
+        fillRect(x, y, w, h) { for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) pixels.set(`${px},${py}`, this.fillStyle); }
+    };
+    return { context, pixels };
+}
+
+test('while it works the four lights of its base run one after another, where its side has them', () => {
+    const factory = world.textureFactory;
+    const css = (colour) => `#${colour.toString(16).padStart(6, '0')}`;
+    const { lit, trail, dark } = ctx.REVIVAL_LIGHT_COLOURS;
+    assert.equal(ctx.REVIVAL_LIGHTS.length, 4);
+    for (const size of [16, 128, 256]) {
+        // Where the side of a working machine has its lights: the pixels of their dark colour, and no other.
+        const surface = factory.createSurface(size, false);
+        factory.patterns().revival_machine_side_on(surface, null, 1);
+        const painted = new Set();
+        const want = factory.rgb(dark);
+        for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+            if ([0, 1, 2].every((channel) => surface.color[(y * size + x) * 3 + channel] === want[channel])) painted.add(`${x},${y}`);
+        }
+        assert.ok(painted.size >= 4, `${size}: the side has its lights`);
+        for (let step = 0; step < 4; step++) {
+            const { context, pixels } = paintedPixels();
+            ctx.revivalPaintLights(context, size, step);
+            assert.deepEqual([...pixels.keys()].sort(), [...painted].sort(), `${size}, step ${step}: the lights are painted where the side has them`);
+            // One lit, the one before it fading, the other two dark; each light is all of one colour.
+            const [top] = ctx.revivalLightPixels(ctx.REVIVAL_LIGHT_ROWS[0], ctx.REVIVAL_LIGHT_ROWS[1], size);
+            const colours = ctx.REVIVAL_LIGHTS.map((from) => pixels.get(`${ctx.revivalLightPixels(from, from + 1, size)[0]},${top}`));
+            const wanted = [0, 1, 2, 3].map((i) => (i === step ? css(lit) : i === (step + 3) % 4 ? css(trail) : css(dark)));
+            assert.deepEqual([...colours], wanted, `${size}, step ${step}`);
+            assert.equal(new Set(pixels.values()).size, 3);
+        }
+    }
+    // At 16 pixels each light is one pixel of the row of the vents.
+    const small = paintedPixels();
+    ctx.revivalPaintLights(small.context, 16, 0);
+    assert.deepEqual([...small.pixels.keys()], ['3,14', '5,14', '7,14', '9,14']);
+    // A stopped machine has vents there, not lights.
+    const off = factory.createSurface(16, false);
+    factory.patterns().revival_machine_side(off, null, 1);
+    assert.notDeepEqual([0, 1, 2].map((channel) => off.color[(14 * 16 + 3) * 3 + channel]), factory.rgb(dark));
+
+    // Every frame: the step is painted on the texture the working machines share, once for each step, and
+    // nothing is painted until a working machine has been drawn.
+    const clock = ctx.performance.now;
+    try {
+        const game = new ctx.Game();
+        const canvas = paintedPixels();
+        const texture = { image: { width: 16, getContext: () => canvas.context }, needsUpdate: false };
+        const materials = new Map();
+        game.world = { blockTypes: world.blockTypes, materials };
+        const at = (ms) => { ctx.performance.now = () => ms; game.revivalLightsUpdate(); };
+        at(0);
+        assert.equal(canvas.pixels.size, 0, 'no working machine drawn: nothing to paint');
+        assert.equal(world.blockTypes['revival_machine:on'].materialKey, 'revival_machine#on');
+        materials.set('revival_machine#on', [{ map: texture }, { map: texture }, {}, {}, { map: texture }, { map: texture }]);
+        at(10);
+        assert.equal(canvas.pixels.size, 0, 'the same step: nothing new');
+        at(ctx.REVIVAL_LIGHT_MS);
+        assert.equal(canvas.pixels.get('5,14'), css(lit));
+        assert.equal(texture.needsUpdate, true);
+        texture.needsUpdate = false;
+        at(ctx.REVIVAL_LIGHT_MS + 20);
+        assert.equal(texture.needsUpdate, false, 'not again within the step');
+        at(ctx.REVIVAL_LIGHT_MS * 2);
+        assert.equal(canvas.pixels.get('7,14'), css(lit));
+        assert.equal(canvas.pixels.get('5,14'), css(trail));
+        // The material of a stopped machine is never touched.
+        assert.ok(!materials.has(world.blockTypes.revival_machine.materialKey));
+    } finally {
+        ctx.performance.now = clock;
+    }
+    assert.match(read(JS, 'game', 'revival.js'), /registerFrameUpdate\(function \(\) \{[^}]*revivalLightsUpdate\(\)/);
+});
+
 test('it is made of things the game has, and is in the inventory', () => {
     const items = [];
     const recipes = [];
@@ -307,6 +386,47 @@ test('its panel opens before a chest would, and closes as a window of the game',
     const sent = [...read(JS, 'game', 'revival.js').matchAll(/\.send\('(\w+)'/g)].map((match) => match[1]);
     assert.deepEqual([...new Set(sent)].sort(), ['storageClose', 'storageOpen']);
     assert.match(GO, /createMessage\("revivalDone", made\)/);
+});
+
+test('a block held over its top face is built there, and any other right click opens its panel', () => {
+    const mine = ctx.ITEM_USE_HANDLERS.find((handler) => String(handler).includes('revivalTryOpen'));
+    const chest = ctx.ITEM_USE_HANDLERS.find((handler) => String(handler).includes('storageTryOpen'));
+    const at = { x: 2, y: 3, z: 4 };
+    // What becomes of a right click with `held` in the hand on a face (`normal`) of the block at `at`, at
+    // `height` over its floor: who took it, or 'left' when nobody did, and so the block is built.
+    const click = (held, normal, height, { crouching = false, block = 'revival_machine' } = {}) => {
+        const opened = [];
+        const game = new ctx.Game();
+        Object.assign(game, {
+            world: { blockTypes: world.blockTypes, getBlockTypeAt: () => block, getBlockPositionFromIntersection: () => ({ ...at }) },
+            cameraController: { isCrouching: crouching }, network: { connected: false },
+            // Without a connection a chest only says so: enough to know that it took the click.
+            receiveSystemMessage() { opened.push('chest'); },
+            revivalTryOpen() { opened.push('machine'); return true; }
+        });
+        const hit = { face: { normal }, point: { x: 2.5, y: at.y + height, z: 4.5 } };
+        const taken = mine.call(game, held, hit) || chest.call(game, held, hit);
+        return taken ? opened.join(' ') : 'left';
+    };
+    const up = { x: 0, y: 1, z: 0 };
+    const side = { x: 1, y: 0, z: 0 };
+    assert.ok(world.blockTypes.lever && !world.blockTypes.lever.itemOnly, 'a lever is a block');
+    assert.ok(world.blockTypes.fossil_test_walker.itemOnly, 'a fossil is not');
+    // On top with a block in the hand nobody takes the click, not even the chest it is underneath.
+    assert.equal(click('lever', up, 1), 'left');
+    assert.equal(click('stone', up, 1, { block: 'revival_machine:on' }), 'left');
+    // Otherwise it opens: an empty hand or a fossil on top, a block against a side or on the ledge of its base.
+    assert.equal(click(null, up, 1), 'machine');
+    assert.equal(click('fossil_test_walker', up, 1), 'machine');
+    assert.equal(click('lever', side, 0.5), 'machine');
+    assert.equal(click('lever', up, 0.25), 'machine');
+    assert.equal(click('lever', side, 0.5, { block: 'revival_machine:on' }), 'machine');
+    // Crouching builds against it anywhere, as against a chest, and never opens the panel of a chest.
+    assert.equal(click('lever', side, 0.5, { crouching: true }), 'left');
+    assert.equal(click(null, up, 1, { crouching: true }), 'left');
+    // Any other block is none of its business, and a chest is still a chest.
+    assert.equal(click('lever', up, 1, { block: 'stone' }), 'left');
+    assert.equal(click('lever', up, 1, { block: 'chest' }), 'chest');
 });
 
 // ---- The panel ----
@@ -484,6 +604,51 @@ test('the panel follows what the server says of its own machine, and redraws its
     game.revivalAt = null;
     game.revivalOnContents(contents(10, 9));
     assert.equal(game.rendered, 2);
+});
+
+test('the bar shows where the work is as the panel opens, and only then slides', () => {
+    const { game } = makeGame();
+    // The parts of the panel that revivalRenderStatus writes to.
+    const classes = new Set();
+    const fill = { style: {}, offsetWidth: 0 };
+    const parts = {
+        '.revival-bar': { classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); } }, firstChild: fill },
+        '#revival-lines': { innerHTML: '', appendChild() {} }, '#revival-name': {}, '#revival-note': {}
+    };
+    game.revivalPanel = { querySelector: (selector) => parts[selector] };
+    const draw = (view) => {
+        game.revivalContents = view ? { slots: [{}, {}, {}], revival: { ...base, species: 'test_walker', seconds: 45, ...view } } : null;
+        ctx.Game.prototype.revivalRenderStatus.call(game);
+        return `${fill.style.width}${classes.has('jump') ? ' at once' : ' sliding'}`;
+    };
+    // As revivalTryOpen leaves it: nothing known yet.
+    game.revivalBarAt = null;
+    assert.equal(draw(null), '0% at once');
+    // The first news of a machine at work: the bar is there, it does not grow to it.
+    assert.equal(draw({ working: true, powered: true, done: 27 }), '60% at once');
+    // From then on it slides, a second at a time, and stays put while the machine waits for power.
+    assert.equal(draw({ working: true, powered: true, done: 36 }), '80% sliding');
+    assert.equal(draw({ working: true, powered: false, done: 36 }), '80% sliding');
+    assert.ok(classes.has('paused'));
+    // A fossil taken out: the work is lost, at once.
+    assert.equal(draw({ working: false }), '0% at once');
+    assert.equal(draw({ working: true, powered: true, done: 1 }), `${(1 / 45) * 100}% sliding`);
+    // Opened again on a machine at work: at once again.
+    game.revivalBarAt = null;
+    assert.equal(draw({ working: true, powered: true, done: 9 }), '20% at once');
+    const source = read(JS, 'game', 'revival.js');
+    assert.match(source, /revivalTryOpen\(position\) \{[\s\S]*?this\.revivalBarAt = null;[\s\S]*?\n    \},/);
+    assert.match(source, /\.revival-bar\.jump i\{transition:none\}/);
+});
+
+test('the captions of its three slots fit in one line, and the slots stand on one line whatever they say', () => {
+    const css = read(JS, 'game', 'revival.js');
+    const [, width, size] = css.match(/\.revival-slot\{width:(\d+)px;font-size:(\d+)px/);
+    // A letter of a monospace font is at most 0.62 of its size wide.
+    for (const lang of ['ES', 'EN']) {
+        for (const caption of ctx.REVIVAL_TEXT.slots[lang]) assert.ok(caption.length * Number(size) * 0.62 <= Number(width), `${lang}: "${caption}" fits in ${width}px`);
+    }
+    assert.match(css, /#revival-slots\{[^}]*align-items:flex-end/);
 });
 
 test('an animal is "???" until the player has seen one alive', () => {

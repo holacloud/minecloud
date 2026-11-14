@@ -3,7 +3,8 @@
 // (pkg/network/revival.go, which says the whole of it): this file has the block, its recipe and its panel.
 // - It is a chest of three slots that only takes fossils (js/game/fossils.js): one for most animals, or the
 //   skull, the spine and the tail of a skeleton, each in its slot. A right click opens its panel (crouch to
-//   build against it). The fossils move as the items of any chest do, in two steps, with the code of
+//   build against it), except on its top face with a block in the hand: that one is put there, as the top is
+//   where its lever goes. The fossils move as the items of any chest do, in two steps, with the code of
 //   js/game/storage.js (storageSendPut, storageSendTake), so nothing is lost or doubled.
 // - It is an electric consumer (ELECTRIC_KINDS, js/game/electricity.js): 100 W, only while it works. Power
 //   comes in through its sides or from below. Its TOP face is its signal and nothing else: a lever on the
@@ -13,7 +14,8 @@
 // - The panel says in plain words what is missing (revivalStatusLines), from what the server tells it
 //   (`revival` in storageContents). The animal's name is "???" until the player has seen one alive
 //   (js/game/bestiary.js).
-// - While it really works the server names it `revival_machine:on`: it glows, for everybody.
+// - While it really works the server names it `revival_machine:on`: it glows, for everybody, and the four
+//   lights of its base run one after another (revivalLightsUpdate).
 // - When an animal is made the server tells the players near (revivalDone): a chime, sparks, and whoever
 //   stands by has seen it come back, so its card of the bestiary is a secret no more. The animal itself is
 //   one the server keeps (js/game/animals.js).
@@ -32,6 +34,15 @@ const REVIVAL_NOTE_MS = 6000;
 const REVIVAL_HEAR_RANGE = 40;
 const REVIVAL_SPARK_RANGE = 24;
 const REVIVAL_WITNESS_RANGE = 16;
+// The lights of the base of a working machine: where each one starts, in sixteenths from the left of a side
+// (each is one wide, where the vents of a stopped one are), the rows they take, how long each stays lit
+// (milliseconds), and their colours: lit, the one before it, and the rest.
+const REVIVAL_LIGHTS = [3, 5, 7, 9];
+const REVIVAL_LIGHT_ROWS = [13.6, 15];
+const REVIVAL_LIGHT_MS = 170;
+const REVIVAL_LIGHT_COLOURS = { lit: 0xeafff0, trail: 0x4fc47c, dark: 0x16301f };
+// The same colours as a canvas takes them, written once.
+const REVIVAL_LIGHT_CSS = Object.fromEntries(Object.entries(REVIVAL_LIGHT_COLOURS).map(([name, colour]) => [name, `#${colour.toString(16).padStart(6, '0')}`]));
 // The pieces of a skeleton, in the order of the machine's slots (FOSSIL_PIECES, js/game/fossils.js).
 const REVIVAL_PIECES = ['skull', 'spine', 'tail'];
 
@@ -185,6 +196,33 @@ function revivalRefusalLine(reason) {
     return revivalSay('refused');
 }
 
+// Whether a right click builds on the machine instead of opening it: a block in the hand (`def`, not a
+// tool or any other thing that is only an item), on the top face of the machine at `position`. `hit` is
+// what the ray met (its `point`, and the `normal` of its `face`).
+function revivalBuildsOnTop(def, hit, position) {
+    if (!def || def.itemOnly || !hit || !hit.face || !hit.point) return false;
+    return hit.face.normal.y > 0.5 && hit.point.y - position.y > 0.9;
+}
+
+// The pixels of a texture `size` wide that one sixteenth takes from `from` to `to`: those whose middle is
+// between them, as the painters below choose theirs. Returns [first, one past the last].
+function revivalLightPixels(from, to, size) {
+    const scale = size / 16;
+    return [Math.ceil(from * scale - 0.5), Math.ceil(to * scale - 0.5)];
+}
+
+// Paints the lights of the base on the side of a working machine (`ctx`: the 2D context of its texture,
+// `size` wide), at `step` of their round: one lit, the one before it fading, the rest dark.
+function revivalPaintLights(ctx, size, step) {
+    const [top, bottom] = revivalLightPixels(REVIVAL_LIGHT_ROWS[0], REVIVAL_LIGHT_ROWS[1], size);
+    const count = REVIVAL_LIGHTS.length;
+    for (let i = 0; i < count; i++) {
+        const [left, right] = revivalLightPixels(REVIVAL_LIGHTS[i], REVIVAL_LIGHTS[i] + 1, size);
+        ctx.fillStyle = i === step ? REVIVAL_LIGHT_CSS.lit : i === (step + count - 1) % count ? REVIVAL_LIGHT_CSS.trail : REVIVAL_LIGHT_CSS.dark;
+        ctx.fillRect(left, top, right - left, bottom - top);
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // The block
 
@@ -201,7 +239,8 @@ furnShape(REVIVAL_KIND, {
 });
 
 // A side, by height: the cap with its copper rim, the glass with something curled up in its liquid, and
-// the base with its vents and its lamp. At work the liquid glows and bubbles, and the lamp is green.
+// the base with its vents and its lamp. At work the liquid glows and bubbles, the lamp is green and the
+// vents are lights, dark here: revivalPaintLights lights them in turn.
 function revivalPaintSide(f, s, on, seed) {
     const steel = f.rgb(0x59626c);
     const copper = f.rgb(0xc87533);
@@ -230,7 +269,7 @@ function revivalPaintSide(f, s, on, seed) {
             c = f.tone(s, steel, (f.hash(x, y, seed) - 0.5) * 0.08 - (py > 15 ? 0.18 : 0));
             if (py < 13) { c = f.tone(s, copper, (f.hash(x, y, seed + 5) - 0.5) * 0.12); h = 0.9; }
             // Vents, and the lamp that says it is working.
-            else if (py > 13.6 && py < 15 && px > 3 && px < 10 && Math.floor(px) % 2 === 1) { c = f.rgb(0x22262b); h = 0.3; }
+            else if (py > REVIVAL_LIGHT_ROWS[0] && py < REVIVAL_LIGHT_ROWS[1] && REVIVAL_LIGHTS.includes(Math.floor(px))) { c = f.rgb(on ? REVIVAL_LIGHT_COLOURS.dark : 0x22262b); h = 0.3; }
             else if (Math.hypot(px - 12.5, py - 14.2) < 0.8) { c = f.rgb(on ? 0x8dffb0 : 0x2e4a34); h = 0.9; }
         }
         f.put(s, x, y, c, h);
@@ -260,7 +299,7 @@ registerTexturePattern('revival_machine_top', (f, s, tint, seed) => revivalPaint
 registerTexturePattern('revival_machine_top_on', (f, s, tint, seed) => revivalPaintTop(f, s, true, seed), REVIVAL_RTX);
 
 furnBlock(REVIVAL_KIND, {
-    color: 0x4F7F80, name: 'Revival Machine', shape: REVIVAL_KIND, breakDuration: 1.2, category: 'stone', storageSlots: 3, electric: true,
+    color: 0x4F7F80, name: 'Revival Machine', shape: REVIVAL_KIND, breakDuration: 1.2, category: 'stone', storageSlots: 3, storagePanel: false, electric: true,
     faces: { top: 'revival_machine_top', side: 'revival_machine_side', bottom: 'revival_machine_top' },
     lit: {
         color: 0x6DFFA8, lightEmission: 9,
@@ -288,8 +327,8 @@ const REVIVAL_CSS = `
 #revival-panel h3{font-size:16px;margin:0;flex:1}
 #revival-panel h4{font-size:12px;margin:2px 0;opacity:.75;font-weight:400}
 #revival-panel button{min-width:44px;min-height:40px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 13px/1.1 'Consolas',monospace;cursor:pointer;touch-action:manipulation}
-#revival-slots{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
-.revival-slot{width:84px;font-size:11px;text-align:center}
+#revival-slots{display:flex;justify-content:center;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.revival-slot{width:108px;font-size:11px;text-align:center}
 .revival-cell{position:relative;width:56px;height:56px;margin:4px auto 0;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05) center/72% no-repeat;cursor:pointer;touch-action:manipulation}
 .revival-cell.empty{cursor:default;opacity:.55}
 .revival-cell:not(.empty):hover{border-color:rgba(255,255,255,.55)}
@@ -298,6 +337,7 @@ const REVIVAL_CSS = `
 .revival-bar{height:10px;border-radius:5px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.14);overflow:hidden}
 .revival-bar i{display:block;height:100%;width:0;background:#6dffa8;transition:width 1s linear}
 .revival-bar.paused i{background:#8a929a;transition:none}
+.revival-bar.jump i{transition:none}
 #revival-lines{display:flex;flex-direction:column;gap:4px;line-height:1.35}
 #revival-lines div{padding-left:20px;position:relative}
 #revival-lines div::before{position:absolute;left:0;top:0;width:16px;text-align:center}
@@ -337,6 +377,7 @@ Object.assign(Game.prototype, {
         this.revivalAt = { x: position.x, y: position.y, z: position.z };
         this.revivalContents = null;
         this.revivalRev = -1;
+        this.revivalBarAt = null;
         this.revivalNote = '';
         this.revivalRequests = new Set();
         this.revivalOpenedAt = performance.now();
@@ -468,6 +509,23 @@ Object.assign(Game.prototype, {
         if (!block || storageBaseName(block) !== REVIVAL_KIND || far || !this.network.connected || this.respawnPending) this.revivalClose();
     },
 
+    // The lights of the base of every working machine in sight: all of them share one texture (js/world.js),
+    // so the step is painted on it, a few times a second, and only once a working machine has been drawn.
+    revivalLightsUpdate() {
+        const step = Math.floor(performance.now() / REVIVAL_LIGHT_MS) % REVIVAL_LIGHTS.length;
+        if (step === this.revivalLightStep) return;
+        this.revivalLightStep = step;
+        const def = this.world.blockTypes[`${REVIVAL_KIND}:on`];
+        const materials = this.world.materials;
+        const material = def && materials && typeof materials.get === 'function' ? materials.get(def.materialKey) : null;
+        // Its faces, in the order of a box: the first is a side.
+        const texture = Array.isArray(material) && material[0] ? material[0].map : null;
+        const canvas = texture ? texture.image : null;
+        if (!canvas || typeof canvas.getContext !== 'function') return;
+        revivalPaintLights(canvas.getContext('2d'), canvas.width, step);
+        texture.needsUpdate = true;
+    },
+
     // ---- Drawing ----
 
     revivalBuildPanel() {
@@ -577,7 +635,15 @@ Object.assign(Game.prototype, {
         panel.querySelector('#revival-name').textContent = name ? revivalSay('animal', name) : revivalSay('noAnimal');
         const bar = panel.querySelector('.revival-bar');
         bar.classList.toggle('paused', !view || !view.working || !view.powered);
-        bar.firstChild.style.width = `${revivalProgress(view) * 100}%`;
+        // The bar slides from one second to the next, and jumps to where the work is when the panel has just
+        // opened or the work has been lost: it never fills up from nothing in front of the player.
+        const progress = revivalProgress(view);
+        const jump = !view || this.revivalBarAt === null || progress < this.revivalBarAt;
+        bar.classList.toggle('jump', jump);
+        bar.firstChild.style.width = `${progress * 100}%`;
+        // Read once so that the jump is drawn before the bar may slide again.
+        if (jump) void bar.firstChild.offsetWidth;
+        this.revivalBarAt = view ? progress : null;
         const lines = panel.querySelector('#revival-lines');
         lines.innerHTML = '';
         for (const { state, text } of revivalStatusLines(view, name, ELECTRIC_KINDS[REVIVAL_KIND].watts)) {
@@ -595,11 +661,16 @@ registerModalPanel({
     close() { this.revivalClose(); }
 });
 
-// Before a chest would see it: the machine has its own panel, not the panel of a chest.
+// Before a chest would see it: the machine has its own panel, not the panel of a chest. A block held over
+// its top face is left to be built there: a lever, or whatever brings its signal.
 ITEM_USE_HANDLERS.unshift(function (itemType, hit) {
     if (!hit || this.cameraController.isCrouching) return false;
     const position = this.world.getBlockPositionFromIntersection(hit);
-    return Boolean(position) && this.revivalTryOpen(position);
+    if (!position) return false;
+    const type = this.world.getBlockTypeAt(position.x, position.y, position.z);
+    if (!type || storageBaseName(type) !== REVIVAL_KIND) return false;
+    if (revivalBuildsOnTop(itemType ? this.world.blockTypes[itemType] : null, hit, position)) return false;
+    return this.revivalTryOpen(position);
 });
 
 registerGameInit(function () {
@@ -608,6 +679,7 @@ registerGameInit(function () {
 
 registerFrameUpdate(function () {
     this.revivalUpdate();
+    this.revivalLightsUpdate();
 });
 
 // Its fossils are kept as a chest's are (storage.go): what it holds comes as a chest's contents do.

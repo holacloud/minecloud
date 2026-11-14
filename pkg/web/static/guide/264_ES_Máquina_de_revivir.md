@@ -28,7 +28,7 @@ Solo admite fósiles: los de la [roca](262) y los del [ámbar](263).
 Cuando se cumple todo esto a la vez, **arranca sola**:
 
 1. **Los fósiles completos** de un animal.
-2. **Una señal encima.** Lo más fácil: pon una [palanca](207) **sobre la máquina** y actívala.
+2. **Una señal encima.** Lo más fácil: pon una [palanca](207) **sobre la máquina** y actívala. Con la palanca (o cualquier bloque) en la mano, el clic derecho en la cara de **arriba** lo coloca; en los lados, o con la mano vacía, abre la máquina.
 3. **Agua**, si el animal es marino (mira más abajo).
 4. Que no haya **demasiados animales** cerca. Con **12** o más a menos de **32** bloques, no arranca. Cuentan los animales que guarda el servidor: los domesticados, sus crías y los revividos.
 
@@ -41,7 +41,7 @@ Gasta **100 W**, y solo mientras trabaja: parada, no pide nada a la red.
 - La corriente entra **por los lados o por debajo**. Pégale un [generador](201) o tráele un [cable de cobre](202).
 - **Por arriba no entra corriente:** la cara de arriba es solo para la señal.
 - Sin corriente **espera**, y conserva lo que lleva hecho. Cuando vuelve, sigue.
-- Mientras trabaja de verdad **brilla** (luz de nivel 9) y todos lo ven.
+- Mientras trabaja de verdad **brilla** (luz de nivel 9) y las **cuatro luces de su base** se encienden una tras otra: todos lo ven. Si las luces están quietas y apagadas, no está trabajando.
 
 | Con qué | ¿Funciona? |
 |---|---|

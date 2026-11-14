@@ -28,7 +28,7 @@ It only takes fossils: those of the [rock](262) and those of the [amber](263).
 When all of this is true at once, it **starts by itself**:
 
 1. **The complete fossils** of one animal.
-2. **A signal on top.** The easy way: put a [lever](207) **on the machine** and switch it on.
+2. **A signal on top.** The easy way: put a [lever](207) **on the machine** and switch it on. With the lever (or any block) in your hand, a right click on the **top** face places it; on the sides, or with an empty hand, it opens the machine.
 3. **Water**, if it is a sea animal (see further down).
 4. Not **too many animals** nearby. With **12** or more within **32** blocks, it does not start. The animals the server keeps are counted: tamed ones, their babies and revived ones.
 
@@ -41,7 +41,7 @@ It draws **100 W**, and only while it works: idle, it asks nothing of the networ
 - Power comes in **through its sides or from below**. Put a [generator](201) against it or bring it a [copper wire](202).
 - **No power comes in from above:** the top face is for the signal only.
 - Without power it **waits**, and keeps what it has done. When power comes back, it goes on.
-- While it is really working it **glows** (light level 9) and everyone sees it.
+- While it is really working it **glows** (light level 9) and the **four lights of its base** come on one after another: everyone sees it. If the lights are still and dark, it is not working.
 
 | What feeds it | Does it run? |
 |---|---|
