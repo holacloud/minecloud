@@ -75,6 +75,8 @@ En el orden en que llegaron al juego; la tabla crece con cada uno que llega. Pul
 | ![](mob:triceratops) | [Triceratops](297) | — | 2026-11-13 |
 | ![](mob:glyptodon) | [Gliptodonte](301) | — | 2026-11-13 |
 | ![](mob:deinotherium) | [Deinoterio](302) | — | 2026-11-13 |
+| ![](mob:diplodocus) | [Diplodocus](303) | — | 2026-11-13 |
+| ![](mob:tyrannosaurus) | [Tiranosaurio](304) | — | 2026-11-13 |
 
 ## Curiosidades
 

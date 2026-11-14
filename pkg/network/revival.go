@@ -164,8 +164,8 @@ var revivalSpecies = map[string]revivalRow{
 	"triceratops":  {Pieces: 1, Water: 0, Seconds: 45, Radius: 8, Speed: 0.36, Chase: 0},
 
 	// The giants.
-	"diplodocus":    {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.38, Chase: 0},
-	"tyrannosaurus": {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.38, Chase: 0},
+	"diplodocus":    {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.3, Chase: 0},
+	"tyrannosaurus": {Pieces: 3, Water: 0, Seconds: 120, Radius: 8, Speed: 0.4, Chase: 16, ChaseSpeed: 2.2},
 
 	// The rest of the sea and the air.
 	"megalodon":    {Pieces: 3, Water: 300, Seconds: 120, Radius: 0, Speed: 0.38, Chase: 0},
