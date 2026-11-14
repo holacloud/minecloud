@@ -433,7 +433,7 @@ Object.assign(Game.prototype, {
         tap(document.getElementById('touch-menu-button'), () => this.touchOpenMenu());
         tap(document.getElementById('touch-inventory-button'), () => this.openInventoryPanel());
         tap(document.getElementById('touch-chat-button'), () => this.openChatInput());
-        tap(document.getElementById('touch-offhand-button'), () => this.offhandSwapSelected());
+        tap(document.getElementById('touch-offhand-button'), () => this.offhandPressKey());
         const menu = this.touchUi.menu;
         tap(menu.querySelector('.touch-panel-close'), () => this.touchCloseMenu());
         menu.addEventListener('pointerdown', (event) => {
@@ -468,7 +468,7 @@ Object.assign(Game.prototype, {
             ['👆', 'Interact', () => this.interactWithTarget(this.cameraController.keys.crouch)],
             ['🍖', 'Eat / use', () => this.eatSelectedItem()],
             ['📤', 'Drop', () => this.dropSelectedBlock()],
-            ['🖐', 'Left hand', () => this.offhandSwapSelected()],
+            ['🖐', 'Left hand', () => this.offhandPressKey()],
             ['🎥', 'Camera view', () => this.toggleCameraView()],
             ['📷', 'Photo mode', () => this.togglePhotoMode()],
             ['🎬', 'Camera editor', () => this.cinematicOpenPanel(), Boolean(this.creativeMode) && has('cinematicOpenPanel')],

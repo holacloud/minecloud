@@ -1,5 +1,5 @@
 // Node tests for the left hand (js/game/offhand.js): the slot's steps, what a save holds, that no unit is made or
-// lost by a swap, a drop, a death, a chest or a recipe, the key, the light, the readings of either hand and what
+// lost by the key, a drop, a death, a chest or a recipe, the key, the light, the readings of either hand and what
 // goes to other players. The game's own code runs on a stand-in for the browser: how it looks is for the game.
 // Run with: node --test test/js/offhand.test.js
 
@@ -62,7 +62,7 @@ function loadGame() {
         if (/voice\.js|guideMarkdown/.test(src)) continue;
         vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     }
-    vm.runInContext(`Object.assign(this, { Game, WorldRenderer, NetworkClient, DAMAGE_MODIFIERS, BLOCK_TYPES, OFFHAND_ITEMS, offhandCanHold, offhandSend, offhandTakeBack, offhandSwap, offhandFromSave,
+    vm.runInContext(`Object.assign(this, { Game, WorldRenderer, NetworkClient, DAMAGE_MODIFIERS, BLOCK_TYPES, OFFHAND_ITEMS, offhandCanHold, offhandSend, offhandTakeBack, offhandKeyStep, offhandFromSave,
         handsInList, carriedLightOf, nearestCarriedLights, carriedLampWithin, CARRIED_REMOTE_LIGHTS });`, context);
     context.stored = stored;
     return context;
@@ -121,23 +121,21 @@ test('taking back gives the unit to a count that may not exist yet', () => {
     assert.equal(ctx.offhandTakeBack(state), null);
 });
 
-test('the X key: every case of what each hand holds', () => {
+test('the X key: every case of what each hand holds, and it never swaps', () => {
     const cases = [
-        // right, left, counts -> outcome, select, left after, counts after
-        [null, null, { torch: 0 }, 'nothing', null, null, { torch: 0 }],
-        [null, 'torch', { torch: 0 }, 'taken', 'torch', null, { torch: 1 }],
-        ['stone', 'torch', { stone: 5, torch: 0 }, 'refused', null, 'torch', { stone: 5, torch: 0 }],
-        ['stone', null, { stone: 5 }, 'refused', null, null, { stone: 5 }],
-        ['torch', null, { torch: 1 }, 'sent', null, 'torch', { torch: 0 }],
-        ['torch', 'torch', { torch: 4 }, 'returned', null, null, { torch: 5 }],
-        ['torch', 'multimeter', { torch: 2, multimeter: 0 }, 'swapped', 'multimeter', 'torch', { torch: 1, multimeter: 1 }]
+        // right, left, counts -> outcome, left after, counts after
+        [null, null, { torch: 0 }, 'nothing', null, { torch: 0 }],
+        [null, 'torch', { torch: 0 }, 'returned', null, { torch: 1 }],
+        ['stone', 'torch', { stone: 5, torch: 0 }, 'returned', null, { stone: 5, torch: 1 }],
+        ['stone', null, { stone: 5 }, 'refused', null, { stone: 5 }],
+        ['torch', null, { torch: 1 }, 'sent', 'torch', { torch: 0 }],
+        ['torch', 'torch', { torch: 4 }, 'returned', null, { torch: 5 }],
+        ['torch', 'multimeter', { torch: 2, multimeter: 0 }, 'returned', null, { torch: 2, multimeter: 1 }]
     ];
-    for (const [right, left, counts, outcome, chosen, leftAfter, countsAfter] of cases) {
+    for (const [right, left, counts, outcome, leftAfter, countsAfter] of cases) {
         const state = { counts: { ...counts }, offhand: left };
-        const result = ctx.offhandSwap(state, right);
         const label = `${right} / ${left}`;
-        assert.equal(result.outcome, outcome, label);
-        assert.equal(result.select, chosen, label);
+        assert.equal(ctx.offhandKeyStep(state, right), outcome, label);
         assert.equal(state.offhand, leftAfter, label);
         assert.deepEqual(plain(state.counts), countsAfter, label);
     }
@@ -156,7 +154,7 @@ test('no sequence of moves makes or loses a unit', () => {
         const step = random(3);
         if (step === 0) ctx.offhandSend(state, type);
         else if (step === 1) ctx.offhandTakeBack(state);
-        else ctx.offhandSwap(state, state.counts[type] > 0 ? type : null);
+        else ctx.offhandKeyStep(state, state.counts[type] > 0 ? type : null);
         assert.ok(types.every((one) => state.counts[one] >= 0), 'no count below zero');
         assert.equal(total(), 7);
     }
@@ -168,52 +166,152 @@ test('no sequence of moves makes or loses a unit', () => {
 test('the key sends the selected item, and the right hand is empty after the last unit', () => {
     const game = makeGame({ torch: 1, stone: 2 });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.offhandType, 'torch');
     assert.equal(game.getInventoryCount('torch'), 0);
     assert.equal(game.getSelectedHeldItemType(), null, 'the only torch is not in two hands');
     assert.deepEqual(game.messages, ['Left hand: Torch']);
 });
 
-test('a swap puts the other item in the right hand, on the hotbar', () => {
-    const game = makeGame({ torch: 3, multimeter: 1 });
-    select(game, 'multimeter');
-    game.offhandSwapSelected();
+// What the hotbar shows, slot by slot, and the slot that is lit as the right hand's (or -1).
+const hotbarKeys = (game) => game.getHotbarItems().map((item) => item.key).join(',');
+const litSlot = (game) => game.getHotbarItems().findIndex((item) => item.selected);
+
+test('with another holdable item selected, the key empties the left hand into the first slot and swaps nothing', () => {
+    const game = makeGame({ stone: 2, torch: 3, multimeter: 0 });
+    game.offhandType = 'multimeter';
     select(game, 'torch');
-    game.offhandSwapSelected();
-    assert.equal(game.offhandType, 'torch');
-    assert.equal(game.getSelectedHeldItemType(), 'multimeter');
-    assert.equal(game.getInventoryCount('torch'), 2);
+    assert.equal(hotbarKeys(game), 'stone,torch');
+    game.offhandPressKey();
+    assert.ok(game.offhandType === null, 'the left hand is empty: the torch did not go there');
     assert.equal(game.getInventoryCount('multimeter'), 1);
+    assert.equal(game.getInventoryCount('torch'), 3);
+    assert.equal(hotbarKeys(game), 'multimeter,stone,torch');
+    assert.equal(game.getSelectedHeldItemType(), 'torch', 'the right hand keeps its item');
+    assert.equal(litSlot(game), 2, 'the lit slot follows the torch');
+    assert.deepEqual(game.messages, ['Multimeter back in the first slot of the hotbar']);
+    // Pressing again, with the left hand empty, sends the selected item as ever.
+    game.offhandPressKey();
+    assert.equal(game.offhandType, 'torch');
+    assert.equal(game.getInventoryCount('torch'), 2);
 });
 
-test('an item that cannot be held is refused and says so', () => {
-    const game = makeGame({ iron_hoe: 1, torch: 1 });
-    game.offhandType = 'lantern';
+test('with nothing selected, what comes back goes to the first slot and the right hand stays empty', () => {
+    const game = makeGame({ stone: 2, torch: 1, lantern: 0 });
+    select(game, 'torch');
+    game.offhandPressKey();
+    assert.equal(game.getSelectedHeldItemType(), null, 'the only torch went to the left hand');
+    game.offhandPressKey();
+    assert.ok(game.offhandType === null);
+    assert.equal(game.getInventoryCount('torch'), 1);
+    assert.equal(hotbarKeys(game), 'torch,stone');
+    assert.equal(game.getSelectedHeldItemType(), null, 'it is not selected');
+    assert.equal(litSlot(game), -1, 'no slot is lit');
+    assert.equal(owned(game, 'torch'), 1);
+});
+
+test('with the same type selected, one unit comes back and the right hand keeps it', () => {
+    const game = makeGame({ stone: 1, torch: 4 });
+    game.offhandType = 'torch';
+    select(game, 'torch');
+    game.offhandPressKey();
+    assert.ok(game.offhandType === null);
+    assert.equal(game.getInventoryCount('torch'), 5);
+    assert.equal(hotbarKeys(game), 'torch,stone');
+    assert.equal(game.getSelectedHeldItemType(), 'torch');
+    assert.equal(litSlot(game), 0);
+});
+
+test('with something that cannot be held selected, the key still empties the left hand', () => {
+    const game = makeGame({ iron_hoe: 1, torch: 0 });
+    game.offhandType = 'torch';
     select(game, 'iron_hoe');
-    game.offhandSwapSelected();
-    assert.equal(game.offhandType, 'lantern');
+    game.offhandPressKey();
+    assert.ok(game.offhandType === null);
+    assert.equal(game.getInventoryCount('torch'), 1);
     assert.equal(game.getInventoryCount('iron_hoe'), 1);
-    assert.match(game.messages[0], /Iron Hoe cannot be held/);
+    assert.equal(hotbarKeys(game), 'torch,iron_hoe');
+    assert.equal(game.getSelectedHeldItemType(), 'iron_hoe');
+    // And with the left hand empty, the hoe is refused as ever.
+    game.offhandPressKey();
+    assert.ok(game.offhandType === null);
+    assert.match(game.messages.at(-1), /Iron Hoe cannot be held/);
 });
 
-test('Shift + X and the panel put it away, and the panel button sends without closing', () => {
-    const game = makeGame({ torch: 2, stone: 1 });
+test('the selection on the first slot follows its item, never what came out of the left hand', () => {
+    const game = makeGame({ stone: 1, candle: 2, torch: 0 });
+    game.offhandType = 'torch';
+    select(game, 'stone');
+    assert.equal(litSlot(game), 0);
+    game.offhandPressKey();
+    assert.equal(hotbarKeys(game), 'torch,stone,candle');
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
+    assert.equal(litSlot(game), 1);
+});
+
+test('a type already on the hotbar moves to the first slot, nothing doubled, the rest in order', () => {
+    const game = makeGame({ stone: 1, candle: 1, torch: 2, lantern: 1 });
+    game.offhandType = 'torch';
+    select(game, 'lantern');
+    assert.equal(hotbarKeys(game), 'stone,candle,torch,lantern');
+    game.offhandPressKey();
+    assert.equal(hotbarKeys(game), 'torch,stone,candle,lantern');
+    assert.equal(game.getInventoryCount('torch'), 3);
+    assert.equal(game.getSelectedHeldItemType(), 'lantern');
+    assert.equal(litSlot(game), 3);
+});
+
+test('on a full hotbar what comes back takes the first slot and the last goes, unless the right hand holds it', () => {
+    const types = ['stone', 'candle', 'lantern', 'multimeter', 'thermometer', 'barometer', 'firefly_jar', 'helium_balloon'];
+    const make = () => {
+        const game = makeGame({ ...Object.fromEntries(types.map((type) => [type, 1])), torch: 0 });
+        game.offhandType = 'torch';
+        return game;
+    };
+    const game = make();
+    select(game, 'lantern');
+    assert.equal(hotbarKeys(game), types.join(','));
+    game.offhandPressKey();
+    assert.equal(hotbarKeys(game), ['torch', ...types.slice(0, 7)].join(','));
+    assert.equal(game.getSelectedHeldItemType(), 'lantern');
+    assert.equal(litSlot(game), 3);
+    assert.ok(game.inventory.includes('helium_balloon') && game.getInventoryCount('helium_balloon') === 1, 'off the hotbar, still in the inventory');
+
+    const last = make();
+    select(last, 'helium_balloon');
+    last.offhandPressKey();
+    assert.equal(hotbarKeys(last), ['torch', ...types.slice(0, 6), 'helium_balloon'].join(','));
+    assert.equal(last.getSelectedHeldItemType(), 'helium_balloon');
+    assert.equal(litSlot(last), 7, 'what the right hand holds stays on the hotbar');
+});
+
+test('Shift + X and the panel put it away in the first slot, unselected, and the panel button sends without closing', () => {
+    const game = makeGame({ stone: 1, torch: 2 });
     select(game, 'stone');
     game.offhandSendType('torch');
     assert.equal(game.offhandType, 'torch');
     assert.equal(game.getSelectedHeldItemType(), 'stone', 'the right hand does not change');
-    game.offhandSwapSelected(true);
-    assert.equal(game.offhandType, null);
+    game.offhandPressKey(true);
+    assert.ok(game.offhandType === null);
     assert.equal(game.getInventoryCount('torch'), 2);
+    assert.equal(hotbarKeys(game), 'torch,stone');
+    assert.equal(game.getSelectedHeldItemType(), 'stone');
     game.offhandPutAway();
     assert.equal(game.getInventoryCount('torch'), 2, 'an empty hand gives nothing back');
+
+    const panel = makeGame({ stone: 1, lantern: 0, torch: 0 });
+    select(panel, 'torch');
+    panel.offhandType = 'torch';
+    panel.offhandPutAway();
+    assert.equal(hotbarKeys(panel), 'torch,stone');
+    assert.equal(panel.getSelectedHeldItemType(), null, 'the slot that named the torch does not take it');
+    assert.equal(litSlot(panel), -1);
 });
 
 test('dropping with Q never reaches the unit in the hand', () => {
     const game = makeGame({ torch: 2 });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     game.dropSelectedBlock();
     game.dropSelectedBlock();
     assert.equal(game.pickups.length, 1, 'only what was in the count falls');
@@ -224,7 +322,7 @@ test('dropping with Q never reaches the unit in the hand', () => {
 test('placing the last torch of the count leaves the one in the hand', () => {
     const game = makeGame({ torch: 2 });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.consumeSelectedBlock(), true);
     assert.equal(game.consumeSelectedBlock(), false);
     assert.equal(game.offhandType, 'torch');
@@ -235,7 +333,7 @@ test('a recipe cannot spend the unit in the hand', () => {
     const recipe = { id: 'lamp', name: 'Lamp', output: { type: 'lantern', amount: 1 }, inputs: [{ type: 'torch', amount: 1 }] };
     const game = makeGame({ torch: 1, lantern: 0 }, { craftingRecipes: [recipe] });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.canCraftRecipe(recipe), false);
     game.craftRecipe('lamp');
     assert.equal(game.offhandType, 'torch');
@@ -254,7 +352,7 @@ test('a chest takes all of the count and nothing of the hand', () => {
         network: { connected: true, send: (kind, payload) => sent.push({ kind, payload }) }
     });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     game.storagePut('torch');
     const amount = sent[0].payload.amount;
     assert.ok(amount >= 1 && amount <= 3);
@@ -269,7 +367,7 @@ test('dying and coming back changes neither the hand nor the counts', () => {
         cameraController: { eyeHeight: 1.6, keys: {}, setPosition() {}, getPosition: () => ({ x: 0, y: 0, z: 0 }), velocityY: 0 }
     });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     game.applyDamage(99, 'You died', 'void');
     assert.equal(game.respawnPending, true);
     game.respawnPlayer();
@@ -280,7 +378,7 @@ test('dying and coming back changes neither the hand nor the counts', () => {
 test('the save keeps the hand, in one piece with the counts', () => {
     const game = makeGame({ torch: 5, stone: 1 });
     select(game, 'torch');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     game.saveInventoryState();
     const saved = JSON.parse(ctx.stored.get('minecloud-inventory-state'));
     assert.equal(saved.offhand, 'torch');
@@ -330,7 +428,7 @@ function press(game, code, extra = {}) {
 
 test('X runs in play, and Shift + X puts away', () => {
     const calls = [];
-    const game = makeGame({ torch: 1 }, { isGameplayActive: () => true, offhandSwapSelected: (clear) => calls.push(clear) });
+    const game = makeGame({ torch: 1 }, { isGameplayActive: () => true, offhandPressKey: (clear) => calls.push(clear) });
     press(game, 'KeyX');
     press(game, 'KeyX', { shiftKey: true });
     assert.deepEqual(calls, [false, true]);
@@ -338,7 +436,7 @@ test('X runs in play, and Shift + X puts away', () => {
 
 test('X does nothing while typing, in a panel, on repeat or out of play', () => {
     const calls = [];
-    const make = (overrides = {}) => makeGame({ torch: 1 }, { isGameplayActive: () => true, offhandSwapSelected: () => calls.push(1), ...overrides });
+    const make = (overrides = {}) => makeGame({ torch: 1 }, { isGameplayActive: () => true, offhandPressKey: () => calls.push(1), ...overrides });
     press(make(), 'KeyX', { target: { tagName: 'INPUT', type: 'text' } });
     press(make(), 'KeyX', { repeat: true });
     press(make({ inventoryOpen: true }), 'KeyX');
@@ -744,8 +842,8 @@ test('touch has a button and a menu entry, and the layout leaves room for it', (
     assert.match(html, /id="touch-offhand-button"/);
     assert.match(html, /id="inventory-offhand"/);
     const touch = fs.readFileSync(path.join(JS, 'game', 'touch.js'), 'utf8');
-    assert.match(touch, /touch-offhand-button'\), \(\) => this\.offhandSwapSelected\(\)/);
-    assert.match(touch, /'Left hand', \(\) => this\.offhandSwapSelected\(\)/);
+    assert.match(touch, /touch-offhand-button'\), \(\) => this\.offhandPressKey\(\)/);
+    assert.match(touch, /'Left hand', \(\) => this\.offhandPressKey\(\)/);
     const buttons = (html.match(/<div id="touch-topbar">[\s\S]*?<\/div>/)[0].match(/<button/g) || []).length;
     const { computeTouchLayout, touchLayoutRects } = require(path.join(JS, 'touchInput.js'));
     const layout = computeTouchLayout(800, 400);

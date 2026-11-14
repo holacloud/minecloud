@@ -6,10 +6,10 @@ The right hand does the work: it mines, builds and strikes. The **left** carries
 
 ## How to use it
 
-- **X** moves the item in your right hand to the left. If the left already held another, they **swap**.
-- **X** with the same item in both hands puts the left one back in the inventory. With an empty right hand, the left one goes to the right.
-- **Shift + X** puts whatever the left hand holds back in the inventory.
-- In the **inventory** (**E**), items that can be carried have an **L** button. The slot at the top shows what you carry: press it to put it away.
+- With the left hand **empty**, **X** moves the item in your right hand to the left.
+- With the left hand **full**, **X** only empties it: what it held goes back to the **first slot of the hotbar**, and the others move one along. It never swaps: whatever your right hand holds stays there, still selected, and what comes back is not selected. Press **X** again to send the selected item to the left.
+- **Shift + X** puts whatever the left hand holds back in the first slot of the hotbar too.
+- In the **inventory** (**E**), items that can be carried have an **L** button. The slot at the top shows what you carry: press it to put it away, in the first slot of the hotbar.
 - On a **phone**, the **L** button at the top does the same as **X**, and **Left hand** is in the **☰** menu too. The inventory's **L** button works the same.
 
 While you play, a slot to the left of the hotbar reminds you what you carry.

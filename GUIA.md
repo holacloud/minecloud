@@ -756,9 +756,12 @@ microscopio: la luz del juego tiene nivel pero no color.
 
 Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/offhand.js`).
 
-- **X** pasa a la izquierda el objeto seleccionado, o los intercambia; con el mismo en las dos manos lo devuelve; con la derecha
-  vacía, el de la izquierda pasa a la derecha. **Mayús + X** lo guarda. En el inventario, el botón **L** de cada objeto y la
-  casilla de arriba. En táctil, el botón **L** de arriba y **Left hand** en el menú.
+- **X** con la izquierda vacía le pasa el objeto seleccionado. Con la izquierda ocupada nunca intercambia: solo la vacía, y lo que
+  llevaba vuelve a la primera casilla de la barra rápida (`promoteTypeToHotbar`, las demás se corren un sitio) sin seleccionarse;
+  la derecha sigue con lo que tenía (`selectedSlot` es un índice del inventario, que no cambia de orden), y si estaba vacía sigue
+  vacía. En una barra llena se cae la última casilla, o la anterior si la última es la de la derecha. **Mayús + X** y la casilla
+  de arriba del inventario también lo dejan en la primera casilla. En el inventario, el botón **L** de cada objeto. En táctil, el
+  botón **L** de arriba y **Left hand** en el menú hacen lo mismo que **X**.
 - **Una unidad de verdad:** sale de `inventoryCounts` y se guarda como `offhand` en `minecloud-inventory-state`, en el mismo JSON,
   así que no se duplica. Colocar, tirar (Q), fabricar, cofres y microscopio solo ven el contador: no pueden tocarla. Morir no cambia
   el inventario.

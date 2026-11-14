@@ -554,7 +554,7 @@ test('the hotbar shows each plate put on it as its own slot, and every single-un
     assert.equal(bar.filter((slot) => !slot.empty).length, 6, 'four plates, the stone, the agar plates');
     assert.deepEqual(bar.map((slot) => slot.selected), bar.map((_slot, n) => n === 2));
     // The left hand takes no plate: X refuses it, and the hand keeps it.
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.offhandType || null, null);
     assert.equal(game.plateHeld('culture_yeast').id, ids[2]);
 });

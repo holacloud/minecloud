@@ -1042,7 +1042,7 @@ class Game {
 
         if (event.code === 'KeyX' && !event.repeat) {
             event.preventDefault();
-            this.offhandSwapSelected(event.shiftKey);
+            this.offhandPressKey(event.shiftKey);
             return;
         }
 

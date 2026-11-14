@@ -533,10 +533,11 @@ Object.assign(Game.prototype, {
         return result;
     });
 
-    // Nothing of the palette leaves the hand: not dropped, eaten, nor moved to the left hand.
-    for (const name of ['dropSelectedBlock', 'eatSelectedItem', 'offhandSwapSelected']) {
+    // Nothing of the palette leaves the hand: not dropped, eaten, nor moved to the left hand. X with the left hand
+    // full only empties it (js/game/offhand.js), so that still works.
+    for (const name of ['dropSelectedBlock', 'eatSelectedItem', 'offhandPressKey']) {
         wrap(name, (original) => function (...args) {
-            if (this.builderHolding() && !(name === 'offhandSwapSelected' && args[0])) {
+            if (this.builderHolding() && !(name === 'offhandPressKey' && (args[0] || this.offhandType))) {
                 if (typeof this.claimNotice === 'function') this.claimNotice(builderSay('notYours'));
                 return false;
             }

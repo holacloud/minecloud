@@ -15,7 +15,7 @@ Se fabrica (tecla C):
 
 ## Cómo se usa
 
-Selecciónalo y pulsa **X** (o el botón **L** del inventario). **Solo funciona en la izquierda:** en la derecha o guardado en
+Selecciónalo y pulsa **X** con la izquierda vacía (o el botón **L** del inventario). **Solo funciona en la izquierda:** en la derecha o guardado en
 el inventario no hace nada. Pulsa G con él en la mano y el chat te recuerda lo que hace. No se gasta.
 
 **Efecto:** −50 % del daño de cada ataque de una criatura que esté **delante de ti**: hasta 60° a cada lado de donde miras,

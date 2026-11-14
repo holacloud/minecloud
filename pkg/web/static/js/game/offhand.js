@@ -105,23 +105,15 @@ function offhandTakeBack(state) {
     return type;
 }
 
-// The X key, with `selected` in the right hand (null when empty). Returns what happened and what the right hand
-// should take now: 'sent' to the left, 'swapped' with what was there, 'returned' to the inventory, 'taken' into
-// the right hand, 'refused' (it cannot be held) or 'nothing' (both hands empty).
-function offhandSwap(state, selected) {
-    const left = state.offhand;
-    if (!selected) {
-        if (!left) return { outcome: 'nothing', select: null };
-        offhandTakeBack(state);
-        return { outcome: 'taken', select: left };
-    }
-    if (!offhandCanHold(selected)) return { outcome: 'refused', select: null };
-    if (left === selected) {
-        offhandTakeBack(state);
-        return { outcome: 'returned', select: null };
-    }
-    if (!offhandSend(state, selected)) return { outcome: 'nothing', select: null };
-    return left ? { outcome: 'swapped', select: left } : { outcome: 'sent', select: null };
+// The X key, with `selected` in the right hand (null when empty). It never swaps: a full left hand is only
+// emptied, whatever the right hand has, and an empty one takes the selected item. Returns 'returned' (the left
+// hand's unit went back to the inventory), 'sent' (the selected item went to the left hand), 'refused' (it
+// cannot be held) or 'nothing' (both hands empty).
+function offhandKeyStep(state, selected) {
+    if (offhandTakeBack(state)) return 'returned';
+    if (!selected) return 'nothing';
+    if (!offhandCanHold(selected)) return 'refused';
+    return offhandSend(state, selected) ? 'sent' : 'nothing';
 }
 
 // What a save holds in the hand. A type that can no longer be held goes back to the inventory, not to nowhere.
@@ -225,16 +217,29 @@ Object.assign(Game.prototype, {
         return { counts: this.inventoryCounts, offhand: this.offhandType };
     },
 
-    offhandAfterChange(state, select = null) {
+    // `returned`: the type the left hand has just given back by the player's doing (X, Shift + X, the panel's
+    // slot), and `right` what the right hand held before (getSelectedHeldItemType, read before the step: the
+    // state's counts are the game's own). What came back goes to the first slot of the hotbar, the others moving
+    // one along, and is not selected: the right hand keeps what it had.
+    offhandAfterChange(state, returned = null, right = null) {
         // What came back must have a place in the inventory (a save can hold an item the list does not have yet).
-        for (const type of [this.offhandType, state.offhand, select]) {
+        for (const type of [this.offhandType, state.offhand]) {
             if (type && !this.inventory.includes(type)) this.inventory.push(type);
         }
         this.offhandType = state.offhand;
-        if (select) {
-            // The hotbar keeps its order unless the item is not on it.
-            const index = this.inventory.indexOf(select);
-            this.selectSlot(index, { promoteToHotbar: !this.getHotbarInventoryIndexes().includes(index) });
+        if (returned) {
+            // selectedSlot is an index of `this.inventory`, whose order the hotbar does not change, so the
+            // selected item stays selected wherever its hotbar slot goes.
+            const hand = right && this.hotbarHandEntry(right);
+            const wasShown = Boolean(hand) && this.getHotbarItems().some((item) => item.key === hand);
+            this.promoteTypeToHotbar(returned);
+            // On a full hotbar the last slot goes: if that was the right hand's, the one before it goes instead,
+            // so that what the player holds never leaves the hotbar.
+            const pinned = this.hotbarPinnedTypes;
+            if (wasShown && !pinned.includes(hand)) pinned[pinned.length - 1] = hand;
+            // The slot of an empty right hand can still name the type (its last unit went to the left hand):
+            // with that unit back, it would be in both the first slot and the right hand.
+            if (!right && this.getSelectedBlockType() === returned) this.offhandLeaveRightEmpty(returned);
         }
         this.updateHotbarCounts();
         this.refreshHeldItemMesh();
@@ -248,15 +253,25 @@ Object.assign(Game.prototype, {
         this.playTone({ frequency: 520, duration: 0.05, type: 'triangle', volume: 0.016, release: 0.06 });
     },
 
-    // X (Shift + X, or `clear`: only put away what the left hand holds).
-    offhandSwapSelected(clear = false) {
-        if (clear) {
+    // Points the selection at an inventory entry the player has none of, so that the right hand stays empty while
+    // `type` comes back. The hotbar shows no entry with nothing in it, so no slot lights up. When the player has
+    // some of every entry there is no empty one to point at, and the selection stays where it was.
+    offhandLeaveRightEmpty(type) {
+        const index = this.inventory.findIndex((other) => other !== type && this.getInventoryCount(other) <= 0);
+        if (index >= 0) this.selectedSlot = index;
+    },
+
+    // X, the phone's button and the pause menu's row (Shift + X, or `putAway`: only empty the left hand). A full
+    // left hand is emptied, its item going to the first slot of the hotbar; an empty one takes the selected item.
+    offhandPressKey(putAway = false) {
+        if (putAway) {
             this.offhandPutAway();
             return;
         }
         const selected = this.getSelectedHeldItemType();
         const state = this.offhandState();
-        const { outcome, select } = offhandSwap(state, selected);
+        const left = state.offhand;
+        const outcome = offhandKeyStep(state, selected);
         if (outcome === 'refused') {
             this.receiveSystemMessage({ text: `${this.getBlockDisplayName(selected)} cannot be held in the left hand` });
             return;
@@ -265,10 +280,13 @@ Object.assign(Game.prototype, {
             this.receiveSystemMessage({ text: 'Select a light, an instrument, a tool, a sword or a shield first: the left hand takes those' });
             return;
         }
-        this.offhandAfterChange(state, select);
-        if (outcome === 'returned') this.offhandTell(`${this.getBlockDisplayName(selected)} back in the inventory`);
-        else if (outcome === 'taken') this.offhandTell(`${this.getBlockDisplayName(select)} in the right hand`);
-        else this.offhandTell(`Left hand: ${this.getBlockDisplayName(state.offhand)}`);
+        if (outcome === 'returned') {
+            this.offhandAfterChange(state, left, selected);
+            this.offhandTell(`${this.getBlockDisplayName(left)} back in the first slot of the hotbar`);
+            return;
+        }
+        this.offhandAfterChange(state);
+        this.offhandTell(`Left hand: ${this.getBlockDisplayName(state.offhand)}`);
     },
 
     // The buttons of the inventory panel.
@@ -278,8 +296,10 @@ Object.assign(Game.prototype, {
     },
 
     offhandPutAway() {
+        const right = this.getSelectedHeldItemType();
         const state = this.offhandState();
-        if (offhandTakeBack(state)) this.offhandAfterChange(state);
+        const type = offhandTakeBack(state);
+        if (type) this.offhandAfterChange(state, type, right);
     },
 
     // ---- What the screen shows ----

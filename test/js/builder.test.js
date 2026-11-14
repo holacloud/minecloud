@@ -352,7 +352,7 @@ test('a palette item never leaves the hand: not dropped, eaten, moved to the lef
     const pickups = game.pickups.size;
     game.dropSelectedBlock();
     game.eatSelectedItem();
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.pickups.size, pickups);
     assert.equal(game.offhandType || null, null);
     assert.deepEqual(plain(game.inventoryCounts), { stone: 5, iron_ore: 3, bread: 2 });

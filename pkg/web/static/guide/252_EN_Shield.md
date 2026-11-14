@@ -15,7 +15,7 @@ Crafted (C key):
 
 ## How to use it
 
-Select it and press **X** (or the **L** button in the inventory). **It only works in the left hand:** in the right or stored in
+Select it and press **X** with the left hand empty (or the **L** button in the inventory). **It only works in the left hand:** in the right or stored in
 the inventory it does nothing. Press G with it in hand and the chat reminds you what it does. It does not wear out.
 
 **Effect:** −50 % of the damage of each attack by a creature **in front of you**: up to 60° to each side of where you look,

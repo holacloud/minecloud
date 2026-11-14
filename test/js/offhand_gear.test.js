@@ -94,7 +94,7 @@ function load() {
     const scripts = [...HTML.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]).filter((src) => !/^(https?:)?\/\//.test(src));
     for (const src of scripts) vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     vm.runInContext(`Object.assign(this, { Game, WorldRenderer, ITEM_TYPES, DAMAGE_MODIFIERS, OFFHAND_ITEMS, OFFHAND_PAIR_SPEED, OFFHAND_PAIR_TOOLS, PLAYER_SWORD_DAMAGE, PLAYER_BASE_DAMAGE,
-        PLAYER_LEFT_SWORD_SHARE, SHIELD_FRONT_REDUCTION, SHIELD_FRONT_HALF_ANGLE, offhandCanHold, offhandSwap, offhandArmsOfSwing, shieldFacesSource, carriedLightOf, handsInList,
+        PLAYER_LEFT_SWORD_SHARE, SHIELD_FRONT_REDUCTION, SHIELD_FRONT_HALF_ANGLE, offhandCanHold, offhandKeyStep, offhandArmsOfSwing, shieldFacesSource, carriedLightOf, handsInList,
         carriedLampWithin, itemTagsOf, itemTagParseQuery, itemTagMatches, ItemTagIndex, itemTagCatalogue });`, context);
     return context;
 }
@@ -206,7 +206,7 @@ test('the last unit sent to the left no longer mines from the selected slot', ()
     const game = makeGame({ iron_pickaxe: 1 });
     select(game, 'iron_pickaxe');
     close(time(game, 'stone'), 10 / 2.6, 'in the right');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.offhandType, 'iron_pickaxe');
     assert.equal(game.getSelectedBlockType(), 'iron_pickaxe', 'the slot still names it');
     assert.equal(game.getSelectedHeldItemType(), null);
@@ -508,28 +508,27 @@ test('its tags: #armor and #armadura find it, and the tools keep theirs', () => 
 
 // ---- X, and everything else that moves a unit ----
 
-test('the X key with tools, swords and the shield', () => {
+test('the X key with tools, swords and the shield: a full left hand is only emptied', () => {
     const cases = [
-        // right, left, counts -> outcome, select, left after, counts after
-        ['iron_pickaxe', null, { iron_pickaxe: 1 }, 'sent', null, 'iron_pickaxe', { iron_pickaxe: 0 }],
-        ['iron_pickaxe', null, { iron_pickaxe: 2 }, 'sent', null, 'iron_pickaxe', { iron_pickaxe: 1 }],
-        ['iron_pickaxe', 'iron_pickaxe', { iron_pickaxe: 1 }, 'returned', null, null, { iron_pickaxe: 2 }],
-        ['iron_pickaxe', 'wood_pickaxe', { iron_pickaxe: 1, wood_pickaxe: 0 }, 'swapped', 'wood_pickaxe', 'iron_pickaxe', { iron_pickaxe: 0, wood_pickaxe: 1 }],
-        [null, 'iron_pickaxe', { iron_pickaxe: 0 }, 'taken', 'iron_pickaxe', null, { iron_pickaxe: 1 }],
-        ['iron_sword', 'torch', { iron_sword: 1, torch: 0 }, 'swapped', 'torch', 'iron_sword', { iron_sword: 0, torch: 1 }],
-        ['shield', null, { shield: 1 }, 'sent', null, 'shield', { shield: 0 }],
-        [null, 'shield', { shield: 0 }, 'taken', 'shield', null, { shield: 1 }],
-        ['iron_axe', 'shield', { iron_axe: 1, shield: 0 }, 'swapped', 'shield', 'iron_axe', { iron_axe: 0, shield: 1 }],
-        ['iron_hoe', 'shield', { iron_hoe: 1, shield: 0 }, 'refused', null, 'shield', { iron_hoe: 1, shield: 0 }],
-        ['iron_shears', null, { iron_shears: 1 }, 'refused', null, null, { iron_shears: 1 }],
-        ['fishing_rod', 'iron_pickaxe', { fishing_rod: 1, iron_pickaxe: 0 }, 'refused', null, 'iron_pickaxe', { fishing_rod: 1, iron_pickaxe: 0 }]
+        // right, left, counts -> outcome, left after, counts after
+        ['iron_pickaxe', null, { iron_pickaxe: 1 }, 'sent', 'iron_pickaxe', { iron_pickaxe: 0 }],
+        ['iron_pickaxe', null, { iron_pickaxe: 2 }, 'sent', 'iron_pickaxe', { iron_pickaxe: 1 }],
+        ['iron_pickaxe', 'iron_pickaxe', { iron_pickaxe: 1 }, 'returned', null, { iron_pickaxe: 2 }],
+        ['iron_pickaxe', 'wood_pickaxe', { iron_pickaxe: 1, wood_pickaxe: 0 }, 'returned', null, { iron_pickaxe: 1, wood_pickaxe: 1 }],
+        [null, 'iron_pickaxe', { iron_pickaxe: 0 }, 'returned', null, { iron_pickaxe: 1 }],
+        ['iron_sword', 'torch', { iron_sword: 1, torch: 0 }, 'returned', null, { iron_sword: 1, torch: 1 }],
+        ['shield', null, { shield: 1 }, 'sent', 'shield', { shield: 0 }],
+        [null, 'shield', { shield: 0 }, 'returned', null, { shield: 1 }],
+        ['iron_axe', 'shield', { iron_axe: 1, shield: 0 }, 'returned', null, { iron_axe: 1, shield: 1 }],
+        ['iron_hoe', 'shield', { iron_hoe: 1, shield: 0 }, 'returned', null, { iron_hoe: 1, shield: 1 }],
+        ['iron_hoe', null, { iron_hoe: 1 }, 'refused', null, { iron_hoe: 1 }],
+        ['iron_shears', null, { iron_shears: 1 }, 'refused', null, { iron_shears: 1 }],
+        ['fishing_rod', null, { fishing_rod: 1 }, 'refused', null, { fishing_rod: 1 }]
     ];
-    for (const [right, left, counts, outcome, chosen, leftAfter, countsAfter] of cases) {
+    for (const [right, left, counts, outcome, leftAfter, countsAfter] of cases) {
         const state = { counts: { ...counts }, offhand: left };
-        const result = ctx.offhandSwap(state, right);
         const label = `${right} / ${left}`;
-        assert.equal(result.outcome, outcome, label);
-        assert.equal(result.select, chosen, label);
+        assert.equal(ctx.offhandKeyStep(state, right), outcome, label);
         assert.equal(state.offhand, leftAfter, label);
         assert.deepEqual(plain(state.counts), countsAfter, label);
     }
@@ -543,7 +542,7 @@ test('one pickaxe: X leaves the right hand empty, and Q, a recipe and a chest ca
         network: { connected: true, send: (kind, payload) => sent.push({ kind, payload }) }
     });
     select(game, 'iron_pickaxe');
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.offhandType, 'iron_pickaxe');
     assert.equal(game.getSelectedHeldItemType(), null);
     assert.ok(!game.getHotbarInventoryIndexes().includes(game.inventory.indexOf('iron_pickaxe')), 'the hotbar does not offer it');
@@ -556,9 +555,11 @@ test('one pickaxe: X leaves the right hand empty, and Q, a recipe and a chest ca
     assert.equal(sent.length, 0, 'a chest gets nothing');
     assert.equal(game.consumeSelectedBlock(), false);
     assert.equal(owned(game, 'iron_pickaxe'), 1);
-    game.offhandSwapSelected();
+    game.offhandPressKey();
     assert.equal(game.offhandType, null);
-    assert.equal(game.getSelectedHeldItemType(), 'iron_pickaxe', 'X again takes it back');
+    assert.equal(game.getInventoryCount('iron_pickaxe'), 1, 'X again takes it back');
+    assert.equal(game.getHotbarItems()[0].key, 'iron_pickaxe', 'to the first slot of the hotbar');
+    assert.equal(game.getSelectedHeldItemType(), null, 'and not into the right hand');
 });
 
 test('two pickaxes: the panel button and X make the pair, Shift + X undoes it, and it survives a save', () => {
@@ -575,7 +576,7 @@ test('two pickaxes: the panel button and X make the pair, Shift + X undoes it, a
     back.restoreInventoryState();
     assert.equal(back.offhandType, 'iron_pickaxe');
     assert.equal(owned(back, 'iron_pickaxe'), 2);
-    game.offhandSwapSelected(true);
+    game.offhandPressKey(true);
     assert.equal(game.offhandType, null);
     assert.equal(game.getInventoryCount('iron_pickaxe'), 2);
 });
@@ -595,8 +596,8 @@ test('no random sequence of moves in the real game makes or loses a unit', () =>
     for (let i = 0; i < 4000; i++) {
         const type = types[random(types.length)];
         switch (random(9)) {
-            case 0: case 1: game.offhandSwapSelected(); steps.x++; break;
-            case 2: game.offhandSwapSelected(true); steps.shift++; break;
+            case 0: case 1: game.offhandPressKey(); steps.x++; break;
+            case 2: game.offhandPressKey(true); steps.shift++; break;
             case 3: game.offhandSendType(type); steps.panel++; break;
             case 4: game.dropSelectedBlock(); steps.q++; break;
             case 5: game.addInventory(type, 1); added[type] = (added[type] || 0) + 1; steps.pick++; break;
@@ -647,7 +648,7 @@ test('what looks for a held item looks at the hands: a tool in the left is not a
         assert.doesNotMatch(source, /offhandType/, `${file} only asks about the right hand`);
     }
     const hotbarReaders = fs.readdirSync(gameDir).filter((file) => /getHotbarInventoryIndexes/.test(fs.readFileSync(path.join(gameDir, file), 'utf8'))).sort();
-    assert.deepEqual(hotbarReaders, ['inventory.js', 'offhand.js']);
+    assert.deepEqual(hotbarReaders, ['inventory.js']);
 });
 
 test('other players: a tool or a shield is drawn on the arm, gives no light, and an unknown type is nothing', () => {

@@ -6,10 +6,10 @@ La mano derecha trabaja: mina, construye, golpea. La **izquierda** lleva lo que 
 
 ## Cómo se usa
 
-- **X** pasa a la mano izquierda el objeto que tienes en la derecha. Si la izquierda ya llevaba otro, se **intercambian**.
-- **X** con el mismo objeto en las dos manos devuelve al inventario el de la izquierda. Con la derecha vacía, el de la izquierda pasa a la derecha.
-- **Mayús + X** guarda en el inventario lo que lleves en la izquierda.
-- En el **inventario** (**E**), los objetos que se pueden llevar tienen un botón **L**. La casilla de arriba enseña lo que llevas: púlsala para guardarlo.
+- Con la mano izquierda **vacía**, **X** le pasa el objeto que tienes en la derecha.
+- Con la mano izquierda **ocupada**, **X** solo la vacía: lo que llevaba vuelve a la **primera casilla de la barra rápida**, y las demás se corren un sitio. Nunca intercambia: lo que tengas en la derecha sigue ahí, seleccionado, y lo que vuelve no queda seleccionado. Pulsa **X** otra vez para pasar a la izquierda lo seleccionado.
+- **Mayús + X** también devuelve lo que lleves en la izquierda a la primera casilla de la barra rápida.
+- En el **inventario** (**E**), los objetos que se pueden llevar tienen un botón **L**. La casilla de arriba enseña lo que llevas: púlsala para guardarlo en la primera casilla de la barra rápida.
 - En un **móvil**, el botón **L** de arriba hace lo mismo que **X**, y también está **Left hand** en el menú **☰**. El botón **L** del inventario funciona igual.
 
 Mientras juegas, una casilla a la izquierda de la barra rápida te recuerda lo que llevas.
