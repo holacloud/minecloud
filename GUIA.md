@@ -463,6 +463,11 @@ El chaparrón del día (uno de cada veinte días) se decide al amanecer a partir
 para todos y se puede pronosticar. El viento es el mismo para todos (sigue al reloj del mundo): cambia de dirección
 despacio, sopla más en lo alto y antes y durante la lluvia, y casi nada bajo techo o en cuevas.
 
+El sol sale por el este (+x) al amanecer (6:00), a mediodía está al sur (+z), en lo más alto, y se pone por el
+oeste al anochecer (18:00); la luna va siempre al lado contrario: sale por el este al anochecer y se pone por el
+oeste al amanecer. Es el mismo sentido en que giran las estrellas. Con la brújula de la pantalla (N, E, S, W) y
+la hora, el sol sirve para orientarse.
+
 | Resultado | Ingredientes |
 |---|---|
 | `thermometer` | 2 `glass` + 1 `element_hg` |

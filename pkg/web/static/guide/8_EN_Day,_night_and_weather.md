@@ -9,6 +9,11 @@
   clock on screen help you too.
 
 The sun and the moon are cubes that cross the sky. The moon changes **phase** every day, in an 8-day cycle.
+
+The sun **rises in the east** at dawn (6:00), is **in the south at midday**, high up, and **sets in the west** at
+dusk (18:00). The moon takes the same path by night: it rises in the east at dusk. The compass at the top of
+the screen tells you which way you are looking (N, E, S, W), so with the sun and the hour you can find your
+way: in the morning, the sun points you east.
 At night the stars come out: see [Astronomy](132).
 
 ## When night falls

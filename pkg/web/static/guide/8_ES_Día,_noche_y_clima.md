@@ -9,6 +9,11 @@
   reloj de la pantalla también te orientan.
 
 El sol y la luna son cubos que cruzan el cielo. La luna cambia de **fase** cada día, en un ciclo de 8 días.
+
+El sol **sale por el este** al amanecer (6:00), a **mediodía está al sur**, bien alto, y **se pone por el oeste** al
+anochecer (18:00). La luna hace el mismo camino de noche: sale por el este al anochecer. La brújula de arriba
+de la pantalla te dice hacia dónde miras (N, E, S, W), así que con el sol y la hora puedes orientarte: por la
+mañana, el sol te señala el este.
 De noche salen las estrellas: ver [Astronomía](132).
 
 ## Al caer la noche

@@ -19,6 +19,34 @@ function environmentRainWindow(day, cycleDuration) {
     return { start, end: start + length };
 }
 
+// How far the sun's and the moon's paths are from the player: the shadow light and the two cubes
+// orbit at this distance (js/game/environment.js).
+const ENVIRONMENT_ORBIT_RADIUS = 180;
+
+// Where the sun is, from the player, at a time of day (timeOfDay 0 is dawn at 06:00, 0.25 noon, 0.5
+// dusk, 0.75 midnight), written into `out` (anything with x, y, z) so the frame allocates nothing.
+// North is -z and east +x (the HUD's compass in js/game.js), so the sun rises in the east, stands in
+// the south at noon and sets in the west, the way round the stars of js/game/astronomy.js turn, as
+// seen from the northern half of the Earth. The east-west axis is flattened to 0.65 of the radius,
+// which keeps the shadows of each hour as long as they always were.
+function environmentSunOffset(timeOfDay, out) {
+    const angle = timeOfDay * Math.PI * 2;
+    out.x = Math.cos(angle) * ENVIRONMENT_ORBIT_RADIUS * 0.65;
+    out.y = Math.max(18, Math.sin(angle) * ENVIRONMENT_ORBIT_RADIUS + 24);
+    out.z = Math.sin(angle) * ENVIRONMENT_ORBIT_RADIUS;
+    return out;
+}
+
+// The moon, opposite the sun across the ground (it rises in the east at dusk and sets in the west
+// at dawn) and as high at midnight as the sun is at noon; written into `out`.
+function environmentMoonOffset(timeOfDay, out) {
+    environmentSunOffset(timeOfDay, out);
+    out.x = -out.x;
+    out.y = Math.max(18, -Math.sin(timeOfDay * Math.PI * 2) * ENVIRONMENT_ORBIT_RADIUS + 24);
+    out.z = -out.z;
+    return out;
+}
+
 Object.assign(Game.prototype, {
     isNightTime() {
         const hour = ((this.timeOfDay * 24) + 6) % 24;
@@ -163,10 +191,9 @@ Object.assign(Game.prototype, {
         this.timeOfDay = (this.timeOfDay + delta / this.dayNightCycleDuration) % 1;
 
         // timeOfDay 0 is dawn (06:00, see isNightTime and /time), 0.25 noon, 0.5 dusk and
-        // 0.75 midnight; `orbit` turns the sun across the sky to match.
+        // 0.75 midnight; environmentSunOffset turns the sun across the sky to match.
         const angle = this.timeOfDay * Math.PI * 2;
         const sunHeight = Math.sin(angle);
-        const orbit = angle + Math.PI / 2;
         const daylight = THREE.MathUtils.clamp((sunHeight + 0.16) / 1.16, 0, 1);
         const sunset = Math.max(0, 1 - Math.abs(sunHeight) * 3.2) * (1 - daylight * 0.55);
         // Torch light is baked into chunk meshes; it shows mostly once the sun is down.
@@ -183,12 +210,7 @@ Object.assign(Game.prototype, {
 
         // Sun, moon and the shadow camera orbit the player (they used to orbit the world
         // origin, so shadows only existed near 0,0).
-        const orbitRadius = 180;
-        const sunOffset = new THREE.Vector3(
-            Math.cos(orbit) * orbitRadius,
-            Math.max(18, sunHeight * orbitRadius + 24),
-            Math.sin(orbit) * orbitRadius * 0.65
-        );
+        const sunOffset = environmentSunOffset(this.timeOfDay, this.environmentSunVector || (this.environmentSunVector = new THREE.Vector3()));
         this.sunDirection = (this.sunDirection || new THREE.Vector3()).copy(sunOffset).normalize();
         this.sunHeight = sunHeight;
         this.daylight = daylight;
@@ -201,10 +223,11 @@ Object.assign(Game.prototype, {
             this.sunCube.visible = sunHeight > -0.18 && !this.ultraModeEnabled;
         }
         if (this.moonCube) {
+            const moonOffset = environmentMoonOffset(this.timeOfDay, this.environmentMoonVector || (this.environmentMoonVector = new THREE.Vector3()));
             this.moonCube.position.set(
-                this.camera.position.x - sunOffset.x * 0.92,
-                this.camera.position.y + Math.max(18, -sunHeight * orbitRadius + 24),
-                this.camera.position.z - sunOffset.z * 0.92
+                this.camera.position.x + moonOffset.x * 0.92,
+                this.camera.position.y + moonOffset.y,
+                this.camera.position.z + moonOffset.z * 0.92
             );
             const phase = ((this.worldDay % 8) + 8) % 8;
             if (phase !== this.currentMoonPhase) {
