@@ -276,6 +276,8 @@ Rules every handler follows:
 - **Shared maps and slices** inside saved state are replaced, never changed in place: the save and
   the broadcasts read them after releasing the lock.
 - **Trust nothing from the client**: check reach, names and payload size as `storage.go` does.
+- **The transport network is nobody's.** A mechanic that writes cells by itself never overwrites a block named
+  `portal_*` (`portalsOfficial`, `portals.go`), and a ram's fixed blocks include them (`mechFixed`).
 - Lock order: `blockEditMu` → `storage.mu` → `cropMu` → `powerMu` → `animals.mu` → `Store.mu` → `stateMu` →
   `clientsMu`.
 - Tables mirrored by hand in both sides must match: `powerKinds` (`power.go`) and `ELECTRIC_KINDS`

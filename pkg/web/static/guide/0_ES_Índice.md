@@ -58,6 +58,7 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 - [El mundo pequeño](237): el [microscopio](238), las [muestras](239), los [tardígrados](240) y la [criptobiosis](241), las [células](242), [protozoos y algas](243) y [bacterias](244), con [tinciones](246), [filtros y campo oscuro](247); y [lo que no vive](258) bajo él, [opaco, transparente o amorfo](259).
 - [Cultivos e incubadora](253): placas de agar, la [curva de crecimiento](254) y la temperatura, y [esterilizar](255) con el autoclave, el filtro y el moho de Fleming.
 - [Parcelas](260): un mojón y 17 × 17 bloques donde solo tú puedes cambiar algo; la zona de inicio no es de nadie.
+- La [red de portales](306): 105 plazas y portales rojos, naranjas, amarillos y verdes que saltan 1.000, 10.000, 100.000 y 1.000.000 de bloques.
 
 ---
 

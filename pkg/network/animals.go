@@ -362,7 +362,7 @@ func animalPlaceOK(x, y, z float64) bool {
 			return false
 		}
 	}
-	return math.Abs(x) < 1<<20 && math.Abs(z) < 1<<20 && y >= terrain.WorldMinY-8 && y <= terrain.WorldMaxY+64
+	return math.Abs(x) < worldReach && math.Abs(z) < worldReach && y >= terrain.WorldMinY-8 && y <= terrain.WorldMaxY+64
 }
 
 // bump gives the animal the number of a new change, for whatever of it has changed.

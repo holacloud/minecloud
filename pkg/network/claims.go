@@ -44,6 +44,8 @@ package network
 //   - blockPlace, blockBreak (claimPlaceBlock, claimBreakBlock), curtainStrip, glowSet, sprayPaint,
 //     logicPress (a lever or a button is a change too), powerCrank and powerFeed (the power they
 //     give drives the plot's rams, lifts and doors, and the game's own page already refuses the click).
+//   - On top of the zones, a block of a plaza or a portal of the transport network (portals.go) is the admin's
+//     alone wherever it is: blockBreak and blockPlace refuse it with reason "plaza" (portalsGuard).
 //   - storageOpen, storagePut, storageTake (chests, fridges, wardrobes, ovens, foundries, arc furnaces,
 //     the autoclave, the incubator and the microscope are all storage): opening and moving.
 //   - microscopePrepare, microscopeClear, microscopeDrop, microscopeCapture, microscopeStain, and
@@ -761,6 +763,10 @@ func claimPlaceBlock(client *Client, payload Block, palette bool) (Block, *claim
 	if refusal := claimCheck(client, payload.X, payload.Z); refusal != nil {
 		return payload, refusal, false
 	}
+	// Nor over a block of a plaza or a portal, nor one of theirs anywhere (portals.go).
+	if refusal := portalsGuard(client, payload.X, payload.Y, payload.Z, payload.BlockType); refusal != nil {
+		return payload, refusal, false
+	}
 	current, _ := chunkStore.Block(payload.X, payload.Y, payload.Z)
 	isMarker := storageBase(payload.BlockType) == claimMarkerBlock
 	wasMarker := storageBase(current) == claimMarkerBlock
@@ -812,6 +818,10 @@ func claimPlaceBlock(client *Client, payload Block, palette bool) (Block, *claim
 // owner (or the admin) breaks a marker: a guest may break anything else in the plot.
 func claimBreakAllowed(client *Client, x, y, z int) *claimRefusal {
 	if refusal := claimCheck(client, x, z); refusal != nil {
+		return refusal
+	}
+	// A block of a plaza or a portal is nobody's to break (portals.go).
+	if refusal := portalsGuard(client, x, y, z, ""); refusal != nil {
 		return refusal
 	}
 	return claimMarkerGuard(client, x, y, z)

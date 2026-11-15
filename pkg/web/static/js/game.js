@@ -1,6 +1,14 @@
 // How fast (blocks per second) the third-person camera goes back out once a wall stops being in the way.
 const THIRD_PERSON_RETURN_SPEED = 8;
 
+// The cardinal point the HUD's compass shows for a camera's yaw. Yaw 0 looks along -z, north, and a positive
+// yaw turns to the left (js/camera.js), so a quarter turn looks along -x, west. East is +x, as everywhere else
+// in the game (js/blockShapes.js, js/game/portals.js, js/game/weather.js's weatherCompass).
+function navigationCompassLetter(yaw) {
+    const quarters = Math.round(yaw / (Math.PI / 2));
+    return ['N', 'W', 'S', 'E'][((quarters % 4) + 4) % 4];
+}
+
 class Game {
     constructor() {
         this.scene = null;
@@ -426,10 +434,7 @@ class Game {
         const compass = document.getElementById('compass-value');
         const clock = document.getElementById('clock-value');
         if (compass) {
-            const yaw = ((this.cameraController.yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-            const directions = ['N', 'E', 'S', 'W'];
-            const index = Math.round(yaw / (Math.PI / 2)) % 4;
-            compass.textContent = directions[index];
+            compass.textContent = navigationCompassLetter(this.cameraController.yaw);
         }
         if (clock) {
             const dayHour = ((this.timeOfDay * 24) + 6) % 24;

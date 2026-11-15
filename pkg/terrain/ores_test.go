@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -633,4 +634,37 @@ func TestGenerateSharesNoState(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+// farFingerprint is the SHA-1 of squares of farSide x farSide columns far from the centre, where the plazas
+// of the fourth level of the portal network stand (a million blocks and more, pkg/network/portals.go) and at
+// the edge of what a client may ask for (worldReach, pkg/network/chunks.go): for each column its biome, its
+// height and its tree, then every terrain cell from BedrockY up, fossils and ores included. Out there the
+// integer hashes and the doubles of the noise are the furthest from home they get; test/js/ores.test.js reads
+// this constant and gets the same from js/terrainGen.js, so the two generators hold together there too.
+const farFingerprint = "10f4c725a366bec47b4958c120312ea9077812c2"
+
+// The south-west corner of each square (x, z).
+var farSquares = [][2]int{{1000000, 0}, {-1000000, 0}, {0, 1000000}, {0, -1000000}, {1111000, 0}, {-1111000, 0},
+	{0, 1111000}, {0, -1111000}, {1010000, -101000}, {-1111000, 1111000}, {2097000, -2097000}}
+
+const farSide = 16
+
+func TestFarTerrainMatchesJavaScript(t *testing.T) {
+	h := sha1.New()
+	for _, corner := range farSquares {
+		for x := corner[0]; x < corner[0]+farSide; x++ {
+			for z := corner[1]; z < corner[1]+farSide; z++ {
+				s := ColumnSurface(x, z)
+				soil := soilDepthAt(x, z, s)
+				h.Write([]byte(s.Biome + " " + strconv.Itoa(s.Height) + " " + treeAt(x, z, s) + "\n"))
+				for y := BedrockY; y <= s.Height; y++ {
+					h.Write([]byte(blockAt(x, y, z, s, soil) + "\n"))
+				}
+			}
+		}
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != farFingerprint {
+		t.Fatalf("the far terrain: got %s, want %s", got, farFingerprint)
+	}
 }

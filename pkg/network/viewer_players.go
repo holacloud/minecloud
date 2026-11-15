@@ -32,7 +32,7 @@ const (
 	// The game's own limit (appearance-name in index.html); a client can send anything.
 	viewerPlayerNameRunes = 20
 	// As far as the game asks for chunks; a position beyond this is not a place in the world.
-	viewerPlayerCoordLimit = 1 << 20
+	viewerPlayerCoordLimit = worldReach
 )
 
 // Field for field what goes out.
