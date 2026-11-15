@@ -932,3 +932,69 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   de inicio salvo con `force` al final.
 - **Visor:** opción «Show plots» (apagada al cargar), de `/viewer-api/claims`: cuadrados, altura del mojón y nombre del dueño, sin
   ids (`js/viewer/claimMarkers.js`).
+
+## Red de portales
+
+Plazas fijas unidas por portales oficiales para llegar muy lejos sin caminar (`js/game/portals.js`, `pkg/network/portals.go`,
+página 306 de la guía).
+
+- **Direcciones:** de 0 a 4 letras entre N, S, E y O, sin N y S juntas ni E y O juntas. La primera letra mueve 1.000 bloques,
+  la segunda 10.000, la tercera 100.000 y la cuarta 1.000.000; la plaza está en la suma. Norte es −z y este +x
+  (`SHAPE_DIRECTIONS`). La plaza central es la dirección vacía, en (0, 0). La regla da 105 plazas y 104 portales en 4 niveles.
+- **Se construyen los 4 niveles** (`portalsLevels` = `PORTALS_LEVELS` = 4): 105 plazas (1 + 4 + 12 + 28 + 60), 104 portales
+  de ida y 104 de vuelta, rojos, naranjas, amarillos y verdes. La más lejana, OOOO, está a 1.111.000 bloques del centro, dentro
+  de los 2.097.152 a los que un cliente puede pedir chunks (`worldReach`, `chunks.go`; antes era 1.048.576 y el cuarto nivel
+  no cabía).
+- **Portales:** cada plaza de nivel n < 4 tiene uno por cada letra que da una dirección válida de nivel n+1: 4 en la central, 3
+  si su ruta usa un solo eje (N, NN), 2 si no (NE); ninguno en las de nivel 4. El color es el del nivel de la plaza a la que
+  lleva: `portal_red`, `portal_orange`, `portal_yellow`, `portal_green`.
+- **Portal de vuelta:** toda plaza menos la central tiene además uno que lleva a la plaza de la que se llega (su dirección
+  sin la última letra), en el borde contrario a esa letra y del color del salto que deshace: quien llega lo tiene a la
+  espalda. La plaza N tiene tres naranjas y uno rojo en su borde sur; las de nivel 4 solo tienen el de vuelta, verde.
+  Ese borde siempre está libre, porque su letra nunca da una dirección válida (`portalsDoors` en los dos lados).
+- **Forma:** un cuadrado de 31 × 31 centrado en su posición: el núcleo de 17 × 17 (`portalsPlazaRadius` = 8) de `portal_plaza`
+  con su anillo exterior del color de la plaza (`portal_trim_<color>`: blanco en la central, si no el del salto que lleva a
+  ella, que es el de su portal de vuelta) y alrededor el margen, 7 bloques más por lado (`portalsMargin`) de `portal_paving`,
+  para construir tiendas. El suelo está nivelado a la altura de la columna más alta del terreno del generador en toda la
+  huella (`ColumnSurface.Height` es su bloque de arriba, y el suelo ocupa su sitio), o del bloque de arriba del agua
+  (`WaterLevel`) si nada es más alto: nada natural queda por encima. La primera vez se vacía todo hasta el cielo, se quita
+  cualquier bloque `portal_*` que quede debajo del suelo (la plaza de 9 × 9 de la primera versión) y se rellena debajo con
+  `cobblestone` a través de aire, plantas y árboles hasta el suelo (24 bloques como mucho, `portalsFoundation`), nunca dentro
+  del agua: sobre el mar es una plataforma. En las 105 plazas la mayor caída bajo la huella es de 22 bloques (ONOO) y siempre
+  hay una salida con un escalón de 2 bloques como mucho (`TestPortalsPlazasRestOnTheGround`).
+- **En el núcleo:** en el centro, a ras del suelo, `portal_compass`, con la rosa de los vientos en su cara de arriba (N, E,
+  S, O cada una en su lado, brazo rojo al norte; arriba del dibujo es el norte, `ChunkMesher.boxFaceUV`). Cuatro postes en
+  las esquinas del núcleo, justo dentro del anillo de color (centro ± 7, ± 7: el centro queda libre), de abajo arriba: `portal_legend`, la dirección leída de arriba abajo con
+  `portal_letter_n` / `_e` / `_s` / `_o` (la primera letra arriba; `portal_star` en la central) y un remate del color de la
+  plaza. Cada portal, en el centro de su lado del núcleo, sobre el anillo de color: marco de `portal_plaza` de 5 de ancho y 4
+  de alto, cristal de 3 × 3 que no choca, brilla y da luz 10, y encima del dintel la letra de su sentido.
+- **Clic derecho:** en la letra de encima de un portal, el chat dice adónde va («Este portal va al norte: 1.000 bloques,
+  hasta la plaza N.»); en la rosa, la leyenda, una letra o la estrella de un poste, un panel explica la plaza (dónde estás, los
+  cristales y sus letras, los colores y sus saltos, el portal de vuelta, los postes, la rosa, la página 306). El cliente lo
+  calcula de dónde está el bloque, sin nada en el servidor. Agachado se construye contra ellos.
+- **Cruzar:** con los pies o el torso en un cristal (`portalsUpdate`, cada fotograma), el jugador va al centro de la plaza a
+  la que lleva el portal (`portalsExitAt`), mirando en el sentido en que lo cruzó; se baja de la montura o el asiento y espera
+  quieto bajo un efecto a pantalla completa del color del portal (anillos que crecen y 36 vóxeles que salen del centro y pasan
+  a toda velocidad junto al ojo, como un salto al hiperespacio: solo animaciones CSS de `transform` y `opacity`, nada de
+  JavaScript por fotograma; color liso con `prefers-reduced-motion`) con el nombre de la plaza y el salto, hasta que los chunks del centro y los ocho de alrededor están
+  y tienen su malla hecha sin reconstrucción pendiente (`portalsPlaceDrawn`: `columns`, `chunks` y `rebuildQueue` de
+  `js/world.js`), como poco medio segundo y como mucho 30. Luego se queda de pie en las dos primeras celdas libres sobre la
+  rosa (encima de lo que alguien haya construido). El viaje acaba sin aterrizar si muere, se corta la conexión o algo lo
+  lleva a otro sitio (`/tp`, `/spawn`); a los 30 segundos lo posa el asentamiento normal de la cámara, como si no hay plaza
+  (red sin construir). El chat dice «Plaza NE: 10.000 al este, 1.000 al norte», o «Plaza central».
+- **Protección** (`portalsGuard`, desde `claimBreakAllowed` y `claimPlaceBlock`): ningún bloque `portal_*` se rompe, se tapa ni
+  se sustituye, y nadie coloca uno, salvo el administrador (sesión creativa); motivo `plaza` en `claimRefused`. Van en
+  `mechFixed`: los pistones no los mueven. En el cliente son `unbreakable` y no sueltan nada. Construir encima de una plaza de
+  la red, en el núcleo o en el margen, es colocar en el aire sobre ella y no se niega; la plaza central, entera, está dentro de
+  la zona de inicio, donde nadie construye.
+- **Aparición:** los jugadores nuevos empiezan en (0, 20, 0) y bajan hasta lo que haya debajo: la plaza central.
+- **Construirla:** `/build portals` en modo creativo envía `portalsBuild`; el servidor lo ignora si la sesión no es creativa.
+  Plaza a plaza, con `blockEditMu`, escribe solo las celdas que no son como deben. Una plaza que ya está (`portal_compass` en
+  su centro a la altura de su suelo) solo se repara: no se mira ninguna columna ni se vacía nada, así que repetirla no cambia
+  nada ni quita lo construido encima. Cada construcción, también de una plaza que ya está, vacía además los bloques `portal_*`
+  que queden donde estaban los postes de la segunda versión (centro ± 3, ± 3, del suelo + 1 al suelo + 6: 24 celdas). Las celdas cambiadas de cada plaza van, en mensajes `portalsCells` de 256 celdas como
+  mucho (`[[x, y, z, nombre], …]`, `""` para aire), solo a los clientes cuyo flujo de chunks está centrado lo bastante cerca
+  como para tener sus chunks (`portalsTell`: su radio más uno); los demás piden esos chunks al llegar y ya vienen como son. El
+  cliente las aplica solo en los chunks cargados o pedidos; el administrador recibe `portalsBuilt` con plazas, portales de ida y
+  de vuelta, celdas cambiadas y niveles. No mira
+  parcelas: una parcela que pise una plaza se queda como está, pero los bloques de la plaza siguen siendo de nadie.

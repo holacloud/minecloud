@@ -57,6 +57,7 @@ func TestEveryCheckedMessageIsWalkedByAStranger(t *testing.T) {
 		// Only a creative session gets as far as the check, and that is the admin, who passes it.
 		"constructionStock": "construction_stock_test.go",
 		"animalSummon":      "animals_test.go",
+		"portalsBuild":      "portals_test.go",
 	}
 	walked := map[string]bool{}
 	for _, path := range claimPaths() {

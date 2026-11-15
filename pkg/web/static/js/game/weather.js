@@ -43,8 +43,8 @@ const WEATHER_STATION_SCAN = 0.25;
 const WEATHER_LEGACY_KEY = 'minecloud-weather-stations';
 const WEATHER_LEGACY_MAX = 64;
 const WEATHER_LEGACY_EVERY = 1;
-// A block further than this from the origin does not exist (the server's limit for chunk requests).
-const WEATHER_LEGACY_REACH = 1 << 20;
+// A block further than this from the origin does not exist (worldReach, pkg/network/chunks.go).
+const WEATHER_LEGACY_REACH = 1 << 21;
 
 // Day (around 15:00) and night (around 03:00) air temperatures at ground level, in °C.
 const WEATHER_BIOME_CLIMATE = {
@@ -174,11 +174,12 @@ function weatherTemperatureWord(celsius) {
     return 'Scorching';
 }
 
-// Compass name of a horizontal direction, matching the HUD compass (north is -z, east is -x).
+// Compass name of a horizontal direction, matching the HUD compass (navigationCompassLetter, js/game.js):
+// north is -z and east is +x. The bearing is measured from north towards east.
 function weatherCompass(x, z) {
     const names = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const yaw = Math.atan2(-x, -z);
-    const index = ((Math.round(yaw / (Math.PI / 4)) % 8) + 8) % 8;
+    const bearing = Math.atan2(x, -z);
+    const index = ((Math.round(bearing / (Math.PI / 4)) % 8) + 8) % 8;
     return names[index];
 }
 

@@ -1491,6 +1491,8 @@ Object.assign(Game.prototype, {
         const what = (args[0] || '').toLowerCase();
         if (what === 'undo') this.constructionStartUndo();
         else if (what === 'stop') this.constructionStop();
+        // The transport network is the server's to build, wherever its plazas are (js/game/portals.js).
+        else if (what === 'portals' && typeof this.portalsBuildCommand === 'function') this.portalsBuildCommand();
         else if (CONSTRUCTION_DESIGNS[what] && Object.prototype.hasOwnProperty.call(CONSTRUCTION_DESIGNS, what)) this.constructionStart(what, (args[1] || '').toLowerCase() === 'force');
         else this.constructionListOptions();
     },
@@ -1500,7 +1502,7 @@ Object.assign(Game.prototype, {
             const { label, size } = CONSTRUCTION_DESIGNS[name];
             return `${name} (${label}, ${size[0]} x ${size[2]}, ${size[1]} high)`;
         });
-        this.receiveSystemMessage({ text: `/build ${options.join(', ')}. Also /build undo, /build stop` });
+        this.receiveSystemMessage({ text: `/build ${options.join(', ')}. Also /build undo, /build stop, /build portals (the portal network)` });
     },
 
     constructionBusy() {

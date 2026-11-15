@@ -1,12 +1,29 @@
 // Creative mode, for testing; deliberately left out of /help and the guide. "/creative <key>"
 // toggles it: every item is stocked, nothing runs out, the player takes no damage and blocks
-// break almost at once. "/give <item> [amount]" adds any item while it is on. The key is only
+// break almost at once. "/give <item> [amount]" adds any item while it is on, and "/tp <x> <z>"
+// or "/tp <x> <y> <z>" takes the player to those numbers. The key is only
 // known to the server (-creativekey), which checks it (creativeAuth message); a wrong or
-// missing key, or /give outside creative mode, answers exactly like a command that does not
+// missing key, or /give or /tp outside creative mode, answers exactly like a command that does not
 // exist. The accepted key is remembered in this browser and checked again on every connection.
 // Mixed into Game.prototype; the chat commands are wired in social.js.
 
 const CREATIVE_STOCK = 999;
+// A client may not ask for a chunk this far from the centre or further (worldReach, pkg/network/chunks.go):
+// whoever goes there hangs over nothing. And no number of "/tp" is taken beyond the other.
+const CREATIVE_TP_REACH = 1 << 21;
+const CREATIVE_TP_MAX = 10000000;
+
+// Where "/tp" goes: { x, y, z } for "<x> <z>" (y null: onto whatever the ground is there) or "<x> <y> <z>",
+// or null when the words are not that. The numbers are those of the corner of the screen (X, Y, Z: Y is the
+// height of the eyes), so typing them back returns to the same spot. A whole x or z names a block and means
+// its middle; a comma after a number, as somebody copies a pair, is let through.
+function creativeTpTarget(args) {
+    if (!Array.isArray(args) || (args.length !== 2 && args.length !== 3)) return null;
+    const words = args.map((arg) => String(arg).replace(/,$/, ''));
+    if (!words.every((word) => /^-?\d+(\.\d+)?$/.test(word) && Math.abs(Number(word)) <= CREATIVE_TP_MAX)) return null;
+    const across = (word) => Number(word) + (word.includes('.') ? 0 : 0.5);
+    return { x: across(words[0]), y: words.length === 3 ? Number(words[1]) : null, z: across(words[words.length - 1]) };
+}
 
 Object.assign(Game.prototype, {
     creativeLoad() {
@@ -103,6 +120,33 @@ Object.assign(Game.prototype, {
         }
         this.addInventory(type, amount);
         this.receiveSystemMessage({ text: `Gave ${amount} ${this.getBlockDisplayName(type)}` });
+    },
+
+    // "/tp": off whatever the player rides or sits on and to the place (creativeTpTarget), looking the same
+    // way. The camera's own settling does the rest (camera.js): it hangs there until the chunk comes, comes
+    // out of a block, and goes down gently onto what is below. With no height it starts over the world's top.
+    creativeTeleport(command, args) {
+        if (!this.creativeMode) {
+            this.receiveSystemMessage({ text: `Unknown command: /${command}` });
+            return;
+        }
+        const target = creativeTpTarget(args);
+        if (!target) {
+            this.receiveSystemMessage({ text: `Usage: /${command} <x> <z>, or /${command} <x> <y> <z> (the X, Y and Z in the corner of the screen)` });
+            return;
+        }
+        if (typeof this.stopMining === 'function') this.stopMining();
+        if (this.ridingMob && typeof this.dismount === 'function') this.dismount();
+        if (this.seated && typeof this.seatStandUp === 'function') this.seatStandUp();
+        const controller = this.cameraController;
+        const eye = controller.eyeHeight || 1.62;
+        const top = WORLD_MAX_Y + 1 + eye;
+        const y = target.y === null ? top : Math.min(Math.max(target.y, WORLD_MIN_Y + 1 + eye), top);
+        controller.setPosition({ x: target.x, y, z: target.z });
+        const beyond = Math.max(Math.abs(target.x), Math.abs(target.z)) >= CREATIVE_TP_REACH
+            ? `. The server gives no chunks ${CREATIVE_TP_REACH.toLocaleString('en-US')} blocks or more from the centre: nothing will appear here`
+            : '';
+        this.receiveSystemMessage({ text: `Teleported to X: ${target.x} Z: ${target.z}${beyond}` });
     }
 });
 

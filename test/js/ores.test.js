@@ -73,6 +73,30 @@ test('from y = 2 up nothing moved when the world went deeper, on this side too',
     assert.equal(hash.digest('hex'), fingerprint);
 });
 
+// Far from the centre, where the plazas of the fourth level of the portal network stand and at the edge of the
+// world (TestFarTerrainMatchesJavaScript, pkg/terrain/ores_test.go): biome, height and tree of each column, then
+// every cell, fossils included.
+test('terrainGen.js makes the same terrain as terrain.Generate a million blocks away and at the edge of the world', () => {
+    const generator = loadGenerator();
+    const go = read(ROOT, 'pkg', 'terrain', 'ores_test.go');
+    const fingerprint = go.match(/const farFingerprint = "([0-9a-f]{40})"/)[1];
+    const side = Number(go.match(/const farSide = (\d+)/)[1]);
+    const squares = [...go.match(/var farSquares = \[\]\[2\]int\{([^]*?)\}\n/)[1].matchAll(/\{(-?\d+), (-?\d+)\}/g)].map(([, x, z]) => [Number(x), Number(z)]);
+    assert.equal(squares.length, 11);
+    const hash = crypto.createHash('sha1');
+    for (const [x0, z0] of squares) {
+        for (let x = x0; x < x0 + side; x++) {
+            for (let z = z0; z < z0 + side; z++) {
+                const surface = generator.columnSurface(x, z);
+                const soil = generator.soilDepthAt(x, z, surface);
+                hash.update(`${surface.biome} ${surface.height} ${generator.treeAt(x, z, surface) || ''}\n`);
+                for (let y = generator.BEDROCK_Y; y <= surface.height; y++) hash.update(`${generator.blockAt(x, y, z, surface, soil)}\n`);
+            }
+        }
+    }
+    assert.equal(hash.digest('hex'), fingerprint);
+});
+
 test('bedrock is all of y = -14 and about half of y = -13, with no ore in it', () => {
     const generator = loadGenerator();
     assert.equal(generator.BEDROCK_Y, -14);

@@ -14,6 +14,13 @@ import (
 
 const chunkDataPath = "data/chunks"
 
+// How far the world reaches from the centre, in blocks along x and along z: a client may ask for no chunk this
+// far or further (handleChunkMessage), and the terrain viewer, the players it shows and the animals kept stop
+// there too (viewer.go, viewer_players.go, animals.go). A bound against absurd requests, set beyond the farthest
+// plaza of the portal network (1,111,000 blocks, portals.go); js/game/creative.js and js/game/weather.js say
+// the same number (test/js/creative.test.js reads it here).
+const worldReach = 1 << 21
+
 // The bytes of a sign's text the server keeps.
 const signMaxTextBytes = 288
 
@@ -262,7 +269,7 @@ func handleChunkMessage(client *Client, msg Message) {
 			return
 		}
 		valid := payload.Chunks[:0]
-		limit := 1 << 20 / terrain.ChunkSize
+		limit := worldReach / terrain.ChunkSize
 		for _, c := range payload.Chunks {
 			if abs(c[0]) < limit && abs(c[1]) < limit {
 				valid = append(valid, c)

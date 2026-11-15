@@ -59,6 +59,7 @@ const CLAIM_TEXT = {
     refusedPlot: { ES: 'Parcela de {owner}: aquí no puedes cambiar nada.', EN: "{owner}'s plot: you can't change anything here." },
     refusedPlotNobody: { ES: 'Parcela de otro jugador: aquí no puedes cambiar nada.', EN: "Another player's plot: you can't change anything here." },
     refusedSpawn: { ES: 'Zona de inicio: aquí no se puede cambiar nada.', EN: "Spawn area: nothing can be changed here." },
+    refusedPlaza: { ES: 'Es un bloque de la red de portales: nadie puede romperlo ni cambiarlo.', EN: 'That block is part of the portal network: nobody can break or change it.' },
     overlap: { ES: 'No cabe: se solapa con la parcela de {owner}.', EN: "It doesn't fit: it overlaps {owner}'s plot." },
     overlapSpawn: { ES: 'Demasiado cerca de la zona de inicio: aléjate un poco más.', EN: 'Too close to the spawn area: move a bit further away.' },
     tooClose: { ES: 'Demasiado cerca de la parcela de {owner}: entre las dos quedarían {distance} bloques libres y hacen falta {gap}.', EN: "Too close to {owner}'s plot: there would be {distance} free blocks between them and {gap} are needed." },
@@ -184,6 +185,7 @@ function claimRefusalText(refusal) {
     switch (refusal && refusal.reason) {
         case 'claim': return owner ? claimSay('refusedPlot', { owner }) : claimSay('refusedPlotNobody');
         case 'spawn': return claimSay('refusedSpawn');
+        case 'plaza': return claimSay('refusedPlaza');
         case 'overlap': return owner ? claimSay('overlap', { owner }) : claimSay('overlap', { owner: claimSay('nameless') });
         case 'overlapSpawn': return claimSay('overlapSpawn');
         case 'tooClose': return claimSay('tooClose', { owner: owner || claimSay('nameless'), distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 8) });

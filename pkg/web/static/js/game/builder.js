@@ -83,7 +83,9 @@ function builderPaletteAllows(id, tags) {
 
 // The palette of a catalogue, in its order: items only (no states), that can be placed.
 function builderPaletteOf(blockTypes) {
-    return itemTagCatalogue(blockTypes).filter((id) => !blockTypes[id].itemOnly && builderPaletteAllows(id, itemTagsOf(id, blockTypes)));
+    // Nor what nobody may break: the blocks of the portal network (js/game/portals.js) are nobody's to place.
+    return itemTagCatalogue(blockTypes).filter((id) => !blockTypes[id].itemOnly && !blockTypes[id].unbreakable &&
+        builderPaletteAllows(id, itemTagsOf(id, blockTypes)));
 }
 
 // The item a block in the world is (a state is its item's).

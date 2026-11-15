@@ -40,7 +40,7 @@ const (
 	// Chunks in one chunks request (at most about 2 MB).
 	viewerMaxChunks = 16
 	// Same coordinate limit as the game's chunkRequest.
-	viewerCoordLimit = 1 << 20 / terrain.ChunkSize
+	viewerCoordLimit = worldReach / terrain.ChunkSize
 	// Requests served at once; more get a 503 and try again later, so the viewer can never
 	// take the machine from the game.
 	viewerMaxInFlight = 8
