@@ -15,6 +15,7 @@ The server checks everything. If it can't be done, the marker is not placed, goe
 - **You already have a plot.** One per player, for now. To move it, remove the one you have.
 - **It overlaps another plot**, or **it is too close:** between the edge of your plot and that of any other there must be at least **8 free blocks** (across or along on the map, whichever is more). The notice says how many there would be. With the markers in the same row, that is at least 25 blocks from one marker to the other.
 - **Too close to the spawn area:** the same 8 free blocks up to its edge (see below).
+- **On a plaza of the [portal network](306)**, or **too close to one:** a plaza is 31 × 31 blocks, margin included, and between it and the edge of your plot there must be at least **5 free blocks**. It counts for every plaza, even one that has not been built yet, and the notice names the plaza ("plaza NE of the portal network"). With the marker in line with the plaza's centre, that is at least 29 blocks from one to the other.
 
 Plots that were already closer together before this rule stay as they are; only a new claim is checked.
 - **Too far:** place it within arm's reach, like any block.

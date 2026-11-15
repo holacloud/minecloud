@@ -15,6 +15,7 @@ El servidor lo comprueba todo. Si no se puede, el mojón no se pone, vuelve a tu
 - **Ya tienes una parcela.** De momento, una por jugador. Para cambiarla de sitio, quita la que tienes.
 - **Se solapa con otra parcela**, o **está demasiado cerca:** entre el borde de tu parcela y el de cualquier otra tienen que quedar al menos **8 bloques libres** (en horizontal o en vertical en el mapa, lo que sea más). El aviso dice cuántos quedarían. Con los mojones en la misma fila, eso es al menos 25 bloques entre un mojón y otro.
 - **Demasiado cerca de la zona de inicio:** los mismos 8 bloques libres hasta su borde (ver abajo).
+- **Sobre una plaza de la [red de portales](306)**, o **demasiado cerca de una:** una plaza mide 31 × 31 bloques con su margen, y entre ella y el borde de tu parcela tienen que quedar al menos **5 bloques libres**. Vale para todas las plazas, también las que aún no se han construido, y el aviso dice cuál es («la plaza NE de la red de portales»). Con el mojón en línea con el centro de la plaza, eso es al menos 29 bloques entre uno y otro.
 
 Las parcelas que ya estaban más juntas antes de esta regla se quedan como están; solo se mira al reclamar una nueva.
 - **Demasiado lejos:** ponlo al alcance de la mano, como cualquier bloque.

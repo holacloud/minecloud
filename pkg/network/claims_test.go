@@ -1343,3 +1343,105 @@ func TestPlotsSavedCloserThanTheGapStayAndOnlyNewClaimsAreChecked(t *testing.T) 
 		t.Fatalf("gap %d", payload.Gap)
 	}
 }
+
+// --- The plazas of the portal network ---
+
+// claimPlace has a new player place a marker at (x, 120, z), standing next to it, and returns the refusal.
+func claimPlace(t *testing.T, name string, x, z int) *claimRefusal {
+	t.Helper()
+	player := "plr_" + claimGuestKey(name, "a") + claimGuestKey(name, "b")
+	client := claimClient(t, name, player, float64(x)+1, 121.6, float64(z)+1)
+	claimSend(t, client, "blockPlace", Block{X: x, Y: 120, Z: z, BlockType: claimMarkerBlock})
+	return claimRefusalOf(t, claimHeard(client))
+}
+
+func TestANewPlotKeepsFiveFreeColumnsFromEveryPlaza(t *testing.T) {
+	claimWorld(t)
+	// Plaza N stands at (0, -1000): its footprint is x -15..15 and z -1015..-985.
+	if r := portalsFootprintOf("N"); r != (claimRect{MinX: -15, MinZ: -1015, MaxX: 15, MaxZ: -985}) || claimPlazaGap != 5 || len(portalsFootprints) != 105 {
+		t.Fatalf("footprint %+v, gap %d, %d plazas", r, claimPlazaGap, len(portalsFootprints))
+	}
+	refused := func(what string, r *claimRefusal, reason, plaza string, distance int) {
+		t.Helper()
+		if r == nil || r.Reason != reason || r.Plaza != plaza || r.Distance != distance || (reason == claimReasonTooClosePlaza && r.Gap != claimPlazaGap) {
+			t.Errorf("%s: %+v", what, r)
+		}
+	}
+	refused("on the plaza", claimPlace(t, "On", 0, -1000), claimReasonOverlapPlaza, "N", 0)
+	refused("on its margin", claimPlace(t, "Margin", 20, -995), claimReasonOverlapPlaza, "N", 0)
+	// Along x: the plot of a marker at 28 starts at 20, and 16..19 are free.
+	refused("4 free along x", claimPlace(t, "East4", 28, -1000), claimReasonTooClosePlaza, "N", 4)
+	if r := claimPlace(t, "East5", 29, -1000); r != nil {
+		t.Fatalf("5 free along x: %+v", r)
+	}
+	// Along z: the plot of a marker at -972 starts at -980, and -984..-981 are free.
+	refused("4 free along z", claimPlace(t, "South4", 0, -972), claimReasonTooClosePlaza, "N", 4)
+	if r := claimPlace(t, "South5", 0, -971); r != nil {
+		t.Fatalf("5 free along z: %+v", r)
+	}
+	// At a corner of plaza E (985..1015, -15..15) the larger of the two counts, as gapTo says.
+	refused("corner 2 and 4", claimPlace(t, "Corner4", 1026, 28), claimReasonTooClosePlaza, "E", 4)
+	if r := claimPlace(t, "Corner5", 1026, 29); r != nil {
+		t.Fatalf("corner 2 and 5: %+v", r)
+	}
+	// A plaza of the fourth level counts, though nothing is built there.
+	x, z := portalsPosition("NENE")
+	if x != 1010000 || z != -101000 || claimBlockAt(t, x, portalsFloorY(x, z), z) == portalsCompassBlock {
+		t.Fatalf("NENE at %d, %d", x, z)
+	}
+	refused("NENE", claimPlace(t, "Far", x+portalsFootprint()+1+8+2, z), claimReasonTooClosePlaza, "NENE", 2)
+	// The central plaza lies inside the spawn zone, whose reason comes first.
+	// (z 12..28 overlaps both, and the marker stands outside the zone, where it may be placed.)
+	refused("the central plaza", claimPlace(t, "Centre", 0, 20), claimReasonOverlapSpawn, "", 0)
+	refused("near the central plaza", claimPlace(t, "Centre2", 0, 28), claimReasonTooCloseSpawn, "", 4)
+	// Nobody is exempt, the admin neither, as from the gap between plots.
+	admin := claimClient(t, "Admin", "plr_admin", -27, 121.6, -999)
+	admin.creative.Store(true)
+	claimSend(t, admin, "blockPlace", Block{X: -28, Y: 120, Z: -1000, BlockType: claimMarkerBlock})
+	refused("the admin", claimRefusalOf(t, claimHeard(admin)), claimReasonTooClosePlaza, "N", 4)
+	if claimBlockAt(t, -28, 120, -1000) == claimMarkerBlock {
+		t.Error("the admin's refused marker stays")
+	}
+	// The list tells the client the gap.
+	claimsSendTo(admin)
+	var payload struct {
+		PlazaGap int `json:"plazaGap"`
+	}
+	json.Unmarshal(claimHeard(admin)["claimList"][0], &payload)
+	if payload.PlazaGap != claimPlazaGap {
+		t.Fatalf("plazaGap %d", payload.PlazaGap)
+	}
+}
+
+func TestThePlazasComeAfterTheSpawnZoneAndBeforeOtherPlots(t *testing.T) {
+	claimWorld(t)
+	old := time.Unix(100, 0)
+	claims.load(map[string]Claim{"clm_b": {X: 50, Y: 120, Z: -1000, Owner: plrBeto, OwnerName: "Beto", CreatedAt: old}}) // x 42..58
+	// x 20..36: 4 free to plaza N and 5 to Beto's plot: the plaza is named.
+	if r := claimPlace(t, "Both", 28, -1000); r == nil || r.Reason != claimReasonTooClosePlaza || r.Plaza != "N" {
+		t.Fatalf("%+v", r)
+	}
+	// createSpaced with 0 (the tests of other rules) keeps plots off the footprints, and no more.
+	if _, r := claims.createSpaced("plr_zero_a", "", 0, 0, -1000, 0); r == nil || r.Reason != claimReasonOverlapPlaza {
+		t.Fatalf("gap 0 on a plaza: %+v", r)
+	}
+	if _, r := claims.createSpaced("plr_zero_b", "", 24, 0, -1000, 0); r != nil {
+		t.Fatalf("gap 0 next to a plaza: %+v", r)
+	}
+}
+
+func TestAPlotSavedOnAPlazaStaysAndStillProtects(t *testing.T) {
+	claimWorld(t)
+	old := time.Unix(100, 0)
+	claims.load(map[string]Claim{"clm_a": {X: 0, Y: 120, Z: -1000, Owner: plrAna, OwnerName: "Ana", CreatedAt: old}})
+	worldSaveAll()
+	claims = newClaimBook()
+	if err := worldLoad(); err != nil || len(claims.list()) != 1 {
+		t.Fatalf("after a restart: %v %d", err, len(claims.list()))
+	}
+	stranger := claimClient(t, "Zoe", "plr_ffffffffffffffffffffffffffffffff", 1, 121.6, -999)
+	claimSend(t, stranger, "blockPlace", Block{X: 1, Y: 120, Z: -999, BlockType: "stone"})
+	if r := claimRefusalOf(t, claimHeard(stranger)); r == nil || r.Reason != claimReasonPlot || r.Owner != "Ana" {
+		t.Fatalf("Ana's old plot protects: %+v", r)
+	}
+}

@@ -10,6 +10,7 @@ A **plaza** is a square of **31 × 31 blocks**. In the middle is the **core**, 1
 
 - The **central plaza** is at the very middle of the world, at 0, 0. **New players appear there.** Nobody builds on it.
 - The other plazas are **network plazas**: you can build on top of them, core and margin, as anywhere else, but no block of the plaza itself can be broken or changed.
+- Nobody can claim a plaza, nor a [plot](260) closer than **5 blocks** to its edge: a plaza and its margin stay everybody's.
 
 ## What a plaza has
 
@@ -57,6 +58,6 @@ When you arrive, the chat tells you the address of the plaza and how far it is f
 
 ## Who builds it
 
-The network is official: players can't make portals nor take them away. The world's administrator builds it once, and building it again changes nothing nor removes what anybody built on a plaza.
+The network is official: players can't make portals nor take them away. The world's administrator builds it once, and building it again changes nothing nor removes what anybody built on a plaza. It is never built over somebody's plot: if an old plot lies on a plaza, nothing is built and the administrator is told whose it is and where, until that plot goes.
 
 See also: [Plots](260), where only you can change anything, and [Chat commands](12).

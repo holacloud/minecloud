@@ -2,13 +2,14 @@
 //
 // - The claim marker (claim_marker, made in C from stone bricks and copper ore): placed, it claims the plot
 //   of 17 x 17 columns around it, from bedrock to the sky, if the server agrees (one plot per player, at
-//   least `gap` (8) free columns from any other plot and from the spawn zone, in reach). Right click on your own marker opens its
+//   least `gap` (8) free columns from any other plot and from the spawn zone, and `plazaGap` (5) from the footprint of
+//   any plaza of the portal network, built or not (js/game/portals.js), in reach). Right click on your own marker opens its
 //   panel: size, coordinates, guests, «Quitar la parcela». Breaking your own marker asks first, in that panel.
 // - Guests: in that panel the owner invites connected players (from playerList, sent by their page id; the
 //   server keeps them by stable player id) and removes them (by the key claimList gave). A guest builds,
 //   breaks and opens things there like the owner, but the marker, its panel and inviting stay the owner's;
 //   to a guest the marker only says whose plot it is, as to a visitor. Guests' plots have a violet border.
-// - The server tells every plot in claimList {claims, spawn, radius, gap}: each with its square, its owner's name,
+// - The server tells every plot in claimList {claims, spawn, radius, gap, plazaGap}: each with its square, its owner's name,
 //   `mine` or `guest`, and for the owner its guests {key, name, online}. From that this file draws the borders near the player (soft lines on the ground and faint
 //   columns at the corners; around the player's own and guest plots, a fainter line for builder mode's margin), says «Parcela de Ana» on walking in, and checks before acting, so that in
 //   someone else's plot or the spawn zone nothing is mined, placed or opened and the player is told why.
@@ -64,6 +65,10 @@ const CLAIM_TEXT = {
     overlapSpawn: { ES: 'Demasiado cerca de la zona de inicio: aléjate un poco más.', EN: 'Too close to the spawn area: move a bit further away.' },
     tooClose: { ES: 'Demasiado cerca de la parcela de {owner}: entre las dos quedarían {distance} bloques libres y hacen falta {gap}.', EN: "Too close to {owner}'s plot: there would be {distance} free blocks between them and {gap} are needed." },
     tooCloseSpawn: { ES: 'Demasiado cerca de la zona de inicio: quedarían {distance} bloques libres hasta ella y hacen falta {gap}.', EN: 'Too close to the spawn area: there would be {distance} free blocks up to it and {gap} are needed.' },
+    overlapPlaza: { ES: 'No cabe: pisaría {plaza}, que es de todos.', EN: "It doesn't fit: it would cover {plaza}, which is everybody's." },
+    tooClosePlaza: { ES: 'Demasiado cerca de {plaza}: quedarían {distance} bloques libres hasta ella y hacen falta {gap}.', EN: 'Too close to {plaza}: there would be {distance} free blocks up to it and {gap} are needed.' },
+    plazaNamed: { ES: 'la plaza {address} de la red de portales', EN: 'plaza {address} of the portal network' },
+    plazaCentral: { ES: 'la plaza central', EN: 'the central plaza' },
     already: { ES: 'Ya tienes una parcela. Para cambiarla de sitio, rompe antes su mojón.', EN: 'You already have a plot. To move it, break its marker first.' },
     reach: { ES: 'Demasiado lejos: acércate para poner el mojón.', EN: 'Too far: come closer to place the marker.' },
     noPlayer: { ES: 'Ahora no se puede reclamar: falta la conexión con tu jugador.', EN: "You can't claim right now: there is no link to your player." },
@@ -145,6 +150,25 @@ function claimRectDistance(rect, x, z) {
     return Math.hypot(dx, dz);
 }
 
+// The plaza of the portal network whose footprint is nearest a square of columns, and the free columns between
+// them (claimRectGap: negative when they overlap), as { address, distance }; null when js/game/portals.js is not
+// there. Every plaza of the rule counts, built or not (the server's portalsNearestFootprint, pkg/network/portals.go).
+function claimNearestPlaza(rect) {
+    if (typeof PORTALS_PLAZAS === 'undefined' || typeof PORTALS_FOOTPRINT === 'undefined') return null;
+    const f = PORTALS_FOOTPRINT;
+    let nearest = null;
+    for (const plaza of PORTALS_PLAZAS) {
+        const distance = claimRectGap(rect, { minX: plaza.x - f, minZ: plaza.z - f, maxX: plaza.x + f, maxZ: plaza.z + f });
+        if (!nearest || distance < nearest.distance) nearest = { address: plaza.address, distance };
+    }
+    return nearest;
+}
+
+// A plaza as a refusal names it: «la plaza NE de la red de portales», «la plaza central» (address '').
+function claimPlazaName(address) {
+    return typeof address === 'string' && address ? claimSay('plazaNamed', { address }) : claimSay('plazaCentral');
+}
+
 // The zone of a column: { kind: 'spawn' }, { kind: 'plot', claim } or null.
 function claimZoneOf(state, x, z) {
     if (!state) return null;
@@ -190,6 +214,8 @@ function claimRefusalText(refusal) {
         case 'overlapSpawn': return claimSay('overlapSpawn');
         case 'tooClose': return claimSay('tooClose', { owner: owner || claimSay('nameless'), distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 8) });
         case 'tooCloseSpawn': return claimSay('tooCloseSpawn', { distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 8) });
+        case 'overlapPlaza': return claimSay('overlapPlaza', { plaza: claimPlazaName(refusal.plaza) });
+        case 'tooClosePlaza': return claimSay('tooClosePlaza', { plaza: claimPlazaName(refusal.plaza), distance: claimCount(refusal.distance), gap: claimCount(refusal.gap, 5) });
         case 'already': return claimSay('already');
         case 'reach': return claimSay('reach');
         case 'noPlayer': return claimSay('noPlayer');
@@ -498,7 +524,9 @@ Object.assign(Game.prototype, {
             claims: (Array.isArray(payload.claims) ? payload.claims : []).filter(valid),
             spawn: valid(payload.spawn) ? payload.spawn : null,
             radius: Number.isFinite(payload.radius) ? payload.radius : 8,
-            gap: Number.isInteger(payload.gap) && payload.gap >= 0 ? payload.gap : 8
+            gap: Number.isInteger(payload.gap) && payload.gap >= 0 ? payload.gap : 8,
+            // Sent with the spawn zone: without it the server keeps no plazas either (pkg/network/claims.go).
+            plazaGap: Number.isInteger(payload.plazaGap) && payload.plazaGap >= 0 ? payload.plazaGap : null
         };
         this.claimBorderBuiltAt = 0;
         if (hadMine && !this.claimMine() && this.claimRemoving) this.claimNotice(claimSay('removed'));
@@ -1033,6 +1061,10 @@ Object.assign(Game.prototype, {
         const rect = { minX: x - radius, minZ: z - radius, maxX: x + radius, maxZ: z + radius };
         if (state.spawn && claimRectsOverlap(rect, state.spawn)) return { reason: 'overlapSpawn' };
         if (state.spawn && claimRectGap(rect, state.spawn) < gap) return { reason: 'tooCloseSpawn', distance: claimRectGap(rect, state.spawn), gap };
+        // Then the plazas of the portal network, before the other plots, as on the server.
+        const plaza = Number.isInteger(state.plazaGap) ? claimNearestPlaza(rect) : null;
+        if (plaza && plaza.distance < 0) return { reason: 'overlapPlaza', plaza: plaza.address };
+        if (plaza && plaza.distance < state.plazaGap) return { reason: 'tooClosePlaza', plaza: plaza.address, distance: plaza.distance, gap: state.plazaGap };
         const other = state.claims.find((claim) => claimRectsOverlap(rect, claim));
         if (other) return { reason: 'overlap', owner: other.owner };
         // The nearest plot closer than the gap, by its free columns.

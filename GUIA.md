@@ -839,6 +839,14 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   `tooCloseSpawn` (`distance`, `gap`), `reach` o `noPlayer`, y el cliente devuelve el mojón al inventario. Solo se mira al
   reclamar: las parcelas guardadas más cerca de antes siguen valiendo (al cargar solo se descartan solapes). `claimList`
   lleva `gap` para la comprobación de cortesía del cliente.
+- **Plazas de la red de portales:** tras la zona de inicio y antes que las demás parcelas, el cuadrado no puede pisar la huella
+  de 31 × 31 de ninguna plaza de los 4 niveles (`portalsFootprints`, calculadas una vez al arrancar; construida o no) y deja
+  `claimPlazaGap` (5) columnas libres hasta ella, contadas con `gapTo`: `claimRefused` con `reason` `overlapPlaza` o
+  `tooClosePlaza` (`distance`, `gap`), y `plaza` con la dirección (se omite para la central, que además cae dentro de la zona
+  de inicio, cuyo motivo va antes). Nadie queda exento, tampoco el administrador, igual que con `claimGap`. `claimList` lleva
+  `plazaGap` (con `spawn`: sin zona de inicio, en las pruebas de otras mecánicas, tampoco se miran las plazas), y el cliente
+  comprueba lo mismo por cortesía con `PORTALS_PLAZAS` y `PORTALS_FOOTPRINT` de `js/game/portals.js`. `createSpaced` con
+  otro `gap` usa el menor de los dos para las plazas (con 0, solo que no las pise).
 - **Tamaño:** 17 × 17 columnas centradas en el mojón (`claimRadius` = 8), del bedrock al cielo: la protección solo mira x y z.
   Una por jugador. **Zona de inicio:** x y z de −16 a 15 (32 × 32 alrededor de (0, 0)), sin dueño.
 - **Quitar:** romper el mojón (solo el dueño o el administrador, porque está dentro de su propia parcela) o taparlo con otro
@@ -1001,5 +1009,9 @@ página 306 de la guía).
   mucho (`[[x, y, z, nombre], …]`, `""` para aire), solo a los clientes cuyo flujo de chunks está centrado lo bastante cerca
   como para tener sus chunks (`portalsTell`: su radio más uno); los demás piden esos chunks al llegar y ya vienen como son. El
   cliente las aplica solo en los chunks cargados o pedidos; el administrador recibe `portalsBuilt` con plazas, portales de ida y
-  de vuelta, celdas cambiadas y niveles. No mira
-  parcelas: una parcela que pise una plaza se queda como está, pero los bloques de la plaza siguen siendo de nadie.
+  de vuelta, celdas cambiadas y niveles. **Antes de construir nada** mira, con `blockEditMu`, las huellas de las 105 plazas: si
+  alguna parcela pisa una (guardada de antes de la regla de las plazas; una nueva no puede), no construye nada y responde
+  `portalsBuilt {error: "plots", plots: [{plaza, owner, x, y, z}], count}` con las 10 primeras y cuántas son; el chat dice de
+  quién es cada una, sobre qué plaza y dónde está su mojón, y que hay que quitarla antes (su dueño rompe el mojón, o
+  `/plot remove`). La del propio administrador también cuenta. Una parcela solo cerca de una plaza no lo impide: la construcción
+  no toca ninguna columna fuera de las huellas. Nadie puede reclamar sobre una plaza ni a menos de 5 bloques (ver Parcelas).

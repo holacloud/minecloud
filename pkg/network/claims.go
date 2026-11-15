@@ -15,6 +15,14 @@ package network
 //     claimRefused (below) and nothing changes; "tooClose" and "tooCloseSpawn" say how many free columns
 //     there are (distance) and how many are needed (gap). Only new claims are checked: plots saved closer
 //     than that, from before the rule, stay as they are.
+//   - The plazas of the portal network (portals.go) keep plots away too: a new plot overlaps no plaza's
+//     footprint (31 x 31, margin included) and leaves claimPlazaGap (5) free columns to it, for every plaza
+//     of the rule's portalsLevels levels, built or not (their places are fixed, so a plot where a plaza will
+//     be built tomorrow is refused today). Checked after the spawn zone (whose reason comes first at the
+//     central plaza, which lies inside it) and before the other plots: "overlapPlaza" and "tooClosePlaza",
+//     with the plaza's address in `plaza` ("", or left out, for the central one). Nobody is exempt, the
+//     admin neither, as from claimGap. So a plaza and its margin stay everybody's, and "/build portals",
+//     which refuses to build while a plot lies on a footprint, never meets a new one there.
 //   - Removing: breaking the marker removes the plot. Only the owner can break it, because the marker
 //     stands in the middle of its own plot (and the admin, who can break anything). Overwriting the
 //     marker with another block does the same. A marker left with no plot (the admin removed the plot)
@@ -76,7 +84,7 @@ package network
 // client can give the item back. Storage and microscope requests also get their usual storageResult
 // with reason "protected", so their items come back as for any refusal.
 //
-// The client hears every plot as claimList {claims, spawn, radius, gap} on connecting, after a recovery and
+// The client hears every plot as claimList {claims, spawn, radius, gap, plazaGap} on connecting, after a recovery and
 // after any change: each plot with its marker, its square, its owner's name, and what the client is
 // there: `mine` for its own one, `guest` for one it is invited to, nothing for a visitor. Only the owner
 // hears its guests, as {key, name, online}: the key is a hash of the plot and the guest's player id, good
@@ -118,6 +126,9 @@ const (
 	claimMaxGuests = 16
 	// Free columns a new plot must leave between its edges and those of any other plot, and the spawn zone.
 	claimGap = 8
+	// Free columns a new plot must leave between its edges and the footprint of any plaza of the portal
+	// network (portals.go, portalsFootprints).
+	claimPlazaGap = 5
 )
 
 // Why something was refused (claimRefused.reason).
@@ -132,6 +143,8 @@ const (
 	claimReasonOwnerOnly     = "ownerOnly"     // the marker of a plot the player is only a guest of
 	claimReasonTooClose      = "tooClose"      // a new plot would be closer than claimGap to another
 	claimReasonTooCloseSpawn = "tooCloseSpawn" // a new plot would be closer than claimGap to the spawn zone
+	claimReasonOverlapPlaza  = "overlapPlaza"  // a new plot would overlap a plaza of the portal network
+	claimReasonTooClosePlaza = "tooClosePlaza" // a new plot would be closer than claimPlazaGap to a plaza
 )
 
 // claimRect is a square of columns, both ends included.
@@ -164,7 +177,8 @@ func (r claimRect) grow(n int) claimRect {
 }
 
 // The spawn zone: 32 x 32 columns around the spawn point (0, 0). spawnZoneOn is off only in the tests of
-// other mechanics, which happen to be built around the origin (TestMain).
+// other mechanics, which happen to be built around the origin (TestMain); the plazas of the portal network
+// keep new plots away only while it is on, since the central one lies around the origin too.
 var (
 	spawnZone   = claimRect{MinX: -16, MinZ: -16, MaxX: 15, MaxZ: 15}
 	spawnZoneOn = true
@@ -388,6 +402,24 @@ func (b *claimBook) at(x, z int) (Claim, bool) {
 	return Claim{}, false
 }
 
+// overlappingAll copies every plot overlapping this square, in the order of their ids.
+func (b *claimBook) overlappingAll(r claimRect) []Claim {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	var out []Claim
+	seen := map[*Claim]bool{}
+	for _, chunk := range claimChunks(r) {
+		for _, c := range b.byChunk[chunk] {
+			if !seen[c] && c.rect().overlaps(r) {
+				seen[c] = true
+				out = append(out, c.clone())
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
 // overlapLocked is a plot overlapping this square, nil if none.
 func (b *claimBook) overlapLocked(r claimRect) *Claim {
 	for _, chunk := range claimChunks(r) {
@@ -442,12 +474,13 @@ func (b *claimBook) nearestLocked(r claimRect, gap int) (*Claim, int) {
 }
 
 // create makes the plot of a marker at (x, y, z) for owner, keeping claimGap from every other plot and from
-// the spawn zone, or says why not.
+// the spawn zone and claimPlazaGap from the plazas of the portal network, or says why not.
 func (b *claimBook) create(owner, ownerName string, x, y, z int) (Claim, *claimRefusal) {
 	return b.createSpaced(owner, ownerName, x, y, z, claimGap)
 }
 
-// createSpaced is create with another gap (0: only no overlap; the tests of other rules use it).
+// createSpaced is create with another gap (0: only no overlap; the tests of other rules use it). The plazas
+// keep the smaller of that gap and claimPlazaGap, so with 0 a plot only stays off their footprints.
 func (b *claimBook) createSpaced(owner, ownerName string, x, y, z, gap int) (Claim, *claimRefusal) {
 	if owner == "" {
 		return Claim{}, &claimRefusal{Reason: claimReasonNoPlayer}
@@ -460,6 +493,11 @@ func (b *claimBook) createSpaced(owner, ownerName string, x, y, z, gap int) (Cla
 		}
 		if d := r.gapTo(spawnZone); d < gap {
 			return Claim{}, &claimRefusal{Reason: claimReasonTooCloseSpawn, Distance: d, Gap: gap}
+		}
+		if address, d := portalsNearestFootprint(r); d < 0 {
+			return Claim{}, &claimRefusal{Reason: claimReasonOverlapPlaza, Plaza: address}
+		} else if plazaGap := min(gap, claimPlazaGap); d < plazaGap {
+			return Claim{}, &claimRefusal{Reason: claimReasonTooClosePlaza, Plaza: address, Distance: d, Gap: plazaGap}
 		}
 	}
 	b.mu.Lock()
@@ -679,9 +717,11 @@ type claimRefusal struct {
 	Owner  string  `json:"owner,omitempty"`
 	Blocks []Block `json:"blocks,omitempty"`
 	Placed string  `json:"placed,omitempty"`
-	// For tooClose and tooCloseSpawn: the free columns there are, and those needed.
+	// For tooClose, tooCloseSpawn and tooClosePlaza: the free columns there are, and those needed.
 	Distance int `json:"distance,omitempty"`
 	Gap      int `json:"gap,omitempty"`
+	// For overlapPlaza and tooClosePlaza: the plaza's address (left out for the central plaza, "").
+	Plaza string `json:"plaza,omitempty"`
 }
 
 // claimCheck says whether this client may change column (x, z): nil when it may.
@@ -934,6 +974,8 @@ func claimListMessage(list []Claim, me string, online map[string]bool) []byte {
 	payload := map[string]interface{}{"claims": views, "radius": claimRadius, "gap": claimGap}
 	if spawnZoneOn {
 		payload["spawn"] = spawnZone
+		// The plazas keep plots away with the spawn zone (createSpaced); the client knows where they are.
+		payload["plazaGap"] = claimPlazaGap
 	}
 	return createMessage("claimList", payload)
 }

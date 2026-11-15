@@ -725,3 +725,25 @@ test('a new plot keeps 8 free blocks from any other and from the spawn area, and
         assert.equal(context.claimRectGap(b, a), want);
     }
 });
+
+// ---- The plazas of the portal network ----
+
+test('a plot on a plaza or closer than 5 blocks to it: the server\'s refusals in both languages', () => {
+    const { context, game, network, notice } = fakeGame();
+    const list = plots('nobody');
+    list.gap = 8;
+    list.plazaGap = 5;
+    network.emit('claimList', list);
+    assert.equal(game.claimState.plazaGap, 5);
+    const say = (refusal) => { game.claimNoticeAt = -Infinity; network.emit('claimRefused', { blocks: [], ...refusal }); return notice(); };
+    assert.equal(say({ reason: 'overlapPlaza', plaza: 'NE' }), 'No cabe: pisaría la plaza NE de la red de portales, que es de todos.');
+    assert.equal(say({ reason: 'tooClosePlaza', plaza: 'N', distance: 4, gap: 5 }), 'Demasiado cerca de la plaza N de la red de portales: quedarían 4 bloques libres hasta ella y hacen falta 5.');
+    // The central plaza is the empty address, which the server leaves out.
+    assert.equal(say({ reason: 'tooClosePlaza', gap: 5 }), 'Demasiado cerca de la plaza central: quedarían 0 bloques libres hasta ella y hacen falta 5.');
+    context.setGameLang('EN');
+    assert.equal(say({ reason: 'overlapPlaza', plaza: 'SOSO' }), "It doesn't fit: it would cover plaza SOSO of the portal network, which is everybody's.");
+    assert.equal(say({ reason: 'tooClosePlaza', plaza: 'E', distance: 2, gap: 5 }), 'Too close to plaza E of the portal network: there would be 2 free blocks up to it and 5 are needed.');
+    assert.equal(say({ reason: 'overlapPlaza' }), "It doesn't fit: it would cover the central plaza, which is everybody's.");
+    // Without js/game/portals.js the check here leaves the plazas to the server.
+    assert.ok(game.claimMarkerRefusal(0, -1000) === null);
+});

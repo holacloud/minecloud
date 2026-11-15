@@ -62,6 +62,12 @@ const PORTALS_TEXT = {
     built: { ES: 'Red de portales: {plazas} plazas, {portals} portales de ida y {back} de vuelta ({levels} niveles), {changed} bloques cambiados.', EN: 'Portal network: {plazas} plazas, {portals} portals out and {back} back ({levels} levels), {changed} blocks changed.' },
     busy: { ES: 'La red de portales ya se está construyendo.', EN: 'The portal network is being built already.' },
     failed: { ES: 'La red de portales se quedó a medias: mira el registro del servidor.', EN: 'The portal network stopped half way: see the server log.' },
+    // A build refused because somebody's plot lies on a plaza (pkg/network/portals.go: nothing is built).
+    plotsNothing: { ES: 'Red de portales: no se ha construido nada, porque hay parcelas sobre plazas de la red.', EN: 'Portal network: nothing was built, because there are plots on plazas of the network.' },
+    plotsLine: { ES: '{owner} tiene una parcela sobre {plaza}, con el mojón en {x}, {y}, {z}.', EN: '{owner} has a plot on {plaza}, with its marker at {x}, {y}, {z}.' },
+    plotsMore: { ES: 'Parcelas que no caben en esta lista: {n}.', EN: 'Plots that do not fit in this list: {n}.' },
+    plotsFix: { ES: 'Cada una tiene que desaparecer antes de volver a intentarlo: que su dueño rompa el mojón, o quítala con /plots y /plot remove.', EN: 'Each one has to go before trying again: its owner breaks the marker, or remove it with /plots and /plot remove.' },
+    plotsNameless: { ES: 'Alguien sin nombre', EN: 'Somebody with no name' },
     building: { ES: 'Construyendo la red de portales...', EN: 'Building the portal network...' },
     offline: { ES: 'Sin conexión con el servidor.', EN: 'Not connected to the server.' },
     arrived: { ES: 'Plaza {address}: {where}.', EN: 'Plaza {address}: {where}.' },
@@ -283,6 +289,25 @@ function portalsPlazaName(address) {
 // What the sign over a portal says of it (exit as portalsExitAt gives it).
 function portalsSignLine(exit) {
     return portalsSay('sign', { way: portalsSay(exit.letter), n: portalsNumber(portalsJump(exit.level)), to: portalsPlazaName(exit.to) });
+}
+
+// What the chat says of a build refused for plots on plazas, line by line: nothing was built, whose plot is on
+// which plaza and where (the first ones the server names), how many more, and what to do.
+function portalsPlotsLines(payload) {
+    const plots = Array.isArray(payload.plots) ? payload.plots : [];
+    const lines = [portalsSay('plotsNothing')];
+    let named = 0;
+    for (const plot of plots) {
+        if (!plot || ![plot.x, plot.y, plot.z].every(Number.isInteger)) continue;
+        const owner = typeof plot.owner === 'string' && plot.owner.trim() ? plot.owner.trim() : portalsSay('plotsNameless');
+        const plaza = portalsValid(plot.plaza) ? plot.plaza : '';
+        lines.push(portalsSay('plotsLine', { owner, plaza: portalsPlazaName(plaza), x: plot.x, y: plot.y, z: plot.z }));
+        named++;
+    }
+    const more = (Number.isInteger(payload.count) ? payload.count : named) - named;
+    if (more > 0) lines.push(portalsSay('plotsMore', { n: more }));
+    lines.push(portalsSay('plotsFix'));
+    return lines;
 }
 
 // What the effect of a journey shows: { title, line, colour } (colour as 0xRRGGBB, that of the portal).
@@ -875,6 +900,7 @@ Object.assign(Game.prototype, {
 
     portalsOnBuilt(payload) {
         if (payload.error === 'busy') this.receiveSystemMessage({ text: portalsSay('busy') });
+        else if (payload.error === 'plots') portalsPlotsLines(payload).forEach((text) => this.receiveSystemMessage({ text }));
         else if (payload.error) this.receiveSystemMessage({ text: portalsSay('failed') });
         else this.receiveSystemMessage({ text: portalsSay('built', { plazas: payload.plazas, portals: payload.portals, back: payload.back, levels: payload.levels, changed: payload.changed }) });
     },

@@ -407,6 +407,9 @@ func TestPortalsBuildMakesTheNetworkAndNothingTwice(t *testing.T) {
 		t.Fatal("the central plaza is there before any build")
 	}
 
+	// A plot saved 2 columns east of plaza N's footprint (x -15..15) does not stop the build, and stays.
+	claims.load(map[string]Claim{"clm_near": {X: 26, Y: 120, Z: -1000, Owner: plrCris, OwnerName: "Cris", CreatedAt: time.Unix(100, 0)}})
+
 	claimHeard(admin)
 	claimHeard(beto)
 	claimHeard(far)
@@ -425,6 +428,9 @@ func TestPortalsBuildMakesTheNetworkAndNothingTwice(t *testing.T) {
 	}
 	if answer["changed"].(float64) < float64(105*31*31) {
 		t.Fatalf("first build changed %v cells", answer["changed"])
+	}
+	if list := claims.list(); len(list) != 1 || list[0].ID != "clm_near" {
+		t.Fatalf("the plot near plaza N: %d plots", len(list))
 	}
 
 	// Every plaza where the rule says, with its own portals and no other, and nothing over its footprint.
@@ -881,5 +887,66 @@ func TestPortalsEveryPlazaLiesInsideTheChunksAClientMayAsk(t *testing.T) {
 		if got, err := again.Block(x, terrain.ColumnSurface(x, z).Height+1, z); err != nil || got != portalsPlazaBlock {
 			t.Errorf("%q: saved and read back as %q, %v", address, got, err)
 		}
+	}
+}
+
+// A plot on a plaza's footprint (saved before plazas kept plots away) stops the whole build, which names it.
+func TestPortalsABuildWithAPlotOnAPlazaBuildsNothing(t *testing.T) {
+	admin := portalsWorld(t)
+	portalsFocus(admin, 0, -1000)
+	old := time.Unix(100, 0)
+	saved := map[string]Claim{
+		// On the margin of plaza N (x -15..15, z -1015..-985), and the admin's own on the core of NENE.
+		"clm_a": {X: 20, Y: 70, Z: -995, Owner: plrAna, OwnerName: "Ana", CreatedAt: old},
+		"clm_z": {X: 1010000, Y: 90, Z: -101000, Owner: "plr_admin", OwnerName: "Admin", CreatedAt: old},
+	}
+	// Eleven more on the plazas of the fourth level, to see the list bounded.
+	for i, address := range portalsAddresses(portalsLevels)[94:105] {
+		x, z := portalsPosition(address)
+		saved[fmt.Sprintf("clm_m%02d", i)] = Claim{X: x, Y: 80, Z: z, Owner: fmt.Sprintf("plr_m%02d", i), OwnerName: fmt.Sprintf("M%02d", i), CreatedAt: old}
+	}
+	claims.load(saved)
+	if n := len(claims.list()); n != 13 {
+		t.Fatalf("%d plots loaded", n)
+	}
+	floorN := portalsFloorY(0, -1000)
+	before := claimBlockAt(t, 0, floorN, -1000)
+	claimHeard(admin)
+	claimSend(t, admin, "portalsBuild", map[string]int{})
+	heard := claimHeard(admin)
+	if len(heard["portalsCells"]) != 0 {
+		t.Fatalf("%d portalsCells sent", len(heard["portalsCells"]))
+	}
+	var answer struct {
+		Error  string           `json:"error"`
+		Plots  []portalsBlocker `json:"plots"`
+		Count  int              `json:"count"`
+		Plazas *int             `json:"plazas"`
+	}
+	if list := heard["portalsBuilt"]; len(list) != 1 || json.Unmarshal(list[0], &answer) != nil {
+		t.Fatalf("portalsBuilt: %d", len(list))
+	}
+	if answer.Error != "plots" || answer.Count != 13 || len(answer.Plots) != portalsBlockersShown || answer.Plazas != nil {
+		t.Fatalf("answer: %+v", answer)
+	}
+	// Plaza by plaza in the order they are built: N comes first.
+	if first := answer.Plots[0]; first != (portalsBlocker{Plaza: "N", Owner: "Ana", X: 20, Y: 70, Z: -995}) {
+		t.Fatalf("first: %+v", first)
+	}
+	if got := claimBlockAt(t, 0, floorN, -1000); got != before || got == portalsCompassBlock {
+		t.Fatalf("plaza N's centre changed: %q -> %q", before, got)
+	}
+	if n := len(claims.list()); n != 13 {
+		t.Fatalf("%d plots left", n)
+	}
+
+	// With only the admin's own plot on NENE, the same: the admin's plot is a plot like any other.
+	claims.load(map[string]Claim{"clm_z": saved["clm_z"]})
+	claimSend(t, admin, "portalsBuild", map[string]int{})
+	heard = claimHeard(admin)
+	answer.Plots = nil
+	if list := heard["portalsBuilt"]; len(list) != 1 || json.Unmarshal(list[0], &answer) != nil || answer.Count != 1 || len(answer.Plots) != 1 ||
+		answer.Plots[0] != (portalsBlocker{Plaza: "NENE", Owner: "Admin", X: 1010000, Y: 90, Z: -101000}) || len(heard["portalsCells"]) != 0 {
+		t.Fatalf("the admin's plot: %+v", answer)
 	}
 }

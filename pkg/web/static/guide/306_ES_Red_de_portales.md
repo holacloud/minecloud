@@ -10,6 +10,7 @@ Una **plaza** es un cuadrado de **31 × 31 bloques**. En medio está el **núcle
 
 - La **plaza central** está en el centro mismo del mundo, en 0, 0. **Los jugadores nuevos aparecen ahí.** Nadie construye en ella.
 - Las demás son **plazas de la red**: puedes construir encima, en el núcleo y en el margen, como en cualquier otro sitio, pero ningún bloque de la propia plaza se puede romper ni cambiar.
+- Nadie puede reclamar una plaza, ni una [parcela](260) a menos de **5 bloques** de su borde: una plaza y su margen son siempre de todos.
 
 ## Qué tiene una plaza
 
@@ -57,6 +58,6 @@ Al llegar, el chat te dice la dirección de la plaza y lo lejos que está del ce
 
 ## Quién la construye
 
-La red es oficial: los jugadores no pueden crear portales ni quitarlos. La construye una vez el administrador del mundo, y construirla otra vez no cambia nada ni quita lo que alguien haya construido sobre una plaza.
+La red es oficial: los jugadores no pueden crear portales ni quitarlos. La construye una vez el administrador del mundo, y construirla otra vez no cambia nada ni quita lo que alguien haya construido sobre una plaza. Nunca se construye encima de la parcela de alguien: si una parcela antigua está sobre una plaza, no se construye nada y el administrador ve de quién es y dónde, hasta que esa parcela se quite.
 
 Mira también: [Parcelas](260), donde solo tú puedes cambiar algo, y [Comandos del chat](12).

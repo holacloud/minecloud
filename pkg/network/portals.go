@@ -48,7 +48,9 @@ package network
 // never move them (mechFixed). The names say what is official, so it needs no list of cells and no saved
 // state: every block named portal_* is one (portalsOfficial). Building on top of a network plaza, core or
 // margin, is building in the air over it, which nothing refuses; the central plaza's whole footprint lies
-// inside the spawn zone, where nobody but the admin builds anything.
+// inside the spawn zone, where nobody but the admin builds anything. Nobody claims a plot on a plaza's
+// footprint nor closer than claimPlazaGap (5) columns to it, built or not (claims.go, portalsFootprints), so
+// a plaza and its margin stay everybody's.
 //
 // Building: portalsBuild {} from a creative session ("/build portals", js/game/constructions.js); anybody else
 // is ignored, as with every creative command. Plaza by plaza, under blockEditMu, it writes only the cells
@@ -62,6 +64,15 @@ package network
 // chunks (portalsTell): a client further away asks for those chunks when it gets there, and the server sends
 // them as they now are. The sender then hears portalsBuilt {plazas, portals, back, changed, levels} (portals
 // out, and portals back), or {error: "busy"} while another build runs.
+//
+// Plots in the way: before it builds anything, the build looks at every plaza's footprint, and if any plot
+// overlaps one (a plot saved before plazas kept plots away: no new one can be claimed there), NOTHING is
+// built and the sender hears portalsBuilt {error: "plots", plots: [{plaza, owner, x, y, z}], count}: the
+// first portalsBlockersShown plots in the way (the plaza's address, the owner's name, the marker) and how
+// many there are. The plot has to go first (its owner breaks the marker, or the admin removes it): the build
+// never takes away somebody's plot, the admin's own neither. A plot that is only near a plaza does not stop
+// it, since the build never touches a column outside the footprints. The check is under blockEditMu, in
+// order with every claim.
 
 import (
 	"log"
@@ -105,6 +116,8 @@ const (
 	portalsFillBlock       = "cobblestone"
 	// claimRefused.reason for a block of a plaza or a portal.
 	claimReasonPlaza = "plaza"
+	// The most plots in the way a refused build names one by one.
+	portalsBlockersShown = 10
 )
 
 // The letters in the order a plaza lists its portals, and where each one goes (x, z).
@@ -234,6 +247,68 @@ func portalsOfficial(name string) bool {
 // portalsFootprint is how far a plaza's floor reaches from its centre, margin included.
 func portalsFootprint() int {
 	return portalsPlazaRadius + portalsMargin
+}
+
+// portalsFootprintOf is a plaza's footprint, margin included, as a square of columns.
+func portalsFootprintOf(address string) claimRect {
+	x, z := portalsPosition(address)
+	f := portalsFootprint()
+	return claimRect{MinX: x - f, MinZ: z - f, MaxX: x + f, MaxZ: z + f}
+}
+
+// portalsPlazaFootprint is a plaza of the rule and its footprint.
+type portalsPlazaFootprint struct {
+	Address string
+	Rect    claimRect
+}
+
+// portalsFootprints are the footprints of every plaza of portalsLevels levels, built or not, worked out once:
+// what plots keep away from (claims.go) and what the build looks at for plots in the way.
+var portalsFootprints = func() []portalsPlazaFootprint {
+	addresses := portalsAddresses(portalsLevels)
+	out := make([]portalsPlazaFootprint, 0, len(addresses))
+	for _, address := range addresses {
+		out = append(out, portalsPlazaFootprint{address, portalsFootprintOf(address)})
+	}
+	return out
+}()
+
+// portalsNearestFootprint is the plaza whose footprint is nearest a square of columns, and the free columns
+// between them as claimRect.gapTo counts them (negative when they overlap). A claim is rare: walking the 105
+// is fine.
+func portalsNearestFootprint(r claimRect) (address string, gap int) {
+	for i, plaza := range portalsFootprints {
+		if d := r.gapTo(plaza.Rect); i == 0 || d < gap {
+			address, gap = plaza.Address, d
+		}
+	}
+	return address, gap
+}
+
+// portalsBlocker is a plot that lies on a plaza's footprint, as a refused build names it.
+type portalsBlocker struct {
+	Plaza string `json:"plaza"`
+	Owner string `json:"owner"`
+	X     int    `json:"x"`
+	Y     int    `json:"y"`
+	Z     int    `json:"z"`
+}
+
+// portalsPlotsInTheWay lists the plots that overlap a plaza's footprint (the first portalsBlockersShown, plaza
+// by plaza in the order they are built) and how many there are. The caller holds blockEditMu, so no plot is
+// made or removed meanwhile.
+func portalsPlotsInTheWay() ([]portalsBlocker, int) {
+	shown := []portalsBlocker{}
+	count := 0
+	for _, plaza := range portalsFootprints {
+		for _, c := range claims.overlappingAll(plaza.Rect) {
+			count++
+			if len(shown) < portalsBlockersShown {
+				shown = append(shown, portalsBlocker{Plaza: plaza.Address, Owner: c.OwnerName, X: c.X, Y: c.Y, Z: c.Z})
+			}
+		}
+	}
+	return shown, count
 }
 
 // portalsFloorY is the height of the floor of the plaza centred on column (x, z): that of the highest
@@ -529,6 +604,15 @@ func handlePortalsBuild(client *Client) {
 		return
 	}
 	defer portalsBuildMu.Unlock()
+	// Nothing is built while somebody's plot lies on a plaza (see the header).
+	blockEditMu.Lock()
+	blockers, count := portalsPlotsInTheWay()
+	blockEditMu.Unlock()
+	if count > 0 {
+		log.Printf("portals: %s asked for a build, refused: %d plots on plazas", client.ID, count)
+		storageDeliver(client, createMessage("portalsBuilt", map[string]interface{}{"error": "plots", "plots": blockers, "count": count}))
+		return
+	}
 	answer := map[string]interface{}{"levels": portalsLevels}
 	plazas, portals, back, total := 0, 0, 0, 0
 	for _, address := range portalsAddresses(portalsLevels) {

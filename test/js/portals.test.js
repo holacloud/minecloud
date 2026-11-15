@@ -706,3 +706,72 @@ test('what a build changed is drawn where the chunks are, and nothing is kept fo
     assert.ok(!world.hasSolidBlock(1, -1, 1), 'air where the server said ""');
     assert.ok(!world.edits.has(world.chunkKey(Math.floor(500000 / 16), Math.floor(500000 / 16))), 'no edit kept for a chunk far away');
 });
+
+// ---- Plots keep away from the plazas (pkg/network/claims.go) ----
+
+test('a marker near a plaza is refused here as the server refuses it, with the cases of the Go test', () => {
+    const claimsGo = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'claims.go'), 'utf8');
+    const claimsGoTest = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'claims_test.go'), 'utf8');
+    const plazaGap = Number(/\bclaimPlazaGap\s*=\s*(\d+)/.exec(claimsGo)[1]);
+    assert.equal(plazaGap, 5);
+    const g = makeFlatWorld(ctx);
+    g.game.claimReceiveList({ claims: [], spawn: { minX: -16, minZ: -16, maxX: 15, maxZ: 15 }, radius: 8, gap: 8, plazaGap });
+    const refusals = [...claimsGoTest.matchAll(/refused\("([^"]+)", claimPlace\(t, "\w+", (-?\d+), (-?\d+)\), claimReason(\w+), "(\w*)", (\d+)\)/g)];
+    const accepted = [...claimsGoTest.matchAll(/claimPlace\(t, "\w+", (-?\d+), (-?\d+)\); r != nil/g)];
+    assert.ok(refusals.length >= 7 && accepted.length >= 3, `${refusals.length} refusals and ${accepted.length} places read from claims_test.go`);
+    ctx.__plazaGame = g.game;
+    for (const [, what, x, z, reason, plaza, distance] of refusals) {
+        const got = plain(`__plazaGame.claimMarkerRefusal(${x}, ${z})`);
+        const want = reason[0].toLowerCase() + reason.slice(1);
+        assert.ok(got, `${what}: refused`);
+        assert.equal(got.reason, want, what);
+        if (want.endsWith('Plaza')) assert.equal(got.plaza, plaza, `${what}: the plaza`);
+        if (want.startsWith('tooClose')) assert.equal(got.distance, Number(distance), `${what}: free columns`);
+        if (want === 'tooClosePlaza') assert.equal(got.gap, plazaGap, `${what}: gap`);
+    }
+    for (const [, x, z] of accepted) {
+        assert.ok(run(`__plazaGame.claimMarkerRefusal(${x}, ${z}) === null`), `(${x}, ${z}) goes to the server`);
+    }
+    // A plaza of the fourth level, nothing built there, and every plaza a footprint of 31 x 31.
+    const nene = plain('portalsPosition("NENE")');
+    const far = plain(`__plazaGame.claimMarkerRefusal(${nene.x + 15 + 1 + 8 + 2}, ${nene.z})`);
+    assert.equal(far.reason, 'tooClosePlaza');
+    assert.equal(far.plaza, 'NENE');
+    assert.equal(far.distance, 2);
+    // Without the gap from the server (it sends none with no spawn zone) the plazas are not checked here.
+    g.game.claimReceiveList({ claims: [], radius: 8, gap: 8 });
+    assert.ok(run('__plazaGame.claimMarkerRefusal(0, -1000) === null'));
+    delete ctx.__plazaGame;
+});
+
+test('a build refused for plots on plazas says so in the chat, whose plot and where, in both languages', () => {
+    const g = makeFlatWorld(ctx);
+    const lang = run('gameLang()');
+    const payload = { error: 'plots', count: 13, plots: [{ plaza: 'N', owner: 'Ana', x: 20, y: 70, z: -995 }, { plaza: '', owner: '', x: 1, y: 2, z: 3 }] };
+    try {
+        run('setGameLang("ES")');
+        g.said.length = 0;
+        g.game.portalsOnBuilt(payload);
+        assert.deepEqual([...g.said], [
+            'Red de portales: no se ha construido nada, porque hay parcelas sobre plazas de la red.',
+            'Ana tiene una parcela sobre la plaza N, con el mojón en 20, 70, -995.',
+            'Alguien sin nombre tiene una parcela sobre la plaza central, con el mojón en 1, 2, 3.',
+            'Parcelas que no caben en esta lista: 11.',
+            'Cada una tiene que desaparecer antes de volver a intentarlo: que su dueño rompa el mojón, o quítala con /plots y /plot remove.'
+        ]);
+        run('setGameLang("EN")');
+        g.said.length = 0;
+        g.game.portalsOnBuilt({ ...payload, count: 2 });
+        assert.deepEqual([...g.said], [
+            'Portal network: nothing was built, because there are plots on plazas of the network.',
+            'Ana has a plot on plaza N, with its marker at 20, 70, -995.',
+            'Somebody with no name has a plot on the central plaza, with its marker at 1, 2, 3.',
+            'Each one has to go before trying again: its owner breaks the marker, or remove it with /plots and /plot remove.'
+        ]);
+    } finally {
+        run(`setGameLang(${JSON.stringify(lang)})`);
+    }
+    // The server sends what the client reads.
+    assert.match(go, /"error": "plots", "plots": blockers, "count": count/);
+    assert.match(go, /Plaza string `json:"plaza"`/);
+});
