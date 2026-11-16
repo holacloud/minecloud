@@ -21,8 +21,9 @@
 //   floor's stop as it comes; clicked late, the lift turns back for it.
 // - Power: 60 W of the 80 W of one rtg. Stops, doors, buttons and buses draw nothing.
 // - Fridges are not powered, so they are plain cupboards: at 80 W for 30 W each, it would take a
-//   generator for every two kitchens, and they have nothing to chill when a build leaves them empty.
-//   Ovens are unlit and empty, storage is empty: a build sends blocks and nothing else.
+//   generator for every two kitchens. They hold food that keeps as it is anyway (APARTMENTS_STOCK), and the
+//   wardrobes clothes and a few tools, different from flat to flat (ConstructionBuilder.stockMix picks by
+//   the cell). Ovens are unlit and empty.
 // - The lift moves a block outside the plan, so "/build undo" leaves a platform that is away from its
 //   plan cell behind: bring the lift down to the lobby first.
 // Every bed goes through apartmentsBed, signs through apartmentsSign. Tests: test/js/construction_apartments.test.js,
@@ -49,6 +50,15 @@ const APARTMENTS_STYLES = [
     { sofa: 'cyan', carpet: 'white', curtain: 'light_blue', floor: 'cherry_planks', bath: 'marble', wall: 'white_wool', wood: 'oak', rug: 'cyan', painting: 'fish' },
     { sofa: 'black', carpet: 'red', curtain: 'orange', floor: 'maple_planks', bath: 'basalt', wall: 'gray_brick', wood: 'dark_oak', rug: 'light_gray', painting: 'sunset' }
 ];
+
+// What a home's fridge and wardrobes hold: `fixed` in every one, and `pick` of `extras` more, chosen by where
+// it stands, so that no two flats have the same shopping. Nothing that a fridge would chill (APPLIANCE_CHILL).
+const APARTMENTS_STOCK = {
+    fridge: { fixed: [['cold_milk', 4]], extras: [['cheese', 4], ['cold_water', 6], ['cold_soda', 4], ['honey_bottle', 2], ['bread', 6], ['roast_mushroom', 4], ['cooked_fish', 4], ['salted_fish', 4]], pick: 3 },
+    wardrobe: { fixed: [['warm_coat', 1]], extras: [['white_wool', 6], ['red_wool', 4], ['blue_wool', 4], ['yellow_wool', 4], ['leather', 3], ['sewing_basket', 1],
+        ['iron_axe', 1], ['iron_shears', 1], ['fishing_rod', 1], ['bug_net', 1], ['candle', 4], ['torch', 8]], pick: 4 }
+};
+const APARTMENTS_FREEZERS = [[['ice', 8], ['frozen_fish', 4]], [['ice', 8], ['frozen_bread', 4]], [['frozen_cooked_fish', 4], ['ice', 4]]];
 
 // A bed: head at (x, z), against the wall `facing` looks at, and its foot the next cell the other
 // way (where apartmentsBedFoot says), which every bedroom leaves free.
@@ -167,6 +177,11 @@ function apartmentsDrawFlat(b, flat) {
     const tall = (u, v, base, facing) => {
         piece(u, F + 1, v, base, base, facing, { half: 'lower' });
         piece(u, F + 2, v, base, base, facing, { half: 'upper' });
+        const stock = APARTMENTS_STOCK[base];
+        if (!stock) return;
+        const [x, z] = at(u, v);
+        const freezer = base === 'fridge' ? APARTMENTS_FREEZERS[flat.n % APARTMENTS_FREEZERS.length] : [];
+        b.stockMix(x, F + 1, z, stock.fixed, stock.extras, stock.pick, freezer);
     };
     const lantern = (u, y, v) => {
         const [x, z] = at(u, v);
