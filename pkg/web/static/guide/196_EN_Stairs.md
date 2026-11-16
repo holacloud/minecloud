@@ -20,6 +20,13 @@ one block for every block forward, and **you walk up them** without jumping.
 | ![](item:cobblestone_stairs) | Cobblestone Stairs | `cobblestone_stairs` | `cobblestone` | 0.9 s |
 | ![](item:brick_stairs) | Brick Stairs | `brick_stairs` | `brick` | 0.8 s |
 | ![](item:stone_brick_stairs) | Stone Brick Stairs | `stone_brick_stairs` | `stone_bricks` | 0.95 s |
+| ![](item:sandstone_stairs) | Sandstone Stairs | `sandstone_stairs` | `sandstone` | 0.7 s |
+| ![](item:blue_glazed_tile_stairs) | Blue Glazed Tile Stairs | `blue_glazed_tile_stairs` | `blue_glazed_tile` | 0.6 s |
+| ![](item:white_glazed_tile_stairs) | White Glazed Tile Stairs | `white_glazed_tile_stairs` | `white_glazed_tile` | 0.6 s |
+| ![](item:yellow_glazed_tile_stairs) | Yellow Glazed Tile Stairs | `yellow_glazed_tile_stairs` | `yellow_glazed_tile` | 0.6 s |
+| ![](item:green_glazed_tile_stairs) | Green Glazed Tile Stairs | `green_glazed_tile_stairs` | `green_glazed_tile` | 0.6 s |
+| ![](item:turquoise_glazed_tile_stairs) | Turquoise Glazed Tile Stairs | `turquoise_glazed_tile_stairs` | `turquoise_glazed_tile` | 0.6 s |
+| ![](item:red_glazed_tile_stairs) | Red Glazed Tile Stairs | `red_glazed_tile_stairs` | `red_glazed_tile` | 0.6 s |
 
 ## How to get them
 
@@ -44,7 +51,7 @@ Breaking a stair gives the stair back.
 - **Walk up them:** each step is half a block and your stride clears up to half a block. The view rises
   smoothly, as on a ramp.
 - Animals and monsters climb them too (they already climbed one block).
-- They break faster with the tool for their material: an [axe](70) for wooden ones, a [pickaxe](68) for stone.
+- They break faster with the tool for their material: an [axe](70) for wooden ones, a [pickaxe](68) for stone, [sandstone](51) and [glazed tiles](57).
 
 ## Tips
 

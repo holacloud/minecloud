@@ -19,7 +19,7 @@ Siguió respirando **aire**, con pulmones, como las tortugas marinas y los delfi
 1. **Su esqueleto, en tres piezas.** Hace falta el cráneo, la columna y la cola: `fossil_plesiosaur_skull`,
    `fossil_plesiosaur_spine` y `fossil_plesiosaur_tail`. Salen de los tres bloques de un **esqueleto**
    (`fossil_bones_skull`, `fossil_bones_spine` y `fossil_bones_tail`), que están en línea recta dentro de la
-   piedra, entre y = −11 e y = −4, y solo en 1 de cada 30 chunks. Los tres bloques de un esqueleto son siempre
+   piedra, entre y = −11 e y = −4, y solo en 1 de cada 14 chunks. Los tres bloques de un esqueleto son siempre
    del mismo animal, pero no todos los esqueletos son de plesiosaurio. Ver [Fósiles](262).
 2. **Mucha agua.** La máquina de revivir tiene que estar junto a **120 bloques de agua** unidos o más: un lago,
    el mar o un estanque grande que caves y llenes con un [cubo](111).

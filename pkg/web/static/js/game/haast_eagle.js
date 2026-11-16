@@ -119,7 +119,7 @@ registerSpecies('haast_eagle', {
     trap: { baits: [] },
     fossil: { source: 'rock', rarity: 'rare' },
     card: {
-        // Its apostrophe is the letter U+02BC, not the ASCII one: the name is also the title of its guide page,
+        // Its apostrophe is the letter U+02BC, not the ASCII one: the name is also the title of its guide topic,
         // which is the name of a file, and the server cannot embed a file with an ASCII apostrophe in its name.
         name: 'Haastʼs eagle', habitat: 'Forests of the South Island of New Zealand, until about 600 years ago', activity: 'Day', temperament: 'Hostile',
         description: 'The biggest eagle there has ever been: up to 15 kilograms, with talons like a tiger\'s claws. It hunted moa, giant birds that could not fly. It circles over its home, and it cries before it dives at you: step aside!'

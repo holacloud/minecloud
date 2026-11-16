@@ -1,0 +1,90 @@
+{
+  "pages": { "min": 250, "max": 300 },
+  "skip": [0],
+  "indexTopics": [0, 16, 48, 98, 223, 261],
+  "volumes": [
+    {
+      "volume": 1, "from": 0, "to": 97, "closed": "2026-11-15",
+      "title": { "ES": "El mundo y sus criaturas", "EN": "The world and its creatures" },
+      "blurb": {
+        "ES": "Lo básico para empezar, todos los animales y criaturas del mundo, y sus bloques, herramientas y objetos.",
+        "EN": "The basics to get started, every animal and creature of the world, and its blocks, tools and items."
+      },
+      "colour": "#3d7a35",
+      "cover": { "hero": "mob:sheep", "icons": ["item:iron_pickaxe", "item:torch", "item:bed", "item:fishing_rod", "item:bug_net"] },
+      "sections": [
+        [0, 15, "Lo básico", "The basics"],
+        [16, 47, "Mobs", "Mobs"],
+        [48, 97, "Objetos", "Items"]
+      ]
+    },
+    {
+      "volume": 2, "from": 98, "to": 195, "closed": "2026-11-15",
+      "title": { "ES": "Ciencia y descubrimientos", "EN": "Science and discoveries" },
+      "blurb": {
+        "ES": "Curiosidades, cultivos, el tiempo, la química y sus 36 elementos, genética, astronomía, planos y robots.",
+        "EN": "Curiosities, farming, the weather, chemistry and its 36 elements, genetics, astronomy, blueprints and robots."
+      },
+      "colour": "#2a6496",
+      "cover": { "hero": "model:robot", "icons": ["item:lab_bench", "item:element_au", "item:telescope", "item:weather_station", "item:breeding_notebook"] },
+      "sections": [
+        [98, 106, "Curiosidades", "Curiosities"],
+        [107, 111, "Cultivos", "Farming"],
+        [112, 114, "Tiempo y meteorología", "Weather"],
+        [115, 129, "Química", "Chemistry"],
+        [130, 131, "Genética", "Genetics"],
+        [132, 134, "Astronomía", "Astronomy"],
+        [135, 138, "Hormigas y castores", "Ants and beavers"],
+        [139, 174, "Los elementos químicos", "The chemical elements"],
+        [175, 190, "Química: más descubrimientos", "Chemistry: more discoveries"],
+        [191, 195, "Planos y robot programable", "Blueprints and the programmable robot"]
+      ]
+    },
+    {
+      "volume": 3, "from": 196, "to": 260, "closed": null,
+      "title": { "ES": "Máquinas y mundos pequeños", "EN": "Machines and small worlds" },
+      "blurb": {
+        "ES": "Puertas y escaleras, electricidad, lógica y máquinas, muebles, el taller, el microscopio y los microbios, y las parcelas.",
+        "EN": "Doors and stairs, electricity, logic and machines, furniture, the workshop, the microscope and microbes, and plots."
+      },
+      "colour": "#b3660f",
+      "cover": { "hero": "item:microscope", "icons": ["item:light_bulb", "item:wind_turbine", "item:and_gate", "item:oven", "item:foundry"] },
+      "sections": [
+        [196, 199, "Bloques de construcción", "Building blocks"],
+        [200, 206, "Electricidad", "Electricity"],
+        [207, 212, "Lógica y sensores", "Logic and sensors"],
+        [213, 214, "La anguila eléctrica", "The electric eel"],
+        [215, 216, "El golem de cobre", "The copper golem"],
+        [217, 220, "Máquinas y energía", "Machines and power"],
+        [222, 222, "Controles táctiles", "Touch controls"],
+        [223, 234, "Muebles", "Furniture"],
+        [235, 236, "El taller: fundición y horno de arco", "The workshop: foundry and arc furnace"],
+        [237, 244, "El mundo pequeño", "The small world"],
+        [245, 245, "Bloque luminoso", "Glow block"],
+        [246, 247, "Tinciones y filtros", "Stains and filters"],
+        [248, 249, "Metales: buscarlos y fundirlos", "Metals: finding and smelting them"],
+        [250, 250, "Un laboratorio que funciona", "A laboratory that works"],
+        [251, 252, "La mano izquierda y el escudo", "The left hand and the shield"],
+        [253, 255, "Cultivos de microbios", "Growing microbes"],
+        [258, 259, "Lo que no vive, al microscopio", "Lifeless things under the microscope"],
+        [260, 260, "Parcelas", "Plots"]
+      ]
+    },
+    {
+      "volume": 4, "from": 261, "to": null, "closed": null,
+      "title": { "ES": "Animales extintos y más allá", "EN": "Extinct animals and beyond" },
+      "blurb": {
+        "ES": "Los fósiles, la máquina de revivir, los animales extintos uno por uno, la red de portales para viajar por todo el mundo, y los grandes edificios.",
+        "EN": "Fossils, the revival machine, the extinct animals one by one, the portal network to travel the whole world, and the big buildings."
+      },
+      "colour": "#6b3f8c",
+      "cover": { "hero": "mob:ammonite", "icons": ["item:fossil_rock", "item:old_bones", "item:amber", "item:revival_machine", "item:portal_compass"] },
+      "sections": [
+        [261, 264, "Fósiles y la máquina de revivir", "Fossils and the revival machine"],
+        [265, 305, "Animales extintos", "Extinct animals"],
+        [306, 306, "Red de portales", "Portal network"],
+        [307, 320, "Edificios", "Buildings"]
+      ]
+    }
+  ]
+}

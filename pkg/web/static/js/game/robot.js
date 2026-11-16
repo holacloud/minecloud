@@ -469,10 +469,17 @@ Object.assign(Game.prototype, {
     robotEnsure() {
         if (this.robots) return;
         this.robots = [];
+        this.robotShared();
+        this.robotRestore();
+    },
+
+    // The geometry and the materials that every robot shares, made once (a portrait needs them too, and
+    // no robots: robotPortraitModel).
+    robotShared() {
+        if (this.robotMaterials) return;
         this.robotMaterials = new Map();
         this.robotBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
         this.robotHitMaterial = new THREE.MeshBasicMaterial({ visible: false });
-        this.robotRestore();
     },
 
     robotBox(parent, color, x, y, z, sx, sy, sz, material = null) {
@@ -496,6 +503,17 @@ Object.assign(Game.prototype, {
     // The model faces +z: treads on the sides, a yellow body, a head with a dark screen face
     // (two eyes and a smile) and an antenna with a light on top.
     robotBuildModel(robot) {
+        const parts = this.robotModelParts();
+        const hitbox = this.robotBox(parts.group, 0, 0, 0.45, 0, 0.75, 0.95, 0.75, this.robotHitMaterial);
+        hitbox.castShadow = false;
+        hitbox.userData.robot = robot;
+        Object.assign(robot, parts, { hitbox });
+        this.scene.add(parts.group);
+    },
+
+    // The model alone, in no scene and without its hit box: what robotBuildModel puts in the world and
+    // what a portrait draws (robotPortraitModel).
+    robotModelParts() {
         const group = new THREE.Group();
         const body = new THREE.Group();
         group.add(body);
@@ -532,11 +550,14 @@ Object.assign(Game.prototype, {
         this.robotBox(head, 0x5a5f66, 0, 0.19, 0, 0.025, 0.16, 0.025);
         const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x7dffb0 });
         const light = this.robotBox(head, 0, 0, 0.29, 0, 0.07, 0.07, 0.07, lightMaterial);
-        const hitbox = this.robotBox(group, 0, 0, 0.45, 0, 0.75, 0.95, 0.75, this.robotHitMaterial);
-        hitbox.castShadow = false;
-        hitbox.userData.robot = robot;
-        Object.assign(robot, { group, body, head, eyes, eyeMaterial, light, lightMaterial, treads, hitbox });
-        this.scene.add(group);
+        return { group, body, head, eyes, eyeMaterial, light, lightMaterial, treads };
+    },
+
+    // The model for a picture of the robot: the cover of a volume of the printed guide (js/guidePrint.js)
+    // draws it on the bestiary's stage (bestiaryRenderObject). It needs no world and no robot.
+    robotPortraitModel() {
+        this.robotShared();
+        return this.robotModelParts().group;
     },
 
     robotCreate(data) {

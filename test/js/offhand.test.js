@@ -851,16 +851,16 @@ test('touch has a button and a menu entry, and the layout leaves room for it', (
     assert.equal(rect.right - rect.left, buttons * layout.topButton + (buttons - 1) * 8);
 });
 
-test('the guide has the page in both languages, and it agrees with the game', () => {
+test('the guide has the topic in both languages, and it agrees with the game', () => {
     const files = fs.readdirSync(GUIDE);
     for (const lang of ['ES', 'EN']) {
         const name = files.find((file) => file.startsWith(`251_${lang}_`));
-        assert.ok(name, `page 251 in ${lang}`);
-        const page = fs.readFileSync(path.join(GUIDE, name), 'utf8');
-        for (const item of Object.keys(ctx.OFFHAND_ITEMS)) assert.match(page, new RegExp(`\`${item}\``), `${item} in ${lang}`);
-        assert.match(page, /\*\*X\*\*/);
+        assert.ok(name, `topic 251 in ${lang}`);
+        const topic = fs.readFileSync(path.join(GUIDE, name), 'utf8');
+        for (const item of Object.keys(ctx.OFFHAND_ITEMS)) assert.match(topic, new RegExp(`\`${item}\``), `${item} in ${lang}`);
+        assert.match(topic, /\*\*X\*\*/);
         for (const [item, def] of Object.entries(ctx.OFFHAND_ITEMS)) {
-            if (def.level) assert.match(page, new RegExp(`\`${item}\` \\| [^|]*${def.level}`), `${item}'s level in ${lang}`);
+            if (def.level) assert.match(topic, new RegExp(`\`${item}\` \\| [^|]*${def.level}`), `${item}'s level in ${lang}`);
         }
         const contents = fs.readFileSync(path.join(GUIDE, files.find((file) => file.startsWith(`0_${lang}_`))), 'utf8');
         const items = fs.readFileSync(path.join(GUIDE, files.find((file) => file.startsWith(`48_${lang}_`))), 'utf8');

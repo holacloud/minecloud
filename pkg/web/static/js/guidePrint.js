@@ -1,15 +1,24 @@
-// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET): every public page of the
-// in-game book as a paper book, with a cover, a "how to use this book" sheet and a table of
-// contents. Secret pages (non-numeric ids) are never shown, listed or linked.
+// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET&volume=ALL|N): every
+// public topic of the in-game book as a paper book, whole or in volumes, with a cover, a "how to
+// use this book" page, a table of contents and an alphabetical index. Secret topics (non-numeric
+// ids) are never shown, listed or linked.
 //
-// It is paginated here, not by the browser: every printed page is a sheet <div> of the exact
+// The volumes are runs of consecutive topic ids written in guide/volumes.json (its rules are in
+// guide/README.md, "Volumes", and test/js/guide_volumes.test.js holds them). A volume prints its
+// cover, the intro, its contents, "before you start" (guide/volumes/<n>_recap_<LANG>.md, if
+// there is one), its topics, "what is new" (guide/volumes/<n>_news_<LANG>.md, if there is one)
+// and an index of every topic of the volumes up to it. Without the manifest it is the whole book.
+//
+// It is paginated here, not by the browser: every printed page is a <div> of the exact
 // paper size (@page margin 0) with its own header and footer, so Chrome and Firefox print the
-// same book. The content of each guide page is rendered (same Markdown as the book:
+// same book. The content of each guide topic is rendered (same Markdown as the book:
 // js/guideMarkdown.js), measured block by block once fonts and pictures are ready, and flowed
-// into sheets: figures never split, tables split between rows repeating their header, lists
-// between items, and headings stay with what follows. Each guide page starts a new sheet.
-// The only numbers printed are sheet numbers (the cover is sheet 1, unnumbered): the contents
-// and every link ("→ p. N") point to them; the header shows the in-game page discreetly.
+// into pages: figures never split, tables split between rows repeating their header, lists
+// between items, and headings stay with what follows. Each guide topic starts a new page.
+// A topic is cited by its number in the guide, the one typed in the game: it is the chip at the
+// outer corner of each of its pages, and links read "→ 213", "→ 34 · vol. 1" or "→ 306 · vol. 3+"
+// (linkLabel). Page numbers, at the foot (the cover is page 1, unnumbered), only say where a
+// page goes; the contents gives both.
 //
 // BOOKLET lays the book out in A5 and then imposes it on A4 landscape for saddle-stitched
 // booklets: each A4 folio carries four A5 pages (two per side), in the order that makes them
@@ -21,6 +30,8 @@
 // page loads the scripts index.html loads (except game.js, the network and the book) over a
 // stub `class Game {}`, builds a WorldRenderer for the item icons and uses the bestiary's
 // portrait stage for the mobs. What cannot be drawn becomes a neat placeholder.
+// In this file's code a `topic` is an entry of the guide and a `page` one side of paper; the piece of
+// paper, a sheet or folio, is only in the booklets' imposition and in the words a reader sees.
 // Wrapped in a function so its names cannot clash with the game scripts it loads.
 
 (function () {
@@ -31,154 +42,351 @@
     const FOLIOS_DEFAULT = 6;
     const FOLIOS_MAX = 15;
     const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    // Sheet-number placeholder while measuring: as wide as the widest real number.
+    // Page-number placeholder of the contents while measuring: as wide as the widest real number.
     const NUMBER_PLACEHOLDER = '000';
+    // The colour of the whole book (its cover, the chips of its headers).
+    const WHOLE_BOOK_COLOUR = '#6b4528';
+    // Topics never printed when the manifest cannot be read: topic 0 is the game's own contents.
+    const DEFAULT_SKIP = [0];
     // Scripts of index.html that the printable guide must not run.
     const SKIP_SCRIPTS = /(^|\/)(game|websocket|voice|guideMarkdown|guidePrint)\.js$|(^|\/)game\/guide\.js$/;
     // If index.html cannot be read: what the icons and portraits need at the very least.
     const FALLBACK_SCRIPTS = ['js/extensions.js', 'js/camera.js', 'js/chunkStore.js', 'js/blockShapes.js', 'js/chunkMesher.js',
         'js/models.js', 'js/mobSpecies.js', 'js/blockTextures.js', 'js/world.js', 'js/game/resources.js', 'js/game/bestiary.js', 'js/game/microbes.js'];
 
+    // The intro's table of volumes: those of `options.volumes` (up to the one printed, never a later one).
+    const volumesTable = (heads, rows) => `<table><thead><tr>${heads.map((head) => `<th>${head}</th>`).join('')}</tr></thead><tbody>${
+        rows.map((row) => `<tr><td>${row.number}</td><td>${escapeHtml(row.title)}</td><td>${escapeHtml(row.range)}</td></tr>`).join('')}</tbody></table>`;
+
     const TEXT = {
         ES: {
-            book: 'Guía de MineCloud', subtitle: 'El libro de campo del mundo de MineCloud',
-            edition: (date, count) => `Edición en papel · ${date} · ${count} páginas de la guía`,
-            contents: 'Índice', inGame: (id) => `Guía nº ${id}`, otherLang: 'Esta página aún no está traducida; se muestra en inglés.',
-            more: 'Más páginas', print: 'Imprimir', inkSaver: 'Ahorrar tinta', pixelFont: 'Fuente pixel', clearFont: 'Fuente clara',
+            book: 'Guía de MineCloud', bookVolume: (n) => `Guía de MineCloud · Volumen ${n}`,
+            strap: 'La guía oficial', volumeWord: 'Volumen', complete: 'Guía completa', allVolumes: 'Todo', volumeLabel: 'Volumen',
+            completeBlurb: 'Todos los temas de la guía del juego en un solo libro: lo básico, las criaturas, los objetos y la ciencia de MineCloud.',
+            coverTopics: (from, to) => (to === null ? `Temas ${from} en adelante` : `Temas ${from} a ${to} de la guía`),
+            range: (from, to) => (to === null ? `${from} en adelante` : `${from} a ${to}`),
+            closedEdition: (date) => `Edición cerrada el ${date}`, provisionalEdition: (date) => `Edición provisional · ${date}`,
+            footVolume: (n) => `Vol. ${n}`,
+            contents: 'Índice', otherLang: 'Este tema aún no está traducido; se muestra en inglés.',
+            tocKey: 'A la izquierda, el número del tema (el mismo que en el juego); a la derecha, la página de este libro donde empieza.',
+            alsoHere: 'Además', recapTitle: 'Antes de empezar', newsTitle: 'Lo nuevo', alphaTitle: 'Índice alfabético',
+            alphaKey: 'Cada tema con su número.',
+            more: 'Más temas', print: 'Imprimir', inkSaver: 'Ahorrar tinta', pixelFont: 'Fuente pixel', clearFont: 'Fuente clara',
             paper: 'Papel', booklet: 'Librillos A4', folios: 'Folios por librillo', longEdge: 'Volteo por borde largo',
             introTitle: 'Cómo usar este libro',
-            intro: (count, paper) => `
+            intro: (options) => `
                 <h1>Cómo usar este libro</h1>
-                <p>Este libro reúne las <strong>${count} páginas</strong> de la guía que hay dentro del juego, en el mismo orden:
-                lo básico, los mobs, los objetos, las curiosidades y la ciencia de MineCloud.</p>
+                ${options.volume === null ? `<p>Este libro reúne los <strong>${options.count} temas</strong> de la guía que hay dentro del
+                juego, en el mismo orden: lo básico, los mobs, los objetos, las curiosidades y la ciencia de MineCloud.</p>` : `<p>Este es el
+                <strong>volumen ${options.volume}</strong> de la guía oficial de MineCloud, <em>${escapeHtml(options.title)}</em>: reúne
+                <strong>${options.count} temas</strong> de la guía que hay dentro del juego, en el mismo orden.</p>`}
                 <h2>Los números</h2>
                 <ul>
-                <li>El número <strong>al pie de cada hoja</strong> es el único número del libro. El <strong>índice</strong> y los
-                enlaces, como <strong>→ p. 12</strong>, te llevan a esas hojas.</li>
-                <li>Arriba, junto al título, verás en pequeño <strong>«Guía nº 34»</strong>: es el número de esa página en el libro
-                del juego. Para leerla allí, pulsa <strong>H</strong> y escribe 34 en <strong>Ir a</strong>, o escribe
-                <code>/guide 34</code> en el chat.</li>
+                <li>El número de la <strong>esquina de arriba</strong> de una página es el número del tema, el mismo que escribes en
+                el juego. Un tema puede ocupar varias páginas, y su número sale en todas. Para leerlo allí, pulsa <strong>H</strong> y escribe
+                34 en <strong>Ir a</strong>, o escribe <code>/guide 34</code> en el chat.</li>
+                <li>El número <strong>al pie</strong> es el de la página de este libro: solo dice dónde va cada página.</li>
+                <li>Un enlace lleva el número del tema al que te manda: <strong>→ 213</strong> es el tema 213.${options.volume === null ? '' : ` Si pone
+                <strong>→ 34 · vol. 1</strong>, ese tema está en el volumen 1; si pone <strong>→ 306 · vol. 3+</strong>, está en el
+                volumen 3 o en uno que vendrá después.`}</li>
+                <li>El <strong>índice</strong> del principio te dice en qué página empieza cada tema, y el <strong>índice
+                alfabético</strong> del final, su número.</li>
                 </ul>
+                ${options.volumes.length ? `<h2>Los volúmenes</h2>
+                ${volumesTable(['Volumen', 'Título', 'Temas'], options.volumes)}` : ''}
                 <h2>El papel</h2>
-                ${paper === 'BOOKLET' ? `<p>Esta copia está maquetada en <strong>librillos</strong>: cada folio A4, impreso por las
+                ${options.paper === 'BOOKLET' ? `<p>Esta copia está maquetada en <strong>librillos</strong>: cada folio A4, impreso por las
                 dos caras, lleva cuatro páginas A5. Apila los folios de cada librillo en orden, dóblalos por la mitad y grápalos
                 por el doblez: las páginas quedan seguidas. Luego pon un librillo detrás de otro.</p>` : `<p>Esta copia está maquetada
-                en <strong>${paper}</strong>. El tamaño <strong>A5</strong> es el de un libro de bolsillo: imprime en hojas A5, o
+                en <strong>${options.paper}</strong>. El tamaño <strong>A5</strong> es el de un libro de bolsillo: imprime en hojas A5, o
                 elige <strong>Librillos A4</strong> para imprimir en A4 y doblar. Con <strong>A4</strong> las hojas son más grandes
                 y hay menos.</p>`}
                 <h2>Lo que no está</h2>
-                <p>Las <strong>páginas secretas</strong> no se imprimen: se esconden tras códigos y hay que encontrarlas jugando.
-                Y el juego sigue creciendo: el libro del juego (tecla <strong>H</strong>) siempre tiene las páginas más nuevas.</p>`,
-            loadingEngine: 'Preparando el dibujante de imágenes…', loadingPages: (done, total) => `Cargando páginas: ${done} / ${total}`,
+                <p>Los <strong>temas secretos</strong> no se imprimen: se esconden tras códigos y hay que encontrarlos jugando.
+                Y el juego sigue creciendo: los temas nuevos irán a otro volumen, y el libro del juego (tecla <strong>H</strong>)
+                siempre los tiene todos.</p>`,
+            loadingEngine: 'Preparando el dibujante de imágenes…', loadingTopics: (done, total) => `Cargando temas: ${done} / ${total}`,
             drawing: (done, total) => `Dibujando imágenes: ${done} / ${total}`, waiting: 'Esperando a las imágenes y las fuentes…',
             paginating: (done, total) => `Maquetando: ${done} / ${total}`,
-            ready: (sheets, paper) => `Listo: ${sheets} páginas en ${paper}. Pulsa Imprimir y elige papel ${paper}, márgenes «Ninguno» y escala 100 %.`,
+            ready: (pages, paper) => `Listo: ${pages} páginas en ${paper}. Pulsa Imprimir y elige papel ${paper}, márgenes «Ninguno» y escala 100 %.`,
             readyBooklet: (pages, folios, total, longEdge) => `Listo: ${pages} páginas A5 en ${folios.length} librillos (folios: ${folios.join(', ')}), ${total} folios A4. ` +
                 `Pulsa Imprimir y elige papel A4 horizontal, a doble cara con volteo por el borde ${longEdge ? 'largo' : 'corto'}, márgenes «Ninguno» y escala 100 %. ` +
                 'Dobla cada librillo por la mitad con sus folios en el orden impreso.',
             bookletLabel: (booklet, count, folio, folios, back) => `Librillo ${booklet} de ${count} · folio ${folio} de ${folios} · cara ${back ? 'trasera' : 'delantera'}`,
             partial: (missing) => `${missing} imágenes no se pudieron dibujar y salen como un hueco.`,
-            offline: 'No se pudo cargar la guía. ¿Está el servidor en marcha?', noEngine: 'Sin motor 3D: los dibujos de mobs y objetos saldrán como huecos.'
+            offline: 'No se pudo cargar la guía. ¿Está el servidor en marcha?', noEngine: 'Sin motor 3D: los dibujos de mobs y objetos saldrán como huecos.',
+            overVolume: (n, pages, max) => `⚠ El volumen ${n} tiene ${pages} páginas: más de ${max}.`,
+            overVolumes: (list, max) => `⚠ Volúmenes con más de ${max} páginas de temas: ${list}.`,
+            report: 'Páginas por volumen', copyReport: 'Copiar informe', copied: 'Copiado', copyFailed: 'No se pudo copiar',
+            reportVolume: (n, title, range) => `Volumen ${n} · ${title} · temas ${range}`,
+            reportSum: (pages, measured, topics) => `${pages} páginas de temas` + (measured < topics ? ` (medidos ${measured} de ${topics} temas: maqueta el libro entero para tenerlos todos)` : ''),
+            reportShown: (pages, front, guide, back) => `Lo que se ve: ${pages} páginas = ${front} delante (portada, cómo usar, índice, antes de empezar) + ${guide} de temas + ${back} detrás (lo nuevo, índice alfabético).`,
+            over: 'demasiadas'
         },
         EN: {
-            book: 'The MineCloud Guide', subtitle: 'The field book of the world of MineCloud',
-            edition: (date, count) => `Paper edition · ${date} · ${count} guide pages`,
-            contents: 'Contents', inGame: (id) => `In-game page ${id}`, otherLang: 'This page is not translated yet; it is shown in Spanish.',
-            more: 'More pages', print: 'Print', inkSaver: 'Ink saver', pixelFont: 'Pixel font', clearFont: 'Clear font',
+            book: 'The MineCloud Guide', bookVolume: (n) => `The MineCloud Guide · Volume ${n}`,
+            strap: 'The official guide', volumeWord: 'Volume', complete: 'The complete guide', allVolumes: 'All', volumeLabel: 'Volume',
+            completeBlurb: 'Every topic of the guide inside the game in one book: the basics, the creatures, the items and the science of MineCloud.',
+            coverTopics: (from, to) => (to === null ? `Guide topics ${from} onwards` : `Guide topics ${from} to ${to}`),
+            range: (from, to) => (to === null ? `${from} onwards` : `${from} to ${to}`),
+            closedEdition: (date) => `Edition closed on ${date}`, provisionalEdition: (date) => `Provisional edition · ${date}`,
+            footVolume: (n) => `Vol. ${n}`,
+            contents: 'Contents', otherLang: 'This topic is not translated yet; it is shown in Spanish.',
+            tocKey: 'On the left, the topic\'s number (the same as in the game); on the right, the page of this book where it starts.',
+            alsoHere: 'Also in this book', recapTitle: 'Before you start', newsTitle: 'What is new', alphaTitle: 'Alphabetical index',
+            alphaKey: 'Every topic with its number.',
+            more: 'More topics', print: 'Print', inkSaver: 'Ink saver', pixelFont: 'Pixel font', clearFont: 'Clear font',
             paper: 'Paper', booklet: 'A4 booklets', folios: 'Folios per booklet', longEdge: 'Flip on long edge',
             introTitle: 'How to use this book',
-            intro: (count, paper) => `
+            intro: (options) => `
                 <h1>How to use this book</h1>
-                <p>This book gathers the <strong>${count} pages</strong> of the guide inside the game, in the same order: the basics,
-                the mobs, the items, the curiosities and the science of MineCloud.</p>
+                ${options.volume === null ? `<p>This book gathers the <strong>${options.count} topics</strong> of the guide inside the game, in
+                the same order: the basics, the mobs, the items, the curiosities and the science of MineCloud.</p>` : `<p>This is
+                <strong>volume ${options.volume}</strong> of the official MineCloud guide, <em>${escapeHtml(options.title)}</em>: it
+                gathers <strong>${options.count} topics</strong> of the guide inside the game, in the same order.</p>`}
                 <h2>The numbers</h2>
                 <ul>
-                <li>The number <strong>at the foot of each sheet</strong> is the only number in this book. The
-                <strong>contents</strong> and the links, like <strong>→ p. 12</strong>, take you to those sheets.</li>
-                <li>At the top, next to the title, a small <strong>"In-game page 34"</strong> is the number of that page in the book
-                inside the game. To read it there, press <strong>H</strong> and type 34 in <strong>Go to</strong>, or type
-                <code>/guide 34</code> in the chat.</li>
+                <li>The number in the <strong>top corner</strong> of a page is the topic's number, the same you type in the game. A
+                topic may take several pages, and its number is on all of them. To read it there, press <strong>H</strong> and type 34 in
+                <strong>Go to</strong>, or type <code>/guide 34</code> in the chat.</li>
+                <li>The number <strong>at the foot</strong> is the page of this book: it only says where each page goes.</li>
+                <li>A link prints the number of the topic it sends you to: <strong>→ 213</strong> is topic 213.${options.volume === null ? '' : ` If it says
+                <strong>→ 34 · vol. 1</strong>, that topic is in volume 1; if it says <strong>→ 306 · vol. 3+</strong>, it is in volume 3
+                or in one that will come later.`}</li>
+                <li>The <strong>contents</strong> at the front tells you on which page each topic starts, and the <strong>alphabetical
+                index</strong> at the back, its number.</li>
                 </ul>
+                ${options.volumes.length ? `<h2>The volumes</h2>
+                ${volumesTable(['Volume', 'Title', 'Topics'], options.volumes)}` : ''}
                 <h2>The paper</h2>
-                ${paper === 'BOOKLET' ? `<p>This copy is laid out in <strong>booklets</strong>: each A4 folio, printed on both
+                ${options.paper === 'BOOKLET' ? `<p>This copy is laid out in <strong>booklets</strong>: each A4 folio, printed on both
                 sides, carries four A5 pages. Stack the folios of each booklet in order, fold them in half and staple them along the
                 fold: the pages follow on. Then put one booklet after another.</p>` : `<p>This copy is laid out for
-                <strong>${paper}</strong>. <strong>A5</strong> is pocket-book size: print on A5 sheets, or choose <strong>A4
+                <strong>${options.paper}</strong>. <strong>A5</strong> is pocket-book size: print on A5 sheets, or choose <strong>A4
                 booklets</strong> to print on A4 and fold. With <strong>A4</strong> the sheets are bigger and fewer.</p>`}
                 <h2>What is missing</h2>
-                <p><strong>Secret pages</strong> are not printed: they hide behind codes and you have to find them by playing. And the
-                game keeps growing: the book inside the game (key <strong>H</strong>) always has the newest pages.</p>`,
-            loadingEngine: 'Getting the picture painter ready…', loadingPages: (done, total) => `Loading pages: ${done} / ${total}`,
+                <p><strong>Secret topics</strong> are not printed: they hide behind codes and you have to find them by playing. And the
+                game keeps growing: new topics will go into another volume, and the book inside the game (key <strong>H</strong>) always
+                has all of them.</p>`,
+            loadingEngine: 'Getting the picture painter ready…', loadingTopics: (done, total) => `Loading topics: ${done} / ${total}`,
             drawing: (done, total) => `Drawing pictures: ${done} / ${total}`, waiting: 'Waiting for pictures and fonts…',
             paginating: (done, total) => `Laying out: ${done} / ${total}`,
-            ready: (sheets, paper) => `Ready: ${sheets} pages in ${paper}. Press Print and choose ${paper} paper, margins "None" and scale 100%.`,
+            ready: (pages, paper) => `Ready: ${pages} pages in ${paper}. Press Print and choose ${paper} paper, margins "None" and scale 100%.`,
             readyBooklet: (pages, folios, total, longEdge) => `Ready: ${pages} A5 pages in ${folios.length} booklets (folios: ${folios.join(', ')}), ${total} A4 folios. ` +
                 `Press Print and choose A4 landscape, two-sided with ${longEdge ? 'long' : 'short'}-edge flip, margins "None" and scale 100%. ` +
                 'Fold each booklet in half with its folios in the printed order.',
             bookletLabel: (booklet, count, folio, folios, back) => `Booklet ${booklet} of ${count} · folio ${folio} of ${folios} · ${back ? 'back' : 'front'}`,
             partial: (missing) => `${missing} pictures could not be drawn and show as a blank.`,
-            offline: 'The guide could not be loaded. Is the server running?', noEngine: 'No 3D engine: mob and item pictures will show as blanks.'
+            offline: 'The guide could not be loaded. Is the server running?', noEngine: 'No 3D engine: mob and item pictures will show as blanks.',
+            overVolume: (n, pages, max) => `⚠ Volume ${n} has ${pages} pages: more than ${max}.`,
+            overVolumes: (list, max) => `⚠ Volumes with more than ${max} pages of topics: ${list}.`,
+            report: 'Pages per volume', copyReport: 'Copy report', copied: 'Copied', copyFailed: 'Could not copy',
+            reportVolume: (n, title, range) => `Volume ${n} · ${title} · topics ${range}`,
+            reportSum: (pages, measured, topics) => `${pages} pages of topics` + (measured < topics ? ` (${measured} of ${topics} topics measured: lay out the whole book to have them all)` : ''),
+            reportShown: (pages, front, guide, back) => `What is shown: ${pages} pages = ${front} at the front (cover, how to use, contents, before you start) + ${guide} of topics + ${back} at the back (what is new, alphabetical index).`,
+            over: 'too many'
         }
     };
 
-    // Sections of the table of contents (public page ranges, inclusive). Pages outside every
-    // range are grouped under "More pages", so new pages always appear.
-    const SECTIONS = [
-        [0, 15, 'Lo básico', 'The basics'],
-        [16, 47, 'Mobs', 'Mobs'],
-        [48, 97, 'Objetos', 'Items'],
-        [98, 106, 'Curiosidades', 'Curiosities'],
-        [107, 111, 'Cultivos', 'Farming'],
-        [112, 114, 'Tiempo y meteorología', 'Weather'],
-        [115, 129, 'Química', 'Chemistry'],
-        [130, 131, 'Genética', 'Genetics'],
-        [132, 134, 'Astronomía', 'Astronomy'],
-        [135, 138, 'Hormigas y castores', 'Ants and beavers'],
-        [139, 174, 'Los elementos químicos', 'The chemical elements'],
-        [175, 190, 'Química: más descubrimientos', 'Chemistry: more discoveries'],
-        [191, 195, 'Planos y robot programable', 'Blueprints and the programmable robot'],
-        [196, 199, 'Bloques de construcción', 'Building blocks'],
-        [200, 206, 'Electricidad', 'Electricity'],
-        [207, 212, 'Lógica y sensores', 'Logic and sensors'],
-        [213, 214, 'La anguila eléctrica', 'The electric eel'],
-        [215, 216, 'El golem de cobre', 'The copper golem'],
-        [217, 220, 'Máquinas y energía', 'Machines and power'],
-        [223, 234, 'Muebles', 'Furniture'],
-        [235, 236, 'El taller: fundición y horno de arco', 'The workshop: foundry and arc furnace'],
-        [237, 244, 'El mundo pequeño', 'The small world'],
-        [245, 245, 'Bloque luminoso', 'Glow block'],
-        [246, 247, 'Tinciones y filtros', 'Stains and filters']
-    ];
-
     // ---------------------------------------------------------------- pure helpers (tested)
 
-    // The public pages of the index, numerically, one entry each: the one in `lang`, or the
-    // other language when it is missing. Secret pages are dropped here and never seen again.
-    function publicPages(index, lang) {
-        const byPage = new Map();
+    // The public topics of the index, numerically, one entry each: the one in `lang`, or the
+    // other language when it is missing. Secret topics are dropped here and never seen again.
+    function publicTopics(index, lang) {
+        const byTopic = new Map();
         for (const entry of Array.isArray(index) ? index : []) {
-            if (!entry || entry.secret || !/^\d{1,8}$/.test(String(entry.page))) continue;
-            const id = String(Number(entry.page));
-            const current = byPage.get(id);
-            if (!current || (entry.lang === lang && current.lang !== lang)) byPage.set(id, entry);
+            if (!entry || entry.secret || !/^\d{1,8}$/.test(String(entry.topic))) continue;
+            const id = String(Number(entry.topic));
+            const current = byTopic.get(id);
+            if (!current || (entry.lang === lang && current.lang !== lang)) byTopic.set(id, entry);
         }
-        return [...byPage.entries()]
+        return [...byTopic.entries()]
             .map(([id, entry]) => ({ id, number: Number(id), title: entry.title, path: entry.path, lang: entry.lang, fallback: entry.lang !== lang }))
             .sort((a, b) => a.number - b.number);
     }
 
-    function sectionsFor(pages, lang) {
+    // ---- volumes: guide/volumes.json (rules in guide/README.md, "Volumes")
+
+    function manifestVolumes(manifest) {
+        return manifest && Array.isArray(manifest.volumes) ? manifest.volumes : [];
+    }
+
+    // The volume numbered `number`, or null.
+    function findVolume(manifest, number) {
+        return manifestVolumes(manifest).find((volume) => volume.volume === number) || null;
+    }
+
+    // The volume guide topic `number` belongs to (the last one takes every topic from its `from`), or null.
+    function volumeOfTopic(manifest, number) {
+        return manifestVolumes(manifest).find((volume) => number >= volume.from
+            && (volume.to === null || volume.to === undefined || number <= volume.to)) || null;
+    }
+
+    // The ids (strings) that are never printed: the generated contents takes topic 0's place.
+    function skipOf(manifest) {
+        return new Set((manifest && Array.isArray(manifest.skip) ? manifest.skip : DEFAULT_SKIP).map(String));
+    }
+
+    // The topics (of publicTopics) that volume `volume` prints, or the whole book with null.
+    function volumeTopics(topics, manifest, volume) {
+        const skip = skipOf(manifest);
+        return topics.filter((topic) => !skip.has(topic.id)
+            && (volume === null || (volumeOfTopic(manifest, topic.number) || {}).volume === volume));
+    }
+
+    // The rows [from, to, ES, EN] of the contents: those of one volume, or of all of them with null.
+    function sectionRows(manifest, volume = null) {
+        return manifestVolumes(manifest).filter((entry) => volume === null || entry.volume === volume)
+            .flatMap((entry) => (Array.isArray(entry.sections) ? entry.sections : []));
+    }
+
+    // How a link to topic `id` is printed while printing volume `printing` (null: the whole book):
+    // the bare number in the same volume and in the whole book, "34 · vol. 1" in another one, and
+    // "306 · vol. 3+" in a later volume that is not closed yet (its range may still move). Null
+    // for a topic that is never printed (skip): the link is then plain words, as a secret one.
+    function linkLabel(manifest, id, printing) {
+        if (skipOf(manifest).has(String(id))) return null;
+        const number = Number(id);
+        if (printing === null || !manifest) return String(number);
+        const target = volumeOfTopic(manifest, number);
+        if (!target || target.volume === printing) return String(number);
+        const open = target.volume > printing && !target.closed;
+        return `${number} · vol. ${target.volume}${open ? '+' : ''}`;
+    }
+
+    // The alphabetical index: every topic of the volumes up to `printing` (all with null), sorted
+    // in the language's own order, each with its label (linkLabel) and the letter it goes under.
+    function indexEntries(topics, manifest, printing, lang) {
+        const skip = skipOf(manifest);
+        const locale = lang === 'ES' ? 'es' : 'en';
+        const upTo = (topic) => {
+            if (printing === null) return true;
+            const volume = volumeOfTopic(manifest, topic.number);
+            return Boolean(volume) && volume.volume <= printing;
+        };
+        return topics.filter((topic) => !skip.has(topic.id) && upTo(topic))
+            .map((topic) => ({ id: topic.id, number: topic.number, title: topic.title, label: linkLabel(manifest, topic.id, printing), letter: indexLetter(topic.title) }))
+            .sort((a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base', numeric: true }) || a.number - b.number);
+    }
+
+    // The letter a title is filed under: its first letter without accents ("Á" under A), or #.
+    function indexLetter(title) {
+        const first = String(title).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^[^A-Za-z0-9]+/, '').charAt(0).toUpperCase();
+        return /[A-Z]/.test(first) ? first : '#';
+    }
+
+    // A date of the manifest ("2026-11-20") in words, the same wherever it is printed.
+    function formatDate(iso, lang) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+        if (!match) return String(iso);
+        const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+        return date.toLocaleDateString(lang === 'ES' ? 'es-ES' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    }
+
+    // The edition line of a cover: a closed volume says its own date, so a reprint says the same.
+    function editionLine(volume, lang, todayIso) {
+        const text = TEXT[lang];
+        return volume && volume.closed ? text.closedEdition(formatDate(volume.closed, lang)) : text.provisionalEdition(formatDate(todayIso, lang));
+    }
+
+    // Where the tab on the edge of a cover starts, in mm from the top: a staircase down the shelf,
+    // back to the top after the seventh volume.
+    function tabTop(number) {
+        return 16 + ((Math.max(1, number) - 1) % 7) * 26;
+    }
+
+    // The whole book's five items: the first item of each volume's cover, then the second...
+    function wholeBookIcons(manifest) {
+        const lists = manifestVolumes(manifest).map((volume) => (volume.cover && Array.isArray(volume.cover.icons) ? volume.cover.icons : []));
+        const icons = [];
+        for (let k = 0; k < 5 && icons.length < 5; k++) {
+            for (const list of lists) if (list[k] && icons.length < 5 && !icons.includes(list[k])) icons.push(list[k]);
+        }
+        return icons;
+    }
+
+    const safeColour = (colour) => (/^#[0-9a-fA-F]{6}$/.test(String(colour)) ? colour : WHOLE_BOOK_COLOUR);
+
+    // Everything a cover says (coverPage draws it): of volume `volume` (an entry of the manifest),
+    // or of the whole book with null. `topics` are the topics it prints.
+    function coverModel(manifest, volume, topics, lang, todayIso) {
+        const text = TEXT[lang];
+        const pick = (pair) => (pair && (pair[lang] || pair.ES || pair.EN)) || '';
+        if (volume) {
+            return {
+                colour: safeColour(volume.colour), numeral: String(volume.volume), label: text.volumeWord, title: pick(volume.title),
+                hero: (volume.cover && volume.cover.hero) || null, icons: ((volume.cover && volume.cover.icons) || []).slice(0, 5),
+                topics: text.coverTopics(volume.from, volume.to === undefined ? null : volume.to), blurb: pick(volume.blurb),
+                edition: editionLine(volume, lang, todayIso), tabTop: tabTop(volume.volume)
+            };
+        }
+        const first = topics.length ? topics[0].number : 0;
+        const last = topics.length ? topics[topics.length - 1].number : 0;
+        return {
+            colour: WHOLE_BOOK_COLOUR, numeral: null, label: '', title: text.complete, hero: null, icons: wholeBookIcons(manifest),
+            topics: text.coverTopics(first, last), blurb: text.completeBlurb, edition: editionLine(null, lang, todayIso), tabTop: null
+        };
+    }
+
+    // The pages of the guide topics, per volume and section, from what has been measured
+    // (`pagesById`: topic id -> pages). `topics` are all the public topics (publicTopics).
+    function volumePages(manifest, topics, pagesById, lang) {
+        const max = manifest && manifest.pages ? manifest.pages.max : Infinity;
+        const count = (list) => {
+            const measured = list.filter((topic) => Number.isFinite(pagesById[topic.id]));
+            return { topics: list.length, measured: measured.length, pages: measured.reduce((sum, topic) => sum + pagesById[topic.id], 0) };
+        };
+        return manifestVolumes(manifest).map((volume) => {
+            const own = volumeTopics(topics, manifest, volume.volume);
+            const sections = sectionsFor(own, lang, volume.sections || []).map((section) => ({
+                title: section.title, from: section.topics[0].number, to: section.topics[section.topics.length - 1].number, ...count(section.topics)
+            }));
+            const total = count(own);
+            return {
+                volume: volume.volume, title: (volume.title && (volume.title[lang] || volume.title.ES)) || '', from: volume.from,
+                to: volume.to === undefined ? null : volume.to, closed: volume.closed || null, sections, ...total, over: total.pages > max
+            };
+        });
+    }
+
+    // The plain text of the report (the toolbar's "Copy report"), for whoever decides the cuts.
+    // `shown`: { volume (null: the whole book), pages, front, guide, back } of what was laid out.
+    function pagesReportText({ manifest, topics, pagesById, lang, paper, font, shown }) {
+        const limits = (manifest && manifest.pages) || {};
+        const range = (from, to) => (to === null ? `${from} onwards` : `${from} to ${to}`);
+        const lines = ['MineCloud printable guide: pages per volume', `Language: ${lang}`, `Paper: ${paper}`, `Font: ${font}`,
+            `Pages a volume: ${limits.min} to ${limits.max}`];
+        if (shown) {
+            lines.push(`Shown: ${shown.volume === null ? 'the whole book' : `volume ${shown.volume}`}, ${shown.pages} pages = ` +
+                `${shown.front} front + ${shown.guide} of topics + ${shown.back} back`);
+        }
+        for (const volume of volumePages(manifest, topics, pagesById, lang)) {
+            lines.push('', `Volume ${volume.volume}, topics ${range(volume.from, volume.to)}, "${volume.title}"${volume.closed ? `, closed ${volume.closed}` : ''}: ` +
+                `${volume.pages} pages of topics (${volume.measured} of ${volume.topics} topics measured)${volume.over ? ` OVER ${limits.max}` : ''}`);
+            for (const section of volume.sections) {
+                lines.push(`  ${section.title}, ${section.from} to ${section.to}: ${section.pages} pages (${section.measured} of ${section.topics} topics)`);
+            }
+        }
+        lines.push('', 'id\tpages');
+        const ids = Object.keys(pagesById).filter((id) => Number.isFinite(pagesById[id])).sort((a, b) => Number(a) - Number(b));
+        for (const id of ids) lines.push(`${id}\t${pagesById[id]}`);
+        return `${lines.join('\n')}\n`;
+    }
+
+    // The contents' sections of `topics`, from the rows [from, to, ES, EN] of the manifest (a
+    // volume's, or all of them). A topic outside every row goes under "More topics".
+    function sectionsFor(topics, lang, rows = []) {
         const sections = [];
-        for (const page of pages) {
-            const range = SECTIONS.find(([from, to]) => page.number >= from && page.number <= to);
+        for (const topic of topics) {
+            const range = rows.find(([from, to]) => topic.number >= from && topic.number <= to);
             const key = range ? `${range[0]}` : 'more';
             const last = sections[sections.length - 1];
             if (last && last.key === key) {
-                last.pages.push(page);
+                last.topics.push(topic);
                 continue;
             }
             const title = range ? (lang === 'ES' ? range[2] : range[3]) : TEXT[lang].more;
-            sections.push({ key, title, pages: [page] });
+            sections.push({ key, title, topics: [topic] });
         }
         return sections;
     }
@@ -186,14 +394,14 @@
     // Pagination. A block is { height } (atomic: paragraphs, figures, quotes...), plus
     // keepWithNext for headings, or splittable: a table { chrome, head, rows: [heights] } or a
     // list { chrome, items: [heights] }, where chrome is what the block adds around its rows or
-    // items (margins, borders). Returns the sheets of one chapter: arrays of pieces
-    // { block, from, to } (from/to: the rows or items of a splittable block on that sheet).
+    // items (margins, borders). Returns the pages of one chapter: arrays of pieces
+    // { block, from, to } (from/to: the rows or items of a splittable block on that page).
     function splitParts(block) {
         const parts = block.rows || block.items;
         return parts && parts.length ? parts : null;
     }
 
-    // The least room block i needs on a sheet: its first row or item if it splits, all of it
+    // The least room block i needs on a page: its first row or item if it splits, all of it
     // otherwise; a heading needs itself plus the least of what follows.
     function leastNeed(blocks, i) {
         let need = 0;
@@ -206,14 +414,14 @@
     }
 
     function paginateChapter(blocks, pageHeight) {
-        const sheets = [[]];
+        const pages = [[]];
         let used = 0;
         const fresh = () => {
-            if (sheets[sheets.length - 1].length) sheets.push([]);
+            if (pages[pages.length - 1].length) pages.push([]);
             used = 0;
         };
         const place = (piece, height) => {
-            sheets[sheets.length - 1].push(piece);
+            pages[pages.length - 1].push(piece);
             used += height;
         };
         for (let i = 0; i < blocks.length; i++) {
@@ -231,7 +439,7 @@
                             fresh();
                             continue;
                         }
-                        height += parts[to++]; // a single row taller than a sheet: it has to go somewhere
+                        height += parts[to++]; // a single row taller than a page: it has to go somewhere
                     }
                     place({ block: i, from, to }, height);
                     from = to;
@@ -240,26 +448,26 @@
                 continue;
             }
             const need = block.keepWithNext ? leastNeed(blocks, i) : block.height;
-            // A heading that cannot keep its company even on a fresh sheet just needs to fit itself.
+            // A heading that cannot keep its company even on a fresh page just needs to fit itself.
             const tooTall = need > pageHeight ? used + block.height > pageHeight : used + need > pageHeight;
             if (used > 0 && tooTall) fresh();
             place({ block: i }, block.height);
         }
-        return sheets;
+        return pages;
     }
 
-    // The whole book after `before` sheets (the cover): every chapter starts a sheet. Returns
-    // { sheets: [{ chapter, pieces, number }], starts: [first sheet number of each chapter] }.
+    // The whole book after `before` pages (the cover): every chapter starts a page. Returns
+    // { pages: [{ chapter, pieces, number }], starts: [first page number of each chapter] }.
     function paginate(chapters, pageHeight, before = 1) {
-        const sheets = [];
+        const pages = [];
         const starts = [];
         chapters.forEach((chapter, index) => {
-            starts.push(before + sheets.length + 1);
+            starts.push(before + pages.length + 1);
             for (const pieces of paginateChapter(chapter.blocks, pageHeight)) {
-                sheets.push({ chapter: index, pieces, number: before + sheets.length + 1 });
+                pages.push({ chapter: index, pieces, number: before + pages.length + 1 });
             }
         });
-        return { sheets, starts };
+        return { pages, starts };
     }
 
     // Saddle-stitch imposition of `pageCount` pages (0-based) in booklets of `folios` folios.
@@ -294,7 +502,11 @@
         return `data:image/svg+xml,${encodeURIComponent(svg)}`;
     }
 
-    const api = { publicPages, sectionsFor, paginateChapter, paginate, bookletImposition, SECTIONS, TEXT, SKIP_SCRIPTS };
+    const api = {
+        publicTopics, sectionsFor, paginateChapter, paginate, bookletImposition, TEXT, SKIP_SCRIPTS,
+        findVolume, volumeOfTopic, skipOf, volumeTopics, sectionRows, linkLabel, indexEntries, indexLetter, formatDate, editionLine,
+        tabTop, wholeBookIcons, coverModel, volumePages, pagesReportText
+    };
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
         return;
@@ -329,6 +541,14 @@
         const fromUrl = Number(new URLSearchParams(window.location.search).get('folios'));
         const value = Number.isInteger(fromUrl) && fromUrl > 0 ? fromUrl : Number(loadSetting('minecloud-guide-print-folios'));
         return Number.isInteger(value) && value >= 1 && value <= FOLIOS_MAX ? value : FOLIOS_DEFAULT;
+    }
+
+    // 'ALL' or a volume's number as a string; whether that volume exists is only known once the
+    // manifest is read (currentVolume).
+    function initialVolume() {
+        const valid = (value) => (value === 'ALL' || /^\d{1,3}$/.test(value) ? value : null);
+        return valid((new URLSearchParams(window.location.search).get('volume') || '').toUpperCase())
+            || valid(loadSetting('minecloud-guide-print-volume') || '') || 'ALL';
     }
 
     const nextFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -390,6 +610,14 @@
             if (kind === 'item') {
                 return engine.world && engine.world.blockTypes[name] ? engine.world.getInventoryIconUrl(name) : null;
             }
+            if (kind === 'model') {
+                // What has a model and is not a species (the robot): the game builds it, `<name>PortraitModel`
+                // (robotPortraitModel in js/game/robot.js), and the bestiary's stage draws it like a portrait.
+                const portraits = engine.portraits;
+                const build = portraits && portraits[`${name}PortraitModel`];
+                return typeof build === 'function' && typeof portraits.bestiaryRenderObject === 'function'
+                    ? portraits.bestiaryRenderObject(build.call(portraits)) : null;
+            }
             return engine.portraits ? engine.portraits.bestiaryRenderPortrait(name) : null;
         } catch (error) {
             console.warn(`[guide-print] could not draw ${kind}:${name}`, error);
@@ -404,11 +632,17 @@
         paper: initialChoice('paper', 'minecloud-guide-print-paper', PAPERS, 'A5'),
         folios: initialFolios(),
         longEdge: loadSetting('minecloud-guide-print-long-edge') === '1',
+        volume: initialVolume(),
         build: 0,
         engine: undefined,
         enginePromise: null,
         index: null,
+        manifest: undefined, // guide/volumes.json once fetched, null if it could not be read
         sources: new Map(),
+        // The pages of each guide topic measured so far, by layout (layoutKey): one run of the whole
+        // book measures every topic, and runs of single volumes add up.
+        pageCounts: new Map(),
+        reportText: '',
         drawn: new Map(),
         placeholder: placeholderUrl()
     };
@@ -451,32 +685,105 @@
             if (button.dataset.paper === 'BOOKLET') button.textContent = text.booklet;
             button.classList.toggle('active', button.dataset.paper === state.paper);
         });
+        elements.volumeLabel.textContent = text.volumeLabel;
+        elements.reportSummary.textContent = text.report;
+        elements.reportCopy.textContent = text.copyReport;
+    }
+
+    // The volume being printed (an entry of the manifest), or null for the whole book; a number
+    // the manifest does not have falls back to the whole book.
+    function currentVolume(manifest) {
+        if (state.volume === 'ALL' || !manifest) return null;
+        const volume = findVolume(manifest, Number(state.volume));
+        if (!volume) state.volume = 'ALL';
+        return volume;
+    }
+
+    // The toolbar's choice of volume (made once the manifest is read), the colour of the chips
+    // and the document's title (the name a saved PDF gets).
+    function applyVolume(manifest, volume) {
+        const text = TEXT[state.lang];
+        const volumes = manifestVolumes(manifest);
+        elements.volumes.hidden = !volumes.length;
+        const wanted = ['ALL', ...volumes.map((entry) => String(entry.volume))];
+        if (elements.volumes.querySelectorAll('.gp-volume').length !== wanted.length) {
+            elements.volumes.querySelectorAll('.gp-volume').forEach((button) => button.remove());
+            for (const value of wanted) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'gp-volume';
+                button.dataset.volume = value;
+                button.addEventListener('click', () => setVolume(value));
+                elements.volumes.appendChild(button);
+            }
+        }
+        elements.volumes.querySelectorAll('.gp-volume').forEach((button) => {
+            button.textContent = button.dataset.volume === 'ALL' ? text.allVolumes : button.dataset.volume;
+            button.classList.toggle('active', button.dataset.volume === state.volume);
+        });
+        document.documentElement.style.setProperty('--volume', volume ? safeColour(volume.colour) : WHOLE_BOOK_COLOUR);
+        document.title = volume ? text.bookVolume(volume.volume) : text.book;
+    }
+
+    // Layouts that give the same pages: the booklets are A5 pages.
+    function layoutKey() {
+        const pixel = document.documentElement.classList.contains('gp-pixel');
+        return `${state.lang}|${state.paper === 'A4' ? 'A4' : 'A5'}|${pixel ? 'pixel' : 'clear'}`;
     }
 
     async function loadIndex() {
         if (state.index) return state.index;
         const response = await fetch('guide/index.json', { cache: 'no-cache' });
         if (!response.ok) throw new Error(response.status);
-        const pages = await response.json();
-        state.index = Array.isArray(pages) ? pages : [];
+        const topics = await response.json();
+        state.index = Array.isArray(topics) ? topics : [];
         return state.index;
     }
 
-    async function loadSources(pages, build) {
+    // guide/volumes.json, fetched once; null when it cannot be read (the page is then the whole book).
+    async function loadManifest() {
+        if (state.manifest !== undefined) return state.manifest;
+        let manifest = null;
+        try {
+            const response = await fetch('guide/volumes.json', { cache: 'no-cache' });
+            manifest = response.ok ? await response.json() : null;
+        } catch (_error) {
+            manifest = null;
+        }
+        state.manifest = manifest && Array.isArray(manifest.volumes) && manifest.volumes.length ? manifest : null;
+        return state.manifest;
+    }
+
+    // A chapter of guide/volumes/ ("<n>_recap_ES.md"...), or null when there is none (a 404 is no chapter).
+    async function loadVolumeFile(name) {
+        const path = `guide/volumes/${name}`;
+        if (!state.sources.has(path)) {
+            try {
+                const response = await fetch(path, { cache: 'no-cache' });
+                state.sources.set(path, response.ok ? await response.text() : null);
+            } catch (_error) {
+                state.sources.set(path, null);
+            }
+        }
+        const source = state.sources.get(path);
+        return typeof source === 'string' && source.trim() ? source : null;
+    }
+
+    async function loadSources(topics, build) {
         let done = 0;
-        const queue = pages.filter((page) => !state.sources.has(page.path));
+        const queue = topics.filter((topic) => !state.sources.has(topic.path));
         const total = queue.length;
         const worker = async () => {
             while (queue.length && build === state.build) {
-                const page = queue.shift();
+                const topic = queue.shift();
                 try {
-                    const response = await fetch(page.path.split('/').map(encodeURIComponent).join('/'));
-                    state.sources.set(page.path, response.ok ? await response.text() : null);
+                    const response = await fetch(topic.path.split('/').map(encodeURIComponent).join('/'));
+                    state.sources.set(topic.path, response.ok ? await response.text() : null);
                 } catch (_error) {
-                    state.sources.set(page.path, null);
+                    state.sources.set(topic.path, null);
                 }
                 done++;
-                if (build === state.build) setStatus(TEXT[state.lang].loadingPages(done, total), total ? done / total : 1);
+                if (build === state.build) setStatus(TEXT[state.lang].loadingTopics(done, total), total ? done / total : 1);
             }
         };
         await Promise.all(Array.from({ length: 6 }, worker));
@@ -491,33 +798,25 @@
         return flow;
     }
 
-    // One guide page's content: its Markdown with links pointing at the sheets and the
-    // pictures marked to be drawn.
-    function guideFlow(page, renderer, publicIds) {
-        const text = TEXT[state.lang];
-        const source = state.sources.get(page.path);
-        let html;
-        try {
-            html = source === null || source === undefined ? `<p class="gp-notice">${escapeHtml(text.offline)}</p>` : renderer.markdown(source);
-        } catch (error) {
-            console.warn('[guide-print] could not render page', page.id, error);
-            html = `<p class="gp-notice">${escapeHtml(text.offline)}</p>`;
-        }
+    // Rendered Markdown made ready for paper: links labelled with the topic they cite (linkLabel)
+    // and pointing at it when it is in this book, and the pictures marked to be drawn. `links`:
+    // { manifest, printing, publicIds, printedIds }.
+    function paperFlow(html, links) {
         // A template keeps the images inert until their sources are fixed below.
         const template = document.createElement('template');
-        template.innerHTML = (page.fallback ? `<p class="gp-notice">${escapeHtml(text.otherLang)}</p>` : '') + html;
+        template.innerHTML = html;
         const content = template.content;
-        content.querySelectorAll('a[data-page]').forEach((link) => {
-            const id = link.dataset.page;
-            if (publicIds.has(id)) {
-                link.href = `#gp-${id}`;
-                link.classList.add('gp-link');
-                link.dataset.target = id;
-                link.dataset.sheet = NUMBER_PLACEHOLDER;
-            } else {
-                // A secret (or missing) page: keep the words, never the code.
+        content.querySelectorAll('a[data-topic]').forEach((link) => {
+            const id = link.dataset.topic;
+            const label = links.publicIds.has(id) ? linkLabel(links.manifest, id, links.printing) : null;
+            if (label === null) {
+                // A secret, missing or never printed topic: keep the words, never the code.
                 link.replaceWith(...link.childNodes);
+                return;
             }
+            if (links.printedIds.has(id)) link.href = `#gp-${id}`;
+            link.classList.add('gp-link');
+            link.dataset.label = label;
         });
         content.querySelectorAll('img').forEach((img) => {
             const src = img.getAttribute('src') || '';
@@ -543,36 +842,116 @@
         return flow;
     }
 
-    function tocFlow(pages) {
+    function renderMarkdown(source, renderer, what) {
         const text = TEXT[state.lang];
-        const sections = sectionsFor(pages, state.lang).map((section) => {
-            const items = section.pages.map((page) => `<li><a href="#gp-${page.id}"><span class="gp-toc-title">${escapeHtml(page.title)}</span><span class="gp-toc-dots"></span><span class="gp-toc-num" data-target="${page.id}">${NUMBER_PLACEHOLDER}</span></a></li>`).join('');
-            return `<h2>${escapeHtml(section.title)}</h2><ul class="gp-toc-list">${items}</ul>`;
-        }).join('');
-        return flowFrom(`<h1>${escapeHtml(text.contents)}</h1>${sections}`);
+        if (source === null || source === undefined) return `<p class="gp-notice">${escapeHtml(text.offline)}</p>`;
+        try {
+            return renderer.markdown(source);
+        } catch (error) {
+            console.warn('[guide-print] could not render', what, error);
+            return `<p class="gp-notice">${escapeHtml(text.offline)}</p>`;
+        }
     }
 
-    function coverSheet(pages) {
+    // One guide topic's content.
+    function guideFlow(topic, renderer, links) {
+        const notice = topic.fallback ? `<p class="gp-notice">${escapeHtml(TEXT[state.lang].otherLang)}</p>` : '';
+        return paperFlow(notice + renderMarkdown(state.sources.get(topic.path), renderer, `topic ${topic.id}`), links);
+    }
+
+    // The title of a chapter of guide/volumes/: its first "# heading".
+    function headingOf(source) {
+        const match = /^#[ \t]+(.+?)[ \t]*$/m.exec(source);
+        return match ? match[1].replace(/[*_`]/g, '') : null;
+    }
+
+    // The contents of this book: one line above says which number is which; then each line is
+    // the guide number, the title, the dots and the page (filled in once paginated, by anchor).
+    // `extras`: { before: [{ anchor, title }], after: [...] }, the chapters that are not guide topics.
+    function tocFlow(topics, rows, extras) {
         const text = TEXT[state.lang];
-        const date = new Date().toLocaleDateString(state.lang === 'ES' ? 'es-ES' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-        const sheet = document.createElement('div');
-        sheet.className = 'gp-sheet gp-cover';
-        sheet.innerHTML = `<div class="gp-cover-frame">
-                <h1>${escapeHtml(text.book)}</h1>
-                <img src="guide/img/book.png" alt="">
-                <p class="gp-subtitle">${escapeHtml(text.subtitle)}</p>
-                <p class="gp-edition">${escapeHtml(text.edition(date, pages.length))}</p>
+        const line = (anchor, id, title) => `<li><a href="#${anchor}"><span class="gp-toc-id">${id}</span><span class="gp-toc-title">${escapeHtml(title)}</span>` +
+            `<span class="gp-toc-dots"></span><span class="gp-toc-num" data-anchor="${anchor}">${NUMBER_PLACEHOLDER}</span></a></li>`;
+        const list = (items) => `<ul class="gp-toc-list">${items.join('')}</ul>`;
+        const before = extras.before.length ? list(extras.before.map((extra) => line(extra.anchor, '', extra.title))) : '';
+        const sections = sectionsFor(topics, state.lang, rows)
+            .map((section) => `<h2>${escapeHtml(section.title)}</h2>${list(section.topics.map((topic) => line(`gp-${topic.id}`, topic.id, topic.title)))}`).join('');
+        const after = extras.after.length ? `<h2>${escapeHtml(text.alsoHere)}</h2>${list(extras.after.map((extra) => line(extra.anchor, '', extra.title)))}` : '';
+        return flowFrom(`<h1>${escapeHtml(text.contents)}</h1><p class="gp-toc-key">${escapeHtml(text.tocKey)}</p>${before}${sections}${after}`);
+    }
+
+    // The alphabetical index (indexEntries): one list per letter, which the paginator splits
+    // between items like any list.
+    function alphaFlow(entries, printedIds) {
+        const text = TEXT[state.lang];
+        const groups = [];
+        for (const entry of entries) {
+            const last = groups[groups.length - 1];
+            if (last && last.letter === entry.letter) last.entries.push(entry);
+            else groups.push({ letter: entry.letter, entries: [entry] });
+        }
+        const html = groups.map((group) => `<h3 class="gp-alpha-letter">${escapeHtml(group.letter)}</h3><ul class="gp-toc-list gp-alpha-list">${
+            group.entries.map((entry) => `<li><a${printedIds.has(entry.id) ? ` href="#gp-${entry.id}"` : ''}><span class="gp-toc-title">${escapeHtml(entry.title)}</span>` +
+                `<span class="gp-toc-dots"></span><span class="gp-alpha-num">${escapeHtml(entry.label)}</span></a></li>`).join('')}</ul>`).join('');
+        return flowFrom(`<h1>${escapeHtml(text.alphaTitle)}</h1><p class="gp-toc-key">${escapeHtml(text.alphaKey)}</p>${html}`);
+    }
+
+    // The cube of the favicon (guide-print.html), for the masthead of the covers.
+    const COVER_CUBE = '<svg class="gp-cover-cube" viewBox="0 0 16 16" aria-hidden="true"><path fill="#67a83f" d="M8 1l7 3.5-7 3.5-7-3.5z"/>' +
+        '<path fill="#7a5233" d="M1 4.5l7 3.5v7l-7-3.5z"/><path fill="#5e3f27" d="M15 4.5l-7 3.5v7l7-3.5z"/></svg>';
+    // A fill drawn as SVG under a tile: printers keep SVG fills even when they drop backgrounds.
+    const coverFill = (colour) => `<svg class="gp-cover-fill" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><rect width="10" height="10" fill="${colour}"/></svg>`;
+
+    function todayIso() {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    // The cover (coverModel), laid out in a box of 148 x 210 mm that A4 scales (guide-print.html,
+    // "covers"). Its pictures are drawn like any other (gp-pending).
+    function coverPage(manifest, volume, topics) {
+        const model = coverModel(manifest, volume, topics, state.lang, todayIso());
+        const text = TEXT[state.lang];
+        const colour = escapeHtml(model.colour);
+        const asset = (ref, extra) => (/^(mob|item|model):[a-z0-9_]+$/.test(String(ref))
+            ? `<img class="gp-pending gp-${ref.split(':')[0]} ${extra}" data-asset="${escapeHtml(ref)}" src="${BLANK}" alt="">`
+            : `<img class="gp-missing ${extra}" src="${state.placeholder}" alt="">`);
+        const hero = model.hero ? asset(model.hero, 'gp-cover-hero-img') : '<img class="gp-cover-hero-img gp-cover-book" src="guide/img/book.png" alt="">';
+        const numeral = model.numeral === null ? '' : `<div class="gp-cover-numeral">${coverFill(colour)}<span>${escapeHtml(model.numeral)}</span></div>`;
+        const tab = model.tabTop === null ? '' : `<div class="gp-cover-tab" style="top: ${model.tabTop}mm">${coverFill(colour)}<span>${escapeHtml(model.numeral)}</span></div>`;
+        const page = document.createElement('div');
+        page.className = 'gp-page gp-cover';
+        page.innerHTML = `<div class="gp-cover-art" style="--volume: ${colour}">
+                <div class="gp-cover-frame"><div class="gp-cover-column">
+                    <div class="gp-cover-mast">${COVER_CUBE}<div class="gp-cover-mast-words"><div class="gp-cover-brand">MineCloud</div>
+                        <div class="gp-cover-strap">${escapeHtml(text.strap)}</div></div></div>
+                    <div class="gp-cover-hero"><div class="gp-cover-tile">${coverFill('#f1ead9')}${hero}</div></div>
+                    <div class="gp-cover-volume${model.numeral === null ? ' gp-cover-whole' : ''}">${numeral}<div class="gp-cover-volume-words">
+                        ${model.label ? `<div class="gp-cover-label">${escapeHtml(model.label)}</div>` : ''}<div class="gp-cover-title">${escapeHtml(model.title)}</div></div></div>
+                    <div class="gp-cover-icons">${model.icons.map((icon) => asset(icon, 'gp-cover-icon')).join('')}</div>
+                    <p class="gp-cover-topics">${escapeHtml(model.topics)}</p>
+                    <p class="gp-cover-blurb">${escapeHtml(model.blurb)}</p>
+                    <p class="gp-cover-edition">${escapeHtml(model.edition)}</p>
+                </div></div>
+                ${tab}
             </div>`;
-        return sheet;
+        return page;
     }
 
-    function emptySheet(title, inGameId) {
-        const sheet = document.createElement('div');
-        sheet.className = 'gp-sheet';
-        sheet.innerHTML = '<div class="gp-head"><span class="gp-head-title"></span><span class="gp-head-id"></span></div><div class="gp-sheet-body"></div><div class="gp-foot"></div>';
-        sheet.querySelector('.gp-head-title').textContent = title;
-        if (inGameId !== null) sheet.querySelector('.gp-head-id').textContent = TEXT[state.lang].inGame(inGameId);
-        return sheet;
+    // A page with its header (the title, and the chip of the guide number at the outer corner:
+    // right on odd pages, left on even ones) and its foot (the page number, and the volume).
+    function emptyPage(title, inGameId, number = null, volumeTag = '') {
+        const page = document.createElement('div');
+        page.className = number !== null && number % 2 === 0 ? 'gp-page gp-even' : 'gp-page';
+        page.innerHTML = '<div class="gp-head"><span class="gp-head-title"></span><span class="gp-head-id"></span></div><div class="gp-page-body"></div>' +
+            '<div class="gp-foot"><span class="gp-foot-num"></span><span class="gp-foot-vol"></span></div>';
+        page.querySelector('.gp-head-title').textContent = title;
+        if (inGameId !== null) page.querySelector('.gp-head-id').textContent = String(inGameId);
+        if (number !== null) {
+            page.querySelector('.gp-foot-num').textContent = String(number);
+            if (volumeTag) page.querySelector('.gp-foot-vol').textContent = ` · ${volumeTag}`;
+        }
+        return page;
     }
 
     // Draws the mob and item pictures of the chapters, a slice at a time.
@@ -614,14 +993,14 @@
         }));
         const fonts = document.fonts
             ? Promise.all(['16px "Atkinson Hyperlegible"', 'bold 16px "Atkinson Hyperlegible"', 'italic 16px "Atkinson Hyperlegible"',
-                '16px "Pixelify Sans"', '600 16px "Pixelify Sans"', '16px "VT323"'].map((font) => document.fonts.load(font).catch(() => null)))
+                '16px "VT323"'].map((font) => document.fonts.load(font).catch(() => null)))
                 .then(() => document.fonts.ready)
             : Promise.resolve();
         const timeout = new Promise((resolve) => setTimeout(resolve, 15000));
         await Promise.race([Promise.all([...images.map(settle), fonts]), timeout]);
     }
 
-    // The block list of a flow laid out in the measuring sheet (see paginate).
+    // The block list of a flow laid out in the measuring page (see paginate).
     function measureFlow(body, flow) {
         body.replaceChildren(...flow.childNodes);
         const nodes = [...body.children];
@@ -648,7 +1027,7 @@
         return { nodes, blocks };
     }
 
-    // A copy of a block for one sheet: only its rows or items `from`..`to` when it splits.
+    // A copy of a block for one page: only its rows or items `from`..`to` when it splits.
     function pieceNode(node, piece) {
         const copy = node.cloneNode(true);
         if (piece.from === undefined) return copy;
@@ -679,19 +1058,40 @@
             setStatus(text.offline, null);
             return;
         }
+        const manifest = await loadManifest();
         if (buildId !== state.build) return;
-        const pages = publicPages(index, state.lang);
-        const publicIds = new Set(pages.map((page) => page.id));
-        await loadSources(pages, buildId);
+        const volume = currentVolume(manifest);
+        const printing = volume ? volume.volume : null;
+        applyVolume(manifest, volume);
+        const all = publicTopics(index, state.lang);
+        const topics = volumeTopics(all, manifest, printing);
+        const links = { manifest, printing, publicIds: new Set(all.map((topic) => topic.id)), printedIds: new Set(topics.map((topic) => topic.id)) };
+        await loadSources(topics, buildId);
+        const recap = volume ? await loadVolumeFile(`${volume.volume}_recap_${state.lang}.md`) : null;
+        const news = volume ? await loadVolumeFile(`${volume.volume}_news_${state.lang}.md`) : null;
         if (buildId !== state.build) return;
 
-        // The chapters: the intro, the contents and one per guide page.
+        // The chapters, in the order of the book (part: what the report counts them as).
         const renderer = createGuideMarkdown();
+        const range = (entry) => text.range(entry.from, entry.to === undefined ? null : entry.to);
+        const shownVolumes = manifestVolumes(manifest).filter((entry) => printing === null || entry.volume <= printing)
+            .map((entry) => ({ number: entry.volume, title: (entry.title && (entry.title[state.lang] || entry.title.ES)) || '', range: range(entry) }));
+        const intro = text.intro({ count: topics.length, paper: state.paper, volume: printing, title: volume ? coverModel(manifest, volume, topics, state.lang, todayIso()).title : '', volumes: shownVolumes });
+        const recapTitle = recap ? headingOf(recap) || text.recapTitle : null;
+        const newsTitle = news ? headingOf(news) || text.newsTitle : null;
+        const extras = {
+            before: recap ? [{ anchor: 'gp-recap', title: recapTitle }] : [],
+            after: [...(news ? [{ anchor: 'gp-news', title: newsTitle }] : []), { anchor: 'gp-alpha', title: text.alphaTitle }]
+        };
         const chapters = [
-            { title: text.introTitle, inGame: null, anchor: 'gp-intro', flow: flowFrom(text.intro(pages.length, state.paper)) },
-            { title: text.contents, inGame: null, anchor: 'gp-contents', flow: tocFlow(pages) },
-            ...pages.map((page) => ({ title: page.title, inGame: page.id, anchor: `gp-${page.id}`, flow: guideFlow(page, renderer, publicIds) }))
+            { title: text.introTitle, inGame: null, anchor: 'gp-intro', part: 'front', flow: flowFrom(intro) },
+            { title: text.contents, inGame: null, anchor: 'gp-contents', part: 'front', flow: tocFlow(topics, sectionRows(manifest, printing), extras) },
+            ...(recap ? [{ title: recapTitle, inGame: null, anchor: 'gp-recap', part: 'front', flow: paperFlow(renderMarkdown(recap, renderer, 'the recap'), links) }] : []),
+            ...topics.map((topic) => ({ title: topic.title, inGame: topic.id, anchor: `gp-${topic.id}`, part: 'guide', topicId: topic.id, flow: guideFlow(topic, renderer, links) })),
+            ...(news ? [{ title: newsTitle, inGame: null, anchor: 'gp-news', part: 'back', flow: paperFlow(renderMarkdown(news, renderer, 'the news'), links) }] : []),
+            { title: text.alphaTitle, inGame: null, anchor: 'gp-alpha', part: 'back', flow: alphaFlow(indexEntries(all, manifest, printing, state.lang), links.printedIds) }
         ];
+        const cover = coverPage(manifest, volume, topics);
 
         if (state.engine === undefined) {
             setStatus(text.loadingEngine, null);
@@ -704,42 +1104,47 @@
             state.engine = await state.enginePromise;
             if (buildId !== state.build) return;
         }
-        const pending = chapters.flatMap((chapter) => [...chapter.flow.querySelectorAll('img.gp-pending')]);
+        const flows = [cover, ...chapters.map((chapter) => chapter.flow)];
+        const pending = flows.flatMap((flow) => [...flow.querySelectorAll('img.gp-pending')]);
         const missing = await drawPictures(pending, buildId);
         if (missing === null) return;
         setStatus(text.waiting, null);
-        await waitForImagesAndFonts(chapters.flatMap((chapter) => [...chapter.flow.querySelectorAll('img')]));
+        await waitForImagesAndFonts(flows.flatMap((flow) => [...flow.querySelectorAll('img')]));
         if (buildId !== state.build) return;
 
-        // Measure in an invisible sheet of the same size; a second one gives the room per sheet.
+        // Measure in an invisible page of the same size; a second one gives the room per page.
+        // Both carry the chip and the volume at the foot, the tallest header and foot there are.
+        const volumeTag = volume ? text.footVolume(volume.volume) : '';
         const host = document.getElementById('gp-measure');
         host.replaceChildren();
-        const sample = emptySheet('x', '0');
-        sample.querySelector('.gp-foot').textContent = '0';
-        const measurer = emptySheet('x', '0');
+        const sample = emptyPage('x', '000', 2, text.footVolume(9));
+        const measurer = emptyPage('x', '000', 2, text.footVolume(9));
         measurer.classList.add('gp-measuring');
         host.append(sample, measurer);
-        const pageHeight = sample.querySelector('.gp-sheet-body').clientHeight - 4; // the printed sheet is 0.5 mm shorter
-        const measureBody = measurer.querySelector('.gp-sheet-body');
+        const pageHeight = sample.querySelector('.gp-page-body').clientHeight - 4; // the printed page is 0.5 mm shorter
+        const measureBody = measurer.querySelector('.gp-page-body');
 
         const book = document.createDocumentFragment();
-        book.appendChild(coverSheet(pages));
-        let sheetNumber = 1;
+        book.appendChild(cover);
+        let pageNumber = 1;
+        const parts = { front: 1, guide: 0, back: 0 };
+        const counts = {};
         const starts = new Map();
         let sliceStart = performance.now();
         for (let c = 0; c < chapters.length; c++) {
             const chapter = chapters[c];
             const { nodes, blocks } = measureFlow(measureBody, chapter.flow);
-            const sheets = paginateChapter(blocks, pageHeight);
-            starts.set(chapter.anchor, sheetNumber + 1);
-            sheets.forEach((pieces, k) => {
-                sheetNumber++;
-                const sheet = emptySheet(chapter.title, chapter.inGame);
-                if (k === 0) sheet.id = chapter.anchor;
-                sheet.querySelector('.gp-foot').textContent = String(sheetNumber);
-                const body = sheet.querySelector('.gp-sheet-body');
+            const pages = paginateChapter(blocks, pageHeight);
+            starts.set(chapter.anchor, pageNumber + 1);
+            parts[chapter.part] += pages.length;
+            if (chapter.topicId) counts[chapter.topicId] = pages.length;
+            pages.forEach((pieces, k) => {
+                pageNumber++;
+                const page = emptyPage(chapter.title, chapter.inGame, pageNumber, volumeTag);
+                if (k === 0) page.id = chapter.anchor;
+                const body = page.querySelector('.gp-page-body');
                 for (const piece of pieces) body.appendChild(pieceNode(nodes[piece.block], piece));
-                book.appendChild(sheet);
+                book.appendChild(page);
             });
             if (performance.now() - sliceStart > 30) {
                 setStatus(text.paginating(c + 1, chapters.length), (c + 1) / chapters.length);
@@ -750,34 +1155,88 @@
         }
         host.replaceChildren();
 
-        // One numbering: the contents and the links point at the sheet where a page starts.
-        book.querySelectorAll('.gp-toc-num').forEach((num) => { num.textContent = String(starts.get(`gp-${num.dataset.target}`) || '?'); });
-        book.querySelectorAll('a.gp-link').forEach((link) => { link.dataset.sheet = String(starts.get(`gp-${link.dataset.target}`) || '?'); });
+        // The contents gives the page where each chapter starts.
+        book.querySelectorAll('.gp-toc-num').forEach((num) => { num.textContent = String(starts.get(num.dataset.anchor) || '?'); });
         if (state.paper === 'BOOKLET') elements.book.replaceChildren(imposeBooklets([...book.children]));
         else elements.book.replaceChildren(book);
 
-        const overflowing = [...elements.book.querySelectorAll('.gp-sheet-body')].filter((body) => body.scrollHeight > body.clientHeight + 2);
-        if (overflowing.length) console.warn('[guide-print] sheets whose content overflows:', overflowing.map((body) => body.parentNode.querySelector('.gp-foot').textContent));
+        const overflowing = [...elements.book.querySelectorAll('.gp-page-body')].filter((body) => body.scrollHeight > body.clientHeight + 2);
+        if (overflowing.length) console.warn('[guide-print] pages whose content overflows:', overflowing.map((body) => body.parentNode.querySelector('.gp-foot').textContent));
         elements.print.disabled = false;
         const notes = [state.paper === 'BOOKLET'
-            ? text.readyBooklet(sheetNumber, bookletImposition(sheetNumber, state.folios).map((b) => b.folios),
-                Math.ceil(sheetNumber / 4), state.longEdge)
-            : text.ready(sheetNumber, state.paper)];
+            ? text.readyBooklet(pageNumber, bookletImposition(pageNumber, state.folios).map((b) => b.folios),
+                Math.ceil(pageNumber / 4), state.longEdge)
+            : text.ready(pageNumber, state.paper)];
         if (!state.engine) notes.push(text.noEngine);
         else if (missing) notes.push(text.partial(missing));
+        const warning = renderReport(manifest, all, counts, { volume: printing, pages: pageNumber, ...parts });
+        if (warning) notes.push(warning);
         setStatus(notes.join(' '), null);
     }
 
-    // The A5 sheets, two by two on A4 landscape sides in booklet order (bookletImposition).
-    // With a long-edge flip the backs are turned upside down, so they still come out upright.
-    function imposeBooklets(sheets) {
+    // The toolbar's "Pages per volume" (screen only): what has been measured in this layout, per
+    // volume and section, and the text "Copy report" puts on the clipboard (pagesReportText).
+    // Returns the status line's warning when what is shown is over the maximum, or ''.
+    function renderReport(manifest, all, counts, shown) {
         const text = TEXT[state.lang];
-        const booklets = bookletImposition(sheets.length, state.folios);
+        if (!manifest) {
+            elements.report.hidden = true;
+            return '';
+        }
+        const key = layoutKey();
+        const pagesById = Object.assign(state.pageCounts.get(key) || {}, counts);
+        state.pageCounts.set(key, pagesById);
+        const max = manifest.pages && Number.isFinite(manifest.pages.max) ? manifest.pages.max : Infinity;
+        const summary = volumePages(manifest, all, pagesById, state.lang);
+        const rows = summary.map((volume) => {
+            const range = text.range(volume.from, volume.to);
+            const head = `<tr class="gp-report-volume${volume.over ? ' gp-over' : ''}"><td>${escapeHtml(text.reportVolume(volume.volume, volume.title, range))}</td>` +
+                `<td>${escapeHtml(text.reportSum(volume.pages, volume.measured, volume.topics))}${volume.over ? ` · ${escapeHtml(text.over)}` : ''}</td></tr>`;
+            return head + volume.sections.map((section) => `<tr><td>&nbsp;&nbsp;${escapeHtml(section.title)} (${section.from}–${section.to})</td>` +
+                `<td>${section.pages}${section.measured < section.topics ? ` (${section.measured}/${section.topics})` : ''}</td></tr>`).join('');
+        }).join('');
+        elements.reportBody.innerHTML = `<table>${rows}</table><p>${escapeHtml(text.reportShown(shown.pages, shown.front, shown.guide, shown.back))}</p>`;
+        elements.report.hidden = false;
+        elements.reportCopied.textContent = '';
+        const pixel = document.documentElement.classList.contains('gp-pixel');
+        state.reportText = pagesReportText({ manifest, topics: all, pagesById, lang: state.lang, paper: state.paper === 'BOOKLET' ? 'BOOKLET (A5 pages)' : state.paper, font: pixel ? 'pixel' : 'clear', shown });
+        if (shown.volume !== null) return shown.pages > max ? text.overVolume(shown.volume, shown.pages, max) : '';
+        const over = summary.filter((volume) => volume.over).map((volume) => volume.volume);
+        return over.length ? text.overVolumes(over.join(', '), max) : '';
+    }
+
+    async function copyReport() {
+        const text = TEXT[state.lang];
+        let ok = false;
+        try {
+            await navigator.clipboard.writeText(state.reportText);
+            ok = true;
+        } catch (_error) {
+            // No clipboard API (an http page that is not localhost): the old way.
+            const area = document.createElement('textarea');
+            area.value = state.reportText;
+            document.body.appendChild(area);
+            area.select();
+            try {
+                ok = document.execCommand('copy');
+            } catch (_ignored) {
+                ok = false;
+            }
+            area.remove();
+        }
+        elements.reportCopied.textContent = ok ? text.copied : text.copyFailed;
+    }
+
+    // The A5 pages, two by two on A4 landscape sides in booklet order (bookletImposition).
+    // With a long-edge flip the backs are turned upside down, so they still come out upright.
+    function imposeBooklets(pages) {
+        const text = TEXT[state.lang];
+        const booklets = bookletImposition(pages.length, state.folios);
         const out = document.createDocumentFragment();
         const slot = (index) => {
-            if (index !== null) return sheets[index];
+            if (index !== null) return pages[index];
             const blank = document.createElement('div');
-            blank.className = 'gp-sheet gp-blank';
+            blank.className = 'gp-page gp-blank';
             return blank;
         };
         booklets.forEach((booklet, b) => {
@@ -814,6 +1273,14 @@
         state.paper = paper;
         saveSetting('minecloud-guide-print-paper', paper);
         setUrlParam('paper', paper);
+        build();
+    }
+
+    function setVolume(volume) {
+        if (volume === state.volume) return;
+        state.volume = volume;
+        saveSetting('minecloud-guide-print-volume', volume);
+        setUrlParam('volume', volume);
         build();
     }
 
@@ -861,6 +1328,14 @@
         elements.foliosLabel = document.getElementById('gp-folios-label');
         elements.longEdge = document.getElementById('gp-long-edge');
         elements.longEdgeLabel = document.getElementById('gp-long-edge-label');
+        elements.volumes = document.getElementById('gp-volumes');
+        elements.volumeLabel = document.getElementById('gp-volume-label');
+        elements.report = document.getElementById('gp-report');
+        elements.reportSummary = document.getElementById('gp-report-summary');
+        elements.reportBody = document.getElementById('gp-report-body');
+        elements.reportCopy = document.getElementById('gp-report-copy');
+        elements.reportCopied = document.getElementById('gp-report-copied');
+        elements.reportCopy.addEventListener('click', copyReport);
 
         const ink = loadSetting('minecloud-guide-print-ink') !== '0';
         elements.ink.checked = ink;

@@ -3,12 +3,14 @@
 ![Glass pane](item:glass_pane)
 
 A **glass pane** is a thin sheet of glass for making windows; **iron bars** are its grille version. Both join up
-by themselves with whatever is next to them.
+by themselves with whatever is next to them. Two wooden **screens** join the same way.
 
 | | Item | Id | Break |
 |---|---|---|---|
 | ![](item:glass_pane) | Glass Pane | `glass_pane` | 0.2 s |
 | ![](item:iron_bars) | Iron Bars | `iron_bars` | 0.8 s |
+| ![](item:lattice_screen) | Lattice Screen | `lattice_screen` | 0.4 s |
+| ![](item:paper_screen) | Paper Screen | `paper_screen` | 0.25 s |
 
 ## How to get them
 
@@ -16,6 +18,8 @@ by themselves with whatever is next to them.
 |---|---|
 | **8** `glass_pane` | **3** `glass` |
 | **8** `iron_bars` | **3** `iron_ore` |
+| **6** `lattice_screen` | **3** `dark_oak_planks` |
+| **4** `paper_screen` | 1 `birch_planks` + **3** `wheat` |
 
 Glass comes from sand: see [Sand, cactus and glass](51).
 
@@ -28,6 +32,13 @@ Glass comes from sand: see [Sand, cactus and glass](51).
 - They are thin (an eighth of a block), but **you cannot walk through them**.
 - You see through glass, and between the bars. Sunlight and [torch](62) light go through both.
 - Remove a neighbour and the pane pulls back towards the ones it has left.
+
+## Lattice and paper screens
+
+They are placed and join like panes: a line of them makes a thin partition, and light goes through both. The
+**lattice** (in Arabic, *mashrabiya*) is a wooden grille of diamonds: air and light come through, and from inside
+you see the street without being seen. The **paper screen** (in Japanese, *shoji*) is a wooden frame with pale
+paper: the light comes through, softened. Real paper can be made from wheat or rice straw.
 
 ## Tips
 

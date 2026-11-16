@@ -2,7 +2,7 @@
 
 ![Roca con fósil](item:fossil_rock)
 
-Muy abajo, dentro de la piedra, hay rocas con un dibujo: una concha enrollada, una huella, una calavera. Son **fósiles**: lo que queda de animales que vivieron hace muchísimo tiempo. Si rompes la roca, te llevas el fósil. Esta página dice cómo son, dónde están y cómo buscarlos. El [ámbar](263) tiene su propia página.
+Muy abajo, dentro de la piedra, hay rocas con un dibujo: una concha enrollada, una huella, una calavera. Son **fósiles**: lo que queda de animales que vivieron hace muchísimo tiempo. Si rompes la roca, te llevas el fósil. Este tema dice cómo son, dónde están y cómo buscarlos. El [ámbar](263) tiene su propio tema.
 
 ## Cómo es cada bloque
 

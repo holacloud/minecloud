@@ -6,15 +6,17 @@ Una casa no está terminada hasta que puedes sentarte en ella. Todo esto se fabr
 
 ## Familias
 
-- ![](item:oak_chair) [Sillas y sofás](224): sillas, taburete, banco largo y sofás. Te puedes **sentar** en ellos.
+- ![](item:oak_chair) [Sillas y sofás](224): sillas, taburete, banco largo, sofás y cuatro tronos. Te puedes **sentar** en ellos.
 - ![](item:table) [Mesas](225): mesa, mesilla y escritorio.
 - ![](item:chest) [Cofres y armarios](226): el cofre, el barril y el armario **guardan objetos de verdad**; estantería y balda de pared.
 - ![](item:oven) [Cocina y baño](227): banco de trabajo, fregadero, váter y bañera, un [horno que cocina](233), y una [nevera y un arcón congelador](234) que van con electricidad.
 - ![](item:lantern) [Luces sin electricidad](228): vela, farol, lámpara de mesa, lámpara de pie y candelabro.
 - ![](item:blue_stained_glass) [Vidrieras](229): 16 colores, en bloque y en panel.
 - ![](item:red_carpet) [Alfombras y cortinas](230): 16 colores cada una.
-- ![](item:painting_sunset) [Cuadros, reloj y adornos](231): pinturas, un reloj que da la hora del juego, una maceta y un jarrón.
+- ![](item:painting_sunset) [Cuadros, reloj y adornos](231): pinturas, un reloj que da la hora del juego, una maceta, un jarrón, estandartes de 16 colores, un busto de mármol, un globo terráqueo, una fuente y diez cosas para encima de la mesa (libros, una carta a medias, un juego de té, un ajedrez...).
 - ![](item:wall_mirror) [Espejos](232): un espejo de pared y un cubo de espejo que reflejan el mundo.
+- ![](item:astrolabe) [Astronomía](132): un reloj de sol y un astrolabio, que se leen con clic derecho.
+- ![](item:lattice_screen) [Ventanas](198): celosías y biombos de papel, que se unen como los paneles de vidrio.
 
 ## Conviene saber
 

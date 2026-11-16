@@ -9,7 +9,7 @@ Es un [animal extinto](261): no aparece por su cuenta, hay que devolverlo a la v
 ## Cómo conseguir uno
 
 1. **Busca su fósil.** Está muy abajo, dentro de la piedra, en el bloque ![](item:fossil_rock_rare)
-   `fossil_rock_rare`: una roca oscura con una huella de tres dedos. La página de los [fósiles](262) dice a qué
+   `fossil_rock_rare`: una roca oscura con una huella de tres dedos. El tema de los [fósiles](262) dice a qué
    altura cavar.
 2. **Rompe el bloque** con un [pico](68). Qué animal hay dentro depende del sitio: si era un Vegavis, te
    llevas ![](item:fossil_vegavis) `fossil_vegavis`.

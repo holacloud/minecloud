@@ -9,7 +9,7 @@ It is an [extinct animal](261): it never appears by itself, it has to be brought
 ## How to get one
 
 1. **Look for its fossil.** It lies far down, inside the stone, in the block ![](item:fossil_rock_rare)
-   `fossil_rock_rare`: a dark rock with a three-toed footprint. The page on [fossils](262) says how deep to dig.
+   `fossil_rock_rare`: a dark rock with a three-toed footprint. The topic on [fossils](262) says how deep to dig.
 2. **Break the block** with a [pickaxe](68). Which animal is inside depends on the place: if it was a
    Pulmonoscorpius, you take ![](item:fossil_pulmonoscorpius) `fossil_pulmonoscorpius` with you.
 3. **Bring it back to life** in the [revival machine](264). **One piece** is enough and it takes **45 seconds**. It is
@@ -63,7 +63,7 @@ There are **2 colours**: chestnut brown and dark olive.
   it was hot, with forests of giant ferns, a lake and volcanoes close by. The coal we burn today is what is
   left of forests like those.
 - **Its name** means "scorpion with lungs". Its fossils are so well kept that they show its lungs, folded
-  like the pages of a book, just as scorpions have them today. That is how we know it breathed air and lived
+  like the leaves of a book, just as scorpions have them today. That is how we know it breathed air and lived
   on land.
 - **Size.** The biggest ones were about **70 centimetres** long. The biggest scorpion alive today is about 20.
   In the game the scorpion of today is drawn far bigger than it is, so that you can see it; that is why the

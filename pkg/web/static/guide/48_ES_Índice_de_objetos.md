@@ -1,6 +1,6 @@
 # Índice de objetos
 
-Todos los bloques y objetos del juego, agrupados por familias. Pulsa un nombre para ir a su página.
+Todos los bloques y objetos del juego, agrupados por familias. Pulsa un nombre para ir a su tema.
 
 Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar y construir](10).
 
@@ -8,8 +8,8 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 
 - ![](item:grass) [Hierba y tierra](49)
 - ![](item:stone) [Piedra y roca madre](50)
-- ![](item:sand) [Arena, cactus y vidrio](51)
-- ![](item:water) [Agua](52)
+- ![](item:sand) [Arena, cactus y vidrio](51) (y sandstone, cut_sandstone)
+- ![](item:water) [Agua](52) (y snow_block, packed_ice)
 - ![](item:coal_ore) [Minerales](53)
 - ![](item:copper_ore) [Cómo encontrar metales](248): copper_ore, tin_ore, zinc_ore, lead_ore, silver_ore, y [cómo se funden](249)
 - ![](item:fossil_rock) [Fósiles](262): fossil_rock, fossil_rock_rare, fossil_bones_skull, fossil_bones_spine, fossil_bones_tail, old_bones
@@ -31,9 +31,9 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 
 - ![](item:stone_slab) [Losas](56)
 - ![](item:oak_stairs) [Escaleras](196)
-- ![](item:brick) [Ladrillos](57)
+- ![](item:brick) [Ladrillos](57) (y seis colores de azulejo vidriado, blue_glazed_tile...)
 - ![](item:red_wool) [Lanas de colores](58)
-- ![](item:marble) [Piedras nobles y metales](59)
+- ![](item:marble) [Piedras nobles y metales](59) (y magma_rock)
 - ![](item:element_au) [Bloques de elementos](60)
 
 ## Bloques especiales
@@ -43,7 +43,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:sign) [Cartel](64)
 - ![](item:ladder) [Escalera de mano](65)
 - ![](item:oak_door) [Puertas y trampillas](197)
-- ![](item:glass_pane) [Ventanas](198) (paneles de vidrio y barrotes)
+- ![](item:glass_pane) [Ventanas](198) (paneles de vidrio, barrotes, lattice_screen, paper_screen)
 - ![](item:oak_fence) [Vallas y portones](199)
 - ![](item:sound_block) [Bloque de sonido](66)
 - ![](item:spray_paint) [Pintura en spray](67)
@@ -52,14 +52,14 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 
 - ![](item:oak_chair) [Índice de muebles](223)
 - ![](item:glow_block) [Bloque luminoso](245): glow_block, en 221 colores
-- ![](item:oak_chair) [Sillas y sofás](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, y sofás de 16 colores (red_sofa...)
+- ![](item:oak_chair) [Sillas y sofás](224): oak_chair, birch_chair, dark_oak_chair, stool, bench, sofás de 16 colores (red_sofa...), gilded_throne, lacquer_throne, jade_throne, obsidian_throne
 - ![](item:table) [Mesas](225): table, bedside_table, desk
 - ![](item:chest) [Cofres y armarios](226): chest, barrel, wardrobe, bookshelf, wall_shelf
 - ![](item:oven) [Cocina y baño](227): workbench, oven, sink, fridge, chest_freezer, toilet, bathtub
 - ![](item:lantern) [Luces sin electricidad](228): candle, lantern, table_lamp, floor_lamp, chandelier
 - ![](item:blue_stained_glass) [Vidrieras](229): 16 colores, en bloque y en panel (blue_stained_glass, blue_stained_glass_pane...)
 - ![](item:red_carpet) [Alfombras y cortinas](230): 16 colores (red_carpet, red_curtain...)
-- ![](item:wall_clock) [Cuadros, reloj y adornos](231): seis cuadros (painting_sunset...), wall_clock, flower_pot, vase
+- ![](item:wall_clock) [Cuadros, reloj y adornos](231): seis cuadros (painting_sunset...), wall_clock, flower_pot, vase, estandartes de 16 colores (red_banner...), statue, globe, fountain
 - ![](item:wall_mirror) [Espejos](232): wall_mirror, mirror
 - ![](item:oven) [Horno](233): oven, roast_mushroom, recetas, combustibles y descongelar
 - ![](item:fridge) [Nevera y congelador](234): fridge, chest_freezer, cold_water, cold_milk, cold_soda, ice, frozen_fish, frozen_cooked_fish, frozen_bread
@@ -81,6 +81,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:measuring_tape) [Cinta métrica](192)
 - ![](item:written_blueprint) [Planos](191)
 - ![](item:star_chart) [Carta estelar](134)
+- ![](item:astrolabe) [Astronomía](132): sundial, astrolabe
 
 ## Instrumentos del tiempo
 
@@ -117,7 +118,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 ## Química
 
 - ![](item:lab_bench) [Química](115)
-- ![](item:element_h) [Tabla periódica](116): una página por elemento, de [Hidrógeno](139) a [Plomo](174)
+- ![](item:element_h) [Tabla periódica](116): un tema por elemento, de [Hidrógeno](139) a [Plomo](174)
 - ![](item:lab_bench) [Mesa de laboratorio](117)
 - ![](item:water_flask) [Frasco de agua](118)
 - ![](item:salt) [Sal](119)
@@ -139,7 +140,7 @@ Cómo se fabrican: ver [Fabricar](11). Cómo se rompen y se colocan: ver [Minar 
 - ![](item:gold_leaf) [Pan de oro](180)
 - ![](item:mirror) [Espejo de plata](181)
 - ![](item:baking_soda) [Bicarbonato](182)
-- ![](item:quicklime) [Cal viva](183)
+- ![](item:quicklime) [Cal viva](183) (y white_stucco, red_stucco)
 - ![](item:pyrite) [Pirita](184)
 - ![](item:cobalt_glass) [Vidrio de cobalto](185)
 - ![](item:iodine_tincture) [Tintura de yodo](186)

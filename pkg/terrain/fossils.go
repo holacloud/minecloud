@@ -16,7 +16,7 @@ import "math"
 // as the floor of the world or as high as the top of a column. Nothing else in the world looks at
 // fossils: heights, biomes, ores, trees, plants and moss are where they were (TestOnlyOresMoved).
 //
-// There are four things to find, each in its own layer (the guide, pages 262 and 263):
+// There are four things to find, each in its own layer (the guide, topics 262 and 263):
 //   - fossil rock, common and rare, in the deep rock, the rare one deeper;
 //   - a skeleton: three blocks in a line (skull, spine, tail), deep, one site in many chunks;
 //   - amber, only under the forest and higher up than any fossil: it was the resin of its trees;

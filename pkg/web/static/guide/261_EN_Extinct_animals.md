@@ -35,7 +35,7 @@ portrait of the living one, with "Extinct" or "Alive today" under each.
 
 ## Every extinct animal
 
-In the order they arrived in the game; the table grows with each one that arrives. Click a name to go to its page.
+In the order they arrived in the game; the table grows with each one that arrives. Click a name to go to its topic.
 
 | | Extinct animal | Ancestor of | Arrived |
 |---|---|---|---|

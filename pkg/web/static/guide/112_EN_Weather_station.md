@@ -6,12 +6,12 @@ MineCloud has its own weather: the air is warmer or colder, the **wind** blows a
 With three instruments you can measure it and even **know in advance** whether it will rain today. Put the three
 together and you get a weather station to set up by your house.
 
-| | Instrument | What it measures | Page |
+| | Instrument | What it measures | Topic |
 |---|---|---|---|
 | ![](item:thermometer) | Thermometer | temperature | [Thermometer](113) |
 | ![](item:barometer) | Barometer | pressure and the forecast | [Barometer and anemometer](114) |
 | ![](item:anemometer) | Anemometer | wind speed and direction | [Barometer and anemometer](114) |
-| ![](item:weather_station) | Weather station | all of it, plus the day's rain | this page |
+| ![](item:weather_station) | Weather station | all of it, plus the day's rain | this topic |
 
 ## How to read an instrument
 

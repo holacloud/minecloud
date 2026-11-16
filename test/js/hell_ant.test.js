@@ -16,12 +16,12 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame({ listenersOf: ['js/game/hell_ant.js'], frameUpdates: ['hellAntUpdate'] });
 const H = JSON.parse(vm.runInContext('JSON.stringify(HELL_ANT)', ctx));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '293_ES_Hormiga_infernal.md' : '293_EN_Hell_ant.md'), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '293_ES_Hormiga_infernal.md' : '293_EN_Hell_ant.md'), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 const server = fs.readFileSync(path.join(STATIC, '..', '..', 'network', 'animals.go'), 'utf8');
 const revival = fs.readFileSync(path.join(STATIC, '..', '..', 'network', 'revival.go'), 'utf8');
 
-test('what it is: one small hostile ant, weaker than any other hunter, and what its page says of it', () => {
+test('what it is: one small hostile ant, weaker than any other hunter, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('hell_ant');
     assert.equal(info.movement, undefined, 'the ground movement: one ant, and nothing of the anthills');
     assert.equal(info.ancestorOf, 'ant');
@@ -41,13 +41,13 @@ test('what it is: one small hostile ant, weaker than any other hunter, and what 
     })()`, ctx);
     assert.equal(quarters, '');
 
-    // The numbers of its page are those of the code: its own, and the server's rule for letting go.
+    // The numbers of its topic are those of the code: its own, and the server's rule for letting go.
     const chase = JSON.parse(vm.runInContext('JSON.stringify(animalsChaseOf(getMobSpecies("hell_ant")))', ctx));
     assert.deepEqual(chase, { chase: info.chaseDistance, chaseDay: 0, chaseSpeed: info.chaseSpeed });
     const loose = Number(/animalsChaseLoose = ([\d.]+)/.exec(server)[1]);
     const radius = Number(/"hell_ant":\s*\{[^}]*Radius: ([\d.]+)/.exec(revival)[1]);
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`), 'from how far it comes');
     assert.ok(es.includes(`**Corre a ${comma(info.chaseSpeed)} bloques por segundo.**`) && en.includes(`**It runs at ${info.chaseSpeed} blocks a second.**`));
     assert.ok(es.includes(`**${info.attackDamage} de\n  daño**`) && en.includes(`**${info.attackDamage} damage**`));

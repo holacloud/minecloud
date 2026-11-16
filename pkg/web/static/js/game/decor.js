@@ -10,7 +10,7 @@
 // Mixed into Game.prototype; hooked through js/extensions.js. Loaded after furniture.js.
 
 // [colour, filter (what share of each channel passes; near white lets most through), what tints
-// it in real glass, as the element blocks of its recipe (see the guide's stained glass page)].
+// it in real glass, as the element blocks of its recipe (see the guide's stained glass topic)].
 const DECOR_GLASS = [
     ['white', 0xeef1f3, ['sn']], ['orange', 0xffa34a, ['ag', 'fe']], ['magenta', 0xe65fe0, ['mn', 'co']], ['light_blue', 0x86c8ff, ['co', 'sn']],
     ['yellow', 0xffe95a, ['ag']], ['lime', 0xb2ec58, ['cr', 'sn']], ['pink', 0xffa6cc, ['au', 'sn']], ['gray', 0x8e9399, ['ni']],

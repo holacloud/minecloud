@@ -45,6 +45,8 @@ de antorchas.
   fatuos: la del más cercano a ti.
 - **[Rayo](43)**: cada rayo del golem de tormenta ilumina toda la escena durante un instante.
 - **[Luciérnagas](36)** y **[frasco de luciérnagas](97)**: brillan y parpadean.
+- **[Roca de magma](59)**: basalto con grietas que brillan, un bloque que da luz de nivel **10**, como una antorcha
+  más débil que nunca se apaga.
 - **Ojos que brillan:** los del búho, el zorro y la sombra, de noche.
 
 ## Modo Ultra: luz de verdad

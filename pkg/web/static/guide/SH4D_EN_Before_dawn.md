@@ -1,6 +1,6 @@
 # Before dawn
 
-> You found a hidden page. A shadow hissed it to you as the sun undid it. Keep it safe: shadows rarely speak.
+> You found a hidden topic. A shadow hissed it to you as the sun undid it. Keep it safe: shadows rarely speak.
 
 ![Wandering shadow](mob:shadow)
 

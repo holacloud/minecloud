@@ -764,9 +764,9 @@ test('tags are worked out fast, and typing costs next to nothing', (t) => {
 
 test('the guide lists every family and colour in its language', () => {
     const guide = path.join(STATIC, 'guide');
-    const page = (lang) => fs.readFileSync(path.join(guide, fs.readdirSync(guide).find((name) => name.startsWith(`11_${lang}_`))), 'utf8');
+    const topic = (lang) => fs.readFileSync(path.join(guide, fs.readdirSync(guide).find((name) => name.startsWith(`11_${lang}_`))), 'utf8');
     for (const lang of ['ES', 'EN']) {
-        const text = page(lang);
+        const text = topic(lang);
         for (const tag of ctx.ITEM_TAG_ORDER) assert.ok(text.includes(`\`#${(ctx.ITEM_TAG_FAMILIES[tag] || ctx.ITEM_TAG_COLORS[tag])[lang]}\``), `${lang}: ${tag}`);
     }
     const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');

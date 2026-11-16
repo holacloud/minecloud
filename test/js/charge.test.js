@@ -16,10 +16,10 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame({ listenersOf: ['js/game/charge.js'], frameUpdates: ['chargeUpdate'] });
 const MODE = require('node:vm').runInContext('ANIMALS_MODE', ctx);
-const CHARGERS = { mammoth: { page: 296, es: 'Mamut', en: 'Mammoth' }, triceratops: { page: 297, es: 'Triceratops', en: 'Triceratops' } };
+const CHARGERS = { mammoth: { topic: 296, es: 'Mamut', en: 'Mammoth' }, triceratops: { topic: 297, es: 'Triceratops', en: 'Triceratops' } };
 const rowOf = (id) => JSON.parse(JSON.stringify(ctx.getMobSpecies(id).charge));
-// A page with its lines joined: what it says, wherever the lines break.
-const page = (id, lang) => fs.readFileSync(path.join(STATIC, 'guide', `${CHARGERS[id].page}_${lang}_${CHARGERS[id][lang.toLowerCase()]}.md`), 'utf8').replace(/\s+/g, ' ');
+// A topic with its lines joined: what it says, wherever the lines break.
+const topic = (id, lang) => fs.readFileSync(path.join(STATIC, 'guide', `${CHARGERS[id].topic}_${lang}_${CHARGERS[id][lang.toLowerCase()]}.md`), 'utf8').replace(/\s+/g, ' ');
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 // A row of blocks across its way: a fence, or a ditch three deep.
@@ -33,7 +33,7 @@ function struck(id, options = {}) {
     return { g, mob };
 }
 
-test('what they are: two big neutral animals nobody tames, with the numbers their pages say', () => {
+test('what they are: two big neutral animals nobody tames, with the numbers their topics say', () => {
     const comma = (number) => String(number).replace('.', ',');
     for (const id of Object.keys(CHARGERS)) {
         const info = ctx.getMobSpecies(id);
@@ -45,8 +45,8 @@ test('what they are: two big neutral animals nobody tames, with the numbers thei
         assert.deepEqual([...ctx.TRAPS_SPECIES[id].baits], []);
         assert.ok(row.reach > 2 && row.whisker < row.reach && row.damage <= 4 && row.leash <= 12, id);
 
-        const es = page(id, 'ES');
-        const en = page(id, 'EN');
+        const es = topic(id, 'ES');
+        const en = topic(id, 'EN');
         assert.ok(es.includes(`durante ${row.aim} segundo`) && en.includes(`for ${row.aim} second`), `${id}: how long it aims`);
         assert.ok(es.includes(`a ${comma(row.pace)} bloques por`) && en.includes(`at ${row.pace} blocks a second`), `${id}: how fast it runs`);
         assert.equal(Math.round(row.run * row.pace), 4);
@@ -63,7 +63,7 @@ test('what they are: two big neutral animals nobody tames, with the numbers thei
     // The mammoth is a skeleton, and the commonest one.
     const fossil = ctx.getMobSpecies('mammoth') && require('node:vm').runInContext('JSON.stringify(FOSSIL_SPECIES.mammoth)', ctx);
     assert.deepEqual(JSON.parse(fossil), { source: 'skeleton', rarity: 'rare', weight: 6, water: 0, seconds: 45 });
-    assert.ok(page('mammoth', 'EN').includes('**45 seconds**') && page('mammoth', 'ES').includes('**45 segundos**'));
+    assert.ok(topic('mammoth', 'EN').includes('**45 seconds**') && topic('mammoth', 'ES').includes('**45 segundos**'));
 });
 
 test('struck, it turns on the player, lowers its head and stands; then it runs at them, and the blow hurts and throws', () => {

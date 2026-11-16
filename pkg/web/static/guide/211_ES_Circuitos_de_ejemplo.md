@@ -83,7 +83,7 @@ Necesitas: 1 [sensor de proximidad](208), 1 palanca, 1 [puerta AND](209), 1 bate
 3. Con la palanca encendida, cualquiera que se acerque a 5 bloques del sensor enciende la luz. Con la palanca
    apagada, no pasa nada.
 
-**Reto:** pon un [retardo](210) y una NOT en bucle (el intermitente de la página [Memoria y retardos](210)) para que
+**Reto:** pon un [retardo](210) y una NOT en bucle (el intermitente del tema [Memoria y retardos](210)) para que
 la luz de alarma **parpadee**. ¿Y si cambias la palanca por un [biestable](210) para que la alarma se quede sonando
 hasta que pulses RESET?
 

@@ -10,7 +10,7 @@ vida.
 ## Cómo conseguir una
 
 1. **Busca ámbar.** Está bajo el **bosque**, dentro de la piedra, en el bloque ![](item:amber_rock)
-   `amber_rock`: piedra con gotas de color miel que brillan un poco en la oscuridad. La página del [ámbar](263)
+   `amber_rock`: piedra con gotas de color miel que brillan un poco en la oscuridad. El tema del [ámbar](263)
    dice a qué altura cavar.
 2. **Rompe el bloque** con un [pico](68). Qué insecto hay dentro depende del sitio: si era una luciérnaga
    antigua, te llevas ![](item:fossil_ancient_firefly) `fossil_ancient_firefly`: un trozo de ámbar con el

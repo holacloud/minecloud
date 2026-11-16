@@ -13,10 +13,10 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `274_${lang}_Titanotylopus.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `274_${lang}_Titanotylopus.md`), 'utf8');
 const info = ctx.getMobSpecies('titanotylopus');
 
-test('what it is: the camel\'s giant relative, tamed with what a camel eats, and what its page says of it', () => {
+test('what it is: the camel\'s giant relative, tamed with what a camel eats, and what its topic says of it', () => {
     const camel = ctx.getMobSpecies('camel');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.equal(info.ancestorOf, 'camel');
@@ -28,9 +28,9 @@ test('what it is: the camel\'s giant relative, tamed with what a camel eats, and
     assert.ok(ctx.Game.prototype.tamingCanTame.call({}, 'titanotylopus'));
     assert.deepEqual({ ...ctx.TRAPS_SPECIES.titanotylopus, baits: [...ctx.TRAPS_SPECIES.titanotylopus.baits] }, { baits: [] });
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     const horse = ctx.getMobSpecies('horse').mount;
     const mount = info.mount;
     const blows = Math.ceil(info.maxHealth / 4);

@@ -3,10 +3,10 @@
 ![El libro de campo de MineCloud](img/book.png)
 
 Este libro explica el mundo de MineCloud: cómo sobrevivir, construir y convivir con sus criaturas. Cada
-página trata un tema; pulsa un enlace para ir a ella.
+tema tiene su número; pulsa un enlace para ir a él.
 
 **¿Primera vez?** Lee [Cómo usar la guía](1). En resumen: **H** abre y cierra el libro, y **◀ ▶** pasan de
-página. En un móvil o tableta, mira [Controles táctiles](222).
+tema. En un móvil o tableta, mira [Controles táctiles](222).
 
 ## Lo básico
 
@@ -28,14 +28,14 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 
 ## Secciones
 
-- [Mobs](16): una página por cada especie del mundo.
+- [Mobs](16): un tema por cada especie del mundo.
 - [Animales extintos](261): los que solo vuelven si alguien los devuelve a la vida, y su árbol de la evolución.
 - [Objetos](48): bloques, herramientas, recursos y trampas.
 - [Curiosidades](98): rarezas y secretos del mundo.
 - [Cultivar trigo](107): la azada, las semillas, el trigal y el pan.
 - [Genética](130): genes, cuadros de Punnett, mutaciones y el [cuaderno de cría](131).
 - [Estación meteorológica](112): termómetro, barómetro, anemómetro y el pronóstico de la lluvia.
-- [Astronomía](132): estrellas, constelaciones, planetas, fases de la luna y sucesos raros.
+- [Astronomía](132): estrellas, constelaciones, planetas, fases de la luna y sucesos raros, y el reloj de sol y el astrolabio.
 - [Química](115): la mesa de laboratorio, la [tabla periódica](116) y las reacciones.
 - [Planos](191): medir con la [cinta métrica](192), guardar, compartir y volver a construir.
 - [Robot programable](193): prográmalo con bloques ([cómo](194)) y supera los [retos](195).
@@ -60,7 +60,23 @@ página. En un móvil o tableta, mira [Controles táctiles](222).
 - [Parcelas](260): un mojón y 17 × 17 bloques donde solo tú puedes cambiar algo; la zona de inicio no es de nadie.
 - La [red de portales](306): 105 plazas y portales rojos, naranjas, amarillos y verdes que saltan 1.000, 10.000, 100.000 y 1.000.000 de bloques.
 
+## Edificios
+
+Grandes edificios que puedes encontrar por el mundo, cada uno con su rincón de ciencia y cofres que abrir.
+
+- [Castillo](307): murallas, un foso, nueve torres y la torre del homenaje.
+- [Instituto de investigación](308): laboratorios, un ascensor y un observatorio, todo en la red eléctrica.
+- [Gran biblioteca](309): galerías de libros bajo una cúpula de vidrieras.
+- [Bloque de pisos](310): 31 pisos en 11 plantas, y un ascensor que funciona.
+- [Casita](311): una sola habitación con todo lo que hace falta para vivir.
+- [Salón comunitario](312): un mercado cubierto donde se reúnen los vecinos.
+- [Catedral](313): piedra gótica, agujas y un rosetón.
+- [Sala de exposición de muebles](314): todos los muebles del juego, sala tras sala.
+- Seis palacios: el [andalusí](315), de agua y azulejos; el [barroco](316), de espejos; el [oriental](317), de
+  cerezos y carpas; el [de invierno](318), bajo la aurora; el [maya](319), con su pirámide; y el
+  [volcánico](320), de basalto y minerales.
+
 ---
 
-> Algunas páginas no aparecen en ningún índice. Se esconden tras códigos de letras y números... y las
+> Algunos temas no aparecen en ningún índice. Se esconden tras códigos de letras y números... y las
 > pistas están repartidas por el libro y por el mundo.

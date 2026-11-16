@@ -308,17 +308,17 @@ test('a bad name asked of the panel does nothing', () => {
 test('the guide covers it in both languages, from the index, and says what it does not do', () => {
     const GUIDE = path.join(STATIC, 'guide');
     const names = fs.readdirSync(GUIDE);
-    const read = (page, lang) => fs.readFileSync(path.join(GUIDE, names.find((name) => name.startsWith(`${page}_${lang}_`))), 'utf8');
-    assert.ok(print.SECTIONS.some(([from, to]) => from <= 245 && 245 <= to));
+    const read = (topic, lang) => fs.readFileSync(path.join(GUIDE, names.find((name) => name.startsWith(`${topic}_${lang}_`))), 'utf8');
+    assert.ok(print.sectionRows(require(path.join(STATIC, 'guide', 'volumes.json'))).some(([from, to]) => from <= 245 && 245 <= to));
     for (const lang of ['ES', 'EN']) {
-        const page = read(245, lang);
-        assert.match(page, /item:glow_block/);
-        assert.match(page, /1 `glass` \+ 1 `torch`/);
-        assert.match(page, lang === 'EN' ? /lights nothing/ : /No ilumina nada/);
-        assert.match(page, /\(238\)/);
-        assert.match(page, lang === 'EN' ? /colour is lost/ : /color se pierde/);
-        assert.match(page, /216/);
-        for (const [, target] of page.matchAll(/\]\((\d+)\)/g)) assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), target);
+        const topic = read(245, lang);
+        assert.match(topic, /item:glow_block/);
+        assert.match(topic, /1 `glass` \+ 1 `torch`/);
+        assert.match(topic, lang === 'EN' ? /lights nothing/ : /No ilumina nada/);
+        assert.match(topic, /\(238\)/);
+        assert.match(topic, lang === 'EN' ? /colour is lost/ : /color se pierde/);
+        assert.match(topic, /216/);
+        for (const [, target] of topic.matchAll(/\]\((\d+)\)/g)) assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), target);
         assert.match(read(48, lang), /\(245\)/);
     }
     assert.match(fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8'), /^\| 245 \|/m);

@@ -1,7 +1,7 @@
 # How mobs think
 
 A mob has no real brain, but it does have a handful of simple rules that, put together, look like life. This
-page tells you what they are.
+topic tells you what they are.
 
 ## Ways of moving
 

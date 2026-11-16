@@ -534,8 +534,8 @@ function labDrawLobby(b, t) {
     b.set(34, 2, 14, 'vase');
     sign(29, 1, 15, 'n', 'Instituto: bienvenido', 'Abajo: aula, comedor, taller, central. Planta 1: microscopios. Planta 2: experimentos y química. Azotea: observatorio.',
         'Ground: lecture hall, canteen, workshop, power hall. 1: microscopes. 2: experiments, chemistry. Roof: observatory.');
-    sign(24, 1, 25, 'n', 'Tabla periódica', 'Cada bloque es un elemento del juego, en su sitio. Faltan los que el juego no tiene. Guía, página 116.',
-        'The periodic table: each block is an element the game has, in its place. Those it lacks are left blank. Guide, page 116.');
+    sign(24, 1, 25, 'n', 'Tabla periódica', 'Cada bloque es un elemento del juego, en su sitio. Faltan los que el juego no tiene. Guía, tema 116.',
+        'The periodic table: each block is an element the game has, in its place. Those it lacks are left blank. Guide, topic 116.');
     sign(31, 1, 25, 'n', 'Doble hélice', 'Decoración: bloques luminosos, que no dan luz ni hacen nada. Pero es bonita.', 'A double helix of glow blocks: only decoration, they give no light and do nothing.');
     }
 

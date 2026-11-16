@@ -19,7 +19,7 @@ La [pluma](75) es la de escribir; los pájaros la sueltan cuando les das un golp
 
 ## Cómo se usa
 
-Coge el cuaderno y haz **clic derecho sobre un animal domesticado** ([Domesticar y criar](3)). Se abre una página
+Coge el cuaderno y haz **clic derecho sobre un animal domesticado** ([Domesticar y criar](3)). Se abre el cuaderno
 con:
 
 - **Su nombre y número:** cada animal domesticado recibe un nombre (Luna, Bruno, Mendel...) para distinguirlos.
@@ -28,10 +28,10 @@ con:
 - **Su árbol familiar:** sus padres y abuelos, si nacieron a tu cuidado. Los domesticados en libertad tienen los
   padres desconocidos.
 - **Un cuadro de Punnett:** haz clic derecho sobre **un segundo animal domesticado de la misma especie** justo
-  después del primero, y la página muestra el cuadro de los colores del pelaje y la probabilidad de cada color,
+  después del primero, y el cuaderno muestra el cuadro de los colores del pelaje y la probabilidad de cada color,
   tamaño y velocidad entre sus crías.
 
-La página se cierra con **Escape**, el botón Close o un clic fuera de ella.
+El cuaderno se cierra con **Escape**, el botón Close o un clic fuera de él.
 
 ## Bueno es saber
 

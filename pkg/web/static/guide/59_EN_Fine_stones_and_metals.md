@@ -3,7 +3,7 @@
 ![Marble](item:marble)
 
 **Refined** blocks for elegant buildings: polished veined stones, riveted metal blocks and mysterious
-**obsidian**.
+**obsidian**, and a **magma rock** that glows.
 
 | | In-game name | Id | Looks |
 |---|---|---|---|
@@ -17,6 +17,7 @@
 | ![](item:iron_block) | Iron Block | `iron_block` | silvery metal |
 | ![](item:gold_block) | Gold Block | `gold_block` | golden metal |
 | ![](item:obsidian) | Obsidian | `obsidian` | dark violet with glints |
+| ![](item:magma_rock) | Magma Rock | `magma_rock` | basalt with glowing orange cracks |
 
 None of these blocks appears in the world: they are crafted. But copper, iron and gold **do have ores**, which are found in the world and smelted: see [How to find metals](248) and [How they are smelted](249).
 
@@ -28,6 +29,7 @@ None of these blocks appears in the world: they are crafted. But copper, iron an
 | 2 copper, iron or gold blocks, or obsidian | 2 `stone` + 1 `sand` |
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
+| **4** `magma_rock` | 4 `basalt` + 1 [glow dust](85) |
 
 The [foundry](235) also smelts 1 `iron_ore` into 1 `iron_block`, 1 `gold_ore` into 1 `gold_block`, and 1 `copper_ore` into **2** `copper_block`. By hand, 1 `copper_ore` + 1 `coal_ore` give 1 `copper_block`. For the [lab bench](117), each of the three metals turns into its [element block](60).
 
@@ -40,9 +42,14 @@ mining stone only gives cobblestone, so smelt it first, 1 `cobblestone` + 1 `coa
 They are **building** blocks with no special effect: palace floors, columns, statues, vaults… Breaking them drops
 the same block.
 
+The one exception is **magma rock**: it gives [light](105) of level **10**, with no electricity, and never burns
+out. Basalt is lava that cooled fast; where it is still hot inside, the cracks glow like those of a lava flow that
+has just stopped.
+
 | Block | Bare hand | Iron pickaxe |
 |---|---|---|
-| All but obsidian | 1 s | 0.38 s |
+| All but obsidian and magma rock | 1 s | 0.38 s |
+| Magma rock | 1.1 s | 0.42 s |
 | **Obsidian** | **3.5 s** | 1.35 s |
 
 Obsidian is the **hardest** breakable block in the game. For all of them, the right tool is the [pickaxe](68).

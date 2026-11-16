@@ -14,7 +14,7 @@ and two **long tusks** that curl outwards, up and back in. It stands **3.3 block
    (`fossil_bones_skull`, `fossil_bones_spine` and `fossil_bones_tail`), which lie in a straight line inside the
    stone, deep down. The three blocks of a skeleton always belong to one animal, and the mammoth is the one
    you will find most often: its weight against the other skeletons is 6, and none of the others has more than
-   2. The page on [fossils](262) says how deep to dig and how to find the other two pieces once you have one.
+   2. The topic on [fossils](262) says how deep to dig and how to find the other two pieces once you have one.
 2. **Break the blocks** with a [pickaxe](68).
 3. **Bring it back to life** in the [revival machine](264), with **the three pieces** inside. It takes **45
    seconds**. It is a land animal: it needs no water.

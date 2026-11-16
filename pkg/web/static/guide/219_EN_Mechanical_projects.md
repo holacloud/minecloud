@@ -30,7 +30,7 @@ A block that comes out of the floor so you can climb onto a ledge.
 
 ## 3. The two-storey lift
 
-1. Build the shaft, the [platform](218) and the [winch](218) as the lifts page explains.
+1. Build the shaft, the [platform](218) and the [winch](218) as the lifts topic explains.
 2. Put a [latch](210) between the battery and the winch.
 3. A **push button** on the upper floor goes to the latch's SET (left) input; another on the lower floor, to its
    RESET (right) input.

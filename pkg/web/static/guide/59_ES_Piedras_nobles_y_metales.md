@@ -3,7 +3,7 @@
 ![Mármol](item:marble)
 
 Bloques **refinados** para construcciones elegantes: piedras pulidas con vetas, bloques de metal con remaches y la
-misteriosa **obsidiana**.
+misteriosa **obsidiana**, y una **roca de magma** que brilla.
 
 | | Bloque | Nombre en el juego | Id | Aspecto |
 |---|---|---|---|---|
@@ -17,6 +17,7 @@ misteriosa **obsidiana**.
 | ![](item:iron_block) | Bloque de hierro | Iron Block | `iron_block` | metal plateado |
 | ![](item:gold_block) | Bloque de oro | Gold Block | `gold_block` | metal dorado |
 | ![](item:obsidian) | Obsidiana | Obsidian | `obsidian` | violeta oscuro con brillos |
+| ![](item:magma_rock) | Roca de magma | Magma Rock | `magma_rock` | basalto con grietas naranjas que brillan |
 
 Ninguno de estos bloques aparece en el mundo: se fabrican. Pero el cobre, el hierro y el oro **sí tienen mineral**, que se encuentra en el mundo y se funde: ver [Cómo encontrar metales](248) y [Cómo se funden](249).
 
@@ -28,6 +29,7 @@ Ninguno de estos bloques aparece en el mundo: se fabrican. Pero el cobre, el hie
 | 2 de bloque de cobre, hierro u oro, o de obsidiana | 2 `stone` + 1 `sand` |
 | **4** `limestone` | 1 `shell` + 1 `sand` |
 | 2 `obsidian` | 1 `shadow_essence` + 2 `stone` |
+| **4** `magma_rock` | 4 `basalt` + 1 de [polvo luminoso](85) |
 
 La [fundición](235) también funde 1 `iron_ore` en 1 `iron_block`, 1 `gold_ore` en 1 `gold_block`, y 1 `copper_ore` en **2** `copper_block`. A mano, 1 `copper_ore` + 1 `coal_ore` dan 1 `copper_block`. Para la [mesa de laboratorio](117), cada uno de los tres metales se convierte en su [bloque de elemento](60).
 
@@ -40,9 +42,14 @@ picar piedra solo da adoquín, así que fúndelo primero, 1 `cobblestone` + 1 `c
 Son bloques **de construcción** sin efecto especial: suelos de palacio, columnas, estatuas, cámaras acorazadas…
 Al romperlos sueltan el mismo bloque.
 
+La única excepción es la **roca de magma**: da [luz](105) de nivel **10**, sin electricidad, y nunca se apaga. El
+basalto es lava enfriada deprisa; donde aún está caliente por dentro, las grietas brillan como las de una colada de
+lava recién parada.
+
 | Bloque | Rotura a mano | Con pico de hierro |
 |---|---|---|
-| Todos menos la obsidiana | 1 s | 0,38 s |
+| Todos menos la obsidiana y la roca de magma | 1 s | 0,38 s |
+| Roca de magma | 1,1 s | 0,42 s |
 | **Obsidiana** | **3,5 s** | 1,35 s |
 
 La obsidiana es el bloque **más duro** que se puede romper en el juego. Para todos ellos, la herramienta buena es el

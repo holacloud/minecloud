@@ -14,7 +14,7 @@ charges.** It is an [extinct animal](261): it never appears by itself, it has to
    **skeleton** (`fossil_bones_skull`, `fossil_bones_spine` and `fossil_bones_tail`), which lie in a straight line
    inside the stone, deep down. The three blocks of a skeleton always belong to one animal. It is a
    **legendary** fossil and **the rarest skeleton of all**: its weight against the others is 1, against 6 of the
-   mammoth, 2 of the plesiosaur and 2 of the diplodocus. The page on [fossils](262) says how deep to dig and how
+   mammoth, 2 of the plesiosaur and 2 of the diplodocus. The topic on [fossils](262) says how deep to dig and how
    to find the other two pieces once you have one.
 2. **Break the blocks** with a [pickaxe](68).
 3. **Bring it back to life** in the [revival machine](264), with **the three pieces** inside. It takes **120

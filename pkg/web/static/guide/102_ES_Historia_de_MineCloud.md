@@ -76,4 +76,4 @@ Y el mismo día: los [recursos de los mobs](2), [domesticar y criar](3), los [ce
 
 La última pieza es la que tienes en las manos: la **guía**, para que nadie se pierda en un mundo que por entonces ya tenía
 31 especies y más de un centenar de
-bloques distintos. Lo que venga después, se escribirá en páginas nuevas.
+bloques distintos. Lo que venga después, se escribirá en temas nuevos.

@@ -247,9 +247,9 @@ test('a real weather station on the terrace, in the open, with a sign that says 
     assert.ok(!/not a block|no un bloque/.test(signs[0].meta.t));
     assert.ok(!PLAN.cells.some((cell) => cell.meta && cell.meta.t && /Sitio para la estaci|Pad for a weather/.test(cell.meta.t)));
     for (const name of fs.readdirSync(path.join(JS, '..', 'guide')).filter((file) => file.startsWith('250_'))) {
-        const page = fs.readFileSync(path.join(JS, '..', 'guide', name), 'utf8');
-        assert.ok(!/objeto que colocas|item you set down/.test(page), name);
-        assert.match(page, /\]\(112\)/, name);
+        const topic = fs.readFileSync(path.join(JS, '..', 'guide', name), 'utf8');
+        assert.ok(!/objeto que colocas|item you set down/.test(topic), name);
+        assert.match(topic, /\]\(112\)/, name);
     }
 });
 

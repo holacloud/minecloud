@@ -17,8 +17,8 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/argali.js'], frameUpdates: ['argaliUpdate'] });
 const A = JSON.parse(vm.runInContext('JSON.stringify(ARGALI)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-// A page as one line: where its sentences are broken is nobody's business.
-const page = (lang, title) => fs.readFileSync(path.join(STATIC, 'guide', `276_${lang}_${title}.md`), 'utf8').replace(/\s+/g, ' ');
+// A topic as one line: where its sentences are broken is nobody's business.
+const topic = (lang, title) => fs.readFileSync(path.join(STATIC, 'guide', `276_${lang}_${title}.md`), 'utf8').replace(/\s+/g, ' ');
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 // Its row of blocks, to stop it: a fence across its way, or a ditch three deep.
@@ -34,7 +34,7 @@ function struck(options = {}) {
     return { g, mob };
 }
 
-test('what it is: a big neutral sheep nobody tames, and what its page says of it', () => {
+test('what it is: a big neutral sheep nobody tames, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('argali');
     const sheep = ctx.getMobSpecies('sheep');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -48,10 +48,10 @@ test('what it is: a big neutral sheep nobody tames, and what its page says of it
     assert.equal(JSON.stringify(ctx.TRAPS_SPECIES.argali), '{"baits":[]}', 'no bait, and too big for a cage');
     assert.ok(info.maxHealth > sheep.maxHealth && info.speed > sheep.speed, 'bigger than a sheep, and a little lighter on its feet');
 
-    // The numbers of its page are those of the code.
+    // The numbers of its topic are those of the code.
     const comma = (number) => String(number).replace('.', ',');
-    const es = page('ES', 'Argali_gigante');
-    const en = page('EN', 'Giant_argali');
+    const es = topic('ES', 'Argali_gigante');
+    const en = topic('EN', 'Giant_argali');
     assert.ok(es.includes(`durante ${comma(A.aim)} segundos`) && en.includes(`for ${A.aim} seconds`), 'how long it stamps');
     assert.ok(es.includes(`a ${A.pace} bloques por segundo`) && en.includes(`at ${A.pace} blocks a second`), 'how fast it runs');
     assert.equal(Math.round(A.run * A.pace), 4);
@@ -59,7 +59,7 @@ test('what it is: a big neutral sheep nobody tames, and what its page says of it
     assert.ok(es.includes(`a menos de ${comma(A.reach)} bloques de ti`) && en.includes(`within ${A.reach} blocks of you`), 'how near the horns reach');
     assert.ok(es.includes(`**${A.damage} de daño**`) && en.includes(`**${A.damage} damage**`));
     assert.ok(A.rest > 1 && A.rest < 1.5, 'it stands "a little over a second"');
-    // The goat throws with 9 (js/game/wildlife.js): the page says the argali throws further.
+    // The goat throws with 9 (js/game/wildlife.js): the topic says the argali throws further.
     const goat = /applyKnockback\(Math\.cos\(data\.facing\), Math\.sin\(data\.facing\), (\d+), (\d+)\)/.exec(fs.readFileSync(path.join(STATIC, 'js', 'game', 'wildlife.js'), 'utf8'));
     assert.ok(goat && A.shove > Number(goat[1]) && A.lift >= Number(goat[2]), 'further than a goat');
     const blows = (damage) => Math.ceil(info.maxHealth / damage);

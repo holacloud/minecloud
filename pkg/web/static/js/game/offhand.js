@@ -1,4 +1,4 @@
-// The left hand: one slot for something carried while the right hand works (guide page 251).
+// The left hand: one slot for something carried while the right hand works (guide topic 251).
 // - One unit moves out of `inventoryCounts` into `offhandType`, in one step and in one saved JSON, so owned =
 //   count + (offhandType === type ? 1 : 0) always holds. Nothing that spends or moves items can reach that
 //   unit: placing, dropping (Q), crafting, chests and the microscope all read the count, and death leaves the
@@ -178,7 +178,7 @@ Object.assign(Game.prototype, {
 
     // The speed of two tools of a type on that block, or null when they do not count: only the right tool for the
     // block, in the right hand, and with another of its type in the left. The worse of the two sets it, so a good
-    // tool with a much worse one mines slower than the good one alone: that is the rule (guide page 251).
+    // tool with a much worse one mines slower than the good one alone: that is the rule (guide topic 251).
     offhandPairMultiplier(right, blockType) {
         const rightDef = right && this.getItemDefinition(right);
         const leftDef = this.offhandType && this.getItemDefinition(this.offhandType);

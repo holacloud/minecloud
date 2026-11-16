@@ -16,7 +16,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/kubanochoerus.js'], frameUpdates: ['kubanochoerusUpdate'] });
 const K = JSON.parse(vm.runInContext('JSON.stringify(KUBANOCHOERUS)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `269_${lang}_Kubanochoerus.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `269_${lang}_Kubanochoerus.md`), 'utf8');
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 // Its row of blocks, to stop it: a fence across its way, or a ditch three deep.
@@ -30,7 +30,7 @@ function struck(options = {}) {
     return { g, mob };
 }
 
-test('what it is: a big neutral pig nobody tames, and what its page says of it', () => {
+test('what it is: a big neutral pig nobody tames, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('kubanochoerus');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.equal(info.ancestorOf, 'pig');
@@ -41,10 +41,10 @@ test('what it is: a big neutral pig nobody tames, and what its page says of it',
     assert.deepEqual({ ...ctx.TRAPS_SPECIES.kubanochoerus, baits: [...ctx.TRAPS_SPECIES.kubanochoerus.baits] }, { baits: [] });
     assert.ok(info.maxHealth > 2 * ctx.getMobSpecies('pig').maxHealth - 1 && info.speed <= ctx.getMobSpecies('pig').speed);
 
-    // The numbers of its page are those of the code.
+    // The numbers of its topic are those of the code.
     const comma = (number) => String(number).replace('.', ',');
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`durante ${comma(K.aim)} segundos`) && en.includes(`for ${K.aim} seconds`), 'how long it aims');
     assert.ok(es.includes(`a ${K.pace} bloques por\n  segundo`) && en.includes(`at ${K.pace} blocks a second`), 'how fast it runs');
     assert.equal(Math.round(K.run * K.pace), 3);
@@ -60,10 +60,10 @@ test('what it is: a big neutral pig nobody tames, and what its page says of it',
     assert.deepEqual(fossil, { source: 'rock', rarity: 'rare', weight: 1, water: 0, seconds: 45 });
     assert.ok(es.includes(`tarda **${fossil.seconds} segundos**`) && en.includes(`takes **${fossil.seconds} seconds**`));
     assert.ok(es.includes('no necesita agua') && en.includes('needs no water'));
-    // And a shield takes its horn as it takes any blow that comes from somewhere (js/game/offhand.js, page 252).
+    // And a shield takes its horn as it takes any blow that comes from somewhere (js/game/offhand.js, topic 252).
     for (const lang of ['ES', 'EN']) {
         const shield = fs.readFileSync(path.join(STATIC, 'guide', fs.readdirSync(path.join(STATIC, 'guide')).find((name) => name.startsWith(`252_${lang}_`))), 'utf8');
-        assert.ok(shield.includes('[Kubanochoerus](269)') && page(lang).includes('](252)'), lang);
+        assert.ok(shield.includes('[Kubanochoerus](269)') && topic(lang).includes('](252)'), lang);
     }
 });
 

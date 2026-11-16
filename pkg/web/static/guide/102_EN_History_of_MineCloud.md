@@ -71,4 +71,4 @@ And on the same day: [mob resources](2), [taming and breeding](3), [baits and tr
 
 The last piece is the one in your hands: the **guide**, so that nobody gets lost in a world that already has
 31 species and well over a hundred kinds of
-block. Whatever comes next will be written on new pages.
+block. Whatever comes next will be written in new topics.

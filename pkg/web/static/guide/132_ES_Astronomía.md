@@ -79,6 +79,31 @@ reloj del mundo, **todos los jugadores ven las mismas**: si gritas "¡mira!", tu
 > Los viejos astrónomos decían que quien mira un suceso raro **a través de un telescopio** lee algo escrito en el
 > cielo. Nadie les creyó.
 
+## Instrumentos de los astrónomos antiguos
+
+Antes de los relojes y del GPS, los sabios medían el tiempo y el cielo con estos aparatos. Se fabrican (tecla
+**C**) y se colocan como los [muebles](223). Al reloj de sol y al astrolabio se les hace **clic derecho** para
+leerlos (agáchate para construir contra ellos).
+
+| | Nombre en el juego | Id | Se hace con |
+|---|---|---|---|
+| ![](item:sundial) | Sundial | `sundial` | 3 de piedra, 1 lingote de [bronce](121) |
+| ![](item:astrolabe) | Astrolabe | `astrolabe` | 2 lingotes de [latón](179) |
+
+**El reloj de sol** es una columna de piedra con una esfera de bronce y un **gnomon**, el triángulo cuya sombra
+marca la hora. Su borde inclinado apunta siempre **al norte**, a **El Clavo**: por eso el reloj de
+sol no gira al colocarlo, como gira un mueble. Con clic derecho te dice la hora que marca la sombra, redondeada al
+cuarto de hora: la misma del [reloj de pared](231), porque el día del juego lo lleva el sol ([día y noche](8)). De
+noche no hay sombra y no da ninguna hora. Un reloj de sol de verdad marca la **hora solar** del sitio donde está:
+las 12 en punto cuando el sol está más alto, en el sur. Para que funcione todo el año, el gnomon se inclina tanto
+como la latitud del lugar: 37° en Granada, 40° en Madrid.
+
+**El astrolabio** es un disco de latón con anillos de grados y una rejilla de punteros, cada uno una estrella. Con
+clic derecho mide **cuánto se alza el sol** sobre el horizonte, en grados: 0° al salir, el máximo a mediodía. De
+noche dice cuántos grados está por debajo. Los astrónomos andalusíes y persas lo perfeccionaron hace más de mil
+años: mirando una estrella por su alidada, y girando la rejilla, sabían la hora de la noche, la latitud o la
+dirección de La Meca. Fue el ordenador de bolsillo de los navegantes hasta el sextante.
+
 ## Curiosidades
 
 - Las estrellas de verdad están tan lejos que su luz tarda años en llegar: algunas que ves quizá ya no existan.

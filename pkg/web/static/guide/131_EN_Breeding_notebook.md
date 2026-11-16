@@ -19,7 +19,7 @@ The [feather](75) is the quill; birds drop them when you tap them.
 
 ## How to use it
 
-Hold the notebook and **right click a tamed animal** ([Taming and breeding](3)). A page opens with:
+Hold the notebook and **right click a tamed animal** ([Taming and breeding](3)). The notebook opens with:
 
 - **Its name and number:** every tamed animal gets a name (Luna, Bruno, Mendel...) so you can tell them apart.
 - **Its genes:** the genotype of each gene (such as `Ww`, `Ll`, `Nf`), its alleles and its phenotype. "Carries
@@ -27,9 +27,9 @@ Hold the notebook and **right click a tamed animal** ([Taming and breeding](3)).
 - **Its family tree:** its parents and grandparents, if they were born in your care. Animals tamed in the wild
   have unknown parents.
 - **A Punnett square:** right click a **second tamed animal of the same species** right after the first one, and
-  the page shows the square of their coat colours plus the odds of every colour, size and speed among their babies.
+  the notebook shows the square of their coat colours plus the odds of every colour, size and speed among their babies.
 
-Close the page with **Escape**, the Close button or a click outside it.
+Close the notebook with **Escape**, the Close button or a click outside it.
 
 ## Good to know
 

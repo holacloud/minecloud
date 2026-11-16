@@ -1,6 +1,6 @@
 # The complete notebook
 
-> You found a hidden page. It was on the last leaf of the bestiary, written in ink so faded that it only shows
+> You found a hidden topic. It was on the last leaf of the bestiary, written in ink so faded that it only shows
 > once not a single animal or creature is left to discover. **35 of 35.** You did it.
 
 ## Congratulations, naturalist
@@ -66,7 +66,7 @@ eleven the day after, and the last four in November. See [History of MineCloud](
 - Now that you know them all, see how they get along: [The food chain](100).
 
 > A complete notebook is not the end of the journey. It is proof that you know how to **look**. And whoever
-> knows how to look finds pages nobody else sees.
+> knows how to look finds topics nobody else sees.
 
 ---
 

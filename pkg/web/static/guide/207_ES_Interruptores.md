@@ -45,7 +45,7 @@ están los jugadores. Así todos ven lo mismo.
 ## Señal
 
 Además de cortar y unir, los interruptores dan **señal** a las [puertas lógicas](209): una palanca encendida que
-toca la entrada de una puerta lógica ya cuenta como "sí", **aunque no haya batería**. Lo explica la página de las
+toca la entrada de una puerta lógica ya cuenta como "sí", **aunque no haya batería**. Lo explica el tema de las
 puertas.
 
 ## Cómo lo calcula el juego

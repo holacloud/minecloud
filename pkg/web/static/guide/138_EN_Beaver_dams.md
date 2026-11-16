@@ -3,7 +3,7 @@
 ![Beaver](mob:beaver)
 
 [Beavers](137) are the only creatures that **change the world**. The trees they fell and the dams they build are
-ordinary blocks, broken and placed like yours, so **every player sees them**. This page explains how they choose,
+ordinary blocks, broken and placed like yours, so **every player sees them**. This topic explains how they choose,
 and how to keep them away from what you care about.
 
 ## Which trees they fell

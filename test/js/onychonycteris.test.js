@@ -20,8 +20,8 @@ const MODE = vm.runInContext('ANIMALS_MODE', ctx);
 const FULL = ctx.getMobSpecies('onychonycteris').flyHeight;
 // How far its hovering lifts and drops it (js/game/mobs.js).
 const BOB = 0.18;
-// A page as one line: where its sentences are broken is nobody's business.
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `283_${lang}_Onychonycteris.md`), 'utf8').replace(/\s+/g, ' ');
+// A topic as one line: where its sentences are broken is nobody's business.
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `283_${lang}_Onychonycteris.md`), 'utf8').replace(/\s+/g, ' ');
 const flock = (g) => (g.game.onychonycterisFlock ? g.game.onychonycterisFlock.length : 0);
 // How far over the ground (y = 0 on the flat world) its body is.
 const up = (mob) => mob.position.y;
@@ -33,7 +33,7 @@ function kept(mob, walk = null) {
     mob.userData.animal = { id: 9, species: 'onychonycteris', mode: MODE.roam, walked: true, walks: true, moving: Boolean(walk), targetX: walk ? walk.x : 0, targetZ: walk ? walk.z : 0, session: '' };
 }
 
-test('what it is: a ground mob that hovers, as the server needs it, peaceful and nobody\'s pet, and what its page says of it', () => {
+test('what it is: a ground mob that hovers, as the server needs it, peaceful and nobody\'s pet, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('onychonycteris');
     const bat = ctx.getMobSpecies('bat');
     assert.equal(info.movement, undefined, 'the ground movement, which the server walks');
@@ -47,10 +47,10 @@ test('what it is: a ground mob that hovers, as the server needs it, peaceful and
     assert.equal(ctx.Game.prototype.tamingCanTame.call({}, 'onychonycteris'), false);
     assert.equal(JSON.stringify(ctx.TRAPS_SPECIES.onychonycteris), '{"baits":[]}', 'no bait, no cage and no net');
 
-    // The numbers of its page are those of the code.
+    // The numbers of its topic are those of the code.
     const comma = (number) => String(number).replace('.', ',');
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a ${comma(FULL)} bloques del suelo`) && en.includes(`${FULL} blocks over the ground`), 'how high');
     assert.ok(es.includes(`aletea en el sitio ${comma(O.hover)} segundos`) && en.includes(`beats its wings on the spot for ${O.hover} seconds`), 'how long before it lands');
     assert.equal([4, 5, 6].map((damage) => Math.ceil(info.maxHealth / damage)).join(), '2,2,1', 'bare-handed, and with a sword of wood and of stone (js/game/mobs.js)');

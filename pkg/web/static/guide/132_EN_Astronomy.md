@@ -78,6 +78,31 @@ On clear nights a **shooting star** crosses the sky about every half minute. The
 > The old astronomers used to say that whoever watches a rare event **through a telescope** reads something
 > written in the sky. Nobody believed them.
 
+## Instruments of the old astronomers
+
+Before clocks and GPS, scholars measured time and the sky with these. They are crafted (the **C** key) and placed
+like [furniture](223). The sundial and the astrolabe are read with a **right click** (crouch to build against
+them).
+
+| | In-game name | Id | Made from |
+|---|---|---|---|
+| ![](item:sundial) | Sundial | `sundial` | 3 stone, 1 [bronze](121) ingot |
+| ![](item:astrolabe) | Astrolabe | `astrolabe` | 2 [brass](179) ingots |
+
+**The sundial** is a stone pillar with a bronze dial and a **gnomon**, the triangle whose shadow tells the hour.
+Its sloping edge always points **north**, at **The Nail**: that is why a sundial does not turn when
+placed, as a piece of furniture does. A right click tells you the hour the shadow shows, to the nearest quarter of
+an hour: the same as the [wall clock](231), because the game's day is kept by the sun ([day and night](8)). At night
+there is no shadow and it gives no hour. A real sundial shows the **solar time** of the place where it stands:
+12 o'clock sharp when the sun is highest, in the south. To work all year round, the gnomon leans as much as the
+place's latitude: 37° in Granada, 51° in London.
+
+**The astrolabe** is a brass disc with rings of degrees and a grid of pointers, each one a star. A right click
+measures **how high the sun stands** above the horizon, in degrees: 0° at sunrise, the most at noon. At night it
+says how many degrees it is below. Andalusian and Persian astronomers perfected it more than a thousand years ago:
+sighting a star along its alidade and turning the grid, they could tell the hour of the night, the latitude or the
+direction of Mecca. It was the sailors' pocket computer until the sextant.
+
 ## Trivia
 
 - Real stars are so far away that their light takes years to reach us: some of the ones you see may no longer

@@ -25,7 +25,7 @@ mientras funciona.
 | **1** `electric_motor` | 2 `iron_ore` + 1 `copper_block` + 2 `copper_wire` |
 
 La [bombilla](187), la [lámpara de neón](125) y la [lámpara de argón](126) se fabrican en la
-[mesa de laboratorio](117): sus páginas explican cómo. Para las lámparas no son imprescindibles: cada una tiene también
+[mesa de laboratorio](117): sus temas explican cómo. Para las lámparas no son imprescindibles: cada una tiene también
 una receta con materiales corrientes. La bombilla en sí solo sale del laboratorio.
 
 ## Lámpara eléctrica

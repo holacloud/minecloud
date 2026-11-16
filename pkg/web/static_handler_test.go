@@ -46,6 +46,8 @@ func TestTheGameIsServedCompressedAndUnchanged(t *testing.T) {
 		"/js/game/crab.js":  "js/game/crab.js",
 		"/guide/README.md":  "guide/README.md",
 		"/guide-print.html": "guide-print.html",
+		// A chapter of the printed volumes, in a folder of its own (js/guidePrint.js loads it).
+		"/guide/volumes/2_recap_ES.md": "guide/volumes/2_recap_ES.md",
 	} {
 		want, err := fs.ReadFile(MustStaticFS(), name)
 		if err != nil {

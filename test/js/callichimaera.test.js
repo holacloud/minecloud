@@ -1,4 +1,4 @@
-// Node tests for the Callichimaera (js/game/callichimaera.js): what it is, what its page says of it, and
+// Node tests for the Callichimaera (js/game/callichimaera.js): what it is, what its topic says of it, and
 // what its model has to show: eyes far too big, four oars the rig rows with, and a body longer than wide,
 // since it walks forwards on the ground movement and not sideways as the crab does. It has no code of its
 // own to try; what every extinct animal has to be is asked of it by extinct_species.test.js.
@@ -14,9 +14,9 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `291_${lang}_Callichimaera.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `291_${lang}_Callichimaera.md`), 'utf8');
 
-test('what it is: a peaceful walker nobody tames, not a crab that scuttles, and what its page says of it', () => {
+test('what it is: a peaceful walker nobody tames, not a crab that scuttles, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('callichimaera');
     assert.equal(info.movement, undefined, 'the ground movement: forwards, and the server walks a kept one');
     assert.equal(ctx.getMobSpecies('crab').movement, 'scuttle');
@@ -25,8 +25,8 @@ test('what it is: a peaceful walker nobody tames, not a crab that scuttles, and 
     assert.equal(ctx.TAMING_DIET.callichimaera, undefined);
     assert.deepEqual({ ...ctx.TRAPS_SPECIES.callichimaera, baits: [...ctx.TRAPS_SPECIES.callichimaera.baits] }, { baits: [], cage: true });
 
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     const blows = (damage) => Math.ceil(info.maxHealth / damage);
     assert.deepEqual([4, 5, 6, 7, 8].map(blows), [2, 2, 1, 1, 1], 'bare-handed, and with a sword of wood, stone, iron and gold (js/game/mobs.js)');
     assert.ok(es.includes(`**${info.maxHealth} de vida**: 2 golpes a mano o con [espada](71) de madera, 1 con una de piedra o mejor`));

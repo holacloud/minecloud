@@ -14,7 +14,7 @@ The 36 [element blocks](60) are not just decoration: at a **lab bench** they com
    out. Or pick a known reaction in the list on the right and the flask fills itself.
 5. When the mix matches a reaction **exactly**, its equation appears. Press **React**: the flask bubbles and you
    get the product.
-6. The **📖** buttons close the lab and open this guide at the element's or the product's page. Closing the book
+6. The **📖** buttons close the lab and open this guide at the element's or the product's topic. Closing the book
    takes you back to the game.
 
 Proportions matter: 2 H + O gives water, but 1 H + 1 O gives nothing. The flask holds 8 atoms.
@@ -23,7 +23,7 @@ Proportions matter: 2 H + O gives water, but 1 H + 1 O gives nothing. The flask 
 
 There are **30 reactions**. At first the lab knows only 4; the rest show in the list as **???**
 (with how many different elements they take) until you **mix the right atoms in the flask**. Then a fanfare plays,
-the reaction is **discovered for good**, and you can pick it from the list and open its page.
+the reaction is **discovered for good**, and you can pick it from the list and open its topic.
 
 The reactions known from the start:
 
@@ -36,7 +36,7 @@ The reactions known from the start:
 
 Tin, zinc, silver and lead can also be got from their [ore](248), by [smelting it](249).
 
-And the rest? Every element page (from [Hydrogen](139) to [Lead](174)) gives **hints** about the reactions it
+And the rest? Every element's topic (from [Hydrogen](139) to [Lead](174)) gives **hints** about the reactions it
 takes part in. A few ideas to start: noble gases shine alone, metals rust, and gems are oxides with a pinch of
 another metal.
 

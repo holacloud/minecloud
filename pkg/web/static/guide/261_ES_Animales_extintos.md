@@ -35,7 +35,7 @@ del que vive hoy, con "Extinto" o "Vive hoy" debajo de cada uno.
 
 ## Todos los animales extintos
 
-En el orden en que llegaron al juego; la tabla crece con cada uno que llega. Pulsa un nombre para ir a su página.
+En el orden en que llegaron al juego; la tabla crece con cada uno que llega. Pulsa un nombre para ir a su tema.
 
 | | Animal extinto | Antepasado de | Llegó |
 |---|---|---|---|

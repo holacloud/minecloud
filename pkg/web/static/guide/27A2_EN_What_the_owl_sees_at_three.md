@@ -1,6 +1,6 @@
 # What the owl sees at three
 
-> You found a hidden page. No index lists it. If you are reading this, you solved the owl's riddle… or the owl
+> You found a hidden topic. No index lists it. If you are reading this, you solved the owl's riddle… or the owl
 > told you.
 
 ![Owl](mob:owl)

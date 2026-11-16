@@ -15,7 +15,7 @@ const { EYE, loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame({ listenersOf: ['js/game/beelzebufo.js'], frameUpdates: ['beelzebufoUpdate'] });
 const B = JSON.parse(vm.runInContext('JSON.stringify(BEELZEBUFO)', ctx));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `287_${lang}_Beelzebufo.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `287_${lang}_Beelzebufo.md`), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 const away = (mob, g) => Math.hypot(mob.position.x - g.camera.position.x, mob.position.z - g.camera.position.z);
 const phase = (mob) => (mob.userData.beelzebufoAnger ? mob.userData.beelzebufoAnger.phase : 'calm');
@@ -41,7 +41,7 @@ function until(g, mob, wanted, seconds = 6) {
     return frames;
 }
 
-test('what it is: a frog of the frog\'s movement that nobody tames, and what its page says of it', () => {
+test('what it is: a frog of the frog\'s movement that nobody tames, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('beelzebufo');
     assert.equal(info.movement, 'hop');
     assert.ok(!ctx.mobMovementIs('hop', 'walksToGoal') && !ctx.mobMovementIs('hop', 'bodiless'), 'the server keeps it and does not walk it: each client hops its own');
@@ -56,9 +56,9 @@ test('what it is: a frog of the frog\'s movement that nobody tames, and what its
     const parts = g.spawn('beelzebufo', 0.5, 0.5).userData.modelParts;
     for (const name of ['body', 'thighL', 'thighR', 'footL', 'footR', 'armL', 'armR', 'throat', 'head', 'jaw']) assert.ok(parts[name], name);
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`gruñe durante ${comma(B.gape)} segundos`) && en.includes(`growls for ${B.gape} seconds`), 'how long it shows its mouth');
     assert.ok(es.includes(`hasta ${B.leap} bloques`) && en.includes(`up to ${B.leap} blocks`), 'how far it jumps');
     assert.ok(es.includes(`a menos de ${comma(B.reach)} bloques de ti`) && en.includes(`within ${B.reach} blocks of you`), 'how near its mouth has to land');
@@ -108,7 +108,7 @@ test('struck, it hops away, turns on the player and shows its open mouth; then i
     assert.ok(mob.userData.airborne, 'the frog\'s movement hops it away from the blow first');
     until(g, mob, 'gape');
     assert.ok(!mob.userData.airborne && away(mob, g) > 2.5, `it landed ${away(mob, g)} blocks away`);
-    // It stands, facing the player, its mouth opening, for as long as its page says.
+    // It stands, facing the player, its mouth opening, for as long as its topic says.
     const head = mob.userData.modelParts.head;
     const stood = { x: mob.position.x, z: mob.position.z };
     const frames = until(g, mob, 'leap');
@@ -155,7 +155,7 @@ test('whoever steps aside while it shows its mouth is missed: it jumps at where 
     assert.equal(high.g.hurt.length, 0, 'it jumped under them');
 });
 
-test('its jump is never longer than its page says, it is not provoked twice at once, and the last blow ends it', () => {
+test('its jump is never longer than its topic says, it is not provoked twice at once, and the last blow ends it', () => {
     const { g, mob } = struck(3);
     until(g, mob, 'gape');
     const from = { x: mob.position.x, z: mob.position.z };

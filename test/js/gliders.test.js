@@ -30,7 +30,7 @@ const info = (species) => ctx.getMobSpecies(species);
 const comma = (number) => String(number).replace('.', ',');
 // The eagle's name as its card says it (its apostrophe is the letter U+02BC: js/game/haast_eagle.js).
 const EAGLE = vm.runInContext('BESTIARY_ENTRIES.haast_eagle.name', ctx);
-const page = (id, lang) => {
+const topic = (id, lang) => {
     const name = fs.readdirSync(path.join(STATIC, 'guide')).find((file) => file.startsWith(`${id}_${lang}_`));
     return fs.readFileSync(path.join(STATIC, 'guide', name), 'utf8');
 };
@@ -705,10 +705,10 @@ test('nothing is made on a frame: no vector, no list and no function in what run
 
 // ---- What the guide says ----
 
-test('the pages of the three say of their flight what the code does, in both languages', () => {
-    const pages = { haast_eagle: 280, argentavis: 281, pterosaur: 298 };
-    // A page as one line: a sentence may be broken anywhere.
-    const text = (id, lang) => page(pages[id], lang).replace(/\s+/g, ' ');
+test('the topics of the three say of their flight what the code does, in both languages', () => {
+    const topics = { haast_eagle: 280, argentavis: 281, pterosaur: 298 };
+    // A topic as one line: a sentence may be broken anywhere.
+    const text = (id, lang) => topic(topics[id], lang).replace(/\s+/g, ' ');
     const blows = (id) => [4, 5, 6, 7, 8].map((damage) => Math.ceil(info(id).maxHealth / damage));
     for (const id of GLIDERS) {
         const es = text(id, 'ES');

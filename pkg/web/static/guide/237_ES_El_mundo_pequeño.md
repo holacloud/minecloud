@@ -45,7 +45,7 @@ En el juego, no: aquí ningún microbio hace daño al jugador, y el agua nunca e
 
 ## Animales que perderías en la yema de un dedo
 
-Dos animales de la lista no tienen página propia, porque hay menos que hacer con ellos. Merecen que los mires un buen rato.
+Dos animales de la lista no tienen tema propio, porque hay menos que hacer con ellos. Merecen que los mires un buen rato.
 
 ![Un rotífero](mob:rotifer)
 

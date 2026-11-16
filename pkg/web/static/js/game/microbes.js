@@ -1,6 +1,6 @@
 // The small world: the organisms seen through the microscope (js/game/microscope.js), what each sample
 // holds, how they move, and how they are drawn. Nothing here touches the game or the page, so it runs
-// on any canvas (a portrait in a card, a page of the guide) and under Node.
+// on any canvas (a portrait in a card, a topic of the guide) and under Node.
 // - These are not mobs: they live in MICRO_SPECIES, not MOB_SPECIES, and exist only on a slide.
 // - A source (a sample, an item, a smear) fixes which species a slide holds; the seed the server gave
 //   the slide fixes how many there are and where (microPopulate). Every viewer sees the same. How they
@@ -1521,7 +1521,7 @@ function microDrawCyst(ctx, t, st = {}) {
 
 // name, latin, size: as a card says it. drawn: length on the slide (micrometres). mag: the power needed
 // to tell what it is. where: in words. fact: a true thing about it. hint: what an undiscovered card says,
-// without giving it away. page: its page in the guide. dot: its colour when it is only a
+// without giving it away. topic: its own topic in the guide. dot: its colour when it is only a
 // speck. count, spread: how many on a slide and how far from the middle (micrometres). move: how it gets
 // about (microStep). whenDry: 'cyst' or 'dies' as the slide dries. algae: what a tardigrade can eat.
 const MICRO_SPECIES = {
@@ -1529,119 +1529,119 @@ const MICRO_SPECIES = {
         name: 'Tardigrade', latin: 'Tardigrada', size: '0.3-0.5 mm', drawn: 400, mag: 40,
         where: 'Damp moss, and cold or shady water near it',
         fact: 'Dried up, it curls into a "tun" and can wait for years; tuns have survived the vacuum of space. Add a drop of water and it walks again.',
-        hint: 'Something lumbers on stubby legs, through water and wet green places.', page: 240,
+        hint: 'Something lumbers on stubby legs, through water and wet green places.', topic: 240,
         dot: '#a58a5a', count: [1, 3], spread: 820, move: 'crawl', whenDry: 'tun', draw: microDrawTardigrade
     },
     rotifer: {
         name: 'Rotifer', latin: 'Rotifera', size: '0.1-0.5 mm', drawn: 340, mag: 100,
         where: 'Forest lakes and moss',
         fact: 'Its crown of cilia looks like two turning wheels. It is an animal, with a brain and jaws, yet smaller than some single cells.',
-        hint: 'Two little wheels seem to spin at one end of it.', page: 237,
+        hint: 'Two little wheels seem to spin at one end of it.', topic: 237,
         dot: '#b2aa74', count: [2, 5], spread: 820, move: 'swim', speed: 42, whenDry: 'cyst', draw: microDrawRotifer
     },
     water_flea: {
         name: 'Water Flea', latin: 'Daphnia', size: '1-3 mm', drawn: 1300, mag: 40,
         where: 'Plains and forest lakes',
         fact: 'It is so transparent that you can watch its heart beat, and it moves in jumps by rowing with its antennae. It is a crustacean, not a flea.',
-        hint: 'It moves in jumps, and you can see right through it.', page: 237,
+        hint: 'It moves in jumps, and you can see right through it.', topic: 237,
         dot: '#8e8a50', count: [1, 3], spread: 1000, move: 'hop', speed: 170, whenDry: 'dies', draw: microDrawWaterFlea
     },
     paramecium: {
         name: 'Paramecium', latin: 'Paramecium', size: '0.1-0.3 mm', drawn: 230, mag: 100,
         where: 'Plains and forest lakes',
         fact: 'One cell covered in thousands of beating cilia. When it bumps into something it backs off, turns and tries again, with no nerves at all.',
-        hint: 'A tiny slipper backs away from whatever it bumps into.', page: 243,
+        hint: 'A tiny slipper backs away from whatever it bumps into.', topic: 243,
         dot: '#a6a884', count: [5, 10], spread: 800, move: 'bounce', speed: 90, whenDry: 'dies', draw: microDrawParamecium
     },
     amoeba: {
         name: 'Amoeba', latin: 'Amoeba proteus', size: '0.2-0.7 mm', drawn: 280, mag: 100,
         where: 'Plains and mountain lakes',
         fact: 'It has no fixed shape. It pushes out false feet to creep along, and flows round its food to swallow it.',
-        hint: 'It never keeps the same shape for long.', page: 243,
+        hint: 'It never keeps the same shape for long.', topic: 243,
         dot: '#a8a47c', count: [2, 5], spread: 760, move: 'ooze', speed: 9, whenDry: 'cyst', draw: microDrawAmoeba
     },
     vorticella: {
         name: 'Vorticella', latin: 'Vorticella', size: 'bell 30-150 µm', drawn: 240, mag: 100,
         where: 'Forest lakes',
         fact: 'Its stalk has a spring inside: at a touch it coils in a few thousandths of a second, among the fastest movements of any cell.',
-        hint: 'A little bell on a stalk springs back at a touch.', page: 243,
+        hint: 'A little bell on a stalk springs back at a touch.', topic: 243,
         dot: '#a4a878', count: [4, 8], spread: 420, move: 'stalk', whenDry: 'dies', draw: microDrawVorticella
     },
     euglena: {
         name: 'Euglena', latin: 'Euglena', size: '15-500 µm', drawn: 72, mag: 100,
         where: 'Plains lakes and oases',
         fact: 'It makes food from sunlight like a plant and swims like an animal; in the dark it can live on what it soaks up from the water. Its red eye-spot helps it find the light.',
-        hint: 'A green swimmer with a small red dot.', page: 243,
+        hint: 'A green swimmer with a small red dot.', topic: 243,
         dot: '#5e9c4c', count: [8, 16], spread: 520, move: 'swim', speed: 34, whenDry: 'cyst', draw: microDrawEuglena
     },
     diatom: {
         name: 'Diatom', latin: 'Bacillariophyta', size: '2-200 µm', drawn: 72, mag: 400,
         where: 'Mountain and forest lakes',
         fact: 'A single alga in a shell of glass. Diatoms make about a fifth of all the oxygen produced on Earth, and their old shells pile up into rock.',
-        hint: 'A tiny jewel box, finely ruled. It takes a strong lens.', page: 243,
+        hint: 'A tiny jewel box, finely ruled. It takes a strong lens.', topic: 243,
         dot: '#a68c44', count: [12, 22], spread: 330, move: 'glide', speed: 5, whenDry: 'dies', draw: microDrawDiatom
     },
     spirogyra: {
         name: 'Spirogyra', latin: 'Spirogyra', size: 'threads of many cm', drawn: 520, mag: 100,
         where: 'Forest and plains lakes',
         fact: 'The slimy green threads of a pond. Each cell holds a spiral ribbon of chloroplast, and two threads lying side by side can join through little bridges to breed.',
-        hint: 'Green threads, with something wound in a spiral inside them.', page: 243,
+        hint: 'Green threads, with something wound in a spiral inside them.', topic: 243,
         dot: '#4c9a4c', count: [4, 8], spread: 780, move: 'drift', speed: 1.5, whenDry: 'dies', algae: true, draw: microDrawSpirogyra
     },
     cyanobacteria: {
         name: 'Cyanobacteria', latin: 'Cyanobacteria', size: 'cells 1-10 µm', drawn: 100, mag: 400,
         where: 'Plains lakes and oases',
         fact: 'Bacteria that make food from sunlight. Their ancestors filled the air with oxygen, and live on inside every plant cell as chloroplasts.',
-        hint: 'Blue-green beads on a string. It takes a strong lens.', page: 244,
+        hint: 'Blue-green beads on a string. It takes a strong lens.', topic: 244,
         dot: '#3c8a84', count: [14, 24], spread: 300, move: 'drift', speed: 2.5, whenDry: 'dies', algae: true, draw: microDrawCyanobacteria
     },
     soil_bacteria: {
         name: 'Soil Bacteria', latin: 'Bacillus', size: '1-5 µm', drawn: 8, mag: 400,
         where: 'Soil, and a little of any still water',
         fact: 'A teaspoon of good soil can hold as many of them as there are people on Earth. With the fungi, they rot what dies and give its food back to the plants.',
-        hint: 'Tiny rods, too small for all but a strong lens.', page: 244,
+        hint: 'Tiny rods, too small for all but a strong lens.', topic: 244,
         dot: '#6e5c44', count: [40, 70], spread: 230, move: 'wriggle', speed: 12, whenDry: 'dies', draw: microDrawSoilBacteria
     },
     yeast: {
         name: 'Yeast', latin: 'Saccharomyces', size: '5-10 µm', drawn: 14, mag: 400,
         where: 'Flowers and honey',
         fact: 'A fungus of a single cell that multiplies by budding. Its bubbles of gas are what makes bread rise.',
-        hint: 'Small ovals, some with a smaller oval growing out of them.', page: 244,
+        hint: 'Small ovals, some with a smaller oval growing out of them.', topic: 244,
         dot: '#b09a70', count: [22, 38], spread: 200, move: 'still', whenDry: 'dies', draw: microDrawYeast
     },
     lactobacillus: {
         name: 'Lactobacillus', latin: 'Lactobacillus', size: '2-10 µm', drawn: 28, mag: 400,
         where: 'Milk and cheese',
         fact: 'A friendly bacterium that turns the sugar of milk into acid: that is how we get yoghurt and cheese.',
-        hint: 'Slim rods joined in chains, wherever milk has been.', page: 244,
+        hint: 'Slim rods joined in chains, wherever milk has been.', topic: 244,
         dot: '#8a6c9c', count: [20, 36], spread: 220, move: 'still', whenDry: 'dies', draw: microDrawLactobacillus
     },
     plant_cell: {
         name: 'Plant Cell', latin: 'Cellula plantae', size: '20-100 µm', drawn: 110, mag: 100,
         where: 'Leaves, wheat and moss',
         fact: 'A stiff wall and green chloroplasts, which make its food from light. Robert Hooke named cells in 1665, as they reminded him of little rooms.',
-        hint: 'Little green-walled rooms, side by side.', page: 242,
+        hint: 'Little green-walled rooms, side by side.', topic: 242,
         dot: '#5ea050', count: [28, 42], spread: 0, layout: 'tissue', move: 'still', whenDry: 'dies', algae: true, draw: microDrawPlantCell
     },
     animal_cell: {
         name: 'Animal Cell', latin: 'Cellula animalis', size: '10-60 µm', drawn: 72, mag: 400,
         where: 'A smear of your own cheek, and raw fish',
         fact: 'Thin, with no wall and a dark nucleus holding its DNA. Your cheek sheds cells like these all the time, and makes new ones.',
-        hint: 'You carry millions of them around with you.', page: 242,
+        hint: 'You carry millions of them around with you.', topic: 242,
         dot: '#987a90', count: [8, 14], spread: 170, move: 'still', whenDry: 'dies', draw: microDrawAnimalCell
     },
     mushroom_spore: {
         name: 'Mushroom Spores', latin: 'Basidiospora', size: '5-15 µm', drawn: 12, mag: 400,
         where: 'Mushrooms',
         fact: 'A mushroom is only the fruit of a fungus: one can release billions of spores, each a single cell that does the work of a seed, and the wind takes them.',
-        hint: 'Dark specks that fall from under a cap.', page: 244,
+        hint: 'Dark specks that fall from under a cap.', topic: 244,
         dot: '#54402c', count: [40, 70], spread: 220, move: 'still', whenDry: 'dies', draw: microDrawSpore
     },
     mould: {
         name: 'Penicillium Mould', latin: 'Penicillium', size: 'spores 2-4 µm, brushes 0.1-0.3 mm', drawn: 160, mag: 100,
         where: 'An agar plate left open, or a dish not sterilised',
         fact: 'In 1928 Alexander Fleming found a plate of bacteria spoilt by a mould like this one: around it, the bacteria had died. From that spoilt plate came penicillin, the first antibiotic.',
-        hint: 'Blue-green fuzz on a plate that should have stayed clean.', page: 255,
+        hint: 'Blue-green fuzz on a plate that should have stayed clean.', topic: 255,
         dot: '#4a8a78', count: [5, 9], spread: 600, move: 'still', whenDry: 'dies', draw: microDrawMould
     }
 };
@@ -2051,7 +2051,7 @@ function microDrawOrganism(target, speciesId, x, y, px, rot, t, st = {}) {
 }
 
 // A species alone in the middle of a canvas of this size, on the pale ground of the microscope. For
-// bestiary cards and guide pages; `t` animates it.
+// bestiary cards and guide topics; `t` animates it.
 function microDrawPortrait(ctx, speciesId, width, height, t = 0, st = {}) {
     ctx.save();
     // ground: false leaves it on nothing, for a silhouette.

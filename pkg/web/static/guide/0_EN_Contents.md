@@ -3,10 +3,10 @@
 ![The MineCloud field book](img/book.png)
 
 This book explains the world of MineCloud: how to survive, build and live alongside its creatures. Each
-page covers one topic; click a link to go to it.
+topic has its own number; click a link to go to it.
 
-**First time?** Read [How to use this guide](1). In short: **H** opens and closes the book, and **◀ ▶** turn
-the pages. On a phone or tablet, see [Touch controls](222).
+**First time?** Read [How to use this guide](1). In short: **H** opens and closes the book, and **◀ ▶** go
+from topic to topic. On a phone or tablet, see [Touch controls](222).
 
 ## The basics
 
@@ -28,14 +28,14 @@ the pages. On a phone or tablet, see [Touch controls](222).
 
 ## Sections
 
-- [Mobs](16): one page for every species in the world.
+- [Mobs](16): one topic for every species in the world.
 - [Extinct animals](261): the ones that only return if somebody brings them back to life, and their tree of evolution.
 - [Items](48): blocks, tools, resources and traps.
 - [Curiosities](98): oddities and secrets of the world.
 - [Growing wheat](107): the hoe, seeds, the wheat field and bread.
 - [Genetics](130): genes, Punnett squares, mutations and the [breeding notebook](131).
 - [Weather station](112): thermometer, barometer, anemometer and the rain forecast.
-- [Astronomy](132): stars, constellations, planets, moon phases and rare events.
+- [Astronomy](132): stars, constellations, planets, moon phases and rare events, and the sundial and the astrolabe.
 - [Chemistry](115): the lab bench, the [periodic table](116) and the reactions.
 - [Blueprints](191): measure with the [measuring tape](192), save, share and build again.
 - [Programmable robot](193): program it with blocks ([how](194)) and beat the [challenges](195).
@@ -60,7 +60,23 @@ the pages. On a phone or tablet, see [Touch controls](222).
 - [Plots](260): a marker and 17 × 17 blocks where only you can change anything; the spawn area belongs to nobody.
 - The [portal network](306): 105 plazas and red, orange, yellow and green portals that jump 1,000, 10,000, 100,000 and 1,000,000 blocks.
 
+## Buildings
+
+Big buildings you may come across in the world, each with a science corner and chests to open.
+
+- [Castle](307): walls, a moat, nine towers and the keep.
+- [Research institute](308): laboratories, a lift and an observatory, all on the grid.
+- [Grand library](309): galleries of books under a dome of stained glass.
+- [Apartment block](310): 31 homes on 11 floors, and a lift that works.
+- [Small house](311): one room with everything a person needs.
+- [Community hall](312): a covered market where neighbours meet.
+- [Cathedral](313): Gothic stone, spires and a rose window.
+- [Furniture showroom](314): every piece of furniture of the game, room after room.
+- Six palaces: the [Andalusian](315) one of water and tiles, the [Baroque](316) one of mirrors, the
+  [Oriental](317) one of cherry trees and koi, the [Winter](318) one under the aurora, the [Maya](319) one with
+  its pyramid, and the [Volcanic](320) one of basalt and minerals.
+
 ---
 
-> Some pages are not listed in any index. They hide behind codes of letters and digits... and the hints
+> Some topics are not listed in any index. They hide behind codes of letters and digits... and the hints
 > are scattered around the book and the world.

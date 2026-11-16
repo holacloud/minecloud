@@ -1,7 +1,7 @@
 # Lo que cruza la noche
 
-> Has encontrado una página escondida. Estaba escrita con luz, en la cola de un cometa o en la sombra de una luna
-> roja. Pocos la han leído: hay que estar despierto, mirando hacia arriba, la noche justa.
+> Has encontrado un tema escondido. Estaba escrito con luz, en la cola de un cometa o en la sombra de una luna
+> roja. Pocos lo han leído: hay que estar despierto, mirando hacia arriba, la noche justa.
 
 ![Telescopio](item:telescope)
 
@@ -51,5 +51,5 @@ noche.
 
 ---
 
-**La siguiente pista:** el búho del cielo no duerme, y el de los árboles tampoco. Su página en esta guía esconde,
+**La siguiente pista:** el búho del cielo no duerme, y el de los árboles tampoco. Su tema en esta guía esconde,
 entre sus curiosidades, una **adivinanza**: ¿qué ve el búho a las tres?

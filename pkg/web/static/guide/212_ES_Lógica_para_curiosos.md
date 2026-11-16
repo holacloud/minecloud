@@ -2,7 +2,7 @@
 
 ![Puerta NOT](item:not_gate)
 
-¿Cómo puede una máquina "pensar" con interruptores? Esta página cuenta la idea, sin prisas.
+¿Cómo puede una máquina "pensar" con interruptores? Este tema cuenta la idea, sin prisas.
 
 ## Todo es sí o no
 

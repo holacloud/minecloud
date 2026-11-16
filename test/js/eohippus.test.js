@@ -14,9 +14,9 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `268_${lang}_Eohippus.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `268_${lang}_Eohippus.md`), 'utf8');
 
-test('what it is: the horse\'s ancestor, a grazer tamed with what a horse eats, and what its page says of it', () => {
+test('what it is: the horse\'s ancestor, a grazer tamed with what a horse eats, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('eohippus');
     const horse = ctx.getMobSpecies('horse');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -31,14 +31,14 @@ test('what it is: the horse\'s ancestor, a grazer tamed with what a horse eats, 
     assert.ok(ctx.Game.prototype.tamingCanTame.call({}, 'eohippus'));
     assert.deepEqual({ ...ctx.TRAPS_SPECIES.eohippus, baits: [...ctx.TRAPS_SPECIES.eohippus.baits] }, { baits: [], cage: true });
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     const blows = Math.ceil(info.maxHealth / 4);
     assert.ok(es.includes(`**${info.maxHealth} de vida**: ${blows} golpes a mano`) && en.includes(`**${info.maxHealth} health**: ${blows} hits bare-handed`));
     assert.ok(es.includes('con **1 de 3** por intento') && en.includes('with **1 in 3** per try'));
     assert.ok(es.includes(`Hay **${info.variants} pelajes**`) && en.includes(`There are **${info.variants} coats**`));
-    assert.ok(info.speed > horse.speed, 'a little lighter on its feet than a walking horse, as the page says');
+    assert.ok(info.speed > horse.speed, 'a little lighter on its feet than a walking horse, as the topic says');
     for (const food of ctx.TAMING_DIET.horse.foods) assert.ok(es.includes(`\`${food}\``) && en.includes(`\`${food}\``), food);
     // How long it takes to revive is what its fossil says (js/game/fossils.js), and it is a land animal.
     const fossil = JSON.parse(vm.runInContext('JSON.stringify(FOSSIL_SPECIES.eohippus)', ctx));

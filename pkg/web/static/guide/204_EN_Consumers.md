@@ -23,7 +23,7 @@ Consumers are the blocks that **use** electricity to do something. Each one need
 | **1** `grow_lamp` (from lamps) | 2 `electric_lamp` + 1 `glass` |
 | **1** `electric_motor` | 2 `iron_ore` + 1 `copper_block` + 2 `copper_wire` |
 
-The [light bulb](187), the [neon lamp](125) and the [argon lamp](126) are made at the [lab bench](117): their pages
+The [light bulb](187), the [neon lamp](125) and the [argon lamp](126) are made at the [lab bench](117): their topics
 say how. For the lamps you do not need them: each also has a recipe with ordinary materials. The bulb itself only comes from the lab.
 
 ## Electric lamp

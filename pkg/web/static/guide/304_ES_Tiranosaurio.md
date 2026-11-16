@@ -15,7 +15,7 @@ que devolverlo a la vida.
    (`fossil_bones_skull`, `fossil_bones_spine` y `fossil_bones_tail`), que están en línea recta dentro de la
    piedra, muy abajo. Los tres bloques de un esqueleto son siempre del mismo animal. Es un fósil **legendario** y
    **el esqueleto más raro de todos**: su peso frente a los demás es 1, contra 6 del mamut, 2 del plesiosaurio y 2
-   del diplodocus. La página de los [fósiles](262) dice a qué profundidad cavar y cómo encontrar las otras dos
+   del diplodocus. El tema de los [fósiles](262) dice a qué profundidad cavar y cómo encontrar las otras dos
    piezas cuando tienes una.
 2. **Rompe los bloques** con un [pico](68).
 3. **Devuélvelo a la vida** en la [máquina de revivir](264), con **las tres piezas** dentro. Tarda **120

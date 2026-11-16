@@ -11,7 +11,7 @@ Lo que empieza por **/** es un comando: no lo ven los demás, lo ejecuta el jueg
 |---|---|
 | `/help` | muestra la lista de comandos |
 | `/guide` | abre esta guía donde la dejaste |
-| `/guide 12` | abre la guía por la página 12 (también vale un código secreto) |
+| `/guide 12` | abre la guía por el tema 12 (también vale un código secreto) |
 | `/spawn` | te lleva a tu punto de reaparición: tu cama o, si no tienes, el último sitio seguro |
 | `/mob horse` | hace aparecer un animal delante de ti (ver abajo) |
 | `/time` | dice la hora del mundo, por ejemplo "21:30" |

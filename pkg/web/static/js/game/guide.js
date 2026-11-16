@@ -1,29 +1,31 @@
-// The guide: an in-game book of pages written in Markdown. Each page is a file in
-// static/guide named ID_XX_TITLE.md (page id, language EN/ES, title); the server lists them
-// at /guide/index.json. Public pages are numbered 0, 1, 2...; secret ones have codes of digits
-// and capital letters (27A2, UR29) that the reader has to find. Pages link to each other with
-// [text](12) or [text](27A2), images are centred, and a page that does not exist yet says so.
-// H opens the book where it was left, /guide ID opens that page; inside, ←/→ turn the public
-// pages, and the language is the game's (js/gameLang.js): picked here or in the pause menu. Once a version
-// is stable, pages do not change: new topics, or a radically changed creature, get new pages.
+// The guide: an in-game book of topics written in Markdown. Each topic is a file in
+// static/guide named ID_XX_TITLE.md (topic id, language EN/ES, title); the server lists them
+// at /guide/index.json. Public topics are numbered 0, 1, 2...; secret ones have codes of digits
+// and capital letters (27A2, UR29) that the reader has to find. Topics link to each other with
+// [text](12) or [text](27A2), images are centred, and a topic that does not exist yet says so.
+// H opens the book where it was left, /guide ID opens that topic; inside, ←/→ go through the public
+// topics, and the language is the game's (js/gameLang.js): picked here or in the pause menu. Once a version
+// is stable, topics do not change: new subjects, or a radically changed creature, get new topics.
+// A `page` in this file is only the paper whose turning the book plays (guidePageTurnSound) and the
+// old name of the setting that remembers where the book was left (guideInstall).
 // Mixed into Game.prototype; the book is a modal panel (see registerModalPanel).
 
-const GUIDE_CONTENTS_PAGE = '0';
+const GUIDE_CONTENTS_TOPIC = '0';
 const GUIDE_TEXT = {
     ES: {
-        title: 'Guía', contents: 'Índice', goTo: 'Ir a', close: 'Cerrar', page: 'Página', print: 'Imprimir',
-        printTitle: 'Abre la guía para imprimir (sin las páginas secretas) en otra pestaña',
-        missing: (page) => `La página ${page} aún no existe.`,
-        missingHint: 'Quizá se escriba en una próxima versión. Vuelve al índice para ver las que hay.',
-        otherLang: 'Esta página aún no está traducida; se muestra en inglés.',
+        title: 'Guía', contents: 'Índice', goTo: 'Ir a', close: 'Cerrar', topic: 'Tema', print: 'Imprimir',
+        printTitle: 'Abre la guía para imprimir (sin los temas secretos) en otra pestaña',
+        missing: (topic) => `El tema ${topic} aún no existe.`,
+        missingHint: 'Quizá se escriba en una próxima versión. Vuelve al índice para ver los que hay.',
+        otherLang: 'Este tema aún no está traducido; se muestra en inglés.',
         loading: 'Cargando…', offline: 'No se pudo cargar la guía.'
     },
     EN: {
-        title: 'Guide', contents: 'Contents', goTo: 'Go to', close: 'Close', page: 'Page', print: 'Print',
-        printTitle: 'Opens the printable guide (without the secret pages) in a new tab',
-        missing: (page) => `Page ${page} does not exist yet.`,
-        missingHint: 'It may be written in a future version. Go back to the contents to see the pages there are.',
-        otherLang: 'This page is not translated yet; it is shown in Spanish.',
+        title: 'Guide', contents: 'Contents', goTo: 'Go to', close: 'Close', topic: 'Topic', print: 'Print',
+        printTitle: 'Opens the printable guide (without the secret topics) in a new tab',
+        missing: (topic) => `Topic ${topic} does not exist yet.`,
+        missingHint: 'It may be written in a future version. Go back to the contents to see the topics there are.',
+        otherLang: 'This topic is not translated yet; it is shown in Spanish.',
         loading: 'Loading…', offline: 'The guide could not be loaded.'
     }
 };
@@ -50,35 +52,35 @@ const GUIDE_CSS = `
 #guide-book .guide-lang.active { background: #9c2a2a; box-shadow: inset 0 -4px 0 #6d1b1b, 0 0 0 2px #2c1a0e; }
 #guide-book button:hover { filter: brightness(1.15); }
 #guide-book button:disabled { opacity: 0.4; cursor: default; filter: none; }
-#guide-book .guide-page { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 44px 28px 52px;
+#guide-book .guide-topic { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 44px 28px 52px;
     font-family: 'VT323', monospace; font-size: 27px; line-height: 1.25; color: #3a2614; scrollbar-color: #a0804f transparent; }
-#guide-book .guide-page h1, #guide-book .guide-page h2, #guide-book .guide-page h3 { font-family: 'Pixelify Sans', monospace;
+#guide-book .guide-topic h1, #guide-book .guide-topic h2, #guide-book .guide-topic h3 { font-family: 'Pixelify Sans', monospace;
     color: #5b3a22; line-height: 1.15; margin: 0.9em 0 0.4em; }
-#guide-book .guide-page h1 { font-size: 40px; text-align: center; margin-top: 0.2em; }
-#guide-book .guide-page h2 { font-size: 31px; border-bottom: 3px dashed #c9b07a; padding-bottom: 4px; }
-#guide-book .guide-page h3 { font-size: 27px; }
-#guide-book .guide-page p, #guide-book .guide-page ul, #guide-book .guide-page ol { margin: 0.5em 0; }
-#guide-book .guide-page ul, #guide-book .guide-page ol { padding-left: 1.3em; }
-#guide-book .guide-page ul { list-style: none; }
-#guide-book .guide-page ul > li::before { content: '■'; color: #9c2a2a; font-size: 0.6em; display: inline-block;
+#guide-book .guide-topic h1 { font-size: 40px; text-align: center; margin-top: 0.2em; }
+#guide-book .guide-topic h2 { font-size: 31px; border-bottom: 3px dashed #c9b07a; padding-bottom: 4px; }
+#guide-book .guide-topic h3 { font-size: 27px; }
+#guide-book .guide-topic p, #guide-book .guide-topic ul, #guide-book .guide-topic ol { margin: 0.5em 0; }
+#guide-book .guide-topic ul, #guide-book .guide-topic ol { padding-left: 1.3em; }
+#guide-book .guide-topic ul { list-style: none; }
+#guide-book .guide-topic ul > li::before { content: '■'; color: #9c2a2a; font-size: 0.6em; display: inline-block;
     width: 1.6em; margin-left: -1.6em; vertical-align: 0.25em; text-align: center; }
-#guide-book .guide-page li { margin: 0.2em 0; }
-#guide-book .guide-page strong { color: #2a1a0c; }
-#guide-book .guide-page em { color: #6b4528; }
-#guide-book .guide-page code { font-family: 'VT323', monospace; background: #e3cf9f; padding: 0 6px; color: #5b2d14; }
-#guide-book .guide-page a { color: #9c2a2a; text-decoration: none; border-bottom: 2px solid rgba(156, 42, 42, 0.45); cursor: pointer; }
-#guide-book .guide-page a:hover { color: #c43a3a; }
-#guide-book .guide-page blockquote { margin: 0.7em 0; padding: 6px 16px; background: #e8d6aa; border-left: 6px solid #b08a52; }
-#guide-book .guide-page hr { border: 0; border-top: 4px dotted #c9b07a; margin: 1em 0; }
-#guide-book .guide-page figure { margin: 0.8em 0; text-align: center; }
-#guide-book .guide-page figure img { max-width: 100%; image-rendering: pixelated; box-shadow: 0 0 0 4px #c9b07a; }
-#guide-book .guide-page figure img[src^="data:"] { box-shadow: none; width: 220px; }
-#guide-book .guide-page p img, #guide-book .guide-page li img, #guide-book .guide-page td img { height: 1.15em;
+#guide-book .guide-topic li { margin: 0.2em 0; }
+#guide-book .guide-topic strong { color: #2a1a0c; }
+#guide-book .guide-topic em { color: #6b4528; }
+#guide-book .guide-topic code { font-family: 'VT323', monospace; background: #e3cf9f; padding: 0 6px; color: #5b2d14; }
+#guide-book .guide-topic a { color: #9c2a2a; text-decoration: none; border-bottom: 2px solid rgba(156, 42, 42, 0.45); cursor: pointer; }
+#guide-book .guide-topic a:hover { color: #c43a3a; }
+#guide-book .guide-topic blockquote { margin: 0.7em 0; padding: 6px 16px; background: #e8d6aa; border-left: 6px solid #b08a52; }
+#guide-book .guide-topic hr { border: 0; border-top: 4px dotted #c9b07a; margin: 1em 0; }
+#guide-book .guide-topic figure { margin: 0.8em 0; text-align: center; }
+#guide-book .guide-topic figure img { max-width: 100%; image-rendering: pixelated; box-shadow: 0 0 0 4px #c9b07a; }
+#guide-book .guide-topic figure img[src^="data:"] { box-shadow: none; width: 220px; }
+#guide-book .guide-topic p img, #guide-book .guide-topic li img, #guide-book .guide-topic td img { height: 1.15em;
     vertical-align: -0.22em; image-rendering: pixelated; }
-#guide-book .guide-page figcaption { font-size: 22px; color: #7a5a35; }
-#guide-book .guide-page table { border-collapse: collapse; margin: 0.6em auto; font-size: 24px; width: 100%; }
-#guide-book .guide-page th, #guide-book .guide-page td { border: 2px solid #c9b07a; padding: 3px 10px; text-align: left; vertical-align: top; }
-#guide-book .guide-page th { background: #e3cf9f; font-family: 'Pixelify Sans', monospace; font-size: 22px; }
+#guide-book .guide-topic figcaption { font-size: 22px; color: #7a5a35; }
+#guide-book .guide-topic table { border-collapse: collapse; margin: 0.6em auto; font-size: 24px; width: 100%; }
+#guide-book .guide-topic th, #guide-book .guide-topic td { border: 2px solid #c9b07a; padding: 3px 10px; text-align: left; vertical-align: top; }
+#guide-book .guide-topic th { background: #e3cf9f; font-family: 'Pixelify Sans', monospace; font-size: 22px; }
 #guide-book .guide-notice { text-align: center; color: #7a5a35; font-size: 23px; background: #e8d6aa; padding: 4px 10px; margin-bottom: 10px; }
 #guide-book .guide-missing { text-align: center; margin-top: 18%; }
 #guide-book .guide-missing .guide-missing-title { font-family: 'Pixelify Sans', monospace; font-size: 34px; color: #5b3a22; }
@@ -89,8 +91,8 @@ const GUIDE_CSS = `
     background: #fbf3dc; border: 0; box-shadow: inset 0 0 0 2px #a0804f; color: #3a2614; padding: 2px 4px; }
 @media (max-width: 600px) {
     #guide-book .guide-cover { padding: 10px; height: calc(100vh - 32px); }
-    #guide-book .guide-page { padding: 12px 18px 20px 24px; font-size: 23px; }
-    #guide-book .guide-page h1 { font-size: 32px; }
+    #guide-book .guide-topic { padding: 12px 18px 20px 24px; font-size: 23px; }
+    #guide-book .guide-topic h1 { font-size: 32px; }
     #guide-book .guide-head { padding: 10px 14px 6px 20px; }
 }
 /* Phones held sideways: the whole book on a short screen. */
@@ -99,7 +101,7 @@ const GUIDE_CSS = `
     #guide-book .guide-cover::before { display: none; }
     #guide-book .guide-head { padding: 6px 14px 4px 20px; }
     #guide-book .guide-head .guide-book-title { font-size: 22px; }
-    #guide-book .guide-page { padding: 8px 20px 14px 26px; font-size: 22px; }
+    #guide-book .guide-topic { padding: 8px 20px 14px 26px; font-size: 22px; }
     #guide-book .guide-nav { padding: 6px 10px 8px; }
 }
 `;
@@ -112,7 +114,9 @@ Object.assign(Game.prototype, {
         this.guideIndex = null;
         this.guideCache = new Map();
         this.guideHistory = [];
-        this.guidePage = this.guidePageId(this.guideLoadSetting('minecloud-guide-page')) || GUIDE_CONTENTS_PAGE;
+        // The setting keeps its old name, from when a topic was called a page: renamed, every player
+        // would lose the place where they left the book.
+        this.guideTopic = this.guideTopicId(this.guideLoadSetting('minecloud-guide-page')) || GUIDE_CONTENTS_TOPIC;
 
         const fonts = document.createElement('link');
         fonts.rel = 'stylesheet';
@@ -157,7 +161,7 @@ Object.assign(Game.prototype, {
                         ${GAME_LANGS.map((lang) => `<button class="guide-lang" type="button" data-lang="${lang}">${lang}</button>`).join('')}
                         <button class="guide-close" type="button">✕</button>
                     </div>
-                    <div class="guide-page"></div>
+                    <div class="guide-topic"></div>
                     <div class="guide-nav">
                         <button class="guide-prev" type="button">◀</button>
                         <button class="guide-contents" type="button"></button>
@@ -175,7 +179,7 @@ Object.assign(Game.prototype, {
         book.querySelector('.guide-close').addEventListener('click', () => this.guideClose());
         book.querySelector('.guide-prev').addEventListener('click', () => this.guideTurn(-1));
         book.querySelector('.guide-next').addEventListener('click', () => this.guideTurn(1));
-        book.querySelector('.guide-contents').addEventListener('click', () => this.guideGo(GUIDE_CONTENTS_PAGE));
+        book.querySelector('.guide-contents').addEventListener('click', () => this.guideGo(GUIDE_CONTENTS_TOPIC));
         // The printable guide (guide-print.html, js/guidePrint.js) in a new tab.
         book.querySelector('.guide-print').addEventListener('click', () => {
             window.open(`guide-print.html?lang=${encodeURIComponent(gameLang())}`, '_blank', 'noopener');
@@ -183,11 +187,11 @@ Object.assign(Game.prototype, {
         book.querySelectorAll('.guide-lang').forEach((button) => {
             button.addEventListener('click', () => setGameLang(button.dataset.lang));
         });
-        book.querySelector('.guide-page').addEventListener('click', (event) => {
-            const link = event.target.closest('a[data-page]');
+        book.querySelector('.guide-topic').addEventListener('click', (event) => {
+            const link = event.target.closest('a[data-topic]');
             if (!link) return;
             event.preventDefault();
-            this.guideGo(link.dataset.page);
+            this.guideGo(link.dataset.topic);
         });
         document.body.appendChild(book);
         this.guideBook = book;
@@ -212,10 +216,10 @@ Object.assign(Game.prototype, {
             const typing = event.target && event.target.classList && event.target.classList.contains('guide-goto');
             // This listener runs before the input's own, so the "go to" box is handled here.
             if (typing && (event.code === 'Enter' || event.code === 'NumpadEnter' || (event.key === 'Enter' && !event.code))) {
-                const page = this.guidePageId(event.target.value);
+                const topic = this.guideTopicId(event.target.value);
                 event.target.value = '';
                 event.target.blur();
-                if (page) this.guideGo(page);
+                if (topic) this.guideGo(topic);
             } else if (!event.repeat && (event.code === 'Escape' || (event.code === 'KeyH' && !typing))) this.guideClose();
             else if (!typing && event.code === 'ArrowLeft') this.guideTurn(-1);
             else if (!typing && event.code === 'ArrowRight') this.guideTurn(1);
@@ -233,16 +237,16 @@ Object.assign(Game.prototype, {
         this.guideShow();
     },
 
-    // A page id as typed or linked: numbers without leading zeros, codes in capitals; null if
+    // A topic id as typed or linked: numbers without leading zeros, codes in capitals; null if
     // it cannot be an id.
-    guidePageId(raw) {
-        return guidePageIdOf(raw);
+    guideTopicId(raw) {
+        return guideTopicIdOf(raw);
     },
 
-    // Opens the book at page `id`, or where it was left.
+    // Opens the book at topic `id`, or where it was left.
     guideShow(id = null) {
-        const page = this.guidePageId(id);
-        if (page) this.guidePage = page;
+        const topic = this.guideTopicId(id);
+        if (topic) this.guideTopic = topic;
         if (!this.guideOpen) {
             this.guideOpen = true;
             this.stopMining();
@@ -268,14 +272,14 @@ Object.assign(Game.prototype, {
     },
 
     guideGo(id) {
-        const page = this.guidePageId(id);
-        if (!page || page === this.guidePage) return;
-        this.guidePage = page;
+        const topic = this.guideTopicId(id);
+        if (!topic || topic === this.guideTopic) return;
+        this.guideTopic = topic;
         this.guidePageTurnSound(1);
         this.guideRender();
     },
 
-    // The previous / next public page that exists, in either language. Secret pages are only
+    // The previous / next public topic that exists, in either language. Secret topics are only
     // reached by their code.
     guideTurn(direction) {
         const target = this.guideNeighbour(direction);
@@ -283,15 +287,15 @@ Object.assign(Game.prototype, {
     },
 
     guideNeighbour(direction) {
-        if (!/^\d+$/.test(this.guidePage)) return undefined;
-        const current = Number(this.guidePage);
-        const numbers = this.guidePublicPages();
-        const target = direction < 0 ? numbers.filter((page) => page < current).pop() : numbers.find((page) => page > current);
+        if (!/^\d+$/.test(this.guideTopic)) return undefined;
+        const current = Number(this.guideTopic);
+        const numbers = this.guidePublicTopics();
+        const target = direction < 0 ? numbers.filter((topic) => topic < current).pop() : numbers.find((topic) => topic > current);
         return target === undefined ? undefined : String(target);
     },
 
-    guidePublicPages() {
-        return [...new Set((this.guideIndex || []).filter((entry) => !entry.secret).map((entry) => Number(entry.page)))].sort((a, b) => a - b);
+    guidePublicTopics() {
+        return [...new Set((this.guideIndex || []).filter((entry) => !entry.secret).map((entry) => Number(entry.topic)))].sort((a, b) => a - b);
     },
 
     async guideLoadIndex() {
@@ -299,13 +303,13 @@ Object.assign(Game.prototype, {
         if (!this.guideIndexRequest) {
             this.guideIndexRequest = fetch('guide/index.json', { cache: 'no-cache' })
                 .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.status))))
-                .then((pages) => { this.guideIndex = Array.isArray(pages) ? pages : []; return this.guideIndex; })
+                .then((topics) => { this.guideIndex = Array.isArray(topics) ? topics : []; return this.guideIndex; })
                 .finally(() => { this.guideIndexRequest = null; });
         }
         return this.guideIndexRequest;
     },
 
-    async guideLoadPage(entry) {
+    async guideLoadTopic(entry) {
         if (this.guideCache.has(entry.path)) return this.guideCache.get(entry.path);
         const response = await fetch(entry.path.split('/').map(encodeURIComponent).join('/'));
         if (!response.ok) throw new Error(response.status);
@@ -318,10 +322,10 @@ Object.assign(Game.prototype, {
         const book = this.guideBook;
         const lang = gameLang();
         const text = gameText(GUIDE_TEXT);
-        const page = this.guidePage;
-        const view = book.querySelector('.guide-page');
-        this.guideSaveSetting('minecloud-guide-page', page);
-        book.querySelector('.guide-number').textContent = `${text.page} ${page}`;
+        const topic = this.guideTopic;
+        const view = book.querySelector('.guide-topic');
+        this.guideSaveSetting('minecloud-guide-page', topic);
+        book.querySelector('.guide-number').textContent = `${text.topic} ${topic}`;
         book.querySelector('.guide-contents').textContent = text.contents;
         book.querySelector('.guide-goto-label').textContent = text.goTo;
         book.querySelector('.guide-print').textContent = `🖨 ${text.print}`;
@@ -337,23 +341,23 @@ Object.assign(Game.prototype, {
             view.innerHTML = `<div class="guide-missing"><div class="guide-missing-title">${text.offline}</div></div>`;
             return;
         }
-        if (page !== this.guidePage) return;
+        if (topic !== this.guideTopic) return;
         book.querySelector('.guide-prev').disabled = this.guideNeighbour(-1) === undefined;
         book.querySelector('.guide-next').disabled = this.guideNeighbour(1) === undefined;
 
-        const entries = index.filter((entry) => entry.page === page);
+        const entries = index.filter((entry) => entry.topic === topic);
         const entry = entries.find((candidate) => candidate.lang === lang) || entries[0];
         if (!entry) {
             book.querySelector('.guide-book-title').textContent = text.title;
-            view.innerHTML = `<div class="guide-missing"><div class="guide-missing-title">${text.missing(page)}</div><p>${text.missingHint}</p></div>`;
+            view.innerHTML = `<div class="guide-missing"><div class="guide-missing-title">${text.missing(topic)}</div><p>${text.missingHint}</p></div>`;
             view.scrollTop = 0;
             return;
         }
         book.querySelector('.guide-book-title').textContent = entry.title;
         view.innerHTML = `<div class="guide-notice">${text.loading}</div>`;
         try {
-            const html = await this.guideLoadPage(entry);
-            if (page !== this.guidePage || lang !== gameLang()) return;
+            const html = await this.guideLoadTopic(entry);
+            if (topic !== this.guideTopic || lang !== gameLang()) return;
             const notice = entry.lang !== lang ? `<div class="guide-notice">${text.otherLang}</div>` : '';
             view.innerHTML = notice + html;
         } catch (_error) {
@@ -376,7 +380,7 @@ Object.assign(Game.prototype, {
         return this.guideRenderer.markdown(source);
     },
 
-    // Images live next to the pages (`img/foo.png` is guide/img/foo.png); `mob:sheep` is the
+    // Images live next to the topics (`img/foo.png` is guide/img/foo.png); `mob:sheep` is the
     // bestiary portrait of a species, or of an organism of the microscope, and `item:torch` the
     // inventory icon of an item.
     guideAssetUrl(src) {

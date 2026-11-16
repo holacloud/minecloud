@@ -20,6 +20,13 @@ escalones suaves, tejados, bancos y suelos elevados.
 | ![](item:cherry_planks_slab) | Cherry Planks Slab | `cherry_planks_slab` | `cherry_planks` | 0,36 s |
 | ![](item:maple_planks_slab) | Maple Planks Slab | `maple_planks_slab` | `maple_planks` | 0,36 s |
 | ![](item:willow_planks_slab) | Willow Planks Slab | `willow_planks_slab` | `willow_planks` | 0,36 s |
+| ![](item:sandstone_slab) | Sandstone Slab | `sandstone_slab` | `sandstone` | 0,5 s |
+| ![](item:blue_glazed_tile_slab) | Blue Glazed Tile Slab | `blue_glazed_tile_slab` | `blue_glazed_tile` | 0,45 s |
+| ![](item:white_glazed_tile_slab) | White Glazed Tile Slab | `white_glazed_tile_slab` | `white_glazed_tile` | 0,45 s |
+| ![](item:yellow_glazed_tile_slab) | Yellow Glazed Tile Slab | `yellow_glazed_tile_slab` | `yellow_glazed_tile` | 0,45 s |
+| ![](item:green_glazed_tile_slab) | Green Glazed Tile Slab | `green_glazed_tile_slab` | `green_glazed_tile` | 0,45 s |
+| ![](item:turquoise_glazed_tile_slab) | Turquoise Glazed Tile Slab | `turquoise_glazed_tile_slab` | `turquoise_glazed_tile` | 0,45 s |
+| ![](item:red_glazed_tile_slab) | Red Glazed Tile Slab | `red_glazed_tile_slab` | `red_glazed_tile` | 0,45 s |
 
 ## Cómo conseguirlas
 
@@ -36,7 +43,7 @@ Un bloque da dos medios bloques: no se pierde nada. Al romper una losa recuperas
 - Se colocan con clic derecho como cualquier bloque y siempre ocupan la **mitad de abajo** de su hueco.
 - **Se suben andando:** puedes pisar una losa sin saltar, porque tus pasos salvan hasta medio bloque. Una fila de
   losas y bloques alternos hace una escalera cómoda.
-- Las losas de piedra y ladrillo se rompen antes con un [pico](68); las de tablones, con un [hacha](70). Tardan
+- Las losas de piedra, ladrillo, [arenisca](51) y [azulejo vidriado](57) se rompen antes con un [pico](68); las de tablones, con un [hacha](70). Tardan
   algo más de la mitad que su bloque entero.
 
 ## Trucos

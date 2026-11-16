@@ -308,7 +308,7 @@ func TestLogicFollowsSavedNames(t *testing.T) {
 }
 
 func TestLogicBlinker(t *testing.T) {
-	// Page 210: a NOT gate (facing east) and a 1 s delay right after it, with a wire from the
+	// Topic 210: a NOT gate (facing east) and a 1 s delay right after it, with a wire from the
 	// delay's output back round to the NOT's input: about 1.2 s on, 1.2 s off.
 	blocks := map[powerPos]string{{0, 0, 0}: "not_gate:e:off", {1, 0, 0}: "delay_gate:e:1:off"}
 	for _, p := range []powerPos{{2, 0, 0}, {2, 0, 1}, {2, 0, 2}, {1, 0, 2}, {0, 0, 2}, {-1, 0, 2}, {-1, 0, 1}, {-1, 0, 0}} {
@@ -337,7 +337,7 @@ func TestLogicBlinker(t *testing.T) {
 	}
 }
 
-// The example circuits of guide page 211.
+// The example circuits of guide topic 211.
 
 func TestLogicExampleNightLights(t *testing.T) {
 	// Panel + battery | daylight sensor in night mode | lamp.

@@ -3,7 +3,7 @@
 ![Robot](item:robot)
 
 Eight challenges for your [robot](193), from easiest to hardest. Each one has a **hint**. The **solutions** are at
-the end of the page, but... try first! There are many good ways to solve each challenge: if your program works, it
+the end of the topic, but... try first! There are many good ways to solve each challenge: if your program works, it
 is right, even if it does not look like the solution.
 
 If you forget what an instruction does, see [Programming the robot](194).

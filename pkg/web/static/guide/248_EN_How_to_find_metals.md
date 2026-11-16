@@ -2,7 +2,7 @@
 
 ![Copper ore](item:copper_ore)
 
-Metals are not hidden at random. Each has its own lands and its own depth, and many **can be seen from outside**, if you know how to look. This page says where to search. The [next one](249) says how to get the metal out.
+Metals are not hidden at random. Each has its own lands and its own depth, and many **can be seen from outside**, if you know how to look. This topic says where to search. The [next one](249) says how to get the metal out.
 
 ## Two ways to find them
 

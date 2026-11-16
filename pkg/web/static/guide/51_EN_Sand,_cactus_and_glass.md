@@ -3,7 +3,7 @@
 ![Sand](item:sand)
 
 Three desert blocks: the **sand** of dunes and beaches, the **cactus** that grows on it, and the **glass** that is
-made from it.
+made from it. And **sandstone**, sand turned to stone, for building.
 
 | | In-game name | Id | Break (bare hand) |
 |---|---|---|---|
@@ -35,7 +35,24 @@ Sand is one of the most used ingredients:
 | 4 coloured bricks (`*_brick`) | 1 `brick` + **1** `sand` |
 | 2 of each [fine stone or metal](59) | 2 `cobblestone` or `stone` + **1** `sand` |
 | 4 `limestone` | 1 `shell` + **1** `sand` |
+| 2 `sandstone` | **4** `sand` |
+| 4 [glazed tiles](57) (`*_glazed_tile`) | 2 `brick` + **1** `sand` + what colours the glaze |
+| 4 `white_stucco` ([lime stucco](183)) | 1 `quicklime` + **2** `sand` + 1 `water_flask` |
 | 1 `spray_paint` | **1** `sand` + 1 `flower_red` + 1 `coal_ore` |
+
+## Sandstone
+
+| | In-game name | Id | Made from (C key) | Break (bare hand) |
+|---|---|---|---|---|
+| ![](item:sandstone) | Sandstone | `sandstone` | 4 `sand` (makes 2) | 0.8 s |
+| ![](item:cut_sandstone) | Cut Sandstone | `cut_sandstone` | 4 `sandstone` (makes 4) | 0.8 s |
+
+Sandstone is never found in the world: it is crafted, and placed like any block. It counts as stone, so a
+[pickaxe](68) breaks it faster. The cut one has smooth faces and a carved frame. Plain sandstone is also cut into
+[stairs](196) and [slabs](56).
+
+Real **sandstone** is sand turned to stone: grains that water or wind piled up in layers, glued over the centuries
+by a natural cement (lime, silica or iron oxide). That is why its sides show **bands**: each one is a layer.
 
 ## What they are for
 

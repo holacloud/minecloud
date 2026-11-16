@@ -1,6 +1,6 @@
 # The heart of the storm
 
-> You found a hidden page. You read it on a stone that was still giving off sparks. Few dare to topple a giant
+> You found a hidden topic. You read it on a stone that was still giving off sparks. Few dare to topple a giant
 > in the middle of the rain.
 
 ![Storm golem](mob:storm_golem)
@@ -62,5 +62,5 @@ If you are reading this, you have already seen it.
 
 ---
 
-**The next clue:** under the meadows travels someone who **feels your footsteps**. Its page in this guide hides
+**The next clue:** under the meadows travels someone who **feels your footsteps**. Its topic in this guide hides
 an **acrostic**: a word spelt by first letters. Read it slowly, from top to bottom.

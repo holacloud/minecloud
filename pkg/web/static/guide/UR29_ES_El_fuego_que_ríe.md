@@ -1,6 +1,6 @@
 # El fuego que ríe
 
-> Has encontrado una página escondida. Te la susurró una llama al morir. Pocos llegan hasta aquí: la mayoría
+> Has encontrado un tema escondido. Te lo susurró una llama al morir. Pocos llegan hasta aquí: la mayoría
 > acaba en el fondo de un lago, siguiendo una luz.
 
 ![Fuego fatuo](mob:wisp)

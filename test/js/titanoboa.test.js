@@ -15,7 +15,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame({ listenersOf: ['js/game/titanoboa.js'], frameUpdates: ['titanoboaUpdate'] });
 const T = JSON.parse(vm.runInContext('JSON.stringify(TITANOBOA)', ctx));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `284_${lang}_Titanoboa.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `284_${lang}_Titanoboa.md`), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 const round = (number) => Math.round(number * 1000) / 1000;
 
@@ -35,7 +35,7 @@ function alone(x = 0.5, z = 0.5) {
     return { g, mob };
 }
 
-test('what it is: a hostile snake of the ground movement, seven blocks long, and what its page says of it', () => {
+test('what it is: a hostile snake of the ground movement, seven blocks long, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('titanoboa');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.ok(ctx.mobMovementIs(info.movement, 'walksToGoal'));
@@ -54,9 +54,9 @@ test('what it is: a hostile snake of the ground movement, seven blocks long, and
     assert.ok(length > 6.8 && length < 7.4, `${length} blocks`);
     assert.ok(Math.max(...T.widths) / 16 > 0.6, 'as thick as a barrel');
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes('**7 bloques de largo**') && en.includes('**7 blocks long**'));
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`), 'from how far it comes');
     assert.ok(es.includes(`a **${comma(info.chaseSpeed)} bloques por\n  segundo**`) && en.includes(`at **${info.chaseSpeed} blocks a second**`), 'how fast');

@@ -21,6 +21,21 @@ Or in the [foundry](235), as a lime kiln does: 1 `limestone` gives **2** `quickl
 | Recipe (C key) | Ingredients |
 |---|---|
 | 6 `stone_bricks` (*Lay Stone Bricks with Lime Mortar*) | 1 `quicklime` + 4 `cobblestone` |
+| 4 `white_stucco` (*Mix White Lime Stucco*) | 1 `quicklime` + 2 `sand` + 1 [water flask](118) |
+| 4 `red_stucco` (*Mix Red Lime Stucco*) | 4 `white_stucco` + 1 [red ochre](129) |
+
+## Lime stucco
+
+| | In-game name | Id | Break (bare hand) |
+|---|---|---|---|
+| ![](item:white_stucco) | White Lime Stucco | `white_stucco` | 0.6 s |
+| ![](item:red_stucco) | Red Lime Stucco | `red_stucco` | 0.6 s |
+
+A smooth block for plastered walls, placed like any other. Behind it there is a little chemistry in three steps:
+limestone is burnt and becomes **quicklime**; water slakes it (it gets very hot, careful!) into slaked lime; mixed
+with sand it is spread on the wall, and there, slowly, it takes **carbon dioxide from the air** and turns back into
+limestone. The wall ends up as stone: the lime has gone round in a circle. That is how the Maya plastered their
+pyramids, white and red, and lime still whitens the walls of the villages of Andalusia.
 
 ## Trivia
 

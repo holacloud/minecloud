@@ -127,7 +127,7 @@ var (
 // How many there are, pinned at 15 % either way of what the constants of fossils.go were tuned to
 // give. In the rock, per chunk: two or three pockets of common fossils (4.7 blocks), a rare one in
 // four of every five, a skeleton in every fourteen. Amber, in two forest chunks of every five or so.
-// Whoever changes a constant changes the number here, and the guide (pages 262 and 263) with it; what
+// Whoever changes a constant changes the number here, and the guide (topics 262 and 263) with it; what
 // the numbers are for is in TestATunnelMeetsFossilsAsOftenAsItWasTunedTo.
 func TestFossilsAreAsCommonAsTheyWereTunedToBe(t *testing.T) {
 	const margin = 0.15
@@ -231,7 +231,7 @@ func TestATunnelMeetsFossilsAsOftenAsItWasTunedTo(t *testing.T) {
 	}
 
 	// Amber, under a forest, with the feet at the bottom of its layer and one above: where the guide
-	// sends whoever looks for it (page 263). Higher there is less and less rock.
+	// sends whoever looks for it (topic 263). Higher there is less and less rock.
 	for feet := amberBottom; feet <= amberBottom+1; feet++ {
 		forest := census.walkTunnels(feet, underForest)
 		if forest.steps < 150_000 {

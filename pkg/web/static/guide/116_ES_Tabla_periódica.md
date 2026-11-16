@@ -4,11 +4,11 @@
 
 La **tabla periódica** ordena los elementos químicos por su **número atómico** (cuántos protones tiene cada átomo en su núcleo). Las **filas** se llaman **periodos** y las **columnas**, **grupos**: los elementos de un mismo grupo se parecen y reaccionan de forma parecida.
 
-La [mesa de laboratorio](117) dibuja los 36 elementos del juego en su sitio de la tabla real, coloreados por familia. Al pulsar uno, el botón 📖 abre aquí su página. De los 118 elementos que se conocen, el juego tiene 36.
+La [mesa de laboratorio](117) dibuja los 36 elementos del juego en su sitio de la tabla real, coloreados por familia. Al pulsar uno, el botón 📖 abre aquí su tema. De los 118 elementos que se conocen, el juego tiene 36.
 
 ## Los 36 elementos
 
-Pulsa un nombre para ir a su página. La última columna muestra las reacciones que el laboratorio conoce desde el principio y cuántas quedan por descubrir.
+Pulsa un nombre para ir a su tema. La última columna muestra las reacciones que el laboratorio conoce desde el principio y cuántas quedan por descubrir.
 
 | | Símbolo | Elemento | Nº | Grupo | Periodo | Familia | En el laboratorio |
 |---|---|---|---|---|---|---|---|

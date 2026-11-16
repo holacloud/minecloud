@@ -15,8 +15,8 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-// A page as one line: where its sentences are broken is nobody's business.
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `277_${lang}_Nuralagus.md`), 'utf8').replace(/\s+/g, ' ');
+// A topic as one line: where its sentences are broken is nobody's business.
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `277_${lang}_Nuralagus.md`), 'utf8').replace(/\s+/g, ' ');
 
 test('what it is: the rabbit\'s giant cousin, a slow walker that eats what a rabbit eats and, unlike it, is tamed', () => {
     const info = ctx.getMobSpecies('nuralagus');
@@ -32,12 +32,12 @@ test('what it is: the rabbit\'s giant cousin, a slow walker that eats what a rab
     assert.equal(ctx.TAMING_DIET.nuralagus.foods.join(), ctx.TAMING_DIET.rabbit.foods.join(), 'the food of a rabbit');
     assert.equal(ctx.TAMING_DIET.nuralagus.chance, 1 / 3);
     assert.ok(ctx.Game.prototype.tamingCanTame.call({}, 'nuralagus'));
-    assert.equal(ctx.Game.prototype.tamingCanTame.call({}, 'rabbit'), false, 'which nobody does to a rabbit of today, as its page says');
+    assert.equal(ctx.Game.prototype.tamingCanTame.call({}, 'rabbit'), false, 'which nobody does to a rabbit of today, as its topic says');
     assert.equal(JSON.stringify(ctx.TRAPS_SPECIES.nuralagus), '{"baits":[],"cage":true}');
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.equal([4, 5, 6, 7, 8].map((damage) => Math.ceil(info.maxHealth / damage)).join(), '3,3,2,2,2', 'bare-handed, and with a sword of wood, stone, iron and gold (js/game/mobs.js)');
     assert.ok(es.includes(`**${info.maxHealth} de vida**: 3 golpes a mano, 2 con una [espada](71) de piedra o mejor`));
     assert.ok(en.includes(`**${info.maxHealth} health**: 3 hits bare-handed, 2 with a stone [sword](71) or better`));

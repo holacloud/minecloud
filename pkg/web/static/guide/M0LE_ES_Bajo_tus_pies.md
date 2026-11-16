@@ -1,6 +1,6 @@
 # Bajo tus pies
 
-> Has encontrado una página escondida. Estaba enterrada bajo un montón de tierra recién removida. Habla bajito:
+> Has encontrado un tema escondido. Estaba enterrado bajo un montón de tierra recién removida. Habla bajito:
 > alguien escucha desde abajo.
 
 ![Topo gigante](mob:mole)
@@ -66,5 +66,5 @@ pradera queda como estaba.
 
 ---
 
-**La siguiente pista:** llena el cuaderno. Cuando el [bestiario](5) cuente **todas** las especies, mira su
-**última página**: hay algo escrito con tinta desvaída.
+**La siguiente pista:** llena el cuaderno. Cuando el [bestiario](5) cuente **todas** las especies, mira
+**su última página**: hay algo escrito con tinta desvaída.

@@ -1,6 +1,6 @@
 // The guide's Markdown, shared by the in-game book (js/game/guide.js) and the printable guide
 // (guide-print.html, js/guidePrint.js): headings, paragraphs, **bold**, *italic*, `code`,
-// links (page numbers or URLs), images (centred, with the alt text as caption), lists, tables,
+// links (topic numbers or URLs), images (centred, with the alt text as caption), lists, tables,
 // quotes and rules. Pure functions: no DOM, no game.
 //
 // createGuideMarkdown({ assetUrl }) returns { markdown(source), inline(text), list(lines, i),
@@ -9,9 +9,9 @@
 
 const GUIDE_LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 
-// A page id as typed or linked: numbers without leading zeros, codes in capitals; null if it
+// A topic id as typed or linked: numbers without leading zeros, codes in capitals; null if it
 // cannot be an id.
-function guidePageIdOf(raw) {
+function guideTopicIdOf(raw) {
     const id = String(raw ?? '').trim().toUpperCase();
     if (/^\d{1,8}$/.test(id)) return String(Number(id));
     return /^[0-9A-Z]{1,8}$/.test(id) ? id : null;
@@ -21,7 +21,7 @@ function guideEscapeHtml(text) {
     return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Images live next to the pages (`img/foo.png` is guide/img/foo.png); web and absolute URLs
+// Images live next to the topics (`img/foo.png` is guide/img/foo.png); web and absolute URLs
 // stay as they are. mob:/item: sources are not files: the caller draws them.
 function guideAssetPath(src) {
     if (/^(mob|item):[a-z0-9_]+$/.test(src)) return src;
@@ -134,8 +134,9 @@ function createGuideMarkdown(options = {}) {
         out = out
             .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_match, alt, src) => `<img src="${assetUrl(src)}" alt="${alt}">`)
             .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => {
-                const page = href.match(/^(?:page:|#)?([0-9A-Za-z]{1,8})$/);
-                if (page) return `<a data-page="${guidePageIdOf(page[1])}">${label}</a>`;
+                // `page:12` is an older way to write a link to a topic, still understood.
+                const topic = href.match(/^(?:page:|#)?([0-9A-Za-z]{1,8})$/);
+                if (topic) return `<a data-topic="${guideTopicIdOf(topic[1])}">${label}</a>`;
                 if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
                 return label;
             })
@@ -149,5 +150,5 @@ function createGuideMarkdown(options = {}) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { GUIDE_LIST_ITEM, guidePageIdOf, guideEscapeHtml, guideAssetPath, createGuideMarkdown };
+    module.exports = { GUIDE_LIST_ITEM, guideTopicIdOf, guideEscapeHtml, guideAssetPath, createGuideMarkdown };
 }

@@ -1445,74 +1445,74 @@ test('the clock tells the game time', () => {
 test('the guide covers the furniture, in both languages, from the indexes and the printed book', () => {
     const GUIDE = path.join(STATIC, 'guide');
     const names = fs.readdirSync(GUIDE);
-    const pages = [223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234];
+    const topics = [223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234];
     const read = (name) => fs.readFileSync(path.join(GUIDE, name), 'utf8');
-    for (const page of pages) {
-        for (const lang of ['EN', 'ES']) assert.ok(names.some((name) => name.startsWith(`${page}_${lang}_`)), `${page} ${lang}`);
-        assert.ok(print.SECTIONS.some(([from, to]) => page >= from && page <= to), `section for ${page}`);
+    for (const topic of topics) {
+        for (const lang of ['EN', 'ES']) assert.ok(names.some((name) => name.startsWith(`${topic}_${lang}_`)), `${topic} ${lang}`);
+        assert.ok(print.sectionRows(require(path.join(STATIC, 'guide', 'volumes.json'))).some(([from, to]) => topic >= from && topic <= to), `section for ${topic}`);
     }
     assert.ok(!names.some((name) => name.startsWith('221_')), '221 stays unused');
     for (const lang of ['EN', 'ES']) {
         const contents = read(names.find((name) => name.startsWith(`0_${lang}_`)));
         const items = read(names.find((name) => name.startsWith(`48_${lang}_`)));
         assert.match(contents, /\(223\)/);
-        for (const page of pages) assert.match(items, new RegExp(`\\(${page}\\)`));
-        for (const page of pages.slice(1)) {
-            const text = read(names.find((name) => name.startsWith(`${page}_${lang}_`)));
-            assert.ok(text.includes('(item:') || text.includes('item:'), `${page} has pictures`);
+        for (const topic of topics) assert.match(items, new RegExp(`\\(${topic}\\)`));
+        for (const topic of topics.slice(1)) {
+            const text = read(names.find((name) => name.startsWith(`${topic}_${lang}_`)));
+            assert.ok(text.includes('(item:') || text.includes('item:'), `${topic} has pictures`);
         }
-        // Every link of the new pages points to a page that exists.
-        for (const page of pages) {
-            const text = read(names.find((name) => name.startsWith(`${page}_${lang}_`)));
+        // Every link of the new topics points to a topic that exists.
+        for (const topic of topics) {
+            const text = read(names.find((name) => name.startsWith(`${topic}_${lang}_`)));
             for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) {
-                assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), `${page} ${lang} links to ${target}`);
+                assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), `${topic} ${lang} links to ${target}`);
             }
         }
         // Stained glass links the chemistry behind its colours.
         const glass = read(names.find((name) => name.startsWith(`229_${lang}_`)));
         for (const element of [163, 165, 172, 161]) assert.match(glass, new RegExp(`\\(${element}\\)`));
-        // Mirrors and the chemistry page link each other, and the old page no longer says it is only a texture.
+        // Mirrors and the chemistry topic link each other, and the old topic no longer says it is only a texture.
         assert.match(read(names.find((name) => name.startsWith(`232_${lang}_`))), /\(181\)/);
         assert.match(read(names.find((name) => name.startsWith(`181_${lang}_`))), /\(232\)/);
     }
     const readme = read('README.md');
-    for (const page of pages) assert.match(readme, new RegExp(`^\\| ${page} \\|`, 'm'));
+    for (const topic of topics) assert.match(readme, new RegExp(`^\\| ${topic} \\|`, 'm'));
 });
 
-test('the guide covers the foundry and the arc furnace, in both languages, and the old pages point to them', () => {
+test('the guide covers the foundry and the arc furnace, in both languages, and the old topics point to them', () => {
     const GUIDE = path.join(STATIC, 'guide');
     const names = fs.readdirSync(GUIDE);
     const read = (name) => fs.readFileSync(path.join(GUIDE, name), 'utf8');
-    const page = (id, lang) => read(names.find((name) => name.startsWith(`${id}_${lang}_`)));
+    const topic = (id, lang) => read(names.find((name) => name.startsWith(`${id}_${lang}_`)));
     for (const lang of ['EN', 'ES']) {
         for (const id of [235, 236]) {
-            assert.ok(print.SECTIONS.some(([from, to]) => id >= from && id <= to), `section for ${id}`);
-            const text = page(id, lang);
+            assert.ok(print.sectionRows(require(path.join(STATIC, 'guide', 'volumes.json'))).some(([from, to]) => id >= from && id <= to), `section for ${id}`);
+            const text = topic(id, lang);
             for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) {
                 assert.ok(names.some((name) => name.startsWith(`${target}_${lang}_`)), `${id} ${lang} links to ${target}`);
             }
-            assert.match(page(0, lang), new RegExp(`\\(${id}\\)`));
-            assert.match(page(48, lang), new RegExp(`\\(${id}\\)`));
+            assert.match(topic(0, lang), new RegExp(`\\(${id}\\)`));
+            assert.match(topic(48, lang), new RegExp(`\\(${id}\\)`));
         }
-        assert.match(page(235, lang), /item:foundry/);
-        assert.match(page(236, lang), /item:arc_furnace/);
-        assert.match(page(236, lang), /150 W/);
-        assert.match(page(236, lang), /SiO₂ \+ 2 C → Si \+ 2 CO/);
+        assert.match(topic(235, lang), /item:foundry/);
+        assert.match(topic(236, lang), /item:arc_furnace/);
+        assert.match(topic(236, lang), /150 W/);
+        assert.match(topic(236, lang), /SiO₂ \+ 2 C → Si \+ 2 CO/);
         // The yields in the text are those of the tables.
         for (const [id, table] of [[235, ctx.APPLIANCE_FOUNDRY], [236, ctx.APPLIANCE_ARC]]) {
             for (const [item, recipe] of Object.entries(table)) {
                 const made = recipe.yield > 1 ? `\\*\\*${recipe.yield}\\*\\*` : `${recipe.yield}`;
-                assert.match(page(id, lang), new RegExp(`${recipe.in} \`${item}\`.*${made} \`${recipe.out}\`.*\\b${recipe.seconds} s`), `${id} ${item}`);
+                assert.match(topic(id, lang), new RegExp(`${recipe.in} \`${item}\`.*${made} \`${recipe.out}\`.*\\b${recipe.seconds} s`), `${id} ${item}`);
             }
         }
-        // The pages on what they make say so, and that the C recipes stay.
-        assert.match(page(51, lang), /\(235\)/);
-        assert.match(page(50, lang), /\(235\)/);
-        assert.match(page(152, lang), /\(236\)/);
-        assert.match(page(204, lang), /\(236\)/);
-        assert.match(page(200, lang), /\(236\)/);
-        assert.match(page(233, lang), /\(235\)/);
-        for (const id of [235, 236]) assert.match(page(id, lang), lang === 'EN' ? /C menu/ : /menú C/);
+        // The topics on what they make say so, and that the C recipes stay.
+        assert.match(topic(51, lang), /\(235\)/);
+        assert.match(topic(50, lang), /\(235\)/);
+        assert.match(topic(152, lang), /\(236\)/);
+        assert.match(topic(204, lang), /\(236\)/);
+        assert.match(topic(200, lang), /\(236\)/);
+        assert.match(topic(233, lang), /\(235\)/);
+        for (const id of [235, 236]) assert.match(topic(id, lang), lang === 'EN' ? /C menu/ : /menú C/);
     }
     const readme = read('README.md');
     for (const id of [235, 236]) assert.match(readme, new RegExp(`^\\| ${id} \\|`, 'm'));

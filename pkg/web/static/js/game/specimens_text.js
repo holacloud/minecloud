@@ -1,6 +1,6 @@
 // What the microscope says of each specimen (js/game/specimens.js), in both languages (js/gameLang.js): one
 // line of what it is, what each power shows, and what each stain does. A kind gives what all its specimens
-// share; a look (one or a few items) says what it is and whatever differs. Guide pages 258-259 say the same.
+// share; a look (one or a few items) says what it is and whatever differs. Guide topics 258-259 say the same.
 // test/js/microscope_specimens.test.js fails if any specimen lacks any of it in either language.
 
 function spT(ES, EN) {

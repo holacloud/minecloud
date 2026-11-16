@@ -19,7 +19,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/ancient_firefly.js'], frameUpdates: ['ancientFireflyUpdate'] });
 const F = JSON.parse(vm.runInContext('JSON.stringify(ANCIENT_FIREFLY)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '295_ES_Luciérnaga_antigua.md' : '295_EN_Ancient_firefly.md'), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '295_ES_Luciérnaga_antigua.md' : '295_EN_Ancient_firefly.md'), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 
 // A firefly the server keeps, with no owner and nowhere to go: it stands where it is (js/game/animals.js).
@@ -35,7 +35,7 @@ function kept(night = false) {
 // How far over the floor (y = 0) its model is.
 const height = (mob) => mob.position.y + mob.userData.modelRoot.position.y;
 
-test('what it is: one peaceful beetle that hovers, and what its page says of it', () => {
+test('what it is: one peaceful beetle that hovers, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('ancient_firefly');
     assert.equal(info.movement, undefined, 'the ground movement, hovering: a body the server can keep and walk');
     assert.ok(ctx.mobMovementIs(info.movement, 'walksToGoal') && !ctx.mobMovementIs(info.movement, 'bodiless'));
@@ -53,14 +53,14 @@ test('what it is: one peaceful beetle that hovers, and what its page says of it'
     })()`, ctx);
     assert.equal(quarters, '');
 
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(info.flyHeight > 0.8 && info.flyHeight < 1, 'a little under a block');
     assert.ok(es.includes('a algo menos de 1 bloque del suelo') && en.includes('a little under 1 block above the ground'));
     assert.ok(es.includes(`lleva ${F.land} segundos sin tener adónde ir`) && en.includes(`nowhere to go for ${F.land} seconds`), 'when it lands');
     assert.ok(es.includes(`cada ${comma(F.every[0])} a ${comma(F.every[1])} segundos`) && en.includes(`every ${F.every[0]} to\n  ${F.every[1]} seconds`), 'how often it flares');
     assert.ok(F.blink > 0.8 && F.blink < 1, 'nearly a second');
-    // Night is what the game calls night (js/game/environment.js): the hours of its page.
+    // Night is what the game calls night (js/game/environment.js): the hours of its topic.
     const hours = (timeOfDay) => ctx.Game.prototype.isNightTime.call({ timeOfDay });
     assert.deepEqual([17.9, 18, 23, 0, 5.9, 6, 12].map((hour) => hours(((hour - 6 + 24) % 24) / 24)), [false, true, true, true, true, false, false]);
     assert.ok(es.includes('De **18:00 a 6:00**') && en.includes('From **18:00 to 6:00**'));

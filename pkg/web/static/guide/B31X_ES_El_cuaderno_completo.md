@@ -1,6 +1,6 @@
 # El cuaderno completo
 
-> Has encontrado una página escondida. Estaba en la última hoja del bestiario, escrita con una tinta tan
+> Has encontrado un tema escondido. Estaba en la última hoja del bestiario, escrito con una tinta tan
 > desvaída que solo aparece cuando no queda ni un animal ni una criatura por descubrir. **35 de 35.** Lo has conseguido.
 
 ## Enhorabuena, naturalista
@@ -65,7 +65,7 @@ siguiente, y las cuatro últimas, en noviembre. Ver [Historia de MineCloud](102)
 - Ahora que conoces a todos, mira cómo se relacionan: [La cadena alimenticia](100).
 
 > Un cuaderno completo no es el final del viaje. Es la prueba de que sabes **mirar**. Y quien sabe mirar
-> encuentra páginas que nadie más ve.
+> encuentra temas que nadie más ve.
 
 ---
 

@@ -26,4 +26,4 @@ Prueba esto: levanta la mano derecha. Tu imagen levanta la mano del mismo lado. 
 
 ## ¿Por qué plata?
 
-Los metales tienen electrones que se mueven libremente, y esos electrones devuelven la luz. La [plata](167) refleja más luz visible que ningún otro metal. El vidrio solo la mantiene plana y la protege del aire, que la oscurecería. La página [181](181) cuenta la reacción que la deposita sobre el vidrio.
+Los metales tienen electrones que se mueven libremente, y esos electrones devuelven la luz. La [plata](167) refleja más luz visible que ningún otro metal. El vidrio solo la mantiene plana y la protege del aire, que la oscurecería. El tema [181](181) cuenta la reacción que la deposita sobre el vidrio.

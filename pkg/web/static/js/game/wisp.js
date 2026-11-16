@@ -378,7 +378,7 @@ Object.assign(Game.prototype, {
         }
     },
 
-    // Now and then a caught wisp gives away a guide code (see the guide's secret pages).
+    // Now and then a caught wisp gives away a guide code (see the guide's secret topics).
     wispWhisper() {
         if (Math.random() < 0.35) setTimeout(() => this.receiveSystemMessage({ text: 'A fading whisper: "...U... R... 29..."' }), 1400);
     },

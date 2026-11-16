@@ -22,12 +22,12 @@ donde los [bloques de elementos](60) se convierten en algo útil.
   - **La tabla periódica**: los 36 elementos en su sitio, con el número atómico arriba y, abajo en amarillo,
     cuántos bloques llevas. Los que no tienes salen apagados. Clic para echar un átomo al matraz, clic derecho para
     sacarlo. Debajo de la tabla aparecen los datos del último elemento pulsado, con un botón **📖** que abre su
-    página en esta guía.
+    tema en esta guía.
   - **El matraz**: muestra la mezcla como una ecuación, por ejemplo `2 H + O → H₂O (Water)`, qué produce y qué te
     falta. El botón **React** hace la reacción; **Empty flask** lo vacía.
   - **La lista de reacciones**: 30 en total. Al principio solo se conocen 4; las demás salen como **???** hasta
     que mezclas en el matraz los átomos justos y las **descubres** (se recuerdan para siempre). Clic en una conocida
-    para llenar el matraz; su botón **📖** abre la página del producto. Las que ya puedes hacer salen en verde. Arriba
+    para llenar el matraz; su botón **📖** abre el tema del producto. Las que ya puedes hacer salen en verde. Arriba
     se ve cuántas llevas descubiertas.
 - Escape, el botón **Close** o un clic fuera del panel lo cierran. Un botón 📖 también lo cierra y abre la guía;
   al cerrar el libro vuelves al juego.

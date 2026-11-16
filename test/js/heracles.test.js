@@ -17,7 +17,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/heracles.js'], frameUpdates: ['heraclesUpdate'] });
 const H = JSON.parse(vm.runInContext('JSON.stringify(HERACLES)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '279_ES_Loro_Heracles.md' : '279_EN_Heracles_parrot.md'), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '279_ES_Loro_Heracles.md' : '279_EN_Heracles_parrot.md'), 'utf8');
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 const comma = (number) => String(number).replace('.', ',');
@@ -30,7 +30,7 @@ function struck(away = 1.3) {
     return { g, mob };
 }
 
-test('what it is: a neutral parrot of the ground that nobody tames, and what its page says of it', () => {
+test('what it is: a neutral parrot of the ground that nobody tames, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('heracles');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.equal(info.flyHeight, undefined, 'it does not fly');
@@ -49,9 +49,9 @@ test('what it is: a neutral parrot of the ground that nobody tames, and what its
     assert.deepEqual(model.odd, []);
     assert.equal(model.height, 1);
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`durante ${comma(H.warn)} segundos`) && en.includes(`for ${H.warn} seconds`), 'how long it warns');
     assert.ok(es.includes(`a menos de ${comma(H.reach)} bloques de él`) && en.includes(`within ${H.reach} blocks of it`), 'how near it bites');
     assert.ok(es.includes(`A más de ${comma(H.reach)} bloques`) && en.includes(`more than ${H.reach} blocks away`));

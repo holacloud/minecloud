@@ -64,7 +64,7 @@ function loadModules() {
         microSpeciesOf, microSampleId, microSourceInTube, microPopulate, microScenery, microSlideStage, microUnfold, microFate, microBlur, microCanIdentify,
         microStep, tardigradeLegs, microDrawOrganism, microDrawPortrait, microDrawTardigrade, microDrawTardigradeMolt, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeOpenToSky, microscopeClampStage, microscopeStepPower, microscopeScale, microscopeScaleBar,
-        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeStageText, microscopeStateName, microscopeStageOfName, microscopeSuperscript, MICRO_PLATES, microscopeDrawField, microscopeDarkLine, microscopeIsUnlitLamp, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_PAGE });`, context);
+        microscopePick, microscopeSlideLine, microscopeTardigradeLine, microscopeStageText, microscopeStateName, microscopeStageOfName, microscopeSuperscript, MICRO_PLATES, microscopeDrawField, microscopeDarkLine, microscopeIsUnlitLamp, Game, MOB_SPECIES, BESTIARY_ENTRIES, BESTIARY_STORAGE_KEY, MICROSCOPE_GUIDE_TOPIC });`, context);
     return context;
 }
 
@@ -1719,9 +1719,9 @@ test('the book finds an organism\'s portrait through mob:', () => {
 
 const GUIDE = path.join(STATIC, 'guide');
 const guideNames = fs.readdirSync(GUIDE);
-const guidePage = (page, lang) => {
-    const name = guideNames.find((candidate) => candidate.startsWith(`${page}_${lang}_`));
-    assert.ok(name, `page ${page} ${lang}`);
+const guideTopic = (topic, lang) => {
+    const name = guideNames.find((candidate) => candidate.startsWith(`${topic}_${lang}_`));
+    assert.ok(name, `topic ${topic} ${lang}`);
     return fs.readFileSync(path.join(GUIDE, name), 'utf8');
 };
 const SMALL_WORLD = [237, 238, 239, 240, 241, 242, 243, 244];
@@ -1732,52 +1732,52 @@ test('the guide: 237 to 244 in both languages, with the plan\'s titles, in the p
         EN: ['The small world', 'The microscope', 'How to take a sample', 'Tardigrades', 'Cryptobiosis', 'Plant and animal cells', 'Protozoa and algae', 'Bacteria: nearly all are friends']
     };
     const print = require(path.join(JS, 'guidePrint.js'));
-    SMALL_WORLD.forEach((page, i) => {
-        for (const lang of ['ES', 'EN']) assert.equal(guidePage(page, lang).split('\n')[0], `# ${titles[lang][i]}`);
-        assert.ok(print.SECTIONS.some(([from, to]) => page >= from && page <= to), `section for ${page}`);
+    SMALL_WORLD.forEach((topic, i) => {
+        for (const lang of ['ES', 'EN']) assert.equal(guideTopic(topic, lang).split('\n')[0], `# ${titles[lang][i]}`);
+        assert.ok(print.sectionRows(require(path.join(STATIC, 'guide', 'volumes.json'))).some(([from, to]) => topic >= from && topic <= to), `section for ${topic}`);
     });
-    assert.ok(guideNames.some((name) => name.startsWith('245_')), 'the next page is the glow block');
+    assert.ok(guideNames.some((name) => name.startsWith('245_')), 'the next topic is the glow block');
     assert.ok(!guideNames.some((name) => name.startsWith('221_')), '221 stays free');
     // File names go through go:embed, which takes no colon.
     assert.ok(!guideNames.some((name) => name.includes(':')));
     const readme = fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8');
-    for (const page of SMALL_WORLD) assert.match(readme, new RegExp(`^\\| ${page} \\|`, 'm'));
+    for (const topic of SMALL_WORLD) assert.match(readme, new RegExp(`^\\| ${topic} \\|`, 'm'));
     const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
     assert.match(guia, /^## Microscopio y tardígrados$/m);
 });
 
-test('the guide: every link, picture and id is real, and they are linked from the old pages', () => {
+test('the guide: every link, picture and id is real, and they are linked from the old topics', () => {
     for (const lang of ['ES', 'EN']) {
-        for (const page of SMALL_WORLD) {
-            const text = guidePage(page, lang);
-            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) assert.ok(guideNames.some((name) => name.startsWith(`${target}_${lang}_`)), `${page} ${lang} links to ${target}`);
-            for (const [, species] of text.matchAll(/\(mob:([a-z0-9_]+)\)/g)) assert.ok(ctx.MICRO_SPECIES[species], `${page} ${lang}: mob:${species}`);
+        for (const topic of SMALL_WORLD) {
+            const text = guideTopic(topic, lang);
+            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) assert.ok(guideNames.some((name) => name.startsWith(`${target}_${lang}_`)), `${topic} ${lang} links to ${target}`);
+            for (const [, species] of text.matchAll(/\(mob:([a-z0-9_]+)\)/g)) assert.ok(ctx.MICRO_SPECIES[species], `${topic} ${lang}: mob:${species}`);
         }
-        const contents = guidePage(0, lang);
-        for (const page of SMALL_WORLD) assert.match(contents, new RegExp(`\\(${page}\\)`), `contents ${lang}`);
-        const items = guidePage(48, lang);
-        for (const page of [238, 239, 240, 241]) assert.match(items, new RegExp(`\\(${page}\\)`), `items ${lang}`);
-        assert.match(guidePage(5, lang), /\(237\)/);
-        assert.match(guidePage(16, lang), /\(237\)/);
-        assert.match(guidePage(52, lang), /\(239\)/);
-        assert.match(guidePage(228, lang), /\(238\)/);
-        assert.match(guidePage(234, lang), /\(241\)/);
-        // Every organism has a picture on its page, and its page links back to where to start. The overview
-        // (237) shows those of the first pages; one that came later links back to it from its own page, as
-        // a page once stable does not change (guide/README.md).
+        const contents = guideTopic(0, lang);
+        for (const topic of SMALL_WORLD) assert.match(contents, new RegExp(`\\(${topic}\\)`), `contents ${lang}`);
+        const items = guideTopic(48, lang);
+        for (const topic of [238, 239, 240, 241]) assert.match(items, new RegExp(`\\(${topic}\\)`), `items ${lang}`);
+        assert.match(guideTopic(5, lang), /\(237\)/);
+        assert.match(guideTopic(16, lang), /\(237\)/);
+        assert.match(guideTopic(52, lang), /\(239\)/);
+        assert.match(guideTopic(228, lang), /\(238\)/);
+        assert.match(guideTopic(234, lang), /\(241\)/);
+        // Every organism has a picture in its topic, and its topic links back to where to start. The overview
+        // (237) shows those of the first topics; one that came later links back to it from its own topic, as
+        // a topic once stable does not change (guide/README.md).
         for (const [id, def] of Object.entries(ctx.MICRO_SPECIES)) {
-            assert.ok(SMALL_WORLD.includes(def.page) || def.page >= 253, id);
-            assert.ok(guidePage(def.page, lang).includes(`(mob:${id})`), `${id} on page ${def.page} ${lang}`);
-            if (SMALL_WORLD.includes(def.page)) assert.ok(guidePage(237, lang).includes(`(mob:${id})`), `${id} in the overview ${lang}`);
-            else assert.match(guidePage(def.page, lang), /\(237\)/, `${id}'s page links to the overview ${lang}`);
+            assert.ok(SMALL_WORLD.includes(def.topic) || def.topic >= 253, id);
+            assert.ok(guideTopic(def.topic, lang).includes(`(mob:${id})`), `${id} in topic ${def.topic} ${lang}`);
+            if (SMALL_WORLD.includes(def.topic)) assert.ok(guideTopic(237, lang).includes(`(mob:${id})`), `${id} in the overview ${lang}`);
+            else assert.match(guideTopic(def.topic, lang), /\(237\)/, `${id}'s topic links to the overview ${lang}`);
         }
     }
-    assert.equal(ctx.MICROSCOPE_GUIDE_PAGE, 238);
+    assert.equal(ctx.MICROSCOPE_GUIDE_TOPIC, 238);
 });
 
 test('the guide says what the game does', () => {
     for (const lang of ['ES', 'EN']) {
-        const scope = guidePage(238, lang);
+        const scope = guideTopic(238, lang);
         assert.match(scope, /40×, 100×, 400× (y|and) 1000×/);
         assert.match(scope, lang === 'EN' ? /immersion oil/ : /aceite de inmersión/);
         assert.match(scope, lang === 'EN' ? /asks for no oil/ : /no pide aceite/);
@@ -1786,22 +1786,22 @@ test('the guide says what the game does', () => {
         assert.match(scope, /2 `glass` \+ 1 `copper_block` \+ 1 `iron_ore` \+ 1 `planks`/);
         assert.match(scope, /2 `glass` \+ 2 `iron_ore` \+ 1 `planks`/);
         assert.match(scope, /1 `glass` \+ 1 `leather`/);
-        const sample = guidePage(239, lang);
+        const sample = guideTopic(239, lang);
         // The shares of the plan, and never which letter.
         assert.match(sample, lang === 'EN' ? /half/ : /mitad/);
         assert.doesNotMatch(sample, /sample_[a-z_]+_[b-d]/);
-        const dry = guidePage(241, lang);
+        const dry = guideTopic(241, lang);
         assert.match(dry, /240/);
         assert.match(dry, /water_flask/);
         assert.match(dry, /tardigrade_tun/);
-        // Science and game apart, on every page; and that real ones live almost everywhere.
-        for (const page of SMALL_WORLD) assert.match(guidePage(page, lang), lang === 'EN' ? /Simplified in the game/ : /Lo simplifica el juego/, `${page} ${lang}`);
+        // Science and game apart, in every topic; and that real ones live almost everywhere.
+        for (const topic of SMALL_WORLD) assert.match(guideTopic(topic, lang), lang === 'EN' ? /Simplified in the game/ : /Lo simplifica el juego/, `${topic} ${lang}`);
         assert.match(sample, lang === 'EN' ? /almost everywhere/ : /casi en todas partes/);
-        assert.match(guidePage(240, lang), lang === 'EN' ? /almost everywhere/ : /casi en todas partes/);
+        assert.match(guideTopic(240, lang), lang === 'EN' ? /almost everywhere/ : /casi en todas partes/);
         // Real water is not the game's water.
         assert.match(sample, lang === 'EN' ? /never drink/ : /no la bebas nunca/);
     }
-    // No secret page of its own, and no reward.
+    // No secret topic of its own, and no reward.
     assert.ok(!guideNames.some((name) => /^[0-9A-Z]*[A-Z][0-9A-Z]*_(EN|ES)_.*(ardigrad|ardígrad|icro)/.test(name)));
 });
 
@@ -1851,14 +1851,14 @@ test('a dark field says when a lamp beside it has no power', () => {
 
 test('the guide tells how the bulb works, in both languages', () => {
     for (const lang of ['ES', 'EN']) {
-        const bulb = guidePage(187, lang);
+        const bulb = guideTopic(187, lang);
         assert.match(bulb, /5 W/);
         assert.match(bulb, /\(204\)/);
         assert.match(bulb, /\(238\)/);
         assert.match(bulb, /3422/);
         assert.doesNotMatch(bulb, /by itself|por sí misma/);
-        assert.match(guidePage(204, lang), /`light_bulb` \| \*\*5 W\*\*/);
-        assert.match(guidePage(238, lang), /\(187\)/);
+        assert.match(guideTopic(204, lang), /`light_bulb` \| \*\*5 W\*\*/);
+        assert.match(guideTopic(238, lang), /\(187\)/);
     }
     assert.doesNotMatch(fs.readFileSync(path.join(JS, 'game', 'chemistry.js'), 'utf8'), /registerBlockType\('light_bulb'/);
 });

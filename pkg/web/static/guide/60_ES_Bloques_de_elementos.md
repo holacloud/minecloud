@@ -68,8 +68,8 @@ Tres llevan la palabra *Element* en su nombre para no confundirse con los bloque
 
 Son bloques **de construcción y de aprendizaje**, y además **reaccionan**: en una
 [mesa de laboratorio](117) cada bloque es un átomo, y se combinan en agua, sal, acero, bronce, fertilizante,
-lámparas de neón y más (¡y hay reacciones por descubrir!). Ver [Química](115). Cada elemento tiene su propia página,
-enlazada desde la [Tabla periódica](116).
+lámparas de neón y más (¡y hay reacciones por descubrir!). Ver [Química](115). Cada elemento tiene su propio tema,
+enlazado desde la [Tabla periódica](116).
 
 - Rotura: **0,9 s** a mano; con un [pico](68) de hierro, 0,35 s. Sueltan el mismo bloque.
 - El símbolo se lee bien de cerca y de lejos: ideales para carteles gigantes y palabras.

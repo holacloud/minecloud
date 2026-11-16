@@ -3,7 +3,7 @@
 ![Goats of two colours](mob:goat)
 
 Why do two white goats sometimes have a brown kid? Because every tamed animal carries **genes**, and each baby gets
-half of them from its mother and half from its father. This page explains how, with examples you can try with
+half of them from its mother and half from its father. This topic explains how, with examples you can try with
 your own animals. To read an animal's genes you need the [breeding notebook](131).
 
 ## Genes and alleles

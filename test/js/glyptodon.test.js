@@ -16,14 +16,14 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `301_${lang}_${lang === 'ES' ? 'Gliptodonte' : 'Glyptodon'}.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `301_${lang}_${lang === 'ES' ? 'Gliptodonte' : 'Glyptodon'}.md`), 'utf8');
 const info = ctx.getMobSpecies('glyptodon');
 // No assertion here is ever given a mob: when one fails, node prints both sides, and a mob of this harness
 // is a graph of stand-ins with no end. Ask a yes or a no.
 const rides = (g, mob) => g.game.ridingMob === mob;
 const onFoot = (g) => !g.game.ridingMob;
 
-test('what it is: a peaceful grazer, tamed with grass, a slow mount; and what its page says of it', () => {
+test('what it is: a peaceful grazer, tamed with grass, a slow mount; and what its topic says of it', () => {
     const horse = ctx.getMobSpecies('horse').mount;
     const mount = info.mount;
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -34,8 +34,8 @@ test('what it is: a peaceful grazer, tamed with grass, a slow mount; and what it
     assert.deepEqual([...ctx.TRAPS_SPECIES.glyptodon.baits], []);
     assert.ok(mount.speed < horse.speed && mount.jump < horse.jump && info.speed < ctx.getMobSpecies('pig').speed, 'slow and steady');
 
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     const comma = (value) => String(value).replace('.', ',');
     const diet = ctx.TAMING_DIET.glyptodon;
     assert.equal(diet.chance, 1 / 3);

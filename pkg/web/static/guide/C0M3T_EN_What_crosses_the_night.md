@@ -1,6 +1,6 @@
 # What crosses the night
 
-> You found a hidden page. It was written in light, in a comet's tail or in the shadow of a red moon. Few have
+> You found a hidden topic. It was written in light, in a comet's tail or in the shadow of a red moon. Few have
 > read it: you have to be awake, looking up, on the right night.
 
 ![Telescope](item:telescope)
@@ -50,5 +50,5 @@ owl in the trees keep watch on each other, and that is why neither of them sleep
 
 ---
 
-**The next clue:** the owl in the sky does not sleep, and neither does the one in the trees. Its page in this
+**The next clue:** the owl in the sky does not sleep, and neither does the one in the trees. Its topic in this
 guide hides a **riddle** among its trivia: what does the owl see at three?
