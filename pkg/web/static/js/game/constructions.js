@@ -185,7 +185,7 @@ class ConstructionBuilder {
 // keep it, and 'air' digs a cell out), rate (blocks per second; it also reads the box in slices) and
 // site (a generator given { readType, blockTypes, min, size, turns, anchor, fromY }, which yields now
 // and then and returns { refuse: message } or { baseY, grade }; grade(x, z), for a column at the rim,
-// gives { top, type, keep, soil } and that column follows it: see constructionDiffColumn).
+// gives { top, type, keep, soil, above } and that column follows it: see constructionDiffColumn).
 
 // The pieces of js/game/furniture.js, decor.js and mirrors.js the way the designs place them, with
 // the states their block names want, and turned by b.sym like the rest. Storage and ovens are placed
@@ -1430,11 +1430,12 @@ function constructionDiffColumn(layout, x, z, cellAt, read, blockTypes, ops) {
         }
     };
     const top = min.y + size[1];
-    // The rim of a big site: above its height air, then `type` (or the ground there if `keep`), and
-    // `soil` down to what is ground. It ignores the plan.
+    // The rim of a big site: above its height air (or what `above`, a Map of y to type, puts there: the
+    // trees of a palace's grounds, construction_palace_common.js), then `type` (or the ground there if
+    // `keep`), and `soil` down to what is ground. It ignores the plan.
     const grade = layout.grade && layout.grade(x, z);
     if (grade) {
-        for (let y = top - 1; y > grade.top; y--) change(y, null, undefined, read(x, y, z));
+        for (let y = top - 1; y > grade.top; y--) change(y, (grade.above && grade.above.get(y)) || null, undefined, read(x, y, z));
         const surface = read(x, grade.top, z);
         if (!grade.keep || !constructionIsGround(surface.type, blockTypes)) change(grade.top, grade.type, undefined, surface);
         for (let y = grade.top - 1; y >= WORLD_MIN_Y; y--) {

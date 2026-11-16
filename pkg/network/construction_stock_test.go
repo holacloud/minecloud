@@ -49,7 +49,7 @@ func TestConstructionStockFillsOnlyEmptyStorageItTakes(t *testing.T) {
 		{"not empty", stockFill{X: 2, Items: []stockStack{stack("glass", 1)}}, "not empty"},
 		{"stocked twice", stockFill{X: 0, Items: []stockStack{stack("glass", 1)}}, "not empty"},
 		{"unknown item", stockFill{X: 3, Items: []stockStack{stack("diamond_of_doom", 1)}}, "unknown item"},
-		{"an item a player has but a build may not give", stockFill{X: 3, Items: []stockStack{stack("ruby", 1)}}, "unknown item"},
+		{"an item a player has but a build may not give", stockFill{X: 3, Items: []stockStack{stack("shadow_essence", 1)}}, "unknown item"},
 		{"a state is not an item", stockFill{X: 3, Items: []stockStack{stack("chest:e", 1)}}, "unknown item"},
 		{"zero", stockFill{X: 3, Items: []stockStack{stack("glass", 0)}}, "bad count"},
 		{"negative", stockFill{X: 3, Items: []stockStack{stack("glass", -4)}}, "bad count"},

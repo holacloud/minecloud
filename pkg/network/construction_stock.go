@@ -61,6 +61,18 @@ func init() {
 		"basalt", "granite", "marble", "obsidian", "pyrite", "fluorite",
 		// The greenhouse.
 		"wheat_seeds", "fertilizer", "water_bucket", "iron_hoe",
+		// The palaces (js/game/construction_palace_*.js): treasure, their materials and instruments, saplings
+		// for their gardens, warm clothes for the winter one, a geologist's finds for the volcanic one.
+		"gold_ore", "gold_leaf", "gold_block", "ruby", "sapphire", "brass_ingot", "bronze_ingot", "rust_pigment", "cobalt_glass",
+		"sandstone", "white_stucco", "red_stucco", "magma_rock", "snow_block", "packed_ice", "blue_glazed_tile", "white_glazed_tile",
+		"astrolabe", "globe", "sundial", "white_wool", "red_wool", "blue_wool", "yellow_wool", "green_wool", "glow_dust", "honeycomb",
+		"cherry_sapling", "spruce_sapling", "jungle_sapling", "acacia_sapling", "fishing_rod", "fish_egg", "salted_fish", "soda_water",
+		"warm_coat", "leather", "fur", "feather", "meteoric_iron", "amber", "fossil_trilobite", "fossil_ammonite", "mirror",
+		// The other buildings (constructions.js, construction_castle.js, construction_library.js, construction_apartments.js):
+		// a castle's armoury and tools, a scribe's desk, tableware for a feast, a home's sewing, a market's wares, boards and wool.
+		"iron_sword", "shield", "scale_mail", "iron_axe", "iron_pickaxe", "iron_shears", "open_book", "book_stack", "inkwell", "scroll",
+		"meal_plate", "jug", "tea_set", "fruit_bowl", "sewing_basket", "mushroom_red", "mushroom_brown", "flower_pot", "vase",
+		"spruce_planks", "birch_planks", "orange_wool", "purple_wool", "black_wool",
 	} {
 		stockItems[name] = true
 	}
