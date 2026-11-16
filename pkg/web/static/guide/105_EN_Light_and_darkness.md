@@ -44,6 +44,8 @@ Shadows do not appear near placed torches. A good way to sleep soundly is to rin
   wisp closest to you.
 - **[Lightning](43)**: each bolt from the storm golem lights up the whole scene for a moment.
 - **[Fireflies](36)** and the **[firefly jar](97)**: they glow and blink.
+- **[Magma rock](59)**: basalt with glowing cracks, a block that gives light of level **10**, like a weaker torch
+  that never goes out.
 - **Glowing eyes:** those of the owl, the fox and the shadow, at night.
 
 ## Ultra mode: real light

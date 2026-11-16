@@ -23,8 +23,8 @@
 // Mixed into Game.prototype; hooked through js/extensions.js. Loaded after furniture.js, storage.js and fossils.js.
 
 const REVIVAL_KIND = 'revival_machine';
-// Its page of the guide.
-const REVIVAL_GUIDE_PAGE = 264;
+// Its topic of the guide.
+const REVIVAL_GUIDE_TOPIC = 264;
 // Blocks away at which an open panel closes (the server allows 9).
 const REVIVAL_CLOSE_DISTANCE = 7;
 // How long the server has to answer an open (milliseconds), and how long a note stays.
@@ -406,7 +406,7 @@ Object.assign(Game.prototype, {
     revivalOpenGuide() {
         if (typeof this.guideShow !== 'function') return;
         this.revivalClose();
-        this.guideShow(String(REVIVAL_GUIDE_PAGE));
+        this.guideShow(String(REVIVAL_GUIDE_TOPIC));
     },
 
     revivalSetNote(line) {

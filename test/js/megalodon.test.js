@@ -1,5 +1,5 @@
 // Node tests for the megalodon (js/game/megalodon.js): what it is, and that the 'cruise' movement of every sea
-// animal (js/game/sea_animals.js) carries it as its page says: a long body that cruises a lake, hunts a player
+// animal (js/game/sea_animals.js) carries it as its topic says: a long body that cruises a lake, hunts a player
 // who is in its water and bites, and leaves alone one who is on the shore. The real mobs.js, sea_animals.js,
 // camera.js and world.js run on a flat world with a lake dug in it (support/flat_world.js); only drawing and
 // sound are left out. What every extinct animal has to be is asked of it by extinct_species.test.js, and how the
@@ -20,7 +20,7 @@ const ctx = loadFlatGame();
 const SEA = JSON.parse(vm.runInContext('JSON.stringify(SEA)', ctx));
 const body = JSON.parse(vm.runInContext("(() => { const b = seaAnimalsBody('megalodon'); return JSON.stringify({ front: b.front, back: b.back, half: b.half, height: b.height, length: b.length }); })()", ctx));
 const guide = fs.readdirSync(path.join(STATIC, 'guide')).map((name) => name.normalize('NFC'));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', guide.find((name) => name.startsWith(`305_${lang}_`))), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', guide.find((name) => name.startsWith(`305_${lang}_`))), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 
 // A lake 32 by 22 and 4 deep, its water from y = -4 to y = -1.
@@ -38,7 +38,7 @@ function lake() {
     return { ...g, wet, swim, ashore };
 }
 
-test('what it is: a hostile giant shark nine blocks long, and what its page says of it', () => {
+test('what it is: a hostile giant shark nine blocks long, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('megalodon');
     assert.equal(info.movement, 'cruise');
     assert.equal(info.ancestorOf, undefined, 'no living relative in the game');
@@ -55,9 +55,9 @@ test('what it is: a hostile giant shark nine blocks long, and what its page says
     const fossil = JSON.parse(vm.runInContext('JSON.stringify(FOSSIL_SPECIES.megalodon)', ctx));
     assert.deepEqual(fossil, { source: 'skeleton', rarity: 'legendary', weight: 2, water: 300, seconds: 120 });
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.split('\n')[0] === '# Megalodón' && en.split('\n')[0] === '# Megalodon');
     assert.ok(es.includes('**9 bloques de largo**') && en.includes('**9 blocks long**'));
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`), 'from how far it comes');

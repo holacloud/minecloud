@@ -445,7 +445,7 @@ test('the panel\'s code writes no words of its own: they all come from the table
 
 test('the Spanish uses the guide\'s words', () => {
     const guide = fs.readdirSync(path.join(STATIC, 'guide'));
-    const es = (page) => fs.readFileSync(path.join(STATIC, 'guide', guide.find((name) => name.startsWith(`${page}_ES_`))), 'utf8').toLowerCase();
+    const es = (topic) => fs.readFileSync(path.join(STATIC, 'guide', guide.find((name) => name.startsWith(`${topic}_ES_`))), 'utf8').toLowerCase();
     const words = es(238) + es(241) + es(246) + es(247);
     for (const word of ['portaobjetos', 'platina', 'tinción', 'campo oscuro', 'diafragma', 'barrilito', 'farol', 'vela', 'bombilla', 'frotis', 'vidriera']) {
         assert.ok(words.includes(word), `the guide says ${word}`);

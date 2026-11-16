@@ -8,8 +8,8 @@ huir, viene andando a mirarte. Es un [animal extinto](261): no aparece por su cu
 ## Cómo conseguir uno
 
 1. **Busca sus huesos.** No están en la roca, sino cerca de la superficie, en el bloque ![](item:old_bones)
-   `old_bones`: bajo la arena de una playa y, a veces, bajo la hierba de una llanura. Lleva una [pala](69). La
-   página de los [fósiles](262) dice dónde cavar.
+   `old_bones`: bajo la arena de una playa y, a veces, bajo la hierba de una llanura. Lleva una [pala](69). El
+   tema de los [fósiles](262) dice dónde cavar.
 2. **Rompe el bloque.** Si dentro había un dodo, te llevas ![](item:fossil_dodo) `fossil_dodo`: unos huesos de dodo.
 3. **Devuélvelo a la vida** en la [máquina de revivir](264). Le basta **una pieza** y tarda **45 segundos**. Es un
    animal de tierra: no necesita agua.

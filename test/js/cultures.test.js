@@ -93,7 +93,7 @@ function loadModules() {
     for (const file of ['inventory.js', 'bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'smelters.js', 'electricity.js', 'microbes.js', 'microscope_text.js', 'microscope.js', 'cultures_text.js', 'cultures.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
-    vm.runInContext(`Object.assign(this, { CULTURE_SPECIES, CULTURE_PLATES, CULTURE_ORDER, CULTURE_MODEL, CULTURE_TEXT, CULTURE_ITEMS, CULTURE_ITEMS_ES, CULTURE_KIT, CULTURE_GUIDE_PAGE,
+    vm.runInContext(`Object.assign(this, { CULTURE_SPECIES, CULTURE_PLATES, CULTURE_ORDER, CULTURE_MODEL, CULTURE_TEXT, CULTURE_ITEMS, CULTURE_ITEMS_ES, CULTURE_KIT, CULTURE_GUIDE_TOPIC,
         APPLIANCE_AUTOCLAVE, APPLIANCE_MACHINES, STORAGE_KINDS, ELECTRIC_KINDS, ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, GAME_CONTENT_HOOKS, MODAL_PANELS, ITEM_USE_HANDLERS, MICRO_SPECIES,
         cultureGamma, cultureInoculum, cultureHarvestOf, cultureRequestItems, cultureSettle, cultureGrowing, culturePowerLine, cultureDrawPlate, cultureDrawGraph, cultureColonies,
         cultureSay, cultureItemName, microscopeRequestItems, microscopeSourceHeld, microscopeSlideLine, MICRO_PLATES, MICRO_ITEMS, cultureLensView, cultureLensLines, cultureDrawLens, setGameLang, gameLang, Game });`, context);
@@ -801,29 +801,29 @@ test('dishes and culture plates look and are called differently, and every one g
     assert.ok(ctx.microscopeSlideLine({ source: 'culture_mould' }, 9999).length > 0);
 });
 
-test('the guide has the pages of cultures, in both languages, and the indexes reach them', () => {
+test('the guide has the topics of cultures, in both languages, and the indexes reach them', () => {
     const guide = path.join(ROOT, 'pkg', 'web', 'static', 'guide');
     const names = fs.readdirSync(guide);
-    const pageOf = (id, lang) => fs.readFileSync(path.join(guide, names.find((name) => name.startsWith(`${id}_${lang}_`))), 'utf8');
+    const topicOf = (id, lang) => fs.readFileSync(path.join(guide, names.find((name) => name.startsWith(`${id}_${lang}_`))), 'utf8');
     for (const lang of ['ES', 'EN']) {
         for (const id of [253, 254, 255]) {
-            const page = pageOf(id, lang);
-            assert.match(page, lang === 'ES' ? /## Ciencia y juego/ : /## Science and game/, `${id} ${lang} says what is true and what is simplified`);
-            assert.match(page, lang === 'ES' ? /\*\*Es verdad:\*\*/ : /\*\*True:\*\*/);
-            assert.match(page, lang === 'ES' ? /\*\*Lo simplifica el juego:\*\*/ : /\*\*Simplified by the game:\*\*/);
+            const topic = topicOf(id, lang);
+            assert.match(topic, lang === 'ES' ? /## Ciencia y juego/ : /## Science and game/, `${id} ${lang} says what is true and what is simplified`);
+            assert.match(topic, lang === 'ES' ? /\*\*Es verdad:\*\*/ : /\*\*True:\*\*/);
+            assert.match(topic, lang === 'ES' ? /\*\*Lo simplifica el juego:\*\*/ : /\*\*Simplified by the game:\*\*/);
         }
-        assert.match(pageOf(0, lang), /\(253\)/);
-        assert.match(pageOf(48, lang), /\(253\)/);
-        assert.match(pageOf(48, lang), /\(255\)/);
-        // The recipes the page gives are the game's.
-        const cultures = pageOf(253, lang);
+        assert.match(topicOf(0, lang), /\(253\)/);
+        assert.match(topicOf(48, lang), /\(253\)/);
+        assert.match(topicOf(48, lang), /\(255\)/);
+        // The recipes the topic gives are the game's.
+        const cultures = topicOf(253, lang);
         assert.match(cultures, /4 `iron_ore` \+ 2 `glass` \+ 1 `thermometer`/);
         assert.match(cultures, /1 `petri_dish` \+ 1 `wheat` \+ 1 `water_flask`/);
         // The table of temperatures is the server's.
-        const curve = pageOf(254, lang);
+        const curve = topicOf(254, lang);
         for (const kind of Object.values(ctx.CULTURE_SPECIES)) assert.ok(curve.includes(`| ${kind.tmin} °C | ${kind.topt} °C | ${kind.tmax} °C`), `${lang} ${kind.item}`);
-        assert.ok(pageOf(255, lang).includes('(mob:mould)'));
+        assert.ok(topicOf(255, lang).includes('(mob:mould)'));
     }
-    assert.equal(ctx.CULTURE_GUIDE_PAGE, 253);
-    assert.equal(ctx.MICRO_SPECIES.mould.page, 255);
+    assert.equal(ctx.CULTURE_GUIDE_TOPIC, 253);
+    assert.equal(ctx.MICRO_SPECIES.mould.topic, 255);
 });

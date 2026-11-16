@@ -2,8 +2,8 @@
 // BESTIARY_ENTRIES (bestiary.js) and that of each organism in MICRO_SPECIES (microbes.js); here is the
 // Spanish of both, and every label of the panel. What another mechanic owns (the diet of taming.js, the
 // drops of resources.js, the baits of traps.js) is left as it is and only named here, by item id.
-// A creature is called what the guide calls it (pages *_ES_*, starting with the index of mobs, page 16, and
-// that of the extinct animals, page 261).
+// A creature is called what the guide calls it (topics *_ES_*, starting with the index of mobs, topic 16, and
+// that of the extinct animals, topic 261).
 // test/js/bestiary_text.test.js fails if a species, a label or an item shown lacks a language.
 
 // bestiarySay(key, ...args) reads this. A function takes the same arguments in both languages.
@@ -81,7 +81,7 @@ const BESTIARY_ACTIVITIES = {
     'While it has charge': { ES: 'mientras tiene carga', EN: 'While it has charge' }
 };
 
-// The biomes a generic card lists, with the guide's names in Spanish (page 15).
+// The biomes a generic card lists, with the guide's names in Spanish (topic 15).
 const BESTIARY_BIOMES = {
     plains: { ES: 'Llanuras', EN: 'Plains' },
     desert: { ES: 'Desierto', EN: 'Deserts' },

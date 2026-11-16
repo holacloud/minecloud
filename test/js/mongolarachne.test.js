@@ -17,7 +17,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/mongolarachne.js'], frameUpdates: ['mongolarachneUpdate'] });
 const M = JSON.parse(vm.runInContext('JSON.stringify(MONGOLARACHNE)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `290_${lang}_Mongolarachne.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `290_${lang}_Mongolarachne.md`), 'utf8');
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 const comma = (number) => String(number).replace('.', ',');
@@ -30,7 +30,7 @@ function struck(away = 1.2) {
     return { g, mob };
 }
 
-test('what it is: a neutral spider nobody tames, and what its page says of it', () => {
+test('what it is: a neutral spider nobody tames, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('mongolarachne');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.equal(info.ancestorOf, 'spider');
@@ -47,9 +47,9 @@ test('what it is: a neutral spider nobody tames, and what its page says of it', 
     })()`, ctx);
     assert.equal(quarters, '');
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`durante ${comma(M.rear)} segundos`) && en.includes(`for ${M.rear} seconds`), 'how long it warns');
     assert.ok(es.includes(`a menos de ${comma(M.reach)} bloques de ella`) && en.includes(`within ${M.reach} blocks of it`), 'how near it bites');
     assert.ok(es.includes(`A más de ${comma(M.reach)} bloques`) && en.includes(`more than ${M.reach} blocks away`));

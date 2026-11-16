@@ -1,6 +1,6 @@
 # Beneath your feet
 
-> You found a hidden page. It was buried under a heap of freshly turned earth. Speak softly: someone is
+> You found a hidden topic. It was buried under a heap of freshly turned earth. Speak softly: someone is
 > listening from below.
 
 ![Giant mole](mob:mole)
@@ -66,5 +66,5 @@ meadow stays as it was.
 
 ---
 
-**The next clue:** fill the notebook. When the [bestiary](5) counts **every** species, look at its **last
-page**: something is written there in faded ink.
+**The next clue:** fill the notebook. When the [bestiary](5) counts **every** species, look at
+**its last page**: something is written there in faded ink.

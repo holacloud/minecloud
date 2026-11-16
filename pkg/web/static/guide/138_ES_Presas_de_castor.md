@@ -4,7 +4,7 @@
 
 Los [castores](137) son las únicas criaturas que **cambian el mundo**. Los árboles que talan y las presas que
 construyen son bloques normales, rotos y colocados igual que los tuyos, así que **los ven todos los jugadores**.
-Esta página explica cómo eligen y cómo mantenerlos lejos de lo que te importa.
+Este tema explica cómo eligen y cómo mantenerlos lejos de lo que te importa.
 
 ## Qué árboles talan
 

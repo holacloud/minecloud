@@ -36,7 +36,7 @@ se guarda en el navegador.
 
 Los 17 organismos de [el mundo pequeño](237) y [sus cultivos](255) son tarjetas como las demás, pero no te los puedes cruzar por ahí: solo se encuentran con un [microscopio](238). Entran en el bestiario cuando identificas uno, con un clic, y también entonces sale el aviso de la nueva entrada.
 
-Su ficha enseña su dibujo, vivo, desde qué aumento se ve ("Se ve desde 40×"), su **Tamaño real**, su **Grupo**, dónde **Vive** y cuántas **Identificaciones** llevas, con un botón a su página de la guía. No tienen temperamento, ni dieta, ni botín, y nadie los derrota.
+Su ficha enseña su dibujo, vivo, desde qué aumento se ve ("Se ve desde 40×"), su **Tamaño real**, su **Grupo**, dónde **Vive** y cuántas **Identificaciones** llevas, con un botón a su tema de la guía. No tienen temperamento, ni dieta, ni botín, y nadie los derrota.
 
 ## Animales extintos
 

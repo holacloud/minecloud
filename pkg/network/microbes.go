@@ -32,7 +32,7 @@ import (
 // (storageSync answers them too). Plain storagePut and storageTake are refused on an incubator, as on a
 // microscope, so that a plate and what lives on it always move together.
 //
-// The model, once a second, for each population on a plate (see the guide, pages 253 and 254):
+// The model, once a second, for each population on a plate (see the guide, topics 253 and 254):
 //
 //	γ(T)  the cardinal temperature model with inflection (Rosso et al., 1993): 0 outside (Tmin, Tmax), 1 at Topt
 //	rate  = Rate · γ(T)                 per second, in ln units; 0 without light for what needs it
@@ -105,7 +105,7 @@ type cultureKind struct {
 	Penicillin bool
 }
 
-// What grows on a plate. Cardinal temperatures are typical of each organism (guide, page 254); the rates
+// What grows on a plate. Cardinal temperatures are typical of each organism (guide, topic 254); the rates
 // are the game's, so that a plate fills in about three minutes at its best.
 var cultureSpecies = map[string]cultureKind{
 	"yeast":         {Tmin: 5, Topt: 30, Tmax: 42, Rate: 0.1, Item: "culture_yeast"},

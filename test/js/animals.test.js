@@ -804,7 +804,7 @@ test('/animal tells the server how a hostile species goes after players, and no 
     assert.deepEqual(plain(ctx.animalsChaseOf(null)), { chase: 0, chaseDay: 0, chaseSpeed: 0 });
 
     // The server cuts a chase down to what its round can keep: a species that asks for more would go after
-    // players from nearer than its page of the guide says.
+    // players from nearer than its topic of the guide says.
     const server = fs.readFileSync(path.join(ROOT, 'pkg', 'network', 'animals.go'), 'utf8');
     const most = Number(/animalsMaxChase\s+= ([\d.]+)/.exec(server)[1]);
     assert.ok(most >= 16);

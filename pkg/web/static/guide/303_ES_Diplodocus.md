@@ -15,8 +15,8 @@ pacífico y, una vez domesticado, **puedes montarlo**, muy por encima del suelo.
    `fossil_diplodocus_spine` y `fossil_diplodocus_tail`. Salen de los tres bloques de un **esqueleto**
    (`fossil_bones_skull`, `fossil_bones_spine` y `fossil_bones_tail`), que están en línea recta dentro de la
    piedra, muy abajo. Los tres bloques de un esqueleto son siempre del mismo animal. Es un fósil **legendario**:
-   su peso frente a los demás esqueletos es 2, contra 6 del mamut, 2 del plesiosaurio y 1 del tiranosaurio. La
-   página de los [fósiles](262) dice a qué profundidad cavar y cómo encontrar las otras dos piezas cuando tienes
+   su peso frente a los demás esqueletos es 2, contra 6 del mamut, 2 del plesiosaurio y 1 del tiranosaurio. El
+   tema de los [fósiles](262) dice a qué profundidad cavar y cómo encontrar las otras dos piezas cuando tienes
    una.
 2. **Rompe los bloques** con un [pico](68).
 3. **Devuélvelo a la vida** en la [máquina de revivir](264), con **las tres piezas** dentro. Tarda **120

@@ -10,8 +10,10 @@
 // - Towers are octagons with a stone pier in the middle, stairs winding round it (2 up on each side,
 //   8 a round: constructionCastleSpiral) and floors around that, so there is nothing to fall behind.
 // - Stairs and landings are the only way up: no ladders, which would write world.json every time.
-// - Beds go through constructionCastleBed only. Ovens and storage are empty furniture: /build only
-//   places blocks. Candles, lanterns and chandeliers light without power.
+// - Beds go through constructionCastleBed only. Ovens are cold. Every chest, barrel and wardrobe is stocked
+//   for its room (CASTLE_STOCK, b.stock and b.stockMix, sent by constructions.js once the last block is out):
+//   wares in the market, feed in the stables, ore and tools in the forge, food and tableware in the kitchen,
+//   clothes in the bedrooms, arms in the armoury. Candles, lanterns and chandeliers light without power.
 
 const CASTLE_GROUND = 8;
 const CASTLE_RIM = 10;
@@ -23,6 +25,26 @@ const CASTLE_MAX_EARTH = 110000;
 const CASTLE_MAX_RELIEF = 34;
 // The share of the site that may be water.
 const CASTLE_MAX_WATER = 0.5;
+
+// What the castle's storage holds, room by room: `fixed` goes in every block of the room, and `pick` of
+// `extras` more, chosen by the cell (ConstructionBuilder.stockMix), so that two chests side by side differ.
+const CASTLE_STOCK = {
+    stable: { fixed: [['wheat', 32]], extras: [['wheat_seeds', 16], ['leather', 4], ['water_bucket', 1], ['bucket', 2], ['honeycomb', 4]], pick: 2 },
+    forgeOre: { fixed: [['coal_ore', 64]], extras: [['iron_ore', 32], ['copper_ore', 24], ['tin_ore', 16], ['gold_ore', 4]], pick: 2 },
+    forgeTools: { fixed: [['iron_pickaxe', 2], ['iron_axe', 2]], extras: [['iron_shears', 1], ['bronze_ingot', 8], ['brass_ingot', 4], ['iron_block', 2], ['copper_wrench', 1], ['iron_hoe', 2]], pick: 3 },
+    pantry: { fixed: [['wheat', 32]], extras: [['salted_fish', 16], ['salt', 8], ['cheese', 12], ['honey_bottle', 6], ['bread', 16], ['roast_mushroom', 8], ['milk', 6]], pick: 3 },
+    cupboard: { fixed: [['meal_plate', 12], ['jug', 4]], extras: [['tea_set', 2], ['fruit_bowl', 2], ['candle', 12], ['honey_bottle', 4], ['bread', 12]], pick: 2 },
+    wardrobe: { fixed: [['warm_coat', 1]], extras: [['white_wool', 8], ['red_wool', 8], ['blue_wool', 8], ['leather', 4], ['fur', 4], ['feather', 8]], pick: 3 },
+    bedChest: { fixed: [['candle', 6]], extras: [['book_stack', 1], ['sewing_basket', 1], ['white_wool', 8], ['torch', 8], ['scroll', 2], ['honey_bottle', 2]], pick: 2 },
+    royal: { fixed: [['warm_coat', 2], ['fur', 6]], extras: [['gold_leaf', 8], ['ruby', 3], ['sapphire', 3], ['purple_wool', 8], ['feather', 8], ['mirror', 1]], pick: 3 },
+    arms: { fixed: [['iron_sword', 4]], extras: [['shield', 4], ['scale_mail', 2], ['iron_axe', 2], ['leather', 8]], pick: 2 },
+    armsStore: { fixed: [['torch', 32]], extras: [['leather', 12], ['iron_ore', 16], ['salted_fish', 12], ['bread', 12], ['bucket', 2]], pick: 2 }
+};
+
+function constructionCastleStock(b, x, y, z, room) {
+    const { fixed, extras, pick } = CASTLE_STOCK[room];
+    b.stockMix(x, y, z, fixed, extras, pick);
+}
 
 // One bed; the head at (x, y, z), `facing` the way the head points (the wall, mostly), the foot in
 // the cell away from it. Every bed in the castle goes through here.
@@ -357,7 +379,7 @@ function constructionCastleGate(b) {
 }
 
 // One stall of a market: a counter between posts, what it sells on it, an awning in stripes.
-function constructionCastleStall(b, x0, z, colors, goods) {
+function constructionCastleStall(b, x0, z, colors, goods, stock) {
     const G = CASTLE_GROUND;
     const F = G + 1;
     for (const x of [x0, x0 + 4]) {
@@ -372,6 +394,7 @@ function constructionCastleStall(b, x0, z, colors, goods) {
     b.shaped(x0 + 1, F + 2, z + 1, 'lantern', 'lantern', { mount: 'hanging' });
     b.shaped(x0 + 3, F + 2, z + 1, 'lantern', 'lantern', { mount: 'hanging' });
     b.set(x0 + 2, F, z + 2, 'barrel');
+    b.stock(x0 + 2, F, z + 2, stock);
 }
 
 // The courtyard: paths, a garden with the well on the left, stalls on the right, stables and a forge
@@ -448,11 +471,21 @@ function constructionCastleCourtyard(b, sign) {
 
     // ---- The market, on the right of the gate. ----
     const goods = [['flower_red', 'mushroom_red', 'vase'], ['flower_pot', 'mushroom_brown', 'flower_yellow'], ['vase', 'flower_pot', 'mushroom_red']];
+    // Each stall's barrel holds a trade of its own: the baker, the fishmonger, the beekeeper, the weaver,
+    // the potter, the mushroom seller.
+    const stocks = [
+        [['bread', 24], ['cheese', 12], ['wheat', 16]],
+        [['salted_fish', 24], ['raw_fish', 12], ['salt', 8]],
+        [['honey_bottle', 12], ['honeycomb', 16], ['candle', 12]],
+        [['white_wool', 16], ['red_wool', 16], ['blue_wool', 16], ['sewing_basket', 2]],
+        [['vase', 8], ['flower_pot', 12], ['jug', 6]],
+        [['mushroom_red', 16], ['mushroom_brown', 16], ['roast_mushroom', 8]]
+    ];
     let stall = 0;
     for (const z of [33, 42]) {
         for (const x0 of [70, 77, 84]) {
             const colors = [['red_wool', 'white_wool'], ['blue_wool', 'white_wool'], ['green_wool', 'yellow_wool']][stall % 3];
-            constructionCastleStall(b, x0, z, colors, goods[stall % 3]);
+            constructionCastleStall(b, x0, z, colors, goods[stall % 3], stocks[stall]);
             stall++;
         }
     }
@@ -482,6 +515,7 @@ function constructionCastleCourtyard(b, sign) {
         b.gate(sx0 + 5, F, z + 2, 'dark_oak_fence_gate', 'w');
         b.box(sx0 + 1, F, z + 1, sx0 + 1, F, z + 2, 'yellow_wool');
         b.set(sx0 + 1, F, z + 3, 'barrel');
+        constructionCastleStock(b, sx0 + 1, F, z + 3, 'stable');
         b.shaped(sx0 + 3, F + 3, z + 2, 'lantern', 'lantern', { mount: 'hanging' });
     }
     b.box(sx1, F + 3, sz0, sx1, F + 3, sz1, 'dark_oak_wood');
@@ -530,6 +564,8 @@ function constructionCastleCourtyard(b, sign) {
     for (const z of [fz1 - 1, fz1 - 2]) {
         b.set(fx1 - 1, F, z, 'barrel');
         b.shaped(fx1 - 2, F, z, 'chest', 'chest', { facing: 'w' });
+        constructionCastleStock(b, fx1 - 1, F, z, 'forgeOre');
+        constructionCastleStock(b, fx1 - 2, F, z, 'forgeTools');
     }
     for (const [x, z] of [[fx0 + 2, 66], [fx0 + 2, 76], [fx1 - 3, 71]]) b.shaped(x, F, z, 'lantern', 'lantern', { mount: 'floor' });
     sign(82, F, 62, 'n', 'Forja', 'Forge');
@@ -734,6 +770,8 @@ function constructionCastleKeep(b, sign) {
         for (const z of [83, 84]) piece(ix0, F, z, 'chest', 'chest', 'e');
         b.set(ix0 + 1, F, 86, 'barrel');
         b.set(ix0, F, 86, 'barrel');
+        for (const [x, z] of [[ix0, 79], [ix0, 80], [ix0, 81], [ix0 + 1, 86], [ix0, 86]]) constructionCastleStock(b, x, F, z, 'pantry');
+        for (const z of [83, 84]) constructionCastleStock(b, ix0, F, z, 'cupboard');
         for (const x of [ix0 + 2, ix0 + 8, mid - 5]) {
             for (const z of [78, 84]) chandelier(x, F + 3, z, G + 9 - F - 3);
         }
@@ -802,6 +840,8 @@ function constructionCastleKeep(b, sign) {
     tall(68, bedFeet, 71, 'wardrobe', 'w');
     tall(76, bedFeet, 71, 'wardrobe', 'w');
     piece(70, bedFeet, 69, 'chest', 'chest', 's');
+    for (const [x, z] of [[52, 63], [66, 63], [70, 63], [44, 71], [53, 71], [68, 71], [76, 71]]) constructionCastleStock(b, x, bedFeet, z, 'wardrobe');
+    for (const [x, z] of [[57, 63], [65, 58], [70, 58], [50, 69], [70, 69]]) constructionCastleStock(b, x, bedFeet, z, 'bedChest');
     // The royal chamber, across the back, its door at the end of the spine.
     b.box(ix0, bedFeet, 78, ix1, bedFeet, 86, 'purple_carpet');
     b.box(60, bedFeet, 77, 60, bedFeet + 2, 77, null);
@@ -816,6 +856,8 @@ function constructionCastleKeep(b, sign) {
         }
         tall(ix0, bedFeet, 82, 'wardrobe', 'e');
         piece(ix0, bedFeet, 84, 'chest', 'chest', 'e');
+        constructionCastleStock(b, ix0, bedFeet, 82, 'royal');
+        constructionCastleStock(b, ix0, bedFeet, 84, 'royal');
         chandelier(ix0 + 3, ceil - 2, 83, 2);
         chandelier(mid - 8, ceil - 2, 83, 2);
         chandelier(mid - 6, ceil - 2, 79, 2);
@@ -864,9 +906,12 @@ function constructionCastleKeep(b, sign) {
         for (let x = ix0; x <= mid - 2; x += 2) {
             piece(x, libFeet, iz1, 'chest', 'chest', 'n');
             piece(x + 1, libFeet, iz1, 'barrel', 'barrel', 'n');
+            constructionCastleStock(b, x, libFeet, iz1, 'arms');
+            constructionCastleStock(b, x + 1, libFeet, iz1, 'armsStore');
         }
         for (const z of [76, 79, 82]) {
             piece(ix0, libFeet, z, 'chest', 'chest', 'e');
+            constructionCastleStock(b, ix0, libFeet, z, 'arms');
             piece(ix0, libFeet + 1, z + 1, 'wall_shelf', 'wall_shelf', 'e');
             b.set(ix0, libFeet, z + 1, 'stone_bricks');
         }
@@ -1110,6 +1155,8 @@ function constructionCastleDungeon(b, sign) {
     lantern(x0 + 2, 66);
     b.box(x1 - 1, feet, corridor[0], x1, feet, corridor[1], 'cobblestone');
     b.set(x0 + 3, feet, 65, 'barrel');
+    // The gaoler's barrel: bread and water for the prisoners, and torches.
+    b.stock(x0 + 3, feet, 65, [['bread', 12], ['bucket', 2], ['torch', 16]]);
     sign(x0 + 2, feet, 69, 's', 'Mazmorra', 'Dungeon');
 }
 

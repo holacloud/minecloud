@@ -36,7 +36,7 @@ saved in the browser.
 
 The 17 organisms of [the small world](237) and [its cultures](255) are cards like the rest, but you cannot run into them: they are only found through a [microscope](238). They go in the bestiary when you identify one, with a click, and the new entry notice shows then too.
 
-Their sheet shows their drawing, alive, the power they are seen from ("Seen from 40×"), their **Real size**, their **Group**, where they **Live** and how many times they were **Identified**, with a button to their page of the guide. They have no temperament, no diet and no drops, and nobody defeats them.
+Their sheet shows their drawing, alive, the power they are seen from ("Seen from 40×"), their **Real size**, their **Group**, where they **Live** and how many times they were **Identified**, with a button to their topic in the guide. They have no temperament, no diet and no drops, and nobody defeats them.
 
 ## Extinct animals
 

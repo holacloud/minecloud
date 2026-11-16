@@ -20,6 +20,13 @@ fila, suben un bloque por cada bloque de avance, y **se suben andando**, sin sal
 | ![](item:cobblestone_stairs) | Cobblestone Stairs | `cobblestone_stairs` | `cobblestone` | 0,9 s |
 | ![](item:brick_stairs) | Brick Stairs | `brick_stairs` | `brick` | 0,8 s |
 | ![](item:stone_brick_stairs) | Stone Brick Stairs | `stone_brick_stairs` | `stone_bricks` | 0,95 s |
+| ![](item:sandstone_stairs) | Sandstone Stairs | `sandstone_stairs` | `sandstone` | 0,7 s |
+| ![](item:blue_glazed_tile_stairs) | Blue Glazed Tile Stairs | `blue_glazed_tile_stairs` | `blue_glazed_tile` | 0,6 s |
+| ![](item:white_glazed_tile_stairs) | White Glazed Tile Stairs | `white_glazed_tile_stairs` | `white_glazed_tile` | 0,6 s |
+| ![](item:yellow_glazed_tile_stairs) | Yellow Glazed Tile Stairs | `yellow_glazed_tile_stairs` | `yellow_glazed_tile` | 0,6 s |
+| ![](item:green_glazed_tile_stairs) | Green Glazed Tile Stairs | `green_glazed_tile_stairs` | `green_glazed_tile` | 0,6 s |
+| ![](item:turquoise_glazed_tile_stairs) | Turquoise Glazed Tile Stairs | `turquoise_glazed_tile_stairs` | `turquoise_glazed_tile` | 0,6 s |
+| ![](item:red_glazed_tile_stairs) | Red Glazed Tile Stairs | `red_glazed_tile_stairs` | `red_glazed_tile` | 0,6 s |
 
 ## Cómo conseguirlas
 
@@ -45,7 +52,7 @@ Al romper una escalera recuperas la escalera.
 - **Se suben andando:** cada escalón es medio bloque y tus pasos salvan hasta medio bloque. La vista sube suave,
   como por una rampa.
 - Los animales y los monstruos también suben por ellas (ya trepaban un bloque).
-- Se rompen antes con la herramienta de su material: [hacha](70) las de madera y [pico](68) las de piedra.
+- Se rompen antes con la herramienta de su material: [hacha](70) las de madera y [pico](68) las de piedra, [arenisca](51) y [azulejo vidriado](57).
 
 ## Trucos
 

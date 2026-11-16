@@ -14,7 +14,9 @@
 //   the floor shows the dome instead. Only the gold ribs and the marble under them stop the sky.
 // - neon_lamp and argon_lamp glow but give no light (no `lightEmission`): they are accents here. All
 //   the light at night comes from candles, table and floor lamps, lanterns and chandeliers.
-// - Chests, barrels and wardrobes are empty: a build only places blocks.
+// - Every chest, barrel and wardrobe is stocked (LIBRARY_STOCK, sent by constructions.js once the last block
+//   is out): the archives' chests keep scrolls, books, plans and charts, their barrels what a scribe and a
+//   binder use (quills, soot for ink, wheat for paper, leather for covers, candles), the cloakroom coats.
 
 // The floor layers of the four storeys: a visitor walks one higher. Eight apart, as the spiral
 // stair climbs 8 per turn.
@@ -23,6 +25,19 @@ const LIBRARY_ROOF = 36;
 const LIBRARY_DOME = { x: 22, z: 36, base: 39, radius: 10.5, height: 11 };
 // The rim of the dome goes round all 16 colours.
 const LIBRARY_RIM = ['red', 'orange', 'yellow', 'lime', 'green', 'cyan', 'light_blue', 'blue', 'purple', 'magenta', 'pink', 'white', 'light_gray', 'gray', 'black', 'brown'];
+
+// What the storage holds: `fixed` in every block of the kind, and `pick` of `extras` more, chosen by the cell
+// (ConstructionBuilder.stockMix), so that no two chests of an archive look alike.
+const LIBRARY_STOCK = {
+    papers: { fixed: [['scroll', 8]], extras: [['book_stack', 2], ['open_book', 1], ['blueprint', 4], ['star_chart', 2], ['breeding_notebook', 1], ['inkwell', 1], ['measuring_tape', 1], ['globe', 1]], pick: 3 },
+    scribe: { fixed: [['candle', 12]], extras: [['feather', 16], ['coal_ore', 16], ['wheat', 24], ['leather', 8], ['brass_ingot', 2], ['torch', 16]], pick: 2 },
+    cloak: { fixed: [['warm_coat', 2]], extras: [['white_wool', 8], ['red_wool', 8], ['blue_wool', 8], ['leather', 4], ['fur', 4], ['feather', 8]], pick: 2 }
+};
+
+function libraryStock(b, x, y, z, kind) {
+    const { fixed, extras, pick } = LIBRARY_STOCK[kind];
+    b.stockMix(x, y, z, fixed, extras, pick);
+}
 
 // Where the columns of the atrium stand, on the ring x 11..33, z 25..47.
 const LIBRARY_COLUMNS_X = [11, 17, 27, 33];
@@ -609,7 +624,10 @@ function libraryCloakroom(b, t) {
     const y = floor + 1;
     b.box(2, y, 25, 6, LIBRARY_FLOORS[1] - 1, 25, 'limestone');
     for (let z = 16; z <= 23; z++) {
-        if (z !== 19) t.wardrobe(2, y, z, 'e');
+        if (z !== 19) {
+            t.wardrobe(2, y, z, 'e');
+            libraryStock(b, 2, y, z, 'cloak');
+        }
     }
     for (const z of [17, 21]) t.floorLamp(6, y, z);
     b.set(5, y, 24, 'stool');
@@ -712,7 +730,13 @@ function libraryArchive(b, t, floor) {
         for (let z = z0; z <= z1; z++) {
             t.piece(2, y, z, 'chest', 'chest', 'e');
             b.set(6, y, z, 'barrel');
-            if (!(z % 2) && (z < 35 || z > 37)) b.set(6, y + 1, z, 'barrel');
+            libraryStock(b, 2, y, z, 'papers');
+            // The way in from the gallery (below) takes the barrels of z 35..37 away again.
+            if (z < 35 || z > 37) libraryStock(b, 6, y, z, 'scribe');
+            if (!(z % 2) && (z < 35 || z > 37)) {
+                b.set(6, y + 1, z, 'barrel');
+                libraryStock(b, 6, y + 1, z, 'scribe');
+            }
         }
         const middle = (z0 + z1) >> 1;
         t.floorLamp(5, y, middle);
@@ -859,10 +883,16 @@ function libraryCornerRooms(b, t) {
         for (let z = 54; z <= 58; z++) {
             t.piece(42, y, z, 'chest', 'chest', 'w');
             t.piece(42, y + 1, z, 'chest', 'chest', 'w');
+            libraryStock(b, 42, y, z, 'papers');
+            libraryStock(b, 42, y + 1, z, 'papers');
         }
         for (let x = 38; x <= 41; x++) {
             b.set(x, y, 54, 'barrel');
-            if (x % 2) b.set(x, y + 1, 54, 'barrel');
+            libraryStock(b, x, y, 54, 'scribe');
+            if (x % 2) {
+                b.set(x, y + 1, 54, 'barrel');
+                libraryStock(b, x, y + 1, 54, 'scribe');
+            }
         }
         t.floorLamp(38, y, 56);
     }

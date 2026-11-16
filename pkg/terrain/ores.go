@@ -62,7 +62,7 @@ type oreChance struct {
 	Chance float64
 }
 
-// veinTable says what a cell holds, by biome and depth [deep, mid, high]. See the guide, page 248:
+// veinTable says what a cell holds, by biome and depth [deep, mid, high]. See the guide, topic 248:
 //   - coal, in the wet lowlands that were swamps once, is the shallowest and most common;
 //   - iron is everywhere, more of it deep and in the mountains;
 //   - copper belongs to the dry lands and the mountains;

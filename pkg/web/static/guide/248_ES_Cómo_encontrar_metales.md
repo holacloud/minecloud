@@ -2,7 +2,7 @@
 
 ![Mineral de cobre](item:copper_ore)
 
-Los metales no se esconden al azar. Cada uno tiene sus tierras y su profundidad, y muchos **se ven desde fuera**, si sabes mirar. Esta página dice dónde buscar. La [siguiente](249) dice cómo sacarles el metal.
+Los metales no se esconden al azar. Cada uno tiene sus tierras y su profundidad, y muchos **se ven desde fuera**, si sabes mirar. Este tema dice dónde buscar. El [siguiente](249) dice cómo sacarles el metal.
 
 ## Dos formas de encontrarlos
 

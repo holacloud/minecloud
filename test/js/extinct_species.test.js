@@ -2,9 +2,9 @@
 // whichever there are, so that one more needs no test of its own for any of this: a fossil to be found as,
 // a model that is built and painted without a browser and stands in the world, a body as an animal the
 // server keeps (js/game/animals.js), nothing that spawns it, its row for the traps, a mount only if it
-// says how it is ridden, and its two guide pages with its portrait, the block its fossil is in and the
-// pages that say how to find it and how to bring it back.
-// What its card, its row of page 261, its foods and its baits have to say is asked by bestiary_text.test.js
+// says how it is ridden, and its two guide topics with its portrait, the block its fossil is in and the
+// topics that say how to find it and how to bring it back.
+// What its card, its row of topic 261, its foods and its baits have to say is asked by bestiary_text.test.js
 // and guide_facts.test.js; this file does not ask it again. Made-up animals, each wrong in one thing, show
 // that every rule here bites. Nothing runs a browser.
 // Run with: node --test test/js/extinct_species.test.js
@@ -133,9 +133,9 @@ const guideFiles = fs.readdirSync(GUIDE).map((name) => name.normalize('NFC'));
 const gameFiles = fs.readdirSync(path.join(JS, 'game')).filter((name) => name.endsWith('.js'));
 const realGuide = {
     readme: fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8'),
-    // The name of the file of a page, or null where there is none.
+    // The name of the file of a topic, or null where there is none.
     file: (id, lang) => guideFiles.find((name) => name.startsWith(`${id}_${lang}_`)) || null,
-    page: (id, lang) => {
+    topic: (id, lang) => {
         const name = fs.readdirSync(GUIDE).find((file) => file.startsWith(`${id}_${lang}_`));
         return name ? fs.readFileSync(path.join(GUIDE, name), 'utf8') : null;
     },
@@ -151,12 +151,12 @@ const realGuide = {
 
 // ---- The rules ----
 
-// The pages of the guide every extinct animal's page leads to: where its fossil is found, by the kind of
-// fossil it is, and the machine that brings it back (demanded once that page is written).
-const FOSSILS_PAGE = 262;
-const AMBER_PAGE = 263;
-const MACHINE_PAGE = 264;
-const RIDING_PAGE = 7;
+// The topics of the guide every extinct animal's topic leads to: where its fossil is found, by the kind of
+// fossil it is, and the machine that brings it back (demanded once that topic is written).
+const FOSSILS_TOPIC = 262;
+const AMBER_TOPIC = 263;
+const MACHINE_TOPIC = 264;
+const RIDING_TOPIC = 7;
 const LANGS = ['ES', 'EN'];
 const RIG = ['legs', 'arms', 'wings', 'tail', 'head'];
 // What a mount says for js/game/riding.js and js/camera.js to carry a rider.
@@ -237,22 +237,22 @@ function extinctProblems(game, ids, guide) {
             if (Object.entries(game.MOB_SPECIES).some(([other, theirs]) => other !== id && theirs.mount === info.mount)) say('its mount is that of another species: it says its own');
             if (!game.TAMING_DIET[id] || !game.Game.prototype.tamingCanTame.call({}, id)) say('it has a mount and cannot be tamed: only its owner rides an animal the server keeps');
             for (const lang of LANGS) {
-                const page = pageOf(guide, game, id, lang);
-                if (page && !page.text.includes(`](${RIDING_PAGE})`)) say(`its ${lang} page does not say how it is ridden: a link to page ${RIDING_PAGE}`);
+                const topic = topicOf(guide, game, id, lang);
+                if (topic && !topic.text.includes(`](${RIDING_TOPIC})`)) say(`its ${lang} topic does not say how it is ridden: a link to topic ${RIDING_TOPIC}`);
             }
         }
 
-        // Its two pages of the guide.
+        // Its two topics of the guide.
         for (const lang of LANGS) {
-            const page = pageOf(guide, game, id, lang);
-            if (!page) { say(`it has no ${lang} page under the id the catalogue of the README gives it`); continue; }
-            if (!new RegExp(`^!\\[[^\\]]+\\]\\(mob:${id}\\)$`, 'm').test(page.text)) say(`its ${lang} page (${page.id}) does not show its portrait: ![name](mob:${id}) on a line of its own`);
+            const topic = topicOf(guide, game, id, lang);
+            if (!topic) { say(`it has no ${lang} topic under the id the catalogue of the README gives it`); continue; }
+            if (!new RegExp(`^!\\[[^\\]]+\\]\\(mob:${id}\\)$`, 'm').test(topic.text)) say(`its ${lang} topic (${topic.id}) does not show its portrait: ![name](mob:${id}) on a line of its own`);
             for (const block of fossil ? game.fossilBlocksOf(id) : []) {
-                if (!page.text.includes(`\`${block}\``) && !page.text.includes(`(item:${block})`)) say(`its ${lang} page (${page.id}) does not name the block its fossil is in: \`${block}\``);
+                if (!topic.text.includes(`\`${block}\``) && !topic.text.includes(`(item:${block})`)) say(`its ${lang} topic (${topic.id}) does not name the block its fossil is in: \`${block}\``);
             }
-            const found = fossil && fossil.source === 'amber' ? AMBER_PAGE : FOSSILS_PAGE;
-            if (!page.text.includes(`](${found})`)) say(`its ${lang} page (${page.id}) does not link the page that says where its fossil is found (${found})`);
-            if (guide.file(MACHINE_PAGE, lang) && !page.text.includes(`](${MACHINE_PAGE})`)) say(`its ${lang} page (${page.id}) does not link the revival machine (${MACHINE_PAGE})`);
+            const found = fossil && fossil.source === 'amber' ? AMBER_TOPIC : FOSSILS_TOPIC;
+            if (!topic.text.includes(`](${found})`)) say(`its ${lang} topic (${topic.id}) does not link the topic that says where its fossil is found (${found})`);
+            if (guide.file(MACHINE_TOPIC, lang) && !topic.text.includes(`](${MACHINE_TOPIC})`)) say(`its ${lang} topic (${topic.id}) does not link the revival machine (${MACHINE_TOPIC})`);
         }
     }
     // And nothing alive has a fossil.
@@ -263,19 +263,19 @@ function extinctProblems(game, ids, guide) {
     return problems;
 }
 
-// The page of a species in a language: the one whose row of the README's catalogue has the names of its two
+// The topic of a species in a language: the one whose row of the README's catalogue has the names of its two
 // cards for titles, in a file called after it. Null where the row, or the file, is missing.
-function pageOf(guide, game, id, lang) {
+function topicOf(guide, game, id, lang) {
     const cards = vm.runInContext('({ en: BESTIARY_ENTRIES, es: BESTIARY_ENTRIES_ES })', game);
     const en = cards.en[id] && cards.en[id].name;
     const es = cards.es[id] && cards.es[id].name;
     if (!en || !es) return null;
     const rows = [...guide.readme.matchAll(new RegExp(`^\\| (\\d+) \\| ${escaped(es)} \\| ${escaped(en)} \\|`, 'gm'))];
     if (rows.length !== 1) return null;
-    const page = rows[0][1];
+    const topic = rows[0][1];
     const title = lang === 'ES' ? es : en;
-    if (guide.file(page, lang) !== `${page}_${lang}_${title.replace(/ /g, '_')}.md`.normalize('NFC')) return null;
-    return { id: page, text: guide.page(page, lang) };
+    if (guide.file(topic, lang) !== `${topic}_${lang}_${title.replace(/ /g, '_')}.md`.normalize('NFC')) return null;
+    return { id: topic, text: guide.topic(topic, lang) };
 }
 
 // ---- The animals there are ----
@@ -296,7 +296,7 @@ test('the extinct animals of the game are found, each from the file that registe
     for (const id of extinctIds) assert.match(id, /^[a-z][a-z0-9_]*$/, id);
 });
 
-test('every extinct animal has its fossil, a model that stands in the world, a body the server can keep, and its pages', () => {
+test('every extinct animal has its fossil, a model that stands in the world, a body the server can keep, and its topics', () => {
     assert.deepEqual(extinctProblems(real, extinctIds, realGuide), []);
 });
 
@@ -317,7 +317,7 @@ test('what is measured of a model is what the game would build: the pig and the 
 // ---- The rules bite ----
 
 // One made-up animal with everything right, and then the same with one thing wrong each time. Their models
-// and their movements are registered in a game of their own; their pages and their files are made up here.
+// and their movements are registered in a game of their own; their topics and their files are made up here.
 const MADE_UP = `
     function madeUpModel(b) {
         b.part('body', { pivot: [0, 0, 0], from: [-3, 6, -6], size: [6, 6, 12], paint: { color: 0x8a6a4a } });
@@ -375,7 +375,7 @@ const MADE_UP = `
     madeUp('made_up_nag', {}, { mount: MOB_SPECIES.horse.mount });
     madeUp('made_up_perch', { diet: { foods: ['wheat'], chance: 1 / 3 } }, { mount: { eyeHeight: 1.2, seat: 2.5, speed: 6, jump: 9 } });
     madeUp('made_up_tower', { diet: { foods: ['wheat'], chance: 1 / 3 } }, { mount: { eyeHeight: 2, seat: 2.5, speed: 6, autoJump: 7, jump: 9 } });
-    madeUp('made_up_pageless');
+    madeUp('made_up_topicless');
     madeUp('made_up_faceless');
     madeUp('made_up_blockless');
     madeUp('made_up_lost');
@@ -388,42 +388,42 @@ test('the rules bite: a made-up animal with everything right, and then with one 
     const game = loadGame(MADE_UP);
     const ids = Object.keys(game.MOB_SPECIES).filter((id) => id.startsWith('made_up_') && game.MOB_SPECIES[id].hiddenUntilDiscovered);
     assert.equal(ids.length, 33);
-    // Their pages, from 9001 on, in the order of `ids`: right for every one, and then spoilt for a few.
+    // Their topics, from 9001 on, in the order of `ids`: right for every one, and then spoilt for a few.
     const number = (id) => 9001 + ids.indexOf(id);
     const names = (id) => ({ ES: `Hecho ${id.slice(8)}`, EN: `Made ${id.slice(8)}` });
-    const pages = {};
+    const topics = {};
     const sources = {};
     let readme = '| Id | ES | EN | Items / topic |\n|---|---|---|---|\n';
     for (const id of ids) {
         const source = game.FOSSIL_SPECIES[id] ? game.FOSSIL_SPECIES[id].source : 'rock';
         const blocks = game.fossilBlocksOf(id).map((block, i) => (i % 2 ? `![](item:${block})` : `\`${block}\``)).join(', ');
         for (const lang of LANGS) {
-            pages[`${number(id)} ${lang}`] = `# ${names(id)[lang]}\n\n![${names(id)[lang]}](mob:${id})\n\nIn ${blocks}: see [the page](${source === 'amber' ? AMBER_PAGE : FOSSILS_PAGE}) and [the machine](${MACHINE_PAGE}).\n` +
-                (game.MOB_SPECIES[id].mount ? `It is ridden as [a horse](${RIDING_PAGE}).\n` : '');
+            topics[`${number(id)} ${lang}`] = `# ${names(id)[lang]}\n\n![${names(id)[lang]}](mob:${id})\n\nIn ${blocks}: see [the topic](${source === 'amber' ? AMBER_TOPIC : FOSSILS_TOPIC}) and [the machine](${MACHINE_TOPIC}).\n` +
+                (game.MOB_SPECIES[id].mount ? `It is ridden as [a horse](${RIDING_TOPIC}).\n` : '');
         }
         readme += `| ${number(id)} | ${names(id).ES} | ${names(id).EN} | made up |\n`;
         sources[id] = `registerSpecies('${id}', {\n    info: { hiddenUntilDiscovered: true },\n});\n`;
     }
-    const spoil = (id, lang, rewrite) => { pages[`${number(id)} ${lang}`] = rewrite(pages[`${number(id)} ${lang}`]); };
-    readme = readme.replace(`| ${number('made_up_pageless')} | Hecho pageless | Made pageless | made up |\n`, '');
-    delete pages[`${number('made_up_misfiled')} EN`];
+    const spoil = (id, lang, rewrite) => { topics[`${number(id)} ${lang}`] = rewrite(topics[`${number(id)} ${lang}`]); };
+    readme = readme.replace(`| ${number('made_up_topicless')} | Hecho topicless | Made topicless | made up |\n`, '');
+    delete topics[`${number('made_up_misfiled')} EN`];
     spoil('made_up_faceless', 'ES', (text) => text.replace('![Hecho faceless](mob:made_up_faceless)', 'Un retrato: ![](mob:made_up_faceless).'));
     spoil('made_up_blockless', 'EN', (text) => text.replace('`fossil_rock_rare`', 'the rare fossil rock'));
     spoil('made_up_bones', 'ES', (text) => text.replace('![](item:fossil_bones_spine)', 'la columna'));
-    spoil('made_up_lost', 'EN', (text) => text.replace(`](${FOSSILS_PAGE})`, `](${AMBER_PAGE})`));
-    spoil('made_up_amber', 'ES', (text) => text.replace(`](${AMBER_PAGE})`, `](${FOSSILS_PAGE})`));
-    spoil('made_up_machineless', 'ES', (text) => text.replace(`[the machine](${MACHINE_PAGE})`, 'the machine'));
-    spoil('made_up_steed', 'EN', (text) => text.replace(`](${RIDING_PAGE})`, ']'));
+    spoil('made_up_lost', 'EN', (text) => text.replace(`](${FOSSILS_TOPIC})`, `](${AMBER_TOPIC})`));
+    spoil('made_up_amber', 'ES', (text) => text.replace(`](${AMBER_TOPIC})`, `](${FOSSILS_TOPIC})`));
+    spoil('made_up_machineless', 'ES', (text) => text.replace(`[the machine](${MACHINE_TOPIC})`, 'the machine'));
+    spoil('made_up_steed', 'EN', (text) => text.replace(`](${RIDING_TOPIC})`, ']'));
     sources.made_up_wild += 'this.mobMarkNatural(mob, chunkX, chunkZ);\n';
     delete sources.made_up_fileless;
     const guide = {
         readme,
         file: (id, lang) => {
-            if (Number(id) === MACHINE_PAGE) return `${MACHINE_PAGE}_${lang}_Machine.md`;
+            if (Number(id) === MACHINE_TOPIC) return `${MACHINE_TOPIC}_${lang}_Machine.md`;
             const owner = ids.find((species) => number(species) === Number(id));
-            return owner && pages[`${id} ${lang}`] ? `${id}_${lang}_${names(owner)[lang].replace(/ /g, '_')}.md` : null;
+            return owner && topics[`${id} ${lang}`] ? `${id}_${lang}_${names(owner)[lang].replace(/ /g, '_')}.md` : null;
         },
-        page: (id, lang) => pages[`${id} ${lang}`] ?? null,
+        topic: (id, lang) => topics[`${id} ${lang}`] ?? null,
         source: (id) => sources[id] ?? null
     };
     const found = extinctProblems(game, ids, guide);
@@ -431,8 +431,8 @@ test('the rules bite: a made-up animal with everything right, and then with one 
     const expected = {
         made_up_good: [],
         made_up_fileless: ["its file was not found: registerSpecies('<id>', { at the start of a line, in a file of js/game"],
-        made_up_amber: [`its ES page (${number('made_up_amber')}) does not link the page that says where its fossil is found (${AMBER_PAGE})`],
-        made_up_bones: [`its ES page (${number('made_up_bones')}) does not name the block its fossil is in: \`fossil_bones_spine\``],
+        made_up_amber: [`its ES topic (${number('made_up_amber')}) does not link the topic that says where its fossil is found (${AMBER_TOPIC})`],
+        made_up_bones: [`its ES topic (${number('made_up_bones')}) does not name the block its fossil is in: \`fossil_bones_spine\``],
         made_up_fossilless: ['it has no fossil: nobody could find it and bring it back (fossil: { source, rarity } in registerSpecies)'],
         made_up_pig: ['it has no model: it would be drawn as a pig'],
         made_up_drawn: ['its model is not built without a browser: Image is not defined'],
@@ -454,22 +454,22 @@ test('the rules bite: a made-up animal with everything right, and then with one 
         made_up_still: ['it walks where the server sends it and has no speed'],
         made_up_wild: ['its file spawns something by itself'],
         made_up_trapless: ['it has no trap row: at least trap: { baits: [] }'],
-        made_up_steed: [`its EN page does not say how it is ridden: a link to page ${RIDING_PAGE}`],
+        made_up_steed: [`its EN topic does not say how it is ridden: a link to topic ${RIDING_TOPIC}`],
         made_up_nag: ['its mount is that of another species: it says its own', 'it has a mount and cannot be tamed: only its owner rides an animal the server keeps'],
         made_up_perch: ['its mount does not say autoJump'],
         made_up_tower: ['its rider would sit 2.5 blocks up, over an animal 0.75 tall', 'its rider would look out from under the seat'],
-        made_up_pageless: ['it has no ES page under the id the catalogue of the README gives it', 'it has no EN page under the id the catalogue of the README gives it'],
-        made_up_misfiled: ['it has no EN page under the id the catalogue of the README gives it'],
-        made_up_faceless: [`its ES page (${number('made_up_faceless')}) does not show its portrait: ![name](mob:made_up_faceless) on a line of its own`],
-        made_up_blockless: [`its EN page (${number('made_up_blockless')}) does not name the block its fossil is in: \`fossil_rock_rare\``],
-        made_up_lost: [`its EN page (${number('made_up_lost')}) does not link the page that says where its fossil is found (${FOSSILS_PAGE})`],
-        made_up_machineless: [`its ES page (${number('made_up_machineless')}) does not link the revival machine (${MACHINE_PAGE})`]
+        made_up_topicless: ['it has no ES topic under the id the catalogue of the README gives it', 'it has no EN topic under the id the catalogue of the README gives it'],
+        made_up_misfiled: ['it has no EN topic under the id the catalogue of the README gives it'],
+        made_up_faceless: [`its ES topic (${number('made_up_faceless')}) does not show its portrait: ![name](mob:made_up_faceless) on a line of its own`],
+        made_up_blockless: [`its EN topic (${number('made_up_blockless')}) does not name the block its fossil is in: \`fossil_rock_rare\``],
+        made_up_lost: [`its EN topic (${number('made_up_lost')}) does not link the topic that says where its fossil is found (${FOSSILS_TOPIC})`],
+        made_up_machineless: [`its ES topic (${number('made_up_machineless')}) does not link the revival machine (${MACHINE_TOPIC})`]
     };
     for (const id of ids) assert.deepEqual(of(id), expected[id] ?? [], id);
     assert.deepEqual(found.filter((line) => !ids.some((id) => line.startsWith(`${id}: `))), ['made_up_alive: it has a fossil and is no extinct animal (hiddenUntilDiscovered: true)']);
 
-    // Until the page of the machine is written, no page has to link it; and the real animals pass in this game too.
-    const before = { ...guide, file: (id, lang) => (Number(id) === MACHINE_PAGE ? null : guide.file(id, lang)) };
+    // Until the topic of the machine is written, no topic has to link it; and the real animals pass in this game too.
+    const before = { ...guide, file: (id, lang) => (Number(id) === MACHINE_TOPIC ? null : guide.file(id, lang)) };
     assert.deepEqual(extinctProblems(game, ['made_up_machineless', 'made_up_paddler'], before).filter((line) => !line.startsWith('made_up_alive')), []);
     assert.deepEqual(extinctProblems(game, extinctIds, realGuide).filter((line) => !line.startsWith('made_up_alive')), []);
 });

@@ -71,7 +71,7 @@ function loadGame(species = '') {
         if (src === 'js/game/mobs.js' && species) vm.runInContext(species, context, { filename: 'species of the tests' });
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, Game, MOB_SPECIES, ITEM_TYPES, BLOCK_TYPES, BLOCK_SHAPES, TEXTURE_PATTERNS, GAME_CONTENT_HOOKS, ITEM_USE_HANDLERS, MODAL_PANELS,
-        NETWORK_HANDLERS, FOSSIL_SPECIES, FOSSIL_PIECES, STORAGE_KINDS, ELECTRIC_KINDS, REVIVAL_KIND, REVIVAL_PIECES, REVIVAL_TEXT, REVIVAL_GUIDE_PAGE, REVIVAL_HEAR_RANGE,
+        NETWORK_HANDLERS, FOSSIL_SPECIES, FOSSIL_PIECES, STORAGE_KINDS, ELECTRIC_KINDS, REVIVAL_KIND, REVIVAL_PIECES, REVIVAL_TEXT, REVIVAL_GUIDE_TOPIC, REVIVAL_HEAR_RANGE,
         REVIVAL_WITNESS_RANGE, REVIVAL_LIGHTS, REVIVAL_LIGHT_ROWS, REVIVAL_LIGHT_MS, REVIVAL_LIGHT_COLOURS, revivalBuildsOnTop, revivalLightPixels, revivalPaintLights, fossilItemsOf, mobMovementIs, itemTagsOf, setGameLang, gameLang, revivalStatusLines, revivalProgress, revivalRefusalLine, revivalSpeciesOfItem,
         revivalIsComplete, revivalIsDone, revivalSay });`, context);
     return context;
@@ -704,14 +704,14 @@ test('whoever stands by when an animal comes back has seen it, hears it and is t
 
 // ---- The guide ----
 
-test('page 264 says of the machine what the code does, in both languages', () => {
+test('topic 264 says of the machine what the code does, in both languages', () => {
     const guide = path.join(STATIC, 'guide');
-    const page = (id, lang) => read(guide, fs.readdirSync(guide).find((name) => name.startsWith(`${id}_${lang}_`)));
-    assert.equal(ctx.REVIVAL_GUIDE_PAGE, 264);
+    const topic = (id, lang) => read(guide, fs.readdirSync(guide).find((name) => name.startsWith(`${id}_${lang}_`)));
+    assert.equal(ctx.REVIVAL_GUIDE_TOPIC, 264);
     const constant = (name) => Number(GO.match(new RegExp(`${name}\\s*= ([\\d.]+)`))[1]);
     const rows = serverRows();
     for (const lang of ['ES', 'EN']) {
-        const text = page(264, lang);
+        const text = topic(264, lang);
         assert.equal(text.split('\n')[0], lang === 'ES' ? '# Máquina de revivir' : '# Revival machine');
         assert.ok(text.includes('`revival_machine`') && text.includes('(item:revival_machine)'));
         assert.ok(text.includes(`**${ctx.ELECTRIC_KINDS.revival_machine.watts} W**`), `${lang}: its watts`);
@@ -724,7 +724,7 @@ test('page 264 says of the machine what the code does, in both languages', () =>
         for (const water of new Set(Object.values(rows).map((row) => row.Water).filter((water) => water > 0))) assert.ok(text.includes(`**${water}**`), `${lang}: ${water} blocks of water`);
         // Where it leads, and who leads to it.
         for (const to of [262, 263, 261, 207, 204]) assert.ok(text.includes(`](${to})`), `264 ${lang} links ${to}`);
-        for (const from of [0, 48, 261, 262, 263, 204]) assert.ok(page(from, lang).includes('](264)'), `${from} ${lang} links 264`);
+        for (const from of [0, 48, 261, 262, 263, 204]) assert.ok(topic(from, lang).includes('](264)'), `${from} ${lang} links 264`);
     }
     const guia = read(ROOT, 'GUIA.md');
     const section = guia.slice(guia.indexOf('\n## Máquina de revivir\n'), guia.indexOf('\n## Bloque luminoso\n'));

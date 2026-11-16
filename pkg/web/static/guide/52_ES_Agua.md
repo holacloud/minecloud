@@ -41,6 +41,23 @@ lleno para verterla ahí y recuperar el cubo vacío.
 - La [caña de pescar](94) necesita agua a menos de 9 bloques.
 - Las ranas, las tortugas y los cangrejos viven en las orillas.
 
+## Nieve y hielo
+
+El agua también puede estar **sólida**. El [congelador](234) convierte un frasco de agua en `ice`, y con hielo se
+fabrican dos bloques de construcción (tecla C):
+
+| | Nombre en el juego | Id | Se hace con | Rotura (a mano) |
+|---|---|---|---|---|
+| ![](item:snow_block) | Snow Block | `snow_block` | 2 `ice` | 0,3 s |
+| ![](item:packed_ice) | Packed Ice | `packed_ice` | 4 `ice` | 0,5 s |
+
+Se colocan como cualquier bloque, y **ninguno de los dos se derrite** en el juego, ni junto a una antorcha.
+
+La nieve y el hielo son lo mismo, agua sólida, pero la nieve está hecha de copos con mucho aire entre ellos: hasta
+nueve partes de aire por una de hielo. Por eso es blanca (el aire entre los cristales desvía la luz en todas
+direcciones) y aísla tan bien del frío: dentro de un iglú se está caliente. El hielo apretado, sin aire, es
+transparente y azulado.
+
 ## Trucos
 
 - Antes de saltar desde muy alto, coloca un par de bloques de agua abajo.

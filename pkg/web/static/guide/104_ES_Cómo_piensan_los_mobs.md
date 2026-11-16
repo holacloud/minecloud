@@ -1,7 +1,7 @@
 # Cómo piensan los mobs
 
-Un mob no tiene un cerebro de verdad, pero sí unas cuantas reglas sencillas que, juntas, parecen vida. Esta
-página cuenta cuáles son.
+Un mob no tiene un cerebro de verdad, pero sí unas cuantas reglas sencillas que, juntas, parecen vida. Este
+tema cuenta cuáles son.
 
 ## Formas de moverse
 

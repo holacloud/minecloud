@@ -1,6 +1,6 @@
 # Lo que ve el búho a las tres
 
-> Has encontrado una página escondida. Nadie la apunta en el índice. Si estás leyendo esto, es que resolviste
+> Has encontrado un tema escondido. Nadie lo apunta en el índice. Si estás leyendo esto, es que resolviste
 > el acertijo del búho… o que el búho te lo contó.
 
 ![Búho](mob:owl)

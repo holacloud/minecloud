@@ -58,4 +58,4 @@ The borders between them are smooth: the land blends little by little.
 - At the very bottom lies **bedrock**, which cannot be broken.
 
 The cards in the [Bestiary](5) give each species' habitat, and the [mobs index](16) takes you to each one's
-page.
+topic.

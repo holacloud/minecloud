@@ -9,7 +9,7 @@ stings nobody**. It is an [extinct animal](261): it never appears by itself, it 
 ## How to get one
 
 1. **Look for amber.** It is under the **forest**, inside the stone, in the block ![](item:amber_rock)
-   `amber_rock`: stone with honey-coloured drops that glow a little in the dark. The page on [amber](263) says
+   `amber_rock`: stone with honey-coloured drops that glow a little in the dark. The topic on [amber](263) says
    how deep to dig.
 2. **Break the block** with a [pickaxe](68). Which insect is inside depends on the place: if it was an ancient
    bee, you take ![](item:fossil_ancient_bee) `fossil_ancient_bee` with you: a piece of amber with the bee in it.

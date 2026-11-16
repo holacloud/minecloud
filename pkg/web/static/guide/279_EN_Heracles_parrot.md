@@ -10,7 +10,7 @@ brought back to life.
 ## How to get one
 
 1. **Look for its fossil.** It lies far down, inside the stone, in the block ![](item:fossil_rock_rare)
-   `fossil_rock_rare`: a dark rock with a three-toed footprint. The page on [fossils](262) says how deep to dig.
+   `fossil_rock_rare`: a dark rock with a three-toed footprint. The topic on [fossils](262) says how deep to dig.
 2. **Break the block** with a [pickaxe](68). Which animal is inside depends on the place: if it was a
    Heracles parrot, you take ![](item:fossil_heracles) `fossil_heracles` with you.
 3. **Bring it back to life** in the [revival machine](264). **One piece** is enough and it takes **45 seconds**. It is

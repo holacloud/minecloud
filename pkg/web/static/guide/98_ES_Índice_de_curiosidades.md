@@ -1,7 +1,7 @@
 # Índice de curiosidades
 
-Estas páginas no te enseñan a jugar: cuentan **cómo funciona el mundo por dentro**, sus rarezas y su
-historia. Léelas con calma, junto a una antorcha.
+Estos temas no te enseñan a jugar: cuentan **cómo funciona el mundo por dentro**, sus rarezas y su
+historia. Léelos con calma, junto a una antorcha.
 
 ## Curiosidades
 

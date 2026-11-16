@@ -1,7 +1,7 @@
 # Índice de mobs
 
 Todas las especies del mundo, en el orden en que llegaron al juego. Pulsa un nombre para ir a su
-página.
+tema.
 
 Para saber dónde vive cada una, ver [Biomas](15). Para llevar la cuenta de las que has visto, ver
 [Bestiario](5).

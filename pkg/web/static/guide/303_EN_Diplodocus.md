@@ -15,7 +15,7 @@ ground. It is an [extinct animal](261): it never appears by itself, it has to be
    (`fossil_bones_skull`, `fossil_bones_spine` and `fossil_bones_tail`), which lie in a straight line inside the
    stone, deep down. The three blocks of a skeleton always belong to one animal. It is a **legendary** fossil:
    its weight against the other skeletons is 2, against 6 of the mammoth, 2 of the plesiosaur and 1 of the
-   tyrannosaurus. The page on [fossils](262) says how deep to dig and how to find the other two pieces once you
+   tyrannosaurus. The topic on [fossils](262) says how deep to dig and how to find the other two pieces once you
    have one.
 2. **Break the blocks** with a [pickaxe](68).
 3. **Bring it back to life** in the [revival machine](264), with **the three pieces** inside. It takes **120

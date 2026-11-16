@@ -6,12 +6,12 @@ MineCloud tiene su propio tiempo: el aire está más caliente o más frío, sopl
 **llueve**. Con tres instrumentos puedes medirlo e incluso **saber de antemano** si va a llover hoy. Juntando los
 tres tienes una estación meteorológica para montar junto a tu casa.
 
-| | Instrumento | Qué mide | Página |
+| | Instrumento | Qué mide | Tema |
 |---|---|---|---|
 | ![](item:thermometer) | Termómetro | la temperatura | [Termómetro](113) |
 | ![](item:barometer) | Barómetro | la presión y el pronóstico | [Barómetro y anemómetro](114) |
 | ![](item:anemometer) | Anemómetro | la velocidad y la dirección del viento | [Barómetro y anemómetro](114) |
-| ![](item:weather_station) | Estación meteorológica | todo eso, y la lluvia del día | esta página |
+| ![](item:weather_station) | Estación meteorológica | todo eso, y la lluvia del día | este tema |
 
 ## Cómo leer un instrumento
 

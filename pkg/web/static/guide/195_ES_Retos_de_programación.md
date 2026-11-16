@@ -3,7 +3,7 @@
 ![Robot](item:robot)
 
 Ocho retos para tu [robot](193), del más fácil al más difícil. Cada uno tiene una **pista**. Las **soluciones**
-están al final de la página, pero... ¡inténtalo primero! Hay muchas formas buenas de resolver cada reto: si tu
+están al final del tema, pero... ¡inténtalo primero! Hay muchas formas buenas de resolver cada reto: si tu
 programa funciona, está bien, aunque no se parezca al de la solución.
 
 Si no recuerdas qué hace una instrucción, mira [Programar el robot](194).

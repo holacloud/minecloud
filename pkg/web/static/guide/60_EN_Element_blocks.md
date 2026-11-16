@@ -68,7 +68,7 @@ Three carry the word *Element* in their name so they are not mixed up with the m
 
 They are **building and learning** blocks, and they also **react**: at a [lab bench](117) each block is an
 atom, and they combine into water, salt, steel, bronze, fertilizer, neon lamps and more (and there are reactions to discover!). See
-[Chemistry](115). Every element has its own page, linked from the [Periodic table](116).
+[Chemistry](115). Every element has its own topic, linked from the [Periodic table](116).
 
 - Break time: **0.9 s** by hand; 0.35 s with an iron [pickaxe](68). They drop themselves.
 - The symbol reads well up close and from afar: ideal for giant signs and words.

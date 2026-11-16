@@ -57,5 +57,5 @@ entre ellos son suaves: el terreno se mezcla poco a poco.
   y las montañas. Ver [Cómo encontrar metales](248).
 - Al fondo de todo está la **roca madre**, que no se puede romper.
 
-Las fichas del [Bestiario](5) dicen el hábitat de cada especie, y el [índice de mobs](16) te lleva a la
-página de cada una.
+Las fichas del [Bestiario](5) dicen el hábitat de cada especie, y el [índice de mobs](16) te lleva al
+tema de cada una.

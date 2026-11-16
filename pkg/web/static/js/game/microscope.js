@@ -76,10 +76,10 @@ const MICROSCOPE_KIT = [
     ['cobalt_glass', 1], ['red_stained_glass', 1], ['orange_stained_glass', 1], ['green_stained_glass', 1], ['light_blue_stained_glass', 1]
 ];
 
-// The page of the microscope in the guide; the organisms carry their own (MICRO_SPECIES.page).
-const MICROSCOPE_GUIDE_PAGE = 238;
-const MICROSCOPE_STAIN_PAGE = 246;
-const MICROSCOPE_LENS_PAGE = 247;
+// The topic of the microscope in the guide; the organisms carry their own (MICRO_SPECIES.topic).
+const MICROSCOPE_GUIDE_TOPIC = 238;
+const MICROSCOPE_STAIN_TOPIC = 246;
+const MICROSCOPE_LENS_TOPIC = 247;
 
 // ---------------------------------------------------------------------------------------
 // Pure helpers (also used by test/js/microscope.test.js)
@@ -785,7 +785,7 @@ registerGameContent(({ addItem, addRecipe }) => {
     addRecipe('glass_slide', 'Cut Glass Slides', 'glass_slide', 4, [{ type: 'glass', amount: 1 }]);
     addRecipe('micropipette', 'Make Micropipette', 'micropipette', 1, [{ type: 'glass', amount: 1 }, { type: 'leather', amount: 1 }]);
     addRecipe('tardigrade_revive', 'Revive Tardigrade Tun', 'tardigrade_tube', 1, [{ type: 'tardigrade_tun', amount: 1 }, { type: 'water_flask', amount: 1 }]);
-    // Not the real synthesis, which takes more than coal and sulfur (guide, page 246): only what stands for it.
+    // Not the real synthesis, which takes more than coal and sulfur (guide, topic 246): only what stands for it.
     addRecipe('methylene_blue', 'Mix Methylene Blue', 'methylene_blue', 1, [{ type: 'coal_ore', amount: 1 }, { type: 'element_s', amount: 1 }, { type: 'water_flask', amount: 1 }]);
     addRecipe('darkfield_stop', 'Make Dark-field Stop', 'darkfield_stop', 1, [{ type: 'glass_slide', amount: 1 }, { type: 'coal_ore', amount: 1 }]);
 });
@@ -1538,7 +1538,7 @@ Object.assign(Game.prototype, {
 
         panel.querySelector('.micro-close').addEventListener('click', () => this.microscopeClose());
         panel.querySelector('.micro-read').addEventListener('click', () => {
-            if (this.microscopeSelected) this.microscopeOpenGuide(MICRO_SPECIES[this.microscopeSelected.species].page);
+            if (this.microscopeSelected) this.microscopeOpenGuide(MICRO_SPECIES[this.microscopeSelected.species].topic);
         });
         panel.querySelector('#micro-focus').addEventListener('input', (event) => this.microscopeSetFocus(Number(event.target.value) / 100));
         panel.querySelectorAll('[data-power]').forEach((button) => button.addEventListener('click', () => this.microscopeSetPower(Number(button.dataset.power))));
@@ -1548,9 +1548,9 @@ Object.assign(Game.prototype, {
         this.microscopeBindTool('dark', () => this.microscopeToggleDark());
         this.microscopeBindTool('stain', () => this.microscopeTogglePop('stain'));
         this.microscopeBindTool('filter', () => this.microscopeTogglePop('filter'));
-        this.microscopeBindTool('guide', () => this.microscopeOpenGuide(MICROSCOPE_GUIDE_PAGE));
-        panel.querySelector('.micro-tools-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_LENS_PAGE));
-        panel.querySelector('.micro-stain-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_STAIN_PAGE));
+        this.microscopeBindTool('guide', () => this.microscopeOpenGuide(MICROSCOPE_GUIDE_TOPIC));
+        panel.querySelector('.micro-tools-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_LENS_TOPIC));
+        panel.querySelector('.micro-stain-read').addEventListener('click', () => this.microscopeOpenGuide(MICROSCOPE_STAIN_TOPIC));
         for (const stain of Object.keys(MICRO_STAINS)) {
             panel.querySelector(`.micro-stain-${stain}`).addEventListener('click', () => this.microscopeAskStain(stain));
         }
@@ -1989,11 +1989,11 @@ Object.assign(Game.prototype, {
         if (box.textContent !== text) box.textContent = text;
     },
 
-    // Closes the panel and opens the book at `page`; closing the book returns to the game.
-    microscopeOpenGuide(page) {
+    // Closes the panel and opens the book at `topic`; closing the book returns to the game.
+    microscopeOpenGuide(topic) {
         if (typeof this.guideShow !== 'function') return;
         this.microscopeClose();
-        this.guideShow(String(page));
+        this.guideShow(String(topic));
     },
 
     // /microkit: everything for trying the microscope, in creative mode only.

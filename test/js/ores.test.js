@@ -216,9 +216,9 @@ test('what looks for natural blocks knows the new ores', () => {
 
 // ---- The guide ----
 
-const page = (id, lang) => {
+const topic = (id, lang) => {
     const name = fs.readdirSync(GUIDE).find((file) => file.startsWith(`${id}_${lang}_`));
-    assert.ok(name, `page ${id} ${lang}`);
+    assert.ok(name, `topic ${id} ${lang}`);
     return fs.readFileSync(path.join(GUIDE, name), 'utf8');
 };
 
@@ -226,15 +226,15 @@ test('the guide: 248 and 249 in both languages, in the indexes and the catalogue
     const titles = { 248: { ES: 'Cómo encontrar metales', EN: 'How to find metals' }, 249: { ES: 'Cómo se funden los metales', EN: 'How metals are smelted' } };
     for (const id of [248, 249]) {
         for (const lang of ['ES', 'EN']) {
-            assert.match(page(id, lang), new RegExp(`^# ${titles[id][lang]}`), `${id} ${lang}`);
+            assert.match(topic(id, lang), new RegExp(`^# ${titles[id][lang]}`), `${id} ${lang}`);
             assert.ok(fs.readdirSync(GUIDE).includes(`${id}_${lang}_${titles[id][lang].replace(/ /g, '_')}.md`));
         }
         assert.match(read(GUIDE, 'README.md'), new RegExp(`^\\| ${id} \\| ${titles[id].ES} \\| ${titles[id].EN} \\|`, 'm'));
     }
     for (const lang of ['ES', 'EN']) {
-        for (const from of [0, 48, 53, 59, 115, 235]) assert.match(page(from, lang), /\(248\)/, `${from} ${lang}`);
-        assert.match(page(248, lang), /\(249\)/);
-        assert.match(page(249, lang), /\(248\)/);
+        for (const from of [0, 48, 53, 59, 115, 235]) assert.match(topic(from, lang), /\(248\)/, `${from} ${lang}`);
+        assert.match(topic(248, lang), /\(249\)/);
+        assert.match(topic(249, lang), /\(248\)/);
     }
     assert.match(read(ROOT, 'GUIA.md'), /248/);
 });
@@ -244,7 +244,7 @@ test('the guide puts the bottom of the world where the generator does', () => {
     const height = `−${-BEDROCK_Y}`;
     for (const lang of ['ES', 'EN']) {
         for (const id of [50, 99, 248]) {
-            const text = page(id, lang);
+            const text = topic(id, lang);
             assert.ok(text.includes(`**y = ${height}**`) || text.includes(`**${height}**`), `${id} ${lang}`);
             assert.ok(text.includes('−5'), `${id} ${lang}: land already explored keeps the old floor`);
             assert.ok(!text.includes('**y = −5**') && !text.includes('**−5**'), `${id} ${lang}: the old floor as if it were the floor`);
@@ -256,29 +256,29 @@ test('the guide puts the bottom of the world where the generator does', () => {
 test('the guide says what the generator and the foundry do', () => {
     const appliances = read(JS, 'game', 'appliances.js');
     for (const lang of ['ES', 'EN']) {
-        const find = page(248, lang);
-        const smelt = page(249, lang);
+        const find = topic(248, lang);
+        const smelt = topic(249, lang);
         for (const ore of ORES) assert.match(find, new RegExp(`item:${ore}`), `${lang} ${ore}`);
         for (const [ore, metal] of Object.entries(METALS)) {
             const recipe = appliances.match(new RegExp(`${ore}: \\{ out: '${metal}', in: 1, yield: (\\d+), seconds: (\\d+) \\}`));
             const row = new RegExp(`1 \`${ore}\`.*\\*\\*${recipe[1]}\\*\\* \`${metal}\`.*\\b${recipe[2]} s.*1 \`${ore}\` \\+ 1 \`coal_ore\``);
             assert.match(smelt, row, `${lang} ${ore}`);
         }
-        // Each metal's own page says where its ore is, and sends the reader to the page on finding it.
+        // Each metal's own topic says where its ore is, and sends the reader to the topic on finding it.
         for (const [id, ore] of [[165, 'copper_ore'], [166, 'zinc_ore'], [167, 'silver_ore'], [168, 'tin_ore'], [174, 'lead_ore']]) {
-            const metalPage = page(id, lang);
-            assert.match(metalPage, new RegExp(`\`${ore}\``), `${id} ${lang}`);
-            assert.match(metalPage, /\(248\)/, `${id} ${lang}`);
-            assert.match(metalPage, /\(235\)/, `${id} ${lang}`);
+            const metalTopic = topic(id, lang);
+            assert.match(metalTopic, new RegExp(`\`${ore}\``), `${id} ${lang}`);
+            assert.match(metalTopic, /\(248\)/, `${id} ${lang}`);
+            assert.match(metalTopic, /\(235\)/, `${id} ${lang}`);
             // The old way stays, and is still said.
-            assert.match(metalPage, /1 `stone` \+ 1 `coal_ore`/, `${id} ${lang}`);
+            assert.match(metalTopic, /1 `stone` \+ 1 `coal_ore`/, `${id} ${lang}`);
         }
     }
-    assert.doesNotMatch(page(59, 'ES'), /Ninguno aparece en el mundo/);
-    assert.doesNotMatch(page(59, 'EN'), /None of them appear in the world|None of them is found/);
-    // The old rule of the ores is gone from the page on ores.
-    assert.doesNotMatch(page(53, 'ES'), /~1,8 %/);
-    assert.doesNotMatch(page(53, 'EN'), /~1\.8 %/);
+    assert.doesNotMatch(topic(59, 'ES'), /Ninguno aparece en el mundo/);
+    assert.doesNotMatch(topic(59, 'EN'), /None of them appear in the world|None of them is found/);
+    // The old rule of the ores is gone from the topic on ores.
+    assert.doesNotMatch(topic(53, 'ES'), /~1,8 %/);
+    assert.doesNotMatch(topic(53, 'EN'), /~1\.8 %/);
 });
 
 test('the guide says mined copper, iron and gold serve the lab, and no longer that they do not', () => {
@@ -286,22 +286,22 @@ test('the guide says mined copper, iron and gold serve the lab, and no longer th
     const guia = read(ROOT, 'GUIA.md');
     for (const lang of ['ES', 'EN']) {
         for (const [id, [block, element, recipe]] of Object.entries(conversions)) {
-            assert.ok(page(id, lang).includes(`| 1 \`${element}\` (*Extract ${recipe}*) | 1 \`${block}\` |`), `${id} ${lang}`);
-            assert.ok(page(249, lang).includes(`1 \`${block}\``) && page(249, lang).includes(`1 \`${element}\``), `249 ${lang} ${block}`);
-            assert.ok(page(60, lang).includes(`1 \`${block}\``), `60 ${lang} ${block}`);
+            assert.ok(topic(id, lang).includes(`| 1 \`${element}\` (*Extract ${recipe}*) | 1 \`${block}\` |`), `${id} ${lang}`);
+            assert.ok(topic(249, lang).includes(`1 \`${block}\``) && topic(249, lang).includes(`1 \`${element}\``), `249 ${lang} ${block}`);
+            assert.ok(topic(60, lang).includes(`1 \`${block}\``), `60 ${lang} ${block}`);
         }
-        assert.match(page(248, lang), /\(117\)/, `248 ${lang}`);
-        assert.match(page(59, lang), /\(117\)/, `59 ${lang}`);
+        assert.match(topic(248, lang), /\(117\)/, `248 ${lang}`);
+        assert.match(topic(59, lang), /\(117\)/, `59 ${lang}`);
     }
-    for (const stale of [page(165, 'ES'), page(249, 'ES')]) assert.doesNotMatch(stale, /no lo acepta/);
-    for (const stale of [page(165, 'EN'), page(249, 'EN')]) assert.doesNotMatch(stale, /does not take it/);
+    for (const stale of [topic(165, 'ES'), topic(249, 'ES')]) assert.doesNotMatch(stale, /no lo acepta/);
+    for (const stale of [topic(165, 'EN'), topic(249, 'EN')]) assert.doesNotMatch(stale, /does not take it/);
     for (const [id, lang, stale] of [[162, 'ES', /no en este bloque/], [172, 'ES', /no en este bloque/], [162, 'EN', /not into this block/], [172, 'EN', /not into this block/]]) {
-        assert.doesNotMatch(page(id, lang), stale, `${id} ${lang}`);
+        assert.doesNotMatch(topic(id, lang), stale, `${id} ${lang}`);
     }
     for (const [, [block, element]] of Object.entries(conversions)) assert.ok(guia.includes(`| 1 \`${element}\` | 1 \`${block}\` |`), block);
 });
 
-test('the page on finding metals warns that lead is poisonous', () => {
-    assert.match(page(248, 'ES'), /plomo es tóxico/i);
-    assert.match(page(248, 'EN'), /lead is toxic/i);
+test('the topic on finding metals warns that lead is poisonous', () => {
+    assert.match(topic(248, 'ES'), /plomo es tóxico/i);
+    assert.match(topic(248, 'EN'), /lead is toxic/i);
 });

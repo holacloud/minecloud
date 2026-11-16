@@ -12,7 +12,7 @@ wind, the water, your own arm... or a fish.
 | ![](item:water_wheel) | Water Wheel | `water_wheel` | 105 W | water touching it |
 | ![](item:hand_crank) | Hand Crank | `hand_crank` | 100 W | you turning it |
 | ![](item:eel_tank) | Eel Tank | `eel_tank` | 25 W (50 W fed) | an [electric eel](213) living inside |
-| ![](item:rtg) | Radioisotope Generator | `rtg` | 80 W, always | nothing: decaying atoms inside ([page](220)) |
+| ![](item:rtg) | Radioisotope Generator | `rtg` | 80 W, always | nothing: decaying atoms inside ([topic](220)) |
 
 The numbers are scaled for play, because a MineCloud day lasts only 4 minutes (see [Electricity](200)).
 
@@ -30,7 +30,7 @@ The numbers are scaled for play, because a MineCloud day lasts only 4 minutes (s
 
 - The **silicon** block (`element_si`) is synthesised from stone and coal (see [Element blocks](60) and
   [Silicon](152)): no lab needed.
-- The [solar cell](177) gives twice as many panels, but you have to **discover** it at the [lab bench](117): its page
+- The [solar cell](177) gives twice as many panels, but you have to **discover** it at the [lab bench](117): its topic
   has the hint.
 - Copper is in [Fine stones and metals](59).
 

@@ -13,7 +13,7 @@ pegas, barrita y embiste**. Es un [animal extinto](261): no aparece por su cuent
    `fossil_mammoth_spine` y `fossil_mammoth_tail`. Salen de los tres bloques de un **esqueleto**
    (`fossil_bones_skull`, `fossil_bones_spine` y `fossil_bones_tail`), que están en línea recta dentro de la
    piedra, muy abajo. Los tres bloques de un esqueleto son siempre del mismo animal, y el mamut es el que más
-   veces encontrarás: su peso frente a los demás esqueletos es 6, y ninguno de los otros pasa de 2. La página
+   veces encontrarás: su peso frente a los demás esqueletos es 6, y ninguno de los otros pasa de 2. El tema
    de los [fósiles](262) dice a qué altura cavar y cómo encontrar las otras dos piezas cuando tienes una.
 2. **Rompe los bloques** con un [pico](68).
 3. **Devuélvelo a la vida** en la [máquina de revivir](264), con **las tres piezas** dentro. Tarda **45

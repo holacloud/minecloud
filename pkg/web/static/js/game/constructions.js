@@ -28,7 +28,8 @@
 //   CONSTRUCTION_STOCK_MAX: never a way to make items without creative. A build stopped half way sends none.
 //   "/build undo" breaks those chests like any block, and the server spills what they hold to this client;
 //   the drops of what the build itself put in are not spawned (constructionStockedDrop), anything a player
-//   added since still drops. Only the lab (construction_lab.js) has a stock now.
+//   added since still drops. Every design with storage has a stock: the house, the hall and the showroom here, the
+//   castle, the library, the apartments, the lab and the palaces in their own files.
 // - "/build undo" puts back what the last build replaced (it lasts until the page reloads);
 //   "/build stop" stops one half way, keeping what is done and undoable. After a reconnection a
 //   build sends the last CONSTRUCTION_RESEND blocks again, as they may have died with the socket.
@@ -61,6 +62,11 @@ const CONSTRUCTION_STOCK_TOTAL = 256;
 // ---------------------------------------------------------------------------------------
 // Drawing tools for the designs (no Game needed).
 
+// A whole number from a cell, the same in every build: what ConstructionBuilder.stockMix picks by.
+function constructionStockHash(x, y, z) {
+    return (Math.imul(x + 11, 73856093) ^ Math.imul(y + 13, 19349663) ^ Math.imul(z + 17, 83492791)) >>> 0;
+}
+
 class ConstructionBuilder {
     constructor(size) {
         this.size = size;
@@ -77,6 +83,20 @@ class ConstructionBuilder {
         const key = (y * this.size[2] + z) * this.size[0] + fx;
         if (this.stocks.has(key)) throw new Error(`Stocked twice: ${fx},${y},${z}`);
         this.stocks.set(key, { x: fx, y, z, items, freezer });
+    }
+
+    // A stock made of `fixed` and `n` more stacks of `extras`, picked by where the block ends up in the box (after a
+    // mirror), the same in every build: two flats or two stalls drawn by one loop need not hold the same.
+    stockMix(x, y, z, fixed, extras = [], n = 0, freezer = []) {
+        const fx = this.flipped ? this.size[0] - 1 - x : x;
+        let hash = constructionStockHash(fx, y, z);
+        const pool = extras.slice();
+        const items = fixed.slice();
+        for (let i = 0; i < n && pool.length; i++) {
+            hash = Math.imul(hash ^ (hash >>> 15), 2246822507) >>> 0;
+            items.push(pool.splice(hash % pool.length, 1)[0]);
+        }
+        this.stock(x, y, z, items, freezer);
     }
 
     // Draws `draw` and then its mirror image across the middle of the box.
@@ -185,7 +205,7 @@ class ConstructionBuilder {
 // keep it, and 'air' digs a cell out), rate (blocks per second; it also reads the box in slices) and
 // site (a generator given { readType, blockTypes, min, size, turns, anchor, fromY }, which yields now
 // and then and returns { refuse: message } or { baseY, grade }; grade(x, z), for a column at the rim,
-// gives { top, type, keep, soil } and that column follows it: see constructionDiffColumn).
+// gives { top, type, keep, soil, above } and that column follows it: see constructionDiffColumn).
 
 // The pieces of js/game/furniture.js, decor.js and mirrors.js the way the designs place them, with
 // the states their block names want, and turned by b.sym like the rest. Storage and ovens are placed
@@ -298,6 +318,10 @@ function constructionHouse(b) {
     tall(8, 1, 8, 'fridge', 'w');
     b.set(8, 0, 8, 'rtg');
     b.set(8, 1, 7, 'barrel');
+    // A household's food: what keeps cold in the fridge (nothing in it that would change there), flour and
+    // the store cupboard in the barrel.
+    b.stock(8, 1, 8, [['cold_milk', 6], ['cold_water', 6], ['cheese', 4], ['honey_bottle', 2]], [['frozen_fish', 4], ['ice', 8]]);
+    b.stock(8, 1, 7, [['bread', 8], ['wheat', 16], ['salt', 4], ['roast_mushroom', 4], ['jug', 1], ['meal_plate', 4]]);
 
     // The table for four, under the back window.
     b.box(5, 1, 10, 6, 1, 10, 'table');
@@ -317,6 +341,9 @@ function constructionHouse(b) {
     piece(2, 1, 9, 'chest', 'chest', 'e');
     piece(2, 2, 9, 'painting_peaks', 'painting', 'e');
     tall(2, 1, 8, 'wardrobe', 'e');
+    // The chest holds the tools and the candles, the wardrobe the clothes and the mending.
+    b.stock(2, 1, 9, [['iron_axe', 1], ['iron_shears', 1], ['fishing_rod', 1], ['wheat_seeds', 16], ['candle', 6], ['torch', 8]]);
+    b.stock(2, 1, 8, [['warm_coat', 1], ['white_wool', 8], ['blue_wool', 4], ['leather', 4], ['sewing_basket', 1]]);
     b.set(2, 1, 7, 'flower_pot');
 
     // By the door: the sofa on its carpet with a lamp, the clock over the door, a mirror on the post
@@ -452,8 +479,18 @@ function constructionHall(b) {
 
     // Stalls along the front and back walls: a table between two posts under a striped awning that
     // runs back to the wall, a lane behind it to serve from, the stock against the wall, a lantern
-    // under the awning and a mat for the customer. The stock is empty, as in every build.
+    // under the awning and a mat for the customer. The barrel holds more of what the stall sells, the chest
+    // what the hall needs for a feast or a fair: tableware, candles and lanterns, bunting of wool, food.
     const wares = [['flower_pot', 'vase'], ['mushroom_red', 'mushroom_brown'], ['flower_red', 'flower_yellow'], ['vase', 'candle']];
+    const stallStock = [
+        [['flower_pot', 12], ['vase', 8], ['wheat_seeds', 16]],
+        [['mushroom_red', 16], ['mushroom_brown', 16], ['roast_mushroom', 8]],
+        [['honey_bottle', 8], ['honeycomb', 8], ['wheat', 24]],
+        [['vase', 8], ['candle', 16], ['lantern', 4]]
+    ];
+    const feastFixed = [['meal_plate', 12], ['jug', 4], ['candle', 12]];
+    const feastExtras = [['tea_set', 2], ['fruit_bowl', 3], ['lantern', 6], ['red_wool', 16], ['yellow_wool', 16], ['blue_wool', 16],
+        ['bread', 16], ['cheese', 8], ['cold_soda', 8], ['salted_fish', 8], ['torch', 16]];
     const mats = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'yellow', 'brown'];
     let stall = 0;
     for (const [counter, lane, stock, mat, facing] of [[11, 10, 9, 12, 's'], [22, 23, 24, 21, 'n']]) {
@@ -467,6 +504,8 @@ function constructionHall(b) {
             b.box(x0 + 1, 1, mat, x0 + 2, 1, mat, `${mats[stall]}_carpet`);
             b.set(x0 + 1, 1, stock, 'barrel');
             piece(x0 + 2, 1, stock, 'chest', 'chest', facing);
+            b.stock(x0 + 1, 1, stock, stallStock[stall % stallStock.length]);
+            b.stockMix(x0 + 2, 1, stock, feastFixed, feastExtras, 3);
             for (let x = x0; x <= x0 + 3; x++) {
                 const stripe = x % 2 ? 'red_wool' : 'white_wool';
                 for (const z of [counter, lane, stock]) b.set(x, 4, z, stripe);
@@ -855,7 +894,7 @@ function constructionBellTower(b) {
 // to the entrance. Every piece of js/game/furniture.js, decor.js and mirrors.js stands in a scene
 // (test/js/constructions.test.js checks that). In the middle, the light room: no sky within
 // SKY_REACH columns of it, a thick roof, and a long entry lane so that no light from outside gets in.
-// Its chests are empty: what they hold lives on the server, and a build only places blocks.
+// Its storage is stocked like a shop's back room: spare boards, wool of many colours, food in the kitchen.
 // A sign's board shows the text before " // ", one short line of Spanish that fits it whole, and the
 // reader (a right click, or F) all of it, up to 288 bytes: what to do in Spanish, then in English. It
 // looks the way the visitor comes from, and stands on its post out of the way of the route.
@@ -1016,6 +1055,10 @@ function constructionShowroom(b) {
     piece(1, 1, 22, 'sink', 'sink', 'e');
     b.set(1, 1, 23, 'workbench');
     b.set(1, 1, 25, 'barrel');
+    // Food that stays as it is where it lies: frozen in the freezer, cold in the fridge, dry in the barrel.
+    b.stock(1, 1, 18, [['ice', 16], ['frozen_fish', 8], ['frozen_bread', 8], ['frozen_cooked_fish', 4]]);
+    b.stock(1, 1, 19, [['cold_milk', 6], ['cold_water', 8], ['cheese', 6], ['cold_soda', 4]], [['ice', 8]]);
+    b.stock(1, 1, 25, [['bread', 12], ['wheat', 16], ['salt', 4], ['honey_bottle', 4], ['meal_plate', 6], ['jug', 2]]);
     b.box(5, 1, 22, 6, 1, 23, 'table');
     for (const [x, z] of [[4, 22], [7, 23], [5, 21], [6, 24]]) b.set(x, 1, z, 'stool');
     lantern(6, 2, 23, 'floor');
@@ -1036,6 +1079,8 @@ function constructionShowroom(b) {
     }
     tall(3, 28, 'wardrobe', 's');
     piece(3, 1, 32, 'chest', 'chest', 'e');
+    b.stock(3, 1, 28, [['warm_coat', 2], ['white_wool', 8], ['red_wool', 8], ['leather', 4], ['sewing_basket', 1]]);
+    b.stock(3, 1, 32, [['white_wool', 16], ['blue_wool', 8], ['feather', 16], ['candle', 6]]);
     b.box(0, 2, 36, 0, 3, 37, 'glass_pane');
     for (const y of [2, 3]) {
         for (const z of [36, 37]) curtain(1, y, z, 'cyan', 'e');
@@ -1067,6 +1112,7 @@ function constructionShowroom(b) {
     b.set(15, 2, 47, 'table_lamp');
     floorLamp(18, 47);
     piece(11, 1, 47, 'chest', 'chest', 'e');
+    b.stock(11, 1, 47, [['book_stack', 2], ['open_book', 1], ['inkwell', 1], ['scroll', 4], ['blueprint', 4], ['measuring_tape', 1]]);
 
     // ---- 7. The stained glass gallery, with its back to the daylight ----
     sign(22, 43, 'n', 'VIDRIERAS. Los 16 colores.', 'En bloque y en panel, contra el cielo: filtran lo que hay detrás.',
@@ -1178,13 +1224,17 @@ function constructionShowroom(b) {
     lantern(50, 4, 28);
     lantern(50, 4, 35);
 
-    // ---- 11. The storage corner, empty: try it with someone else ----
-    sign(46, 16, 'w', 'ALMACÉN, vacío. Guarda algo.', 'Cofre, barril y armario: guarda algo y que otro jugador lo vea moverse. Lo de dentro vive en el servidor.',
-        'Storage, empty. Chest, barrel, wardrobe: store something and have another player watch it move. Contents live on the server.');
+    // ---- 11. The storage corner: the shop's spares, to take out and put back with someone else watching ----
+    sign(46, 16, 'w', 'ALMACÉN. Saca y guarda algo.', 'Tablas, lana y tintes: saca algo y que otro jugador lo vea moverse. Lo de dentro vive en el servidor.',
+        'Storage: boards, wool and dyes. Take something out and have another player watch it move. Contents live on the server.');
     skylight(50, 15, 53, 15);
     piece(47, 1, 16, 'chest', 'chest', 'n');
     b.set(48, 1, 16, 'barrel');
     tall(49, 16, 'wardrobe', 'n');
+    b.stock(47, 1, 16, [['planks', 64], ['spruce_planks', 32], ['birch_planks', 32], ['glass', 16], ['torch', 16]]);
+    b.stock(48, 1, 16, [['white_wool', 16], ['red_wool', 16], ['orange_wool', 16], ['yellow_wool', 16], ['green_wool', 16],
+        ['blue_wool', 16], ['purple_wool', 16], ['black_wool', 16]]);
+    b.stock(49, 1, 16, [['rust_pigment', 8], ['copper_sulfate', 8], ['gold_leaf', 4], ['cobalt_glass', 8], ['iron_shears', 1], ['sewing_basket', 1], ['leather', 8]]);
     lantern(47, 4, 14);
 
     // ---- 12. The sample wall: every curtain and every carpet ----
@@ -1430,11 +1480,12 @@ function constructionDiffColumn(layout, x, z, cellAt, read, blockTypes, ops) {
         }
     };
     const top = min.y + size[1];
-    // The rim of a big site: above its height air, then `type` (or the ground there if `keep`), and
-    // `soil` down to what is ground. It ignores the plan.
+    // The rim of a big site: above its height air (or what `above`, a Map of y to type, puts there: the
+    // trees of a palace's grounds, construction_palace_common.js), then `type` (or the ground there if
+    // `keep`), and `soil` down to what is ground. It ignores the plan.
     const grade = layout.grade && layout.grade(x, z);
     if (grade) {
-        for (let y = top - 1; y > grade.top; y--) change(y, null, undefined, read(x, y, z));
+        for (let y = top - 1; y > grade.top; y--) change(y, (grade.above && grade.above.get(y)) || null, undefined, read(x, y, z));
         const surface = read(x, grade.top, z);
         if (!grade.keep || !constructionIsGround(surface.type, blockTypes)) change(grade.top, grade.type, undefined, surface);
         for (let y = grade.top - 1; y >= WORLD_MIN_Y; y--) {

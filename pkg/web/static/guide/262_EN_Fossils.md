@@ -2,7 +2,7 @@
 
 ![Fossil rock](item:fossil_rock)
 
-Far down, inside the stone, there are rocks with a drawing on them: a coiled shell, a footprint, a skull. They are **fossils**: what is left of animals that lived a very long time ago. Break the rock and you take the fossil with you. This page says what they look like, where they are and how to search for them. [Amber](263) has a page of its own.
+Far down, inside the stone, there are rocks with a drawing on them: a coiled shell, a footprint, a skull. They are **fossils**: what is left of animals that lived a very long time ago. Break the rock and you take the fossil with you. This topic says what they look like, where they are and how to search for them. [Amber](263) has a topic of its own.
 
 ## What each block looks like
 

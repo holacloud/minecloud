@@ -15,7 +15,7 @@ const MOB_HOSTILE_CHANCE = { plains: 0, forest: 0.015, desert: 0.025, rocky: 0.0
 // sword material (see getPlayerAttackDamage).
 const PLAYER_BASE_DAMAGE = 4;
 const PLAYER_SWORD_DAMAGE = { wood: 5, stone: 6, iron: 7, gold: 8 };
-// What a sword in the left hand adds to the strike of one in the right (guide page 251).
+// What a sword in the left hand adds to the strike of one in the right (guide topic 251).
 const PLAYER_LEFT_SWORD_SHARE = 0.5;
 
 // From how many blocks a hostile mob comes for the player when its species does not say (`chaseDistance`),

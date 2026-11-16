@@ -1,6 +1,6 @@
 # Curiosities index
 
-These pages do not teach you how to play: they tell **how the world works inside**, its oddities and its
+These topics do not teach you how to play: they tell **how the world works inside**, its oddities and its
 history. Read them slowly, by the light of a torch.
 
 ## Curiosities

@@ -3,7 +3,7 @@
 ![Cabras de dos colores](mob:goat)
 
 ¿Por qué dos cabras blancas tienen a veces un cabrito marrón? Porque cada animal domesticado lleva **genes**, y cada
-cría recibe la mitad de su madre y la mitad de su padre. Esta página explica cómo, con ejemplos que puedes probar
+cría recibe la mitad de su madre y la mitad de su padre. Este tema explica cómo, con ejemplos que puedes probar
 con tus propios animales. Para leer los genes de un animal necesitas el [cuaderno de cría](131).
 
 ## Genes y alelos

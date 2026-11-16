@@ -291,7 +291,7 @@ test('every real recipe is found by the tags of what it makes', () => {
 
 test('tags combine as AND, and with free text', () => {
     const blueBuilding = search('#building #blue');
-    same([...blueBuilding].sort(), ['blue_brick', 'blue_stained_glass', 'blue_stained_glass_pane', 'blue_wool', 'cobalt_glass'].sort());
+    same([...blueBuilding].sort(), ['blue_brick', 'blue_glazed_tile', 'blue_glazed_tile_slab', 'blue_glazed_tile_stairs', 'blue_stained_glass', 'blue_stained_glass_pane', 'blue_wool', 'cobalt_glass'].sort());
     same(search('#blue brick'), ['blue_brick']);
     same(search('brick #blue'), ['blue_brick']);
     same(search('#blue #building brick'), ['blue_brick']);
@@ -394,7 +394,7 @@ test('a chip adds its tag to the search and takes it away, keeping the rest', ()
     assert.ok(chipsOf('inventory').find((chip) => chip.dataset.tag === 'building').className.includes('active'));
     click('inventory', 'blue');
     assert.equal(game.inventorySearchTerm, '#building #blue ');
-    same([...shownItems()].sort(), ['Blue Brick', 'Blue Stained Glass', 'Blue Stained Glass Pane', 'Blue Wool', 'Cobalt Glass']);
+    same([...shownItems()].sort(), ['Blue Brick', 'Blue Glazed Tile', 'Blue Glazed Tile Slab', 'Blue Glazed Tile Stairs', 'Blue Stained Glass', 'Blue Stained Glass Pane', 'Blue Wool', 'Cobalt Glass']);
     click('inventory', 'building');
     assert.equal(game.inventorySearchTerm, '#blue ');
     click('inventory', 'blue');
@@ -764,9 +764,9 @@ test('tags are worked out fast, and typing costs next to nothing', (t) => {
 
 test('the guide lists every family and colour in its language', () => {
     const guide = path.join(STATIC, 'guide');
-    const page = (lang) => fs.readFileSync(path.join(guide, fs.readdirSync(guide).find((name) => name.startsWith(`11_${lang}_`))), 'utf8');
+    const topic = (lang) => fs.readFileSync(path.join(guide, fs.readdirSync(guide).find((name) => name.startsWith(`11_${lang}_`))), 'utf8');
     for (const lang of ['ES', 'EN']) {
-        const text = page(lang);
+        const text = topic(lang);
         for (const tag of ctx.ITEM_TAG_ORDER) assert.ok(text.includes(`\`#${(ctx.ITEM_TAG_FAMILIES[tag] || ctx.ITEM_TAG_COLORS[tag])[lang]}\``), `${lang}: ${tag}`);
     }
     const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');

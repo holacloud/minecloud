@@ -1,6 +1,6 @@
 # The laughing fire
 
-> You found a hidden page. A flame whispered it as it died. Few make it this far: most end up at the bottom of
+> You found a hidden topic. A flame whispered it as it died. Few make it this far: most end up at the bottom of
 > a lake, following a light.
 
 ![Wisp](mob:wisp)

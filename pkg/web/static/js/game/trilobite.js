@@ -2,7 +2,7 @@
 // brought back to life next to at least 4 blocks of water. An oval armour in three lobes along its back
 // (that is its name), a head shield with crescent eyes, a row of plates and a tail shield. It walks on the
 // bed on many little legs, stops to feel about with its antennae and, when struck, often rolls into a
-// ball. Much bigger here than most were (guide, page 266). How it moves is the 'cruise' movement of every
+// ball. Much bigger here than most were (guide, topic 266). How it moves is the 'cruise' movement of every
 // sea animal (js/game/sea_animals.js): this file is its model and its row in the tables of the others.
 
 // Faces +z. The plates of its back are a chain, each hinged on the one before, from the first (the root) to

@@ -2,7 +2,7 @@
 
 ![NOT gate](item:not_gate)
 
-How can a machine "think" with switches? This page tells the idea, slowly.
+How can a machine "think" with switches? This topic tells the idea, slowly.
 
 ## Everything is yes or no
 

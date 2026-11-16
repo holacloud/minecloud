@@ -10,7 +10,7 @@
 // - Telescope (2 glass + 1 copper_block + 2 planks, or 2 iron_ore instead of the copper):
 //   right click raises/lowers it. It zooms smoothly, draws the constellation lines, labels
 //   what you aim at and shows a small HUD. Watching a rare event through it reveals the
-//   secret guide page C0M3T.
+//   secret guide topic C0M3T.
 // - Star chart (1 leather + 1 feather): carried while you watch a constellation for a moment
 //   through the telescope, it charts it (also planets and rare events). Right click opens it.
 // - Creative mode only: /sky [comet|eclipse|meteor|off] to preview the rare events locally.

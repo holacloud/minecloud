@@ -14,7 +14,7 @@ Los 36 [bloques de elementos](60) no son solo decoración: en una **mesa de labo
    quitas. O elige una reacción conocida de la lista de la derecha y el matraz se llena solo.
 5. Si la mezcla coincide **exactamente** con una reacción, aparece su ecuación. Pulsa **React**: el matraz
    burbujea y recibes el producto.
-6. Los botones **📖** cierran el laboratorio y abren esta guía en la página del elemento o del producto. Al cerrar
+6. Los botones **📖** cierran el laboratorio y abren esta guía en el tema del elemento o del producto. Al cerrar
    el libro vuelves al juego.
 
 Las proporciones importan: 2 H + O da agua, pero 1 H + 1 O no da nada. En el matraz caben 8 átomos.
@@ -24,7 +24,7 @@ Las proporciones importan: 2 H + O da agua, pero 1 H + 1 O no da nada. En el mat
 Hay **30 reacciones**. Al principio el laboratorio solo conoce 4; las demás salen en la lista como
 **???** (con el número de elementos distintos que llevan) hasta que **mezclas en el matraz los átomos justos**.
 Entonces suena una fanfarria, la reacción queda **descubierta para siempre** y ya puedes elegirla de la lista y
-abrir su página.
+abrir su tema.
 
 Las reacciones conocidas desde el principio:
 
@@ -37,7 +37,7 @@ Las reacciones conocidas desde el principio:
 
 El estaño, el zinc, la plata y el plomo también se pueden sacar de su [mineral](248), [fundiéndolo](249).
 
-¿Y las demás? Cada página de elemento (desde [Hidrógeno](139) hasta [Plomo](174)) da **pistas** de las reacciones en
+¿Y las demás? Cada tema de elemento (desde [Hidrógeno](139) hasta [Plomo](174)) da **pistas** de las reacciones en
 las que participa. Algunas ideas para empezar: los gases nobles brillan solos, los metales se oxidan, y las gemas son
 óxidos con una pizca de otro metal.
 

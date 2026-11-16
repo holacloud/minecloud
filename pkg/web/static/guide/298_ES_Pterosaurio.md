@@ -10,7 +10,7 @@ largo y no tiene dientes, y una cresta de hueso le sale de la cabeza hacia atrá
 ## Cómo conseguir uno
 
 1. **Busca su fósil.** Está muy abajo, dentro de la piedra, en el bloque ![](item:fossil_rock_rare)
-   `fossil_rock_rare`: una roca oscura con una huella de tres dedos. La página de los [fósiles](262) dice a qué
+   `fossil_rock_rare`: una roca oscura con una huella de tres dedos. El tema de los [fósiles](262) dice a qué
    altura cavar.
 2. **Rompe el bloque** con un [pico](68). Qué animal hay dentro depende del sitio: si era un pterosaurio, te
    llevas ![](item:fossil_pterosaur) `fossil_pterosaur`.

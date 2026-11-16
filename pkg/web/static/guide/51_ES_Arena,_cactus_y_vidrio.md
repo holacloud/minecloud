@@ -3,7 +3,7 @@
 ![Arena](item:sand)
 
 Tres bloques del desierto: la **arena** de las dunas y las playas, el **cactus** que crece en ella y el
-**vidrio** que se fabrica con ella.
+**vidrio** que se fabrica con ella. Y la **arenisca**, arena vuelta piedra, para construir.
 
 | | Nombre en el juego | Id | Rotura (a mano) |
 |---|---|---|---|
@@ -35,7 +35,25 @@ La arena es uno de los ingredientes más usados:
 | 4 ladrillos de color (`*_brick`) | 1 `brick` + **1** `sand` |
 | 2 de cada [piedra noble o metal](59) | 2 `cobblestone` o `stone` + **1** `sand` |
 | 4 `limestone` | 1 `shell` + **1** `sand` |
+| 2 `sandstone` | **4** `sand` |
+| 4 [azulejos vidriados](57) (`*_glazed_tile`) | 2 `brick` + **1** `sand` + lo que colorea el vidriado |
+| 4 `white_stucco` ([estuco de cal](183)) | 1 `quicklime` + **2** `sand` + 1 `water_flask` |
 | 1 `spray_paint` | **1** `sand` + 1 `flower_red` + 1 `coal_ore` |
+
+## Arenisca
+
+| | Nombre en el juego | Id | Se hace con (tecla C) | Rotura (a mano) |
+|---|---|---|---|---|
+| ![](item:sandstone) | Sandstone | `sandstone` | 4 `sand` (salen 2) | 0,8 s |
+| ![](item:cut_sandstone) | Cut Sandstone | `cut_sandstone` | 4 `sandstone` (salen 4) | 0,8 s |
+
+La arenisca no aparece en el mundo: se fabrica, y se coloca como cualquier bloque. Cuenta como piedra, así que el
+[pico](68) la rompe antes. La cortada tiene las caras lisas y un marco tallado. Con la arenisca normal se cortan
+también [escaleras](196) y [losas](56).
+
+La **arenisca** de verdad es arena que se ha vuelto piedra: granos que el agua o el viento fueron amontonando en
+capas y que un cemento natural (cal, sílice u óxido de hierro) pegó con los siglos. Por eso en sus lados se ven
+**bandas**: cada una es una capa.
 
 ## Para qué sirven
 

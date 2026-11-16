@@ -104,7 +104,7 @@ const PORTALS_TEXT = {
     legendPosts: { ES: 'Los postes deletrean la dirección de esta plaza de arriba abajo: {address}, los portales que se cruzan desde el centro.', EN: 'The posts spell the address of this plaza from top to bottom: {address}, the portals crossed from the centre.' },
     legendPostsCentre: { ES: 'La plaza central no tiene dirección: sus postes llevan una estrella.', EN: 'The central plaza has no address: its posts carry a star.' },
     legendRose: { ES: 'La rosa del centro marca el norte, el este, el sur y el oeste. Un clic derecho en ella o en un poste de las esquinas abre esta leyenda.', EN: 'The rose in the middle shows north, east, south and west. A right click on it or on a post at the corners opens this legend.' },
-    legendGuide: { ES: 'Más en la guía, página 306.', EN: 'More in the guide, page 306.' },
+    legendGuide: { ES: 'Más en la guía, tema 306.', EN: 'More in the guide, topic 306.' },
     close: { ES: 'Cerrar', EN: 'Close' }
 };
 

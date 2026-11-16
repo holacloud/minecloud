@@ -12,7 +12,7 @@ agua, tu propio brazo... o un pez.
 | ![](item:water_wheel) | Rueda hidráulica | `water_wheel` | 105 W | el agua que la toca |
 | ![](item:hand_crank) | Manivela | `hand_crank` | 100 W | que tú la gires |
 | ![](item:eel_tank) | Tanque de anguila | `eel_tank` | 25 W (50 W si come) | una [anguila eléctrica](213) que vive dentro |
-| ![](item:rtg) | Generador de radioisótopos | `rtg` | 80 W, siempre | nada: átomos que se desintegran dentro ([página](220)) |
+| ![](item:rtg) | Generador de radioisótopos | `rtg` | 80 W, siempre | nada: átomos que se desintegran dentro ([tema](220)) |
 
 Los números están ajustados para jugar, porque un día de MineCloud dura solo 4 minutos (ver [Electricidad](200)).
 
@@ -31,7 +31,7 @@ Los números están ajustados para jugar, porque un día de MineCloud dura solo 
 - El bloque de **silicio** (`element_si`) se sintetiza con piedra y carbón (ver [Bloques de elementos](60) y
   [Silicio](152)): no hace falta el laboratorio.
 - La [célula solar](177) da el doble de placas, pero hay que **descubrirla** en la [mesa de laboratorio](117): su
-  página tiene la pista.
+  tema tiene la pista.
 - El cobre está en [Piedras nobles y metales](59).
 
 ## Placa solar

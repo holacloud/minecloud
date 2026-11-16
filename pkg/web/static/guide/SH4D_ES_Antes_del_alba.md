@@ -1,6 +1,6 @@
 # Antes del alba
 
-> Has encontrado una página escondida. Te la siseó una sombra mientras el sol la deshacía. Guárdala bien: las
+> Has encontrado un tema escondido. Te lo siseó una sombra mientras el sol lo deshacía. Guárdalo bien: las
 > sombras no suelen hablar.
 
 ![Sombra errante](mob:shadow)

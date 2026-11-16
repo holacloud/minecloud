@@ -2,18 +2,18 @@
 // - Lab Bench (4 planks + 2 glass + 1 iron_ore): a placeable block; right click it to open the
 //   lab, a modal panel with a periodic table of the elements you carry. Click an element to put
 //   one atom (one element block) in the flask (and see it in the info bar, with a link to its
-//   guide page), right click to take it out, or pick a known reaction from the list. When the
+//   guide topic), right click to take it out, or pick a known reaction from the list. When the
 //   flask holds exactly a reaction, React consumes the blocks (and any container it needs) and
 //   gives the product.
 // - 30 reactions (CHEMISTRY_REACTIONS). Water, salt, silica and steel are known from the start;
 //   the rest show as "???" until the player mixes the right atoms once, which discovers them
-//   for good (localStorage). Element guide pages hint at them.
+//   for good (localStorage). Element guide topics hint at them.
 // - Products: drinks and remedies (G), salt and salted fish, steel tools a tier above gold,
 //   bronze bells, fertilizer for wheat, a helium balloon for slow falls, glowing lamps and light
 //   bulbs, mirrors, cobalt glass, dyes, baking soda, lime mortar, pyrite sparks, brass
 //   telescopes, and collectibles (gems, solar cells, batteries, meteoric iron).
-// - The 📖 buttons close the lab and open the guide at the element or product page.
-// Mixed into Game.prototype; hooked through js/extensions.js. Guide pages 115-129, 139-190.
+// - The 📖 buttons close the lab and open the guide at the element or product topic.
+// Mixed into Game.prototype; hooked through js/extensions.js. Guide topics 115-129, 139-190.
 
 // [symbol, atomic number, group, period, category, English name]
 const CHEMISTRY_ELEMENTS = [
@@ -45,156 +45,156 @@ const CHEMISTRY_CATEGORY_COLORS = {
 // atoms: element symbol -> how many blocks. outputs: the first one whose `needs` (extra items)
 // the player carries is made. kind (CHEMISTRY_KINDS): what sort of product it is; only
 // compounds, gems and devices show a formula. known: listed from the start; the rest appear as
-// "???" until the player mixes them in the flask once (CHEMISTRY_STORAGE_KEY). page: the guide
-// page of the product.
+// "???" until the player mixes them in the flask once (CHEMISTRY_STORAGE_KEY). topic: the guide
+// topic of the product.
 const CHEMISTRY_REACTIONS = [
     {
-        id: 'water', name: 'Water', formula: 'H₂O', kind: 'compound', atoms: { h: 2, o: 1 }, color: '#5aa9e6', known: true, page: 118,
+        id: 'water', name: 'Water', formula: 'H₂O', kind: 'compound', atoms: { h: 2, o: 1 }, color: '#5aa9e6', known: true, topic: 118,
         note: 'Two hydrogen atoms bond to one oxygen atom.',
         outputs: [{ needs: { bucket: 1 }, type: 'water_bucket', amount: 1 }, { needs: { glass: 1 }, type: 'water_flask', amount: 1 }]
     },
     {
-        id: 'salt', name: 'Table salt', formula: 'NaCl', kind: 'compound', atoms: { na: 1, cl: 1 }, color: '#f2f2ee', known: true, page: 119,
+        id: 'salt', name: 'Table salt', formula: 'NaCl', kind: 'compound', atoms: { na: 1, cl: 1 }, color: '#f2f2ee', known: true, topic: 119,
         note: 'A soft metal and a poisonous gas make the salt on your table.',
         outputs: [{ type: 'salt', amount: 4 }]
     },
     {
-        id: 'silica', name: 'Silica glass', formula: 'SiO₂', kind: 'compound', atoms: { si: 1, o: 2 }, color: '#bfe8f5', known: true, page: 51,
+        id: 'silica', name: 'Silica glass', formula: 'SiO₂', kind: 'compound', atoms: { si: 1, o: 2 }, color: '#bfe8f5', known: true, topic: 51,
         note: 'Silicon dioxide: sand and quartz, melted into glass.',
         outputs: [{ type: 'glass', amount: 4 }]
     },
     {
-        id: 'steel', name: 'Steel', formula: 'Fe + C', kind: 'alloy', atoms: { fe: 1, c: 1 }, color: '#8d969e', known: true, page: 120,
+        id: 'steel', name: 'Steel', formula: 'Fe + C', kind: 'alloy', atoms: { fe: 1, c: 1 }, color: '#8d969e', known: true, topic: 120,
         note: 'Iron with a little carbon (under 2 % by mass) is much harder than iron alone.',
         outputs: [{ type: 'steel_ingot', amount: 2 }]
     },
     {
-        id: 'limestone', name: 'Limestone', formula: 'CaCO₃', kind: 'compound', atoms: { ca: 1, c: 1, o: 3 }, color: '#dad6bf', page: 59,
+        id: 'limestone', name: 'Limestone', formula: 'CaCO₃', kind: 'compound', atoms: { ca: 1, c: 1, o: 3 }, color: '#dad6bf', topic: 59,
         note: 'Calcium carbonate: the stone of shells, chalk and marble.',
         outputs: [{ type: 'limestone', amount: 4 }]
     },
     {
-        id: 'titanium_white', name: 'Titanium white', formula: 'TiO₂', kind: 'compound', atoms: { ti: 1, o: 2 }, color: '#ffffff', page: 67,
+        id: 'titanium_white', name: 'Titanium white', formula: 'TiO₂', kind: 'compound', atoms: { ti: 1, o: 2 }, color: '#ffffff', topic: 67,
         note: 'Titanium dioxide is the white pigment of most paints.',
         outputs: [{ type: 'spray_paint', amount: 2 }]
     },
     {
-        id: 'bronze', name: 'Bronze', formula: 'Cu + Sn', kind: 'alloy', atoms: { cu: 3, sn: 1 }, color: '#c08a4a', page: 121,
+        id: 'bronze', name: 'Bronze', formula: 'Cu + Sn', kind: 'alloy', atoms: { cu: 3, sn: 1 }, color: '#c08a4a', topic: 121,
         note: 'Copper with some tin (about 12 % by mass): the metal of the Bronze Age, and of bells.',
         outputs: [{ type: 'bronze_ingot', amount: 2 }]
     },
     {
-        id: 'ammonia', name: 'Ammonia', formula: 'NH₃', kind: 'compound', atoms: { n: 1, h: 3 }, color: '#bfe39a', page: 122,
+        id: 'ammonia', name: 'Ammonia', formula: 'NH₃', kind: 'compound', atoms: { n: 1, h: 3 }, color: '#bfe39a', topic: 122,
         note: 'Plants need nitrogen; ammonia is the base of most fertilizers.',
         outputs: [{ type: 'fertilizer', amount: 4 }]
     },
     {
-        id: 'potash', name: 'Potash', formula: 'KCl', kind: 'compound', atoms: { k: 1, cl: 1 }, color: '#f0d0c0', page: 122,
+        id: 'potash', name: 'Potash', formula: 'KCl', kind: 'compound', atoms: { k: 1, cl: 1 }, color: '#f0d0c0', topic: 122,
         note: 'Potassium chloride: plants need potassium as much as nitrogen.',
         outputs: [{ type: 'fertilizer', amount: 4 }]
     },
     {
-        id: 'carbon_dioxide', name: 'Carbon dioxide', formula: 'CO₂', kind: 'compound', atoms: { c: 1, o: 2 }, color: '#d9f1ff', page: 123,
+        id: 'carbon_dioxide', name: 'Carbon dioxide', formula: 'CO₂', kind: 'compound', atoms: { c: 1, o: 2 }, color: '#d9f1ff', topic: 123,
         note: 'Dissolved in water under pressure, it makes the bubbles of fizzy drinks.',
         outputs: [{ needs: { water_flask: 1 }, type: 'soda_water', amount: 1 }]
     },
     {
-        id: 'helium', name: 'Helium', formula: 'He', kind: 'noble', atoms: { he: 1 }, color: '#f4d7ff', page: 124,
+        id: 'helium', name: 'Helium', formula: 'He', kind: 'noble', atoms: { he: 1 }, color: '#f4d7ff', topic: 124,
         note: 'A noble gas: it reacts with nothing, and it is lighter than air.',
         outputs: [{ type: 'helium_balloon', amount: 1 }]
     },
     {
-        id: 'neon', name: 'Neon light', formula: 'Ne', kind: 'noble', atoms: { ne: 1 }, color: '#ff5a2a', page: 125,
+        id: 'neon', name: 'Neon light', formula: 'Ne', kind: 'noble', atoms: { ne: 1 }, color: '#ff5a2a', topic: 125,
         note: 'Electricity through neon gas glows red-orange.',
         outputs: [{ needs: { glass: 1 }, type: 'neon_lamp', amount: 4 }]
     },
     {
-        id: 'argon', name: 'Argon light', formula: 'Ar + Hg', kind: 'noble', atoms: { ar: 1, hg: 1 }, color: '#4f7dff', page: 126,
+        id: 'argon', name: 'Argon light', formula: 'Ar + Hg', kind: 'noble', atoms: { ar: 1, hg: 1 }, color: '#4f7dff', topic: 126,
         note: 'Argon with a drop of mercury glows blue: most "neon" signs that are not red.',
         outputs: [{ needs: { glass: 1 }, type: 'argon_lamp', amount: 4 }]
     },
     {
-        id: 'rust', name: 'Red ochre', formula: 'Fe₂O₃', kind: 'compound', atoms: { fe: 2, o: 3 }, color: '#a8452a', page: 129,
+        id: 'rust', name: 'Red ochre', formula: 'Fe₂O₃', kind: 'compound', atoms: { fe: 2, o: 3 }, color: '#a8452a', topic: 129,
         note: 'Iron oxide, rust: the red of ochre paints since the Stone Age.',
         outputs: [{ type: 'rust_pigment', amount: 2 }]
     },
     {
-        id: 'ruby', name: 'Ruby', formula: 'Al₂O₃ : Cr', kind: 'gem', atoms: { al: 2, o: 3, cr: 1 }, color: '#d0204a', page: 175,
+        id: 'ruby', name: 'Ruby', formula: 'Al₂O₃ : Cr', kind: 'gem', atoms: { al: 2, o: 3, cr: 1 }, color: '#d0204a', topic: 175,
         note: 'Aluminium oxide (corundum) with a trace of chromium turns deep red.',
         outputs: [{ type: 'ruby', amount: 1 }]
     },
     {
-        id: 'sapphire', name: 'Sapphire', formula: 'Al₂O₃ : Fe, Ti', kind: 'gem', atoms: { al: 2, o: 3, fe: 1, ti: 1 }, color: '#2a4fd0', page: 176,
+        id: 'sapphire', name: 'Sapphire', formula: 'Al₂O₃ : Fe, Ti', kind: 'gem', atoms: { al: 2, o: 3, fe: 1, ti: 1 }, color: '#2a4fd0', topic: 176,
         note: 'The same corundum with traces of iron and titanium turns blue.',
         outputs: [{ type: 'sapphire', amount: 1 }]
     },
     {
-        id: 'solar_cell', name: 'Solar cell', formula: 'Si : B, P', kind: 'device', atoms: { si: 2, b: 1, p: 1 }, color: '#2a3f8a', page: 177,
+        id: 'solar_cell', name: 'Solar cell', formula: 'Si : B, P', kind: 'device', atoms: { si: 2, b: 1, p: 1 }, color: '#2a3f8a', topic: 177,
         note: 'Silicon doped with boron on one side and phosphorus on the other turns light into electricity.',
         outputs: [{ type: 'solar_cell', amount: 1 }]
     },
     {
-        id: 'copper_sulfate', name: 'Copper sulfate', formula: 'CuSO₄', kind: 'compound', atoms: { cu: 1, s: 1, o: 4 }, color: '#2f8fe0', page: 178,
+        id: 'copper_sulfate', name: 'Copper sulfate', formula: 'CuSO₄', kind: 'compound', atoms: { cu: 1, s: 1, o: 4 }, color: '#2f8fe0', topic: 178,
         note: 'Blue vitriol: it grows into bright blue crystals.',
         outputs: [{ type: 'copper_sulfate', amount: 2 }]
     },
     {
-        id: 'brass', name: 'Brass', formula: 'Cu + Zn', kind: 'alloy', atoms: { cu: 2, zn: 1 }, color: '#d8b24a', page: 179,
+        id: 'brass', name: 'Brass', formula: 'Cu + Zn', kind: 'alloy', atoms: { cu: 2, zn: 1 }, color: '#d8b24a', topic: 179,
         note: 'Copper with zinc: golden, easy to shape, the metal of trumpets and telescopes.',
         outputs: [{ type: 'brass_ingot', amount: 2 }]
     },
     {
-        id: 'gold_leaf', name: 'Gold leaf', formula: 'Au', kind: 'metal', atoms: { au: 1 }, color: '#f0c840', page: 180,
+        id: 'gold_leaf', name: 'Gold leaf', formula: 'Au', kind: 'metal', atoms: { au: 1 }, color: '#f0c840', topic: 180,
         note: 'Gold does not rust or react: it can be beaten thinner than a bubble.',
         outputs: [{ type: 'gold_leaf', amount: 8 }]
     },
     {
-        id: 'mirror', name: 'Silver mirror', formula: 'Ag', kind: 'metal', atoms: { ag: 1 }, color: '#dfe6ee', page: 181,
+        id: 'mirror', name: 'Silver mirror', formula: 'Ag', kind: 'metal', atoms: { ag: 1 }, color: '#dfe6ee', topic: 181,
         note: 'A thin layer of silver on the back of a glass reflects almost all light.',
         outputs: [{ needs: { glass: 1 }, type: 'mirror', amount: 2 }]
     },
     {
-        id: 'baking_soda', name: 'Baking soda', formula: 'NaHCO₃', kind: 'compound', atoms: { na: 1, h: 1, c: 1, o: 3 }, color: '#f6f6f2', page: 182,
+        id: 'baking_soda', name: 'Baking soda', formula: 'NaHCO₃', kind: 'compound', atoms: { na: 1, h: 1, c: 1, o: 3 }, color: '#f6f6f2', topic: 182,
         note: 'Sodium bicarbonate releases CO₂ bubbles when heated: dough rises.',
         outputs: [{ type: 'baking_soda', amount: 4 }]
     },
     {
-        id: 'quicklime', name: 'Quicklime', formula: 'CaO', kind: 'compound', atoms: { ca: 1, o: 1 }, color: '#ece8da', page: 183,
+        id: 'quicklime', name: 'Quicklime', formula: 'CaO', kind: 'compound', atoms: { ca: 1, o: 1 }, color: '#ece8da', topic: 183,
         note: 'Calcium oxide: mixed with water and sand it makes lime mortar.',
         outputs: [{ type: 'quicklime', amount: 2 }]
     },
     {
-        id: 'pyrite', name: 'Pyrite', formula: 'FeS₂', kind: 'compound', atoms: { fe: 1, s: 2 }, color: '#c8a838', page: 184,
+        id: 'pyrite', name: 'Pyrite', formula: 'FeS₂', kind: 'compound', atoms: { fe: 1, s: 2 }, color: '#c8a838', topic: 184,
         note: 'Fool\'s gold: iron and sulfur in shiny golden cubes. Struck with steel, it sparks.',
         outputs: [{ type: 'pyrite', amount: 1 }]
     },
     {
-        id: 'cobalt_glass', name: 'Cobalt glass', formula: 'SiO₂ : Co', kind: 'gem', atoms: { co: 1, si: 1, o: 2 }, color: '#1f3fb8', page: 185,
+        id: 'cobalt_glass', name: 'Cobalt glass', formula: 'SiO₂ : Co', kind: 'gem', atoms: { co: 1, si: 1, o: 2 }, color: '#1f3fb8', topic: 185,
         note: 'A pinch of cobalt turns glass a deep blue.',
         outputs: [{ type: 'cobalt_glass', amount: 4 }]
     },
     {
-        id: 'iodine', name: 'Iodine tincture', formula: 'I₂', kind: 'compound', atoms: { i: 2 }, color: '#7a3a1a', page: 186,
+        id: 'iodine', name: 'Iodine tincture', formula: 'I₂', kind: 'compound', atoms: { i: 2 }, color: '#7a3a1a', topic: 186,
         note: 'Iodine atoms pair up into I₂; dissolved, it disinfects small wounds.',
         outputs: [{ needs: { glass: 1 }, type: 'iodine_tincture', amount: 1 }]
     },
     {
-        id: 'light_bulb', name: 'Light bulb', formula: 'W + Ar', kind: 'device', atoms: { w: 1, ar: 1 }, color: '#ffd27a', page: 187,
+        id: 'light_bulb', name: 'Light bulb', formula: 'W + Ar', kind: 'device', atoms: { w: 1, ar: 1 }, color: '#ffd27a', topic: 187,
         note: 'With current through it, a thin tungsten filament glows white-hot. The argon around it slows its wearing away.',
         outputs: [{ needs: { glass: 1 }, type: 'light_bulb', amount: 4 }]
     },
     {
-        id: 'fluorite', name: 'Fluorite', formula: 'CaF₂', kind: 'compound', atoms: { ca: 1, f: 2 }, color: '#9a6ad8', page: 188,
+        id: 'fluorite', name: 'Fluorite', formula: 'CaF₂', kind: 'compound', atoms: { ca: 1, f: 2 }, color: '#9a6ad8', topic: 188,
         note: 'Calcium fluoride: purple crystals that glow under ultraviolet light.',
         outputs: [{ type: 'fluorite', amount: 1 }]
     },
     {
-        id: 'battery', name: 'Lithium battery', formula: 'LiCoO₂', kind: 'device', atoms: { li: 1, co: 1, o: 2 }, color: '#3a8a5a', page: 189,
+        id: 'battery', name: 'Lithium battery', formula: 'LiCoO₂', kind: 'device', atoms: { li: 1, co: 1, o: 2 }, color: '#3a8a5a', topic: 189,
         note: 'Lithium cobalt oxide stores energy in the batteries of phones and laptops.',
         outputs: [{ type: 'battery', amount: 1 }]
     },
     {
-        id: 'meteoric_iron', name: 'Meteoric iron', formula: 'Fe + Ni', kind: 'alloy', atoms: { fe: 1, ni: 1 }, color: '#7a8088', page: 190,
+        id: 'meteoric_iron', name: 'Meteoric iron', formula: 'Fe + Ni', kind: 'alloy', atoms: { fe: 1, ni: 1 }, color: '#7a8088', topic: 190,
         note: 'Iron with nickel: the metal of meteorites, fallen from space.',
         outputs: [{ type: 'meteoric_iron', amount: 2 }]
     }
@@ -204,9 +204,9 @@ const CHEMISTRY_KINDS = {
     compound: 'Compound', alloy: 'Alloy', noble: 'Noble gas', metal: 'Pure metal', gem: 'Coloured crystal', device: 'Device'
 };
 const CHEMISTRY_STORAGE_KEY = 'minecloud-chemistry-discovered';
-// Guide pages: the elements in atomic-number order from 139, the lab products.
-const CHEMISTRY_ELEMENT_PAGE_START = 139;
-const CHEMISTRY_PRODUCT_PAGES = {
+// Guide topics: the elements in atomic-number order from 139, the lab products.
+const CHEMISTRY_ELEMENT_TOPIC_START = 139;
+const CHEMISTRY_PRODUCT_TOPICS = {
     lab_bench: 117, water_flask: 118, water_bucket: 111, salt: 119, steel_ingot: 120, bronze_ingot: 121, fertilizer: 122,
     soda_water: 123, helium_balloon: 124, neon_lamp: 125, argon_lamp: 126, salted_fish: 127, steel_pickaxe: 128,
     steel_shovel: 128, steel_axe: 128, steel_sword: 128, rust_pigment: 129, ruby: 175, sapphire: 176, solar_cell: 177,
@@ -714,24 +714,24 @@ Object.assign(Game.prototype, {
         this.chemistryToastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);
     },
 
-    chemistryElementPage(symbol) {
-        return CHEMISTRY_ELEMENT_PAGE_START + CHEMISTRY_ELEMENTS.findIndex((element) => element[0] === symbol);
+    chemistryElementTopic(symbol) {
+        return CHEMISTRY_ELEMENT_TOPIC_START + CHEMISTRY_ELEMENTS.findIndex((element) => element[0] === symbol);
     },
 
-    chemistryProductPage(reaction) {
+    chemistryProductTopic(reaction) {
         const output = this.chemistryOutput(reaction) || reaction.outputs[reaction.outputs.length - 1];
-        return reaction.page || CHEMISTRY_PRODUCT_PAGES[output.type] || 115;
+        return reaction.topic || CHEMISTRY_PRODUCT_TOPICS[output.type] || 115;
     },
 
-    // Closes the lab and opens the book at `page`; closing the book returns to the game.
-    chemistryOpenGuide(page) {
+    // Closes the lab and opens the book at `topic`; closing the book returns to the game.
+    chemistryOpenGuide(topic) {
         if (typeof this.guideShow !== 'function') return;
         this.chemistryOpen = false;
         this.chemistryPanel.classList.remove('visible', 'reacting', 'done');
-        this.guideShow(String(page));
+        this.guideShow(String(topic));
     },
 
-    chemistryBookButton(page, title) {
+    chemistryBookButton(topic, title) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'chem-book';
@@ -740,7 +740,7 @@ Object.assign(Game.prototype, {
         button.addEventListener('mousedown', (event) => event.stopPropagation());
         button.addEventListener('click', (event) => {
             event.stopPropagation();
-            this.chemistryOpenGuide(page);
+            this.chemistryOpenGuide(topic);
         });
         return button;
     },
@@ -948,13 +948,13 @@ Object.assign(Game.prototype, {
         info.innerHTML = bad ? `<span class="bad">${html}</span>` : html;
     },
 
-    // The info bar under the table: the last element clicked, with its guide page.
+    // The info bar under the table: the last element clicked, with its guide topic.
     chemistryRenderElement() {
         const bar = this.chemistryPanel.querySelector('.chem-element');
         bar.innerHTML = '';
         const element = this.chemistrySelected && this.chemistryElement(this.chemistrySelected);
         if (!element) {
-            bar.textContent = 'Click an element to see what it is; 📖 opens its page in the guide.';
+            bar.textContent = 'Click an element to see what it is; 📖 opens its topic in the guide.';
             return;
         }
         const [symbol, z, group, period, category, name] = element;
@@ -972,7 +972,7 @@ Object.assign(Game.prototype, {
         text.innerHTML = `<b>${name}</b> &middot; atomic number ${z} &middot; group ${group}, period ${period} &middot; ${families[category]} &middot; you have ${count}`;
         bar.appendChild(sym);
         bar.appendChild(text);
-        bar.appendChild(this.chemistryBookButton(this.chemistryElementPage(symbol), `${name} in the guide`));
+        bar.appendChild(this.chemistryBookButton(this.chemistryElementTopic(symbol), `${name} in the guide`));
     },
 
     chemistryRender() {
@@ -1024,7 +1024,7 @@ Object.assign(Game.prototype, {
             const output = this.chemistryOutput(match);
             const outputName = output ? this.getBlockDisplayName(output.type) : this.getBlockDisplayName(match.outputs[0].type);
             equation.innerHTML = `${this.chemistryFormatMix(match.atoms)} <span class="arrow">→</span> ${this.chemistryProductLabel(match)} `;
-            equation.appendChild(this.chemistryBookButton(this.chemistryProductPage(match), `${match.name} in the guide`));
+            equation.appendChild(this.chemistryBookButton(this.chemistryProductTopic(match), `${match.name} in the guide`));
             const missing = this.chemistryMissing(match);
             const needs = output && output.needs ? ` &middot; uses ${Object.entries(output.needs).map(([type, n]) => `${n} ${this.getBlockDisplayName(type)}`).join(', ')}` : '';
             const text = `<b>${CHEMISTRY_KINDS[match.kind]}:</b> ${match.note}<br>Makes <b>${output ? output.amount : match.outputs[0].amount} ${outputName}</b>${needs}`;
@@ -1051,7 +1051,7 @@ Object.assign(Game.prototype, {
             const formula = this.chemistryShowsFormula(reaction) ? ` → ${reaction.formula}` : '';
             row.innerHTML = `<img alt="" src="${this.chemistryIcon(product)}"><div><div class="t">${reaction.name}</div>` +
                 `<div class="e">${this.chemistryFormatMix(reaction.atoms)}${formula}</div></div>`;
-            row.appendChild(this.chemistryBookButton(this.chemistryProductPage(reaction), `${reaction.name} in the guide`));
+            row.appendChild(this.chemistryBookButton(this.chemistryProductTopic(reaction), `${reaction.name} in the guide`));
             row.addEventListener('click', () => {
                 if (this.chemistryBusy) return;
                 this.chemistryFlask = { ...reaction.atoms };

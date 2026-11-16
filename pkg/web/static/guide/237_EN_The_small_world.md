@@ -45,7 +45,7 @@ Not in the game: no microbe here hurts the player, and water is never dangerous.
 
 ## Animals you could lose on a fingertip
 
-Two animals on the list get no page of their own, as there is less to do with them. They are worth a long look.
+Two animals on the list get no topic of their own, as there is less to do with them. They are worth a long look.
 
 ![A rotifer](mob:rotifer)
 

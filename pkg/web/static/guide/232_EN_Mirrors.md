@@ -26,4 +26,4 @@ Try this: raise your right hand. Your image raises the hand on the same side. A 
 
 ## Why silver?
 
-Metals have electrons that move freely, and those electrons send light back. [Silver](167) reflects more visible light than any other metal. The glass only keeps it flat and protects it from the air, which would darken it. Page [181](181) tells the reaction that lays it on the glass.
+Metals have electrons that move freely, and those electrons send light back. [Silver](167) reflects more visible light than any other metal. The glass only keeps it flat and protects it from the air, which would darken it. Topic [181](181) tells the reaction that lays it on the glass.

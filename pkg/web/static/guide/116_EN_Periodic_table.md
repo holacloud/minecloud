@@ -4,11 +4,11 @@
 
 The **periodic table** orders the chemical elements by their **atomic number** (how many protons each atom has in its nucleus). The **rows** are called **periods** and the **columns** **groups**: elements in the same group look alike and react in similar ways.
 
-The [lab bench](117) draws the game's 36 elements in their place on the real table, coloured by family. Click one and its 📖 button opens its page here. Of the 118 known elements, the game has 36.
+The [lab bench](117) draws the game's 36 elements in their place on the real table, coloured by family. Click one and its 📖 button opens its topic here. Of the 118 known elements, the game has 36.
 
 ## The 36 elements
 
-Click a name to go to its page. The last column shows the reactions the lab knows from the start and how many are left to discover.
+Click a name to go to its topic. The last column shows the reactions the lab knows from the start and how many are left to discover.
 
 | | Symbol | Element | No. | Group | Period | Family | In the lab |
 |---|---|---|---|---|---|---|---|

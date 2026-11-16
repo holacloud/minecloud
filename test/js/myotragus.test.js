@@ -15,10 +15,10 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-// A page as one line: where its sentences are broken is nobody's business.
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `275_${lang}_Myotragus.md`), 'utf8').replace(/\s+/g, ' ');
+// A topic as one line: where its sentences are broken is nobody's business.
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `275_${lang}_Myotragus.md`), 'utf8').replace(/\s+/g, ' ');
 
-test('what it is: the goat\'s little cousin, a slow grazer tamed with what a goat eats, and what its page says of it', () => {
+test('what it is: the goat\'s little cousin, a slow grazer tamed with what a goat eats, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('myotragus');
     const goat = ctx.getMobSpecies('goat');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -28,15 +28,15 @@ test('what it is: the goat\'s little cousin, a slow grazer tamed with what a goa
     assert.equal(info.grazer, true);
     assert.equal(info.hostile, undefined);
     assert.equal(info.mount, undefined);
-    assert.equal(info.speed, goat.speed / 2, 'half the pace of a goat, as its page says');
+    assert.equal(info.speed, goat.speed / 2, 'half the pace of a goat, as its topic says');
     assert.equal(ctx.TAMING_DIET.myotragus.foods.join(), ctx.TAMING_DIET.goat.foods.join(), 'the food of a goat');
     assert.equal(ctx.TAMING_DIET.myotragus.chance, 1 / 3);
     assert.ok(ctx.Game.prototype.tamingCanTame.call({}, 'myotragus'));
     assert.equal(JSON.stringify(ctx.TRAPS_SPECIES.myotragus), '{"baits":[],"cage":true}');
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.equal([4, 5, 6, 7, 8].map((damage) => Math.ceil(info.maxHealth / damage)).join(), '3,2,2,2,2', 'bare-handed, and with any sword (js/game/mobs.js)');
     assert.ok(es.includes(`**${info.maxHealth} de vida**: 3 golpes a mano, 2 con una [espada](71).`) && en.includes(`**${info.maxHealth} health**: 3 hits bare-handed, 2 with a [sword](71).`));
     assert.ok(es.includes('con **1 de 3** por intento') && en.includes('with **1 in 3** per try'));
@@ -60,7 +60,7 @@ test('next to a goat it is tiny: it would fit under its belly', () => {
     assert.ok(height > 0.45 && height < 0.6, `${height} blocks tall`);
     assert.ok(height < g.game.herdHeight(goat) * 0.45);
     // The legs of the goat of js/models.js are 10 sixteenths of a block long: its belly is that high.
-    assert.ok(height < 10 / 16, 'under the belly of a goat, as its page says');
+    assert.ok(height < 10 / 16, 'under the belly of a goat, as its topic says');
     // Both coats are built, with the rig the shared animation moves.
     for (const variant of [0, 1]) {
         const mob = g.spawn('myotragus', 3.5, 3.5 + variant, { variant });

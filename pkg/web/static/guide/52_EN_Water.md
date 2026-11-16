@@ -39,6 +39,23 @@ there and get the empty bucket back.
 - The [fishing rod](94) needs water within 9 blocks.
 - Frogs, turtles and crabs live along the shores.
 
+## Snow and ice
+
+Water also comes **solid**. The [freezer](234) turns a flask of water into `ice`, and with ice you can craft two
+building blocks (C key):
+
+| | In-game name | Id | Made from | Break (bare hand) |
+|---|---|---|---|---|
+| ![](item:snow_block) | Snow Block | `snow_block` | 2 `ice` | 0.3 s |
+| ![](item:packed_ice) | Packed Ice | `packed_ice` | 4 `ice` | 0.5 s |
+
+They are placed like any block, and **neither melts** in the game, not even next to a torch.
+
+Snow and ice are the same thing, solid water, but snow is made of flakes with lots of air between them: up to nine
+parts of air to one of ice. That is why it is white (the air between the crystals scatters light in every
+direction) and why it keeps the cold out so well: igloos are warm inside. Packed ice, with no air, is clear and
+bluish.
+
 ## Tips
 
 - Before jumping from very high up, place a couple of water blocks below.

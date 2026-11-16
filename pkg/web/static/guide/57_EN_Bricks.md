@@ -3,7 +3,7 @@
 ![Brick](item:brick)
 
 Bricks are the stuff real houses are made of: classic **red brick**, grey **stone bricks** and **sixteen coloured
-bricks** for decorating.
+bricks** for decorating, and shiny **glazed tiles** in six colours.
 
 ## Brick and stone bricks
 
@@ -48,13 +48,37 @@ Break time: 0.85 s.
 | ![](item:red_brick) | red | Red Brick | `red_brick` |
 | ![](item:black_brick) | black | Black Brick | `black_brick` |
 
+## Glazed tiles
+
+Brick with a coat of coloured glass: six colours, each as a block, as [stairs](196) and as a [slab](56), for
+curved roofs, onion domes and tiled walls.
+
+| | In-game name | Id | Made from 2 `brick` and 1 `sand`, plus |
+|---|---|---|---|
+| ![](item:blue_glazed_tile) | Blue Glazed Tile | `blue_glazed_tile` | 1 [cobalt](163) block |
+| ![](item:white_glazed_tile) | White Glazed Tile | `white_glazed_tile` | 1 [tin](168) block |
+| ![](item:yellow_glazed_tile) | Yellow Glazed Tile | `yellow_glazed_tile` | 1 [lead](174) block |
+| ![](item:green_glazed_tile) | Green Glazed Tile | `green_glazed_tile` | 1 [copper](165) block |
+| ![](item:turquoise_glazed_tile) | Turquoise Glazed Tile | `turquoise_glazed_tile` | 1 [copper](165) block and 1 [baking soda](182) |
+| ![](item:red_glazed_tile) | Red Glazed Tile | `red_glazed_tile` | 1 [red ochre](129) |
+
+They make 4 (break time: 0.7 s). Three tiles make 4 stairs (`blue_glazed_tile_stairs`...) and one makes 2 slabs
+(`blue_glazed_tile_slab`...).
+
+A **glaze** is a thin layer of glass melted onto fired clay: sand (silica) that melts in the kiln and coats the
+piece, making it shiny and waterproof. What colours it is **a metal**, as in [stained glass](229): cobalt gives the
+blue of the Alhambra and of Delft pottery, tin an opaque white that hides the clay, copper green... or
+**turquoise** when the glaze has sodium in it (the baking soda), like the tiles of the mosques of Persia. The
+yellow of old potters came from lead; it is no longer used on plates and cups, because lead is toxic. The red is
+iron oxide: ochre.
+
 ## What they are for
 
 They are **building** blocks: no special effect, but sturdy, handsome and cheap.
 
 - Breaking them drops the same brick.
 - A [pickaxe](68) breaks them much faster (they all count as stone).
-- `brick` and `stone_bricks` can be cut into [slabs](56): 1 block = 2 slabs.
+- `brick`, `stone_bricks` and the glazed tiles can be cut into [slabs](56): 1 block = 2 slabs.
 
 ## Tips
 

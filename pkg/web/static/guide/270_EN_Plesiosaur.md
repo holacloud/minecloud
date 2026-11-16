@@ -19,7 +19,7 @@ breathing **air**, with lungs, as sea turtles and dolphins do today.
 1. **Its skeleton, in three pieces.** You need the skull, the spine and the tail: `fossil_plesiosaur_skull`,
    `fossil_plesiosaur_spine` and `fossil_plesiosaur_tail`. They come out of the three blocks of a **skeleton**
    (`fossil_bones_skull`, `fossil_bones_spine` and `fossil_bones_tail`), which lie in a straight line inside the
-   stone, between y = −11 and y = −4, and only in 1 chunk out of 30. The three blocks of a skeleton always belong
+   stone, between y = −11 and y = −4, and only in 1 chunk out of 14. The three blocks of a skeleton always belong
    to one animal, but not every skeleton is a plesiosaur's. See [Fossils](262).
 2. **A lot of water.** The revival machine has to stand next to **120 blocks of water** joined together, or
    more: a lake, the sea, or a big pool that you dig and fill with a [bucket](111).

@@ -218,8 +218,8 @@ test('every item a sheet can list has a Spanish name, and the same one as the gu
 
 // ---- The names are the guide's ----
 
-function guidePage(page) {
-    const file = fs.readdirSync(path.join(STATIC, 'guide')).find((name) => name.startsWith(`${page}_ES_`));
+function guideTopic(topic) {
+    const file = fs.readdirSync(path.join(STATIC, 'guide')).find((name) => name.startsWith(`${topic}_ES_`));
     return fs.readFileSync(path.join(STATIC, 'guide', file), 'utf8');
 }
 
@@ -229,11 +229,11 @@ function guideText() {
 }
 
 test('every creature is called what the guide calls it', () => {
-    // The index of the living is page 16, and that of the extinct animals page 261: a row of either is the same.
-    const rows = (page) => Object.fromEntries([...guidePage(page).matchAll(/!\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\)/g)].map((match) => [match[1], { name: match[2], page: match[3] }]));
+    // The index of the living is topic 16, and that of the extinct animals topic 261: a row of either is the same.
+    const rows = (topic) => Object.fromEntries([...guideTopic(topic).matchAll(/!\[\]\(mob:([a-z_]+)\) \| \[([^\]]+)\]\((\d+)\)/g)].map((match) => [match[1], { name: match[2], topic: match[3] }]));
     const living = rows(16);
     const extinct = rows(261);
-    // The bee's page covers the hive too, so its index row and its title say more than its card.
+    // The bee's topic covers the hive too, so its index row and its title say more than its card.
     const titled = { bee: 'Abeja' };
     for (const id of mobIds) {
         const named = isExtinct(ctx, id) ? extinct : living;
@@ -241,12 +241,12 @@ test('every creature is called what the guide calls it', () => {
         const name = ctx.BESTIARY_ENTRIES_ES[id].name;
         if (titled[id]) {
             assert.equal(name, titled[id], id);
-            assert.ok(guidePage(named[id].page).split('\n')[0].includes(`# ${titled[id]}`), id);
+            assert.ok(guideTopic(named[id].topic).split('\n')[0].includes(`# ${titled[id]}`), id);
         } else {
             assert.equal(name, named[id].name, id);
         }
     }
-    const small = [237, 240, 242, 243, 244, 255].map(guidePage).join('\n').toLowerCase();
+    const small = [237, 240, 242, 243, 244, 255].map(guideTopic).join('\n').toLowerCase();
     for (const id of organismIds) assert.ok(small.includes(ctx.MICRO_SPECIES_ES[id].name.toLowerCase()), `the guide does not say ${ctx.MICRO_SPECIES_ES[id].name}`);
 });
 
@@ -411,7 +411,7 @@ function englishWords(context) {
 const SPELLED_ALIKE = new Set(['a', 'no', 'cactus', 'oasis', 'golem', 'acacia', 'animal', 'neutral', 'shift', 'metal', 'hooke', 'robert', 'bacteria', 'gas', 'cm', 'alga', 'm', 'mm', 'real', 'agar', 'penicillium', 'alexander', 'fleming']);
 
 function englishIn(line, words) {
-    // The scientific name is Latin in both languages, and the code of a secret page is a code.
+    // The scientific name is Latin in both languages, and the code of a secret topic is a code.
     const plain = line.replace(/Tardigrada|Rotifera|Daphnia|Paramecium|Amoeba proteus|Vorticella|Euglena|Bacillariophyta|Spirogyra|Cyanobacteria|Bacillus|Saccharomyces|Lactobacillus|Cellula plantae|Cellula animalis|Basidiospora|B31X/g, '');
     const normal = plain.toLowerCase();
     // Word by word; an accent breaks a word, and that word is not English anyway.

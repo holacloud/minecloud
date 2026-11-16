@@ -106,7 +106,8 @@ const ITEM_TAG_PATTERNS = [
     [/_ore$/, ['ore', 'stone']],
     [/(^|_)glass(_pane)?$/, ['glass', 'building']],
     [/_wool$/, ['wool', 'building']],
-    [/_(carpet|curtain)$/, ['wool', 'decoration']],
+    [/_(carpet|curtain|banner)$/, ['wool', 'decoration']],
+    [/_throne$/, ['furniture']],
     [/^painting_/, ['decoration']],
     [/_(chair|sofa)$/, ['furniture']],
     [/_(lamp|bulb)$|^(torch|lantern|chandelier|candle)$/, ['light']],
@@ -126,7 +127,8 @@ const ITEM_TAG_TABLE = {
     stone: ['stone', 'cobblestone', 'claim_marker'],
     metal: ['meteoric_iron', 'gold_leaf'],
     furniture: ['bed', 'stool', 'bench', 'table', 'bedside_table', 'desk', 'chest', 'barrel', 'wardrobe', 'bookshelf', 'wall_shelf', 'workbench', 'oven', 'sink', 'fridge',
-        'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'foundry', 'arc_furnace'],
+        'chest_freezer', 'toilet', 'bathtub', 'candle', 'lantern', 'table_lamp', 'floor_lamp', 'chandelier', 'foundry', 'arc_furnace',
+        'fountain', 'statue', 'astrolabe', 'sundial', 'globe'],
     light: ['firefly_jar', 'glow_block'],
     electric: ['battery', 'solar_cell'],
     mechanism: ['electric_motor', 'hand_crank', 'water_wheel', 'wind_turbine', 'robot', 'copper_golem_core', 'sound_block'],
@@ -135,7 +137,7 @@ const ITEM_TAG_TABLE = {
     drink: ['water_flask', 'soda_water'],
     farming: ['wheat', 'wheat_seeds', 'fertilizer', 'farmland', 'grow_lamp'],
     plant: ['leaves', 'tall_grass', 'cactus', 'wheat', 'wheat_seeds', 'moss'],
-    nature: ['grass', 'dirt', 'sand', 'water', 'bedrock', 'ice'],
+    nature: ['grass', 'dirt', 'sand', 'water', 'bedrock', 'ice', 'packed_ice'],
     animal: ['glow_dust', 'feather', 'leather', 'fur', 'milk', 'honeycomb', 'raw_fish', 'shell', 'scale', 'venom_sac', 'shadow_essence', 'ant_farm', 'ant_colony_jar',
         'eel_bucket', 'eel_tank', 'firefly_jar', 'breeding_notebook'],
     // The machine that takes the fossils is found with them (js/game/revival.js).
@@ -143,16 +145,18 @@ const ITEM_TAG_TABLE = {
     chemistry: ['water_flask', 'soda_water', 'salt', 'steel_ingot', 'bronze_ingot', 'brass_ingot', 'fertilizer', 'helium_balloon', 'rust_pigment', 'ruby', 'sapphire', 'solar_cell',
         'copper_sulfate', 'gold_leaf', 'baking_soda', 'quicklime', 'pyrite', 'iodine_tincture', 'fluorite', 'battery', 'meteoric_iron', 'lab_bench', 'neon_lamp', 'argon_lamp',
         'cobalt_glass', 'mirror', 'foundry', 'arc_furnace', 'methylene_blue'],
-    science: ['thermometer', 'barometer', 'anemometer', 'telescope', 'star_chart', 'weather_station', 'breeding_notebook', 'multimeter', 'lab_bench', 'microscope', 'ant_farm',
+    science: ['astrolabe', 'sundial', 'globe', 'thermometer', 'barometer', 'anemometer', 'telescope', 'star_chart', 'weather_station', 'breeding_notebook', 'multimeter', 'lab_bench', 'microscope', 'ant_farm',
         'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop',
         'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter', 'revival_machine'],
     microscope: ['microscope', 'test_tube', 'glass_slide', 'micropipette', 'tardigrade_tube', 'tardigrade_tun', 'methylene_blue', 'darkfield_stop', 'moss',
         'incubator', 'autoclave', 'petri_dish', 'agar_plate', 'agar_plate_unsterile', 'used_dish', 'water_filter'],
-    decoration: ['sign', 'flower_pot', 'vase', 'wall_clock', 'wall_mirror', 'mirror', 'sound_block', 'spray_paint', 'glow_block'],
+    decoration: ['sign', 'flower_pot', 'vase', 'wall_clock', 'wall_mirror', 'mirror', 'sound_block', 'spray_paint', 'glow_block', 'fountain', 'statue',
+        'open_book', 'book_stack', 'inkwell', 'scroll', 'meal_plate', 'fruit_bowl', 'tea_set', 'jug', 'chessboard', 'sewing_basket'],
     transport: ['ladder'],
     // Colours no id says.
     red: ['ruby'],
-    blue: ['sapphire', 'cobalt_glass']
+    blue: ['sapphire', 'cobalt_glass'],
+    cyan: ['turquoise_glazed_tile', 'turquoise_glazed_tile_stairs', 'turquoise_glazed_tile_slab']
 };
 
 // What a rule says and is not so: family -> items. (A painting is mined like wood; that does not make it wood.)

@@ -1,5 +1,5 @@
 // Node tests for the anomalocaris (js/game/anomalocaris.js): what it is, and that the 'cruise' movement of every
-// sea animal (js/game/sea_animals.js) carries it as its page says: it nips a player who is in its water, leaves
+// sea animal (js/game/sea_animals.js) carries it as its topic says: it nips a player who is in its water, leaves
 // alone one on the shore, and chases the trilobites of its water without hurting them. The real mobs.js,
 // sea_animals.js, camera.js and world.js run on a flat world with a pond dug in it (support/flat_world.js); only
 // drawing and sound are left out. What every extinct animal has to be is asked of it by
@@ -19,7 +19,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame();
 const SEA = JSON.parse(vm.runInContext('JSON.stringify(SEA)', ctx));
 const body = JSON.parse(vm.runInContext("(() => { const b = seaAnimalsBody('anomalocaris'); return JSON.stringify({ front: b.front, back: b.back, half: b.half, height: b.height, length: b.length }); })()", ctx));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `299_${lang}_Anomalocaris.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `299_${lang}_Anomalocaris.md`), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 
 // A pond 10 by 8 and 2 deep, its water from y = -2 to y = -1.
@@ -36,7 +36,7 @@ function pond() {
     return { ...g, wet, swim, ashore };
 }
 
-test('what it is: a hostile hunter of the Cambrian one block long, and what its page says of it', () => {
+test('what it is: a hostile hunter of the Cambrian one block long, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('anomalocaris');
     assert.equal(info.movement, 'cruise');
     assert.equal(info.ancestorOf, undefined);
@@ -49,8 +49,8 @@ test('what it is: a hostile hunter of the Cambrian one block long, and what its 
     const fossil = JSON.parse(vm.runInContext('JSON.stringify(FOSSIL_SPECIES.anomalocaris)', ctx));
     assert.deepEqual(fossil, { source: 'rock', rarity: 'rare', weight: 1, water: 16, seconds: 45 });
 
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes('**1 bloque de\nlargo**') && en.includes('**1 block long**'));
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`));
     assert.ok(es.includes(`**${comma(info.chaseSpeed)} bloques por segundo**`) && en.includes(`**${info.chaseSpeed} blocks a second**`));

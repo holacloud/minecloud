@@ -31,7 +31,7 @@ function loadBook(guideSource, withShared) {
     return book;
 }
 
-function guidePages() {
+function guideTopics() {
     return fs.readdirSync(GUIDE).filter((name) => name.endsWith('.md') && name !== 'README.md')
         .map((name) => ({ name, source: fs.readFileSync(path.join(GUIDE, name), 'utf8') }));
 }
@@ -53,13 +53,15 @@ test('the shared renderer gives the same HTML as the in-game book always gave', 
     }
     const before = loadBook(oldSource, false);
     const after = loadBook(fs.readFileSync(path.join(STATIC, 'js', 'game', 'guide.js'), 'utf8'), true);
-    const pages = guidePages();
-    assert.ok(pages.length > 100);
-    for (const page of [...pages, { name: 'sample', source: SAMPLE }]) {
-        assert.equal(after.guideMarkdown(page.source), before.guideMarkdown(page.source), page.name);
+    const topics = guideTopics();
+    assert.ok(topics.length > 100);
+    // The old book named a link's target data-page, as it named its topics pages: only that name differs.
+    const renamed = (html) => html.replace(/<a data-page="/g, '<a data-topic="');
+    for (const topic of [...topics, { name: 'sample', source: SAMPLE }]) {
+        assert.equal(after.guideMarkdown(topic.source), renamed(before.guideMarkdown(topic.source)), topic.name);
     }
     for (const raw of ['007', '12', '27a2', 'UR29', '', 'too-long!', '123456789']) {
-        assert.equal(after.guidePageId(raw), before.guidePageId(raw), raw);
+        assert.equal(after.guideTopicId(raw), before.guidePageId(raw), raw);
     }
 });
 
@@ -70,8 +72,8 @@ test('without an asset hook, mob: and item: sources are kept for the caller to d
     assert.match(html, /<img src="guide\/img\/book.png" alt="b">/);
 });
 
-test('page ids: numbers lose their zeros, codes are capitals', () => {
-    assert.equal(shared.guidePageIdOf('007'), '7');
-    assert.equal(shared.guidePageIdOf(' c0m3t '), 'C0M3T');
-    assert.equal(shared.guidePageIdOf('no!'), null);
+test('topic ids: numbers lose their zeros, codes are capitals', () => {
+    assert.equal(shared.guideTopicIdOf('007'), '7');
+    assert.equal(shared.guideTopicIdOf(' c0m3t '), 'C0M3T');
+    assert.equal(shared.guideTopicIdOf('no!'), null);
 });

@@ -18,7 +18,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/meganeura.js'], frameUpdates: ['meganeuraUpdate'] });
 const M = JSON.parse(vm.runInContext('JSON.stringify(MEGANEURA)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `300_${lang}_Meganeura.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `300_${lang}_Meganeura.md`), 'utf8');
 
 // One the server keeps, with no owner and nowhere to go: it stands where it is (js/game/animals.js). The
 // player is far away.
@@ -31,7 +31,7 @@ function kept() {
 }
 const height = (mob) => mob.position.y + mob.userData.modelRoot.position.y;
 
-test('what it is: a peaceful giant griffinfly that hovers low, 0.7 blocks across the wings, and what its page says of it', () => {
+test('what it is: a peaceful giant griffinfly that hovers low, 0.7 blocks across the wings, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('meganeura');
     assert.equal(info.movement, undefined, 'the ground movement, hovering: a body the server can keep and walk');
     assert.ok(ctx.mobMovementIs(info.movement, 'walksToGoal') && !ctx.mobMovementIs(info.movement, 'bodiless'));
@@ -47,8 +47,8 @@ test('what it is: a peaceful giant griffinfly that hovers low, 0.7 blocks across
         return 2 * (wing.pivot[0] + wing.from[0] + wing.size[0]) / 16;
     })()`, ctx);
     assert.ok(Math.abs(span - 0.7) < 0.03, `${span} blocks across the wings`);
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a ${String(info.flyHeight).replace('.', ',')} bloques del suelo`) && en.includes(`${info.flyHeight} blocks above the ground`), 'how high it flies');
     assert.ok(es.includes(`a ${String(info.speed).replace('.', ',')} bloques por segundo`) && en.includes(`at ${info.speed} blocks a\n  second`), 'how fast');
     assert.ok(es.includes(`lleva ${M.land} segundos sin tener adónde ir`) && en.includes(`nowhere to go for ${M.land} seconds`), 'when it lands');

@@ -44,10 +44,10 @@ const CULTURE_CLOSE_DISTANCE = 7;
 const CULTURE_OPEN_MS = 6000;
 const CULTURE_DIAL_MS = 450;
 const CULTURE_NOTE_MS = 8000;
-// The incubator's page in the guide, and those of the curve and of sterilising.
-const CULTURE_GUIDE_PAGE = 253;
-const CULTURE_CURVE_PAGE = 254;
-const CULTURE_STERILE_PAGE = 255;
+// The incubator's topic in the guide, and those of the curve and of sterilising.
+const CULTURE_GUIDE_TOPIC = 253;
+const CULTURE_CURVE_TOPIC = 254;
+const CULTURE_STERILE_TOPIC = 255;
 
 // How each species grows on agar (cultureSpecies). tmin, topt, tmax in °C; rate per second in ln units.
 const CULTURE_SPECIES = {
@@ -788,7 +788,7 @@ registerGameContent(({ addItem, addRecipe }) => {
     addRecipe('incubator', 'Build Incubator', 'incubator', 1, [{ type: 'iron_ore', amount: 4 }, { type: 'glass', amount: 2 }, { type: 'thermometer', amount: 1 }]);
     addRecipe('autoclave', 'Build Autoclave', 'autoclave', 1, [{ type: 'iron_block', amount: 3 }, { type: 'glass', amount: 1 }]);
     addRecipe('petri_dish', 'Blow Petri Dishes', 'petri_dish', 2, [{ type: 'glass', amount: 1 }]);
-    // Wheat stands for the nutrients, as the guide says (page 253): agar itself is a seaweed's jelly.
+    // Wheat stands for the nutrients, as the guide says (topic 253): agar itself is a seaweed's jelly.
     addRecipe('agar_plate', 'Pour Agar Plate', 'agar_plate', 1, [{ type: 'petri_dish', amount: 1 }, { type: 'wheat', amount: 1 }, { type: 'water_flask', amount: 1 }]);
     // On a dish that skipped the autoclave: it looks the same, and it carries mould spores.
     addRecipe('agar_plate_unsterile', 'Pour Agar Plate on a Used Dish', 'agar_plate_unsterile', 1, [{ type: 'used_dish', amount: 1 }, { type: 'wheat', amount: 1 }, { type: 'water_flask', amount: 1 }]);
@@ -1121,10 +1121,10 @@ Object.assign(Game.prototype, {
             (op === 'load' ? Object.prototype.hasOwnProperty.call(CULTURE_PLATES, type) : Boolean(cultureInoculum(type))));
     },
 
-    cultureOpenGuide(page = CULTURE_GUIDE_PAGE) {
+    cultureOpenGuide(topic = CULTURE_GUIDE_TOPIC) {
         if (typeof this.guideShow !== 'function') return;
         this.cultureClose();
-        this.guideShow(String(page));
+        this.guideShow(String(topic));
     },
 
     // ---- Drawing ----

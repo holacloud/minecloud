@@ -31,7 +31,7 @@ before calling it done. There is no CI: nothing else will catch a red test.
 | `pkg/web/static/js/game/*.js` | One file per feature (a species, a machine, a panel). New things go here. |
 | `pkg/web/static/js/game.js`, `world.js`, `chunkMesher.js`, `camera.js`, `models.js` | The core. A feature should not need to edit them. |
 | `pkg/web/static/index.html` | Core CSS and markup, and the `<script>` list. **Order is load order.** |
-| `pkg/web/static/guide/` | The in-game guide: one Markdown page per topic, in ES and EN. Its `README.md` has the rules. |
+| `pkg/web/static/guide/` | The in-game guide: one Markdown file per topic, in ES and EN. Its `README.md` has the rules. |
 | `pkg/network/` | The server: `registry.go` is how a mechanic plugs in, `websocket.go` the hub; each mechanic has its own file (`glow_block.go`, `power.go`, `animals.go`...). |
 | `pkg/world/`, `pkg/terrain/` | Chunk storage and terrain generation. A rule of the generator is written twice: there and in `js/terrainGen.js`, its mirror for the viewer; fingerprints in `ores_test.go` and `fossils_test.go` hold the two together. |
 | `test/js/` | Node tests: they run the real scripts of `index.html` in a VM with stand-ins for the browser. `support/game.js` has the script list, `anyStub` and loaders to start a new test from. |
@@ -90,7 +90,7 @@ file to edit is `index.html` (`<script>` after `game/mobs.js`):
    `this.createMob`, `this.mobMarkNatural(mob, chunkX, chunkZ)` and `this.ambientMobs.push(mob)`.
 5. A mob that changes blocks does it with `this.placeBlockForAll(payload)` and `this.removeBlockForAll(x, y, z)`
    (see `game/beaver.js`): they tell the server and stop by themselves in someone else's plot.
-6. Its guide pages (see "a guide page"): `guide_facts.test.js` counts the species and checks what the pages
+6. Its guide topics (see "a guide topic"): `guide_facts.test.js` counts the species and checks what the topics
    say of taming and baits.
 7. An extinct animal that is found as a fossil also says `fossil: { source, rarity, weight, water, seconds }`
    in its `registerSpecies` (documented in `extensions.js`), and nothing else: `game/fossils.js` makes its
@@ -122,15 +122,15 @@ on the sheets of both. What it does differently from the steps above:
   same numbers in both languages. The name may be the same in both (`Titanoboa`).
 - A `trap` row always (`{ baits: [] }` for none); baits and a `diet` only if it really comes to them and can
   really be tamed (`trapsIsLured`, `tamingCanTame`).
-- Guide: its row goes in page 261 (not in 16 nor in B31X), in both languages, as
-  `| ![](mob:<id>) | [<name>](<its page>) | ![](mob:<living id>) [<its name>](<its page>) | <date> |`, with `—`
-  in the third cell if it has no `ancestorOf`. The name is the title of its page and of its card, to the
-  letter. Its own page names each food and bait by id (`` `wheat` `` or `![](item:wheat)`): pages 3, 4, 93, 96
+- Guide: its row goes in topic 261 (not in 16 nor in B31X), in both languages, as
+  `| ![](mob:<id>) | [<name>](<its topic>) | ![](mob:<living id>) [<its name>](<its topic>) | <date> |`, with `—`
+  in the third cell if it has no `ancestorOf`. The name is the title of its topic and of its card, to the
+  letter. Its own topic names each food and bait by id (`` `wheat` `` or `![](item:wheat)`): topics 3, 4, 93, 96
   and every count of 5, 74, 106 and B31X stay about the living ones. A movement of its own does count: a row
-  in the table of page 104, and the number of movements of 104 and 106.
+  in the table of topic 104, and the number of movements of 104 and 106.
 - `node --test test/js/extinct_species.test.js` asks the rest of every extinct animal there is, with nothing to
   add for a new one: its `fossil`, a model built and painted without a browser that stands on the ground, a
-  body as an animal the server keeps, no `mount` it cannot honour, and its two pages with its portrait, the
+  body as an animal the server keeps, no `mount` it cannot honour, and its two topics with its portrait, the
   block of its fossil and the links to 262 or 263 and to the revival machine (264). A habit of its own is
   tried on the flat world of `test/js/support/flat_world.js` (`test/js/dodo.test.js` shows how).
 - One of the sea needs no behaviour of its own: `movement: 'cruise'` (`game/sea_animals.js`, whose header
@@ -288,15 +288,20 @@ Rules every handler follows:
 Tests: a `<mechanic>_test.go` next to it. `weather_station_test.go` shows how to send messages through
 `handleMessage` with a client that hears the broadcasts.
 
-## Recipe: a guide page
+## Recipe: a guide topic
 
 Rules and catalogue: `pkg/web/static/guide/README.md`. For each new topic:
 
-1. Two files, `ID_ES_Título.md` and `ID_EN_Title.md`, with the next free id at the end. Pages are never
+1. Two files, `ID_ES_Título.md` and `ID_EN_Title.md`, with the next free id at the end. Topics are never
    renumbered, and facts must match the code.
-2. A row in the README's catalogue and in the contents pages that list it (0, and 16, 48, 98, 223 or 261), in
+2. A row in the README's catalogue and in the contents topics that list it (0, and 16, 48, 98, 223 or 261), in
    both languages.
 3. Its section in `GUIA.md`.
+
+On paper (the printable guide's volumes, `guide/volumes.json`) a new topic falls into the open volume by itself;
+give it a row in that volume's `sections` if it starts a subject. Changing a topic of a closed volume asks for a line
+in the open volume's news (`guide/volumes/<n>_news_ES.md` and `_EN.md`) or a waiver: `node --test
+test/js/guide_volumes.test.js` says which topics and how (README, "Volumes").
 
 ## Conventions
 

@@ -12,7 +12,7 @@ package network
 
 // builderPalette is the palette, item by item: the list js/game/builder.js works out from the item tags
 // (builderPaletteOf). test/js/builder.test.js checks that both agree, so a change of tags that moves an item in or
-// out fails that test until this list says so too. 243 items.
+// out fails that test until this list says so too. 304 items.
 var builderPalette = map[string]bool{
 	"grass": true, "dirt": true, "stone": true, "cobblestone": true, "wood": true, "sand": true, "brick": true,
 	"planks": true, "bed": true, "sign": true, "glass": true, "stone_bricks": true, "torch": true, "ladder": true,
@@ -67,6 +67,24 @@ var builderPalette = map[string]bool{
 	"black_carpet": true, "black_curtain": true, "painting_sunset": true, "painting_peaks": true,
 	"painting_meadow": true, "painting_night": true, "painting_shapes": true, "painting_fish": true, "wall_clock": true,
 	"flower_pot": true, "vase": true, "wall_mirror": true,
+	// The palaces' materials and furniture (js/game/palace_decor.js).
+	"sandstone": true, "cut_sandstone": true, "sandstone_stairs": true, "sandstone_slab": true,
+	"blue_glazed_tile": true, "blue_glazed_tile_stairs": true, "blue_glazed_tile_slab": true,
+	"white_glazed_tile": true, "white_glazed_tile_stairs": true, "white_glazed_tile_slab": true,
+	"yellow_glazed_tile": true, "yellow_glazed_tile_stairs": true, "yellow_glazed_tile_slab": true,
+	"green_glazed_tile": true, "green_glazed_tile_stairs": true, "green_glazed_tile_slab": true,
+	"red_glazed_tile": true, "red_glazed_tile_stairs": true, "red_glazed_tile_slab": true,
+	"turquoise_glazed_tile": true, "turquoise_glazed_tile_stairs": true, "turquoise_glazed_tile_slab": true,
+	"white_stucco": true, "red_stucco": true, "magma_rock": true, "snow_block": true, "packed_ice": true,
+	"gilded_throne": true, "lacquer_throne": true, "jade_throne": true, "obsidian_throne": true,
+	"white_banner": true, "orange_banner": true, "magenta_banner": true, "light_blue_banner": true,
+	"yellow_banner": true, "lime_banner": true, "pink_banner": true, "gray_banner": true,
+	"light_gray_banner": true, "cyan_banner": true, "purple_banner": true, "blue_banner": true,
+	"brown_banner": true, "green_banner": true, "red_banner": true, "black_banner": true, "fountain": true,
+	"lattice_screen": true, "paper_screen": true, "statue": true,
+	// The tabletop objects (js/game/tabletop.js).
+	"open_book": true, "book_stack": true, "inkwell": true, "scroll": true, "meal_plate": true, "fruit_bowl": true,
+	"tea_set": true, "jug": true, "chessboard": true, "sewing_basket": true,
 }
 
 const (

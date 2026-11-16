@@ -1,6 +1,6 @@
 // Fossils: the blocks the world hides in its rock, and the item each one gives when it is broken.
 // - The server makes the blocks with the terrain (pkg/terrain/fossils.go, mirrored by js/terrainGen.js), and
-//   only in land nobody has visited yet. There are seven, each in its own layer (guide, pages 262 and 263):
+//   only in land nobody has visited yet. There are seven, each in its own layer (guide, topics 262 and 263):
 //       fossil_rock, fossil_rock_rare          a common or a rare fossil, in the deep rock
 //       fossil_bones_skull, _spine, _tail      the three pieces of a skeleton, in a line inside one chunk
 //       amber_rock                             amber, in the rock under the forest

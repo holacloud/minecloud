@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-// The game is some hundred scripts and as many guide pages, all text: gzipped they are about a quarter of
+// The game is some hundred scripts and as many guide topics, all text: gzipped they are about a quarter of
 // their size, which is most of what a child on a slow connection waits for. Each file is compressed once,
 // the first time somebody asks for it, and kept: they are embedded and never change while the server runs.
 

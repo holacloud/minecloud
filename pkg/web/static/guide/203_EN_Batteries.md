@@ -18,7 +18,7 @@ The numbers are scaled for play, because a MineCloud day lasts only 4 minutes (s
 | **2** `battery_block` (lithium) | 2 `battery` + 2 `iron_ore` + 2 `copper_wire` |
 
 The first recipe only needs ordinary materials. The [lithium battery](189) (`battery`) gives twice as many, but you
-have to **discover** it at the [lab bench](117): its page has the hint.
+have to **discover** it at the [lab bench](117): its topic has the hint.
 
 ## How it works
 

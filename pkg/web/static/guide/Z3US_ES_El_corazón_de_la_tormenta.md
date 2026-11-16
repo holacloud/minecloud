@@ -1,6 +1,6 @@
 # El corazón de la tormenta
 
-> Has encontrado una página escondida. La leíste en una piedra que todavía echaba chispas. Pocos se atreven a
+> Has encontrado un tema escondido. Lo leíste en una piedra que todavía echaba chispas. Pocos se atreven a
 > derribar a un gigante en mitad de la lluvia.
 
 ![Golem de tormenta](mob:storm_golem)
@@ -63,5 +63,5 @@ sus escombros. Si estás leyendo esto, ya la viste.
 
 ---
 
-**La siguiente pista:** bajo las praderas viaja alguien que **siente tus pasos**. Su página en esta guía esconde
+**La siguiente pista:** bajo las praderas viaja alguien que **siente tus pasos**. Su tema en esta guía esconde
 un **acróstico**: una palabra escrita con las primeras letras. Léela despacio, de arriba abajo.

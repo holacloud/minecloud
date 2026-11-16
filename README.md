@@ -20,7 +20,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - Baits and traps: bait piles that lure animals, cage traps, a fishing rod, a bug net and firefly jars.
 - A bucket to scoop up water and pour it elsewhere (water stays static).
 - A bestiary (`B`) that records the species you meet, with portraits and field notes.
-- An in-game guide book (`H`) with pages for every mob, item and mechanic, in English and Spanish.
+- An in-game guide book (`H`) with topics for every mob, item and mechanic, in English and Spanish.
 - First-person movement with auto-step over 1-block ledges.
 - Third-person camera views (from behind and from the front).
 - Sneak/crouch movement for careful building and edge safety.
@@ -85,7 +85,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - `E`: open/close the full inventory panel.
 - `C`: open/close the crafting panel.
 - `B`: open/close the bestiary.
-- `H`: open/close the guide book (`←` / `→` turn the pages).
+- `H`: open/close the guide book (`←` / `→` go to the previous or next topic).
 - `Enter`: open chat / send message.
 - `F`: read the full text of the sign you are aiming at.
 - `F` while aiming at a bed at night: sleep until dawn.
@@ -101,7 +101,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 
 ### Mobile
 
-Phones and tablets get touch controls (guide page 222); add `?touch=1` or `?touch=0` to the URL to force them on
+Phones and tablets get touch controls (guide topic 222); add `?touch=1` or `?touch=0` to the URL to force them on
 or off.
 
 - Left side: a floating joystick appears under the thumb; up/down walk, left/right turn the body; push it to the edge, or tap `Run`, to run.

@@ -704,7 +704,7 @@ test('the guide says it, in both languages', () => {
         assert.match(shield, /`planks`/);
         assert.match(shield, /`iron_ore`/);
         assert.match(shield, /50 %/);
-        for (const page of ['0', '48', '9']) assert.match(read(page), /\(252\)/, `page ${page} in ${lang}`);
+        for (const topic of ['0', '48', '9']) assert.match(read(topic), /\(252\)/, `topic ${topic} in ${lang}`);
         assert.match(read('91'), /\(252\)/);
     }
     assert.match(fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8'), /\| 252 \|/);

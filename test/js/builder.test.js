@@ -201,7 +201,7 @@ test('the palette is the server\'s list, item for item, and nothing scientific o
     const palette = plain(ctx.builderPaletteOf(blockTypes));
     const server = [...GO.matchAll(/"([a-z0-9_]+)": true/g)].map((match) => match[1]);
     assert.deepEqual([...palette].sort(), [...server].sort(), 'js/game/builder.js and pkg/network/builder.go must list the same palette');
-    assert.equal(palette.length, 243, 'a change of tags moved items in or out of the palette: check them and update both lists');
+    assert.equal(palette.length, 304, 'a change of tags moved items in or out of the palette: check them and update both lists');
     for (const id of palette) {
         const tags = plain(ctx.itemTagsOf(id, blockTypes));
         assert.ok(tags.some((tag) => ctx.BUILDER_FAMILIES.includes(tag)), `${id} is building or decoration`);
@@ -303,7 +303,7 @@ test('the hotbar and the panel show the palette with the player\'s own items out
     assert.deepEqual(listed.slice(0, 2), ['Iron Ore x3', 'Bread x2'], 'own items first');
     assert.ok(listed.includes('Stone ∞') && listed.includes('Glass ∞') && listed.includes('Chest ∞'));
     assert.ok(!listed.includes('Stone x5'), 'my own stone waits, untouched');
-    assert.equal(listed.length, 2 + 243);
+    assert.equal(listed.length, 2 + 304);
     // A search finds palette items by their tags too.
     game.inventorySearchTerm = '#vidrio azul';
     assert.ok(panel(game).every((line) => /Blue/.test(line) && line.endsWith('∞')));

@@ -31,7 +31,7 @@ Un bloque que sale del suelo para que subas a un saliente.
 
 ## 3. El ascensor de dos pisos
 
-1. Construye el hueco, la [plataforma](218) y el [torno](218) como explica la página de ascensores.
+1. Construye el hueco, la [plataforma](218) y el [torno](218) como explica el tema de ascensores.
 2. Pon un [biestable](210) entre la batería y el torno.
 3. Un **pulsador** en el piso de arriba va a la entrada SET (izquierda) del biestable; otro en el piso de abajo, a
    su entrada RESET (derecha).

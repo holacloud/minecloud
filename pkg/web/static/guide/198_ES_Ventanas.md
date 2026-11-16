@@ -3,12 +3,14 @@
 ![Panel de vidrio](item:glass_pane)
 
 Un **panel de vidrio** es una lámina fina de cristal para hacer ventanas; los **barrotes de hierro** son su versión
-de reja. Los dos se unen solos con lo que tienen al lado.
+de reja. Los dos se unen solos con lo que tienen al lado. Dos **biombos** de madera se unen igual.
 
 | | Objeto | Id | Rotura |
 |---|---|---|---|
 | ![](item:glass_pane) | Glass Pane | `glass_pane` | 0,2 s |
 | ![](item:iron_bars) | Iron Bars | `iron_bars` | 0,8 s |
+| ![](item:lattice_screen) | Lattice Screen | `lattice_screen` | 0,4 s |
+| ![](item:paper_screen) | Paper Screen | `paper_screen` | 0,25 s |
 
 ## Cómo conseguirlos
 
@@ -16,6 +18,8 @@ de reja. Los dos se unen solos con lo que tienen al lado.
 |---|---|
 | **8** `glass_pane` | **3** `glass` |
 | **8** `iron_bars` | **3** `iron_ore` |
+| **6** `lattice_screen` | **3** `dark_oak_planks` |
+| **4** `paper_screen` | 1 `birch_planks` + **3** `wheat` |
 
 El vidrio sale de la arena: ver [Arena, cactus y vidrio](51).
 
@@ -29,6 +33,13 @@ El vidrio sale de la arena: ver [Arena, cactus y vidrio](51).
 - El vidrio deja ver a través; los barrotes, entre barra y barra. La luz del sol y de las [antorchas](62) pasa por
   los dos.
 - Si quitas un vecino, el panel se recoge solo hacia los que le quedan.
+
+## Celosía y biombo de papel
+
+Se colocan y se unen como los paneles: una línea de ellos forma un tabique fino, y la luz pasa por los dos. La
+**celosía** (en árabe, *mashrabiya*) es una rejilla de madera con rombos: deja pasar el aire y la luz, y desde
+dentro se ve la calle sin que te vean. El **biombo de papel** (en japonés, *shoji*) es un marco de madera con papel
+claro: la luz pasa, tamizada. El papel de verdad se puede hacer con paja de trigo o de arroz.
 
 ## Trucos
 

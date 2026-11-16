@@ -16,13 +16,13 @@ const { EYE, loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame();
 const DODO = JSON.parse(vm.runInContext('JSON.stringify(DODO)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `265_${lang}_Dodo.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `265_${lang}_Dodo.md`), 'utf8');
 const distance = (mob, to) => Math.hypot(mob.position.x - to.x, mob.position.z - to.z);
 // Where a mob looks, as the direction it would walk in (models face +z).
 const heading = (mob) => Math.PI / 2 - mob.rotation.y;
 const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 
-test('what it is: a bird of the ground that anybody can tame, with no bait, and what its page says of it', () => {
+test('what it is: a bird of the ground that anybody can tame, with no bait, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('dodo');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.ok(ctx.mobMovementIs(info.movement, 'walksToGoal') && ctx.mobMovementIs(info.movement, 'tameable'));
@@ -34,10 +34,10 @@ test('what it is: a bird of the ground that anybody can tame, with no bait, and 
     assert.ok(ctx.Game.prototype.tamingCanTame.call({}, 'dodo'));
     assert.deepEqual({ ...ctx.TRAPS_SPECIES.dodo, baits: [...ctx.TRAPS_SPECIES.dodo.baits] }, { baits: [], cage: true });
 
-    // The numbers of its page are those of the code.
+    // The numbers of its topic are those of the code.
     const comma = (number) => String(number).replace('.', ',');
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a menos de **${DODO.see} bloques**`) && en.includes(`within **${DODO.see} blocks**`), 'how near');
     assert.ok(es.includes(`Se para a ${comma(DODO.stop)} bloques`) && en.includes(`stops ${DODO.stop} blocks away`), 'how close');
     assert.ok(es.includes(`a menos de **${DODO.leash} bloques** del sitio donde vive`) && en.includes(`within **${DODO.leash} blocks** of the place where it lives`), 'how far from home');

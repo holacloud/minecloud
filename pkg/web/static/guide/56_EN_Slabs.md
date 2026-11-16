@@ -20,6 +20,13 @@ steps, roofs, benches and raised floors.
 | ![](item:cherry_planks_slab) | Cherry Planks Slab | `cherry_planks_slab` | `cherry_planks` | 0.36 s |
 | ![](item:maple_planks_slab) | Maple Planks Slab | `maple_planks_slab` | `maple_planks` | 0.36 s |
 | ![](item:willow_planks_slab) | Willow Planks Slab | `willow_planks_slab` | `willow_planks` | 0.36 s |
+| ![](item:sandstone_slab) | Sandstone Slab | `sandstone_slab` | `sandstone` | 0.5 s |
+| ![](item:blue_glazed_tile_slab) | Blue Glazed Tile Slab | `blue_glazed_tile_slab` | `blue_glazed_tile` | 0.45 s |
+| ![](item:white_glazed_tile_slab) | White Glazed Tile Slab | `white_glazed_tile_slab` | `white_glazed_tile` | 0.45 s |
+| ![](item:yellow_glazed_tile_slab) | Yellow Glazed Tile Slab | `yellow_glazed_tile_slab` | `yellow_glazed_tile` | 0.45 s |
+| ![](item:green_glazed_tile_slab) | Green Glazed Tile Slab | `green_glazed_tile_slab` | `green_glazed_tile` | 0.45 s |
+| ![](item:turquoise_glazed_tile_slab) | Turquoise Glazed Tile Slab | `turquoise_glazed_tile_slab` | `turquoise_glazed_tile` | 0.45 s |
+| ![](item:red_glazed_tile_slab) | Red Glazed Tile Slab | `red_glazed_tile_slab` | `red_glazed_tile` | 0.45 s |
 
 ## How to get them
 
@@ -36,7 +43,7 @@ One block makes two half blocks: nothing is wasted. Breaking a slab gives the sl
 - Place them with a right click like any block; they always fill the **lower half** of their space.
 - **You walk up them:** you can step onto a slab without jumping, because your steps clear up to half a block. A row
   of slabs and full blocks in turn makes a comfy staircase.
-- Stone and brick slabs break faster with a [pickaxe](68); plank slabs, with an [axe](70). They take a little over
+- Stone, brick, [sandstone](51) and [glazed tile](57) slabs break faster with a [pickaxe](68); plank slabs, with an [axe](70). They take a little over
   half the time of their full block.
 
 ## Tips

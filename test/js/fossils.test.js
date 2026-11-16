@@ -607,9 +607,9 @@ test('the robot digs a fossil out as the player does: both say where the block w
 
 // ---- The guide ----
 
-const page = (id, lang) => {
+const topic = (id, lang) => {
     const name = fs.readdirSync(GUIDE).find((file) => file.startsWith(`${id}_${lang}_`));
-    assert.ok(name, `page ${id} ${lang}`);
+    assert.ok(name, `topic ${id} ${lang}`);
     return read(GUIDE, name);
 };
 // A height as the guide writes it: with a real minus sign.
@@ -625,17 +625,17 @@ test('the guide: 262 and 263 in both languages, in the indexes, the catalogue an
     const titles = { 262: { ES: 'Fósiles', EN: 'Fossils' }, 263: { ES: 'Ámbar', EN: 'Amber' } };
     for (const id of [262, 263]) {
         for (const lang of ['ES', 'EN']) {
-            assert.match(page(id, lang), new RegExp(`^# ${titles[id][lang]}\n`), `${id} ${lang}`);
+            assert.match(topic(id, lang), new RegExp(`^# ${titles[id][lang]}\n`), `${id} ${lang}`);
             assert.ok(fs.readdirSync(GUIDE).includes(`${id}_${lang}_${titles[id][lang]}.md`.normalize('NFC')));
-            for (const from of [0, 48]) assert.match(page(from, lang), new RegExp(`\\(${id}\\)`), `${from} ${lang} links to ${id}`);
-            // A page of the world generator says what a saved world keeps, as the page on metals does.
-            assert.match(page(id, lang), lang === 'ES' ? /que nadie ha visitado aún/ : /nobody has visited yet/, `${id} ${lang}`);
+            for (const from of [0, 48]) assert.match(topic(from, lang), new RegExp(`\\(${id}\\)`), `${from} ${lang} links to ${id}`);
+            // A topic of the world generator says what a saved world keeps, as the topic on metals does.
+            assert.match(topic(id, lang), lang === 'ES' ? /que nadie ha visitado aún/ : /nobody has visited yet/, `${id} ${lang}`);
         }
         assert.match(read(GUIDE, 'README.md'), new RegExp(`^\\| ${id} \\| ${titles[id].ES} \\| ${titles[id].EN} \\|`, 'm'));
     }
     for (const lang of ['ES', 'EN']) {
-        assert.match(page(262, lang), /\(263\)/);
-        assert.match(page(263, lang), /\(262\)/);
+        assert.match(topic(262, lang), /\(263\)/);
+        assert.match(topic(263, lang), /\(262\)/);
     }
     const guia = read(ROOT, 'GUIA.md');
     assert.match(guia, /^## Fósiles y ámbar$/m);
@@ -686,7 +686,7 @@ test('the guide puts every fossil where the generator does, and says how many th
     assert.equal(2 * (g.SKELETON_GAP_MIN + 1), 6, 'from one end of a skeleton to the other, at the most');
     for (const lang of ['ES', 'EN']) {
         const w = words[lang];
-        const fossils = page(262, lang);
+        const fossils = topic(262, lang);
         for (const block of BLOCKS.filter((name) => name !== 'amber_rock')) assert.ok(fossils.includes(`| ![](item:${block}) | \`${block}\` |`), `${lang} ${block}`);
         assert.ok(row(fossils, w.common).includes(w.span(g.FOSSIL_FLOOR, g.FOSSIL_COMMON_TOP)) && row(fossils, w.common).includes(w.pocket), `${lang}: ${row(fossils, w.common)}`);
         assert.ok(row(fossils, w.rare).includes(w.span(g.FOSSIL_FLOOR, g.FOSSIL_RARE_TOP)) && row(fossils, w.rare).includes(w.outOfFive(rare)), `${lang}: ${row(fossils, w.rare)}`);
@@ -694,12 +694,12 @@ test('the guide puts every fossil where the generator does, and says how many th
         assert.ok(row(fossils, w.bones).includes(w.depth) && row(fossils, w.bones).includes(w.columns), `${lang}: ${row(fossils, w.bones)}`);
         assert.ok(fossils.includes(height(g.BEDROCK_Y)) && fossils.includes(height(g.WATER_LEVEL)), `${lang}: the floor and the water`);
         for (const said of [w.line, w.gaps, w.reach, w.plain]) assert.match(fossils, said, lang);
-        assert.ok(!fossils.includes('amber_rock'), `${lang}: amber has its own page`);
+        assert.ok(!fossils.includes('amber_rock'), `${lang}: amber has its own topic`);
 
-        const amberPage = page(263, lang);
-        for (const item of ['amber_rock', 'amber']) assert.ok(amberPage.includes(`| ![](item:${item}) | \`${item}\` |`), `${lang} ${item}`);
-        assert.ok(amberPage.includes(w.amberSpan) && amberPage.includes(w.amberChunks), lang);
-        for (const said of [w.above, w.forest, w.amberPlain, w.cover]) assert.match(amberPage, said, lang);
+        const amberTopic = topic(263, lang);
+        for (const item of ['amber_rock', 'amber']) assert.ok(amberTopic.includes(`| ![](item:${item}) | \`${item}\` |`), `${lang} ${item}`);
+        assert.ok(amberTopic.includes(w.amberSpan) && amberTopic.includes(w.amberChunks), lang);
+        for (const said of [w.above, w.forest, w.amberPlain, w.cover]) assert.match(amberTopic, said, lang);
     }
     // GUIA.md has the same numbers.
     const guia = read(ROOT, 'GUIA.md');

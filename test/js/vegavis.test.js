@@ -1,5 +1,5 @@
 // Node tests for the Vegavis (js/game/vegavis.js): what it is, a small duck of the ground with nothing of its own
-// but its body, and what its page says of it. What every extinct animal has to be is asked of it by
+// but its body, and what its topic says of it. What every extinct animal has to be is asked of it by
 // extinct_species.test.js.
 // Run with: node --test test/js/vegavis.test.js
 
@@ -13,9 +13,9 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `278_${lang}_Vegavis.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `278_${lang}_Vegavis.md`), 'utf8');
 
-test('what it is: a peaceful bird of the ground, tamed with what a duck eats, and what its page says of it', () => {
+test('what it is: a peaceful bird of the ground, tamed with what a duck eats, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('vegavis');
     const duck = ctx.getMobSpecies('duck');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -40,9 +40,9 @@ test('what it is: a peaceful bird of the ground, tamed with what a duck eats, an
     assert.equal(model.height, 0.5);
     assert.ok(model.height < model.duck);
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     const blows = Math.ceil(info.maxHealth / 4);
     assert.ok(es.includes(`**${info.maxHealth} de vida**: ${blows} golpes a mano`) && en.includes(`**${info.maxHealth} health**: ${blows} hits bare-handed`));
     assert.ok(es.includes('con **1 de 3** por intento') && en.includes('with **1 in 3** per try'));

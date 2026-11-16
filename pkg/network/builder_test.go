@@ -33,7 +33,7 @@ func TestThePaletteIsBuildingAndDecorationOnly(t *testing.T) {
 			t.Errorf("%s is not in the palette", out)
 		}
 	}
-	if len(builderPalette) != 243 {
+	if len(builderPalette) != 304 {
 		t.Errorf("the palette has %d items; test/js/builder.test.js lists what it should be", len(builderPalette))
 	}
 }

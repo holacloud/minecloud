@@ -205,7 +205,7 @@ test('it holds what was asked for', () => {
     }
     // No power: nothing electric, and the lights all give their light by themselves.
     for (const type of placed.keys()) assert.ok(!defOf(type).electric, type);
-    // No beds, and nothing with storage in it: a build only places blocks.
+    // No beds, and no contents in a storage block's cell: what it holds is its stock, sent apart (tested below).
     assert.ok(!placed.has('bed'));
     for (const cell of PLAN.cells) {
         if (defOf(cell.type).storageSlots) assert.equal(cell.meta, undefined);
@@ -597,7 +597,7 @@ test('/build lists it, and it is hidden outside creative mode', () => {
     assert.ok(!outside.game.constructionJob && !outside.game.constructionWaiting);
 });
 
-test('/build library ends as planned in every turn, in blocks and nothing else, and undo restores the world', () => {
+test('/build library ends as planned in every turn, in blocks and then its stock, and undo restores the world', () => {
     for (const [look, turns] of [[{ x: 0, z: 1 }, 0], [{ x: -1, z: 0 }, 1], [{ x: 0, z: -1 }, 2], [{ x: 1, z: 0 }, 3]]) {
         const world = makeWorld(6);
         // Something of a player's in the way, for the undo to give back.
@@ -608,7 +608,10 @@ test('/build library ends as planned in every turn, in blocks and nothing else, 
         game.constructionCommand('build', ['library']);
         assert.ok(game.constructionJob, messages.join());
         run(game);
-        assert.ok(sent.every(({ type }) => type === 'blockPlace' || type === 'blockBreak'));
+        const stockAt = sent.findIndex(({ type }) => type === 'constructionStock');
+        assert.ok(stockAt > 0 && sent.slice(0, stockAt).every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks first');
+        assert.ok(sent.slice(stockAt).every(({ type }) => type === 'constructionStock'), 'then the stock and nothing else');
+        assert.equal(sent.slice(stockAt).reduce((n, { payload }) => n + payload.fills.length, 0), PLAN.stocks.length);
         const layout = ctx.constructionLayout(PLAN, turns, { x: fx * 3, z: fz * 3 }, 0, world.blockTypes);
         for (const cell of layout.cells) assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type, `${cell.x},${cell.y},${cell.z}`);
         const signs = sent.filter(({ payload }) => String(payload.blockType).startsWith('sign'));
@@ -621,4 +624,16 @@ test('/build library ends as planned in every turn, in blocks and nothing else, 
         }
         for (const [x, y, z, type] of things) assert.equal(world.getBlockTypeAt(x, y, z), type);
     }
+});
+
+test('every chest, barrel and wardrobe is stocked: papers in the chests, a scribe\'s and a binder\'s things in the barrels, coats in the cloakroom', () => {
+    const { constructionStockCheck } = require('./support/construction_stock.js');
+    const { storage, totals } = constructionStockCheck(PLAN, baseOf, stateOf);
+    assert.ok(storage >= 100, `${storage} storage blocks`);
+    for (const type of ['scroll', 'book_stack', 'inkwell', 'blueprint', 'feather', 'coal_ore', 'wheat', 'leather', 'candle', 'warm_coat']) {
+        assert.ok(totals.has(type), `nothing in the library holds ${type}`);
+    }
+    // Neighbouring chests of an archive differ.
+    const chests = PLAN.stocks.filter((stock) => stock.x === 2 && stock.y === ctx.LIBRARY_FLOORS[2] + 1);
+    assert.ok(new Set(chests.map((stock) => stock.items.map(([type]) => type).join())).size >= 5);
 });

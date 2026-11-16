@@ -39,7 +39,7 @@ function loadGame() {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
     vm.runInContext(`Object.assign(this, { WorldRenderer, ChunkColumn, CameraController, BLOCK_SHAPES, Game, CONSTRUCTION_DESIGNS, constructionPlan, constructionLayout,
-        CASTLE_GROUND, CASTLE_RIM, CASTLE_SIZE, CONSTRUCTION_RESEND, chunkIndex });`, context);
+        CASTLE_GROUND, CASTLE_RIM, CASTLE_SIZE, CONSTRUCTION_RESEND, CONSTRUCTION_STOCK_FILLS, chunkIndex });`, context);
     return context;
 }
 
@@ -778,7 +778,10 @@ test('reconnecting mid-build sends the last blocks again and the build ends whol
     assert.ok(messages.some((text) => text.includes('finished')));
     const later = sent.slice(lostFrom + 500);
     const apply = (w, list) => {
-        for (const { type, payload } of list) w.setEditedBlock(payload.x, payload.y, payload.z, type === 'blockPlace' ? payload.blockType : null);
+        for (const { type, payload } of list) {
+            // The stock (constructionStock) fills storage on the server and places nothing.
+            if (type === 'blockPlace' || type === 'blockBreak') w.setEditedBlock(payload.x, payload.y, payload.z, type === 'blockPlace' ? payload.blockType : null);
+        }
     };
     apply(server, delivered);
     apply(server, later);
@@ -788,7 +791,10 @@ test('reconnecting mid-build sends the last blocks again and the build ends whol
     const whole = makeGame(clean, { at: { x: 0.5, y: ground(0, 0) + 2.62, z: 0.5 } });
     whole.game.constructionCommand('build', ['castle']);
     run(whole.game);
-    assert.equal(whole.sent.length, total);
+    // Every block once, then the stock of every chest, barrel and wardrobe, CONSTRUCTION_STOCK_FILLS to a message.
+    const stockMessages = Math.ceil(ctx.constructionPlan('castle').stocks.length / ctx.CONSTRUCTION_STOCK_FILLS);
+    assert.equal(whole.sent.length, total + stockMessages);
+    assert.ok(whole.sent.slice(total).every(({ type }) => type === 'constructionStock'));
     const compare = (a, b) => {
         const wrong = [];
         for (let x = -70; x <= 70; x += 1) {
@@ -839,4 +845,16 @@ test('stopping the undo half way leaves the rest undoable, and /build stop cance
     assert.ok(messages.at(-1).includes('undone'));
     assert.equal(world.getBlockTypeAt(0, 3, 13), 'stone');
     assert.equal(world.getBlockTypeAt(0, 4, 13), null);
+});
+
+test('every chest, barrel and wardrobe of the castle is stocked for its room', () => {
+    const { constructionStockCheck } = require('./support/construction_stock.js');
+    const plan = ctx.constructionPlan('castle');
+    const { storage, totals } = constructionStockCheck(plan, baseOf, stateOf);
+    assert.ok(storage >= 60, `${storage} storage blocks`);
+    for (const type of ['bread', 'salted_fish', 'wheat', 'coal_ore', 'iron_pickaxe', 'meal_plate', 'warm_coat', 'iron_sword', 'shield', 'scale_mail']) {
+        assert.ok(totals.has(type), `nothing in the castle holds ${type}`);
+    }
+    // An armoury, not an arsenal; a royal chamber, not a treasury.
+    assert.ok(totals.get('iron_sword') <= 120 && (totals.get('ruby') || 0) <= 12, `${totals.get('iron_sword')} swords, ${totals.get('ruby')} rubies`);
 });

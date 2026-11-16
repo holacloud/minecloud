@@ -669,7 +669,7 @@ test('the showroom: the stained glass, the mirrors and the storage are set up fo
     }
     assert.ok(inside > 100 && beyond > 100, `${inside} near, ${beyond} far`);
 
-    // The storage corner, side by side, empty: a build sends blocks and nothing else.
+    // The storage corner, side by side.
     assert.equal(baseOf(typeAt(47, 1, 16)), 'chest');
     assert.equal(baseOf(typeAt(48, 1, 16)), 'barrel');
     assert.equal(baseOf(typeAt(49, 1, 16)), 'wardrobe');
@@ -858,7 +858,9 @@ test('/build showroom: every turn ends as planned, signs with their text, and un
         const { game, sent } = makeGame(world, { look });
         game.constructionCommand('build', ['showroom']);
         run(game);
-        assert.ok(sent.every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks and nothing else');
+        const stockAt = sent.findIndex(({ type }) => type === 'constructionStock');
+        assert.ok(stockAt > 0 && sent.slice(0, stockAt).every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks first');
+        assert.ok(sent.slice(stockAt).every(({ type }) => type === 'constructionStock'), 'then the stock and nothing else');
         const [fx, fz] = ctx.SHAPE_DIRECTIONS[LOOK_BY_TURNS[turns]];
         const anchor = { x: fx * 3, z: fz * 3 };
         const layout = ctx.constructionLayout(ctx.constructionPlan('showroom'), turns, anchor, 0, world.blockTypes);
@@ -1145,8 +1147,10 @@ function snapshot(world) {
 }
 
 // What the server (and every other client) does with the messages.
+// The blocks of what was sent; the stock (constructionStock) only fills storage on the server.
 function replay(world, sent) {
     for (const { type, payload } of sent) {
+        if (type !== 'blockPlace' && type !== 'blockBreak') continue;
         world.setEditedBlock(payload.x, payload.y, payload.z, type === 'blockPlace' ? payload.blockType : null);
     }
 }
@@ -1211,7 +1215,10 @@ test('a build reaches the server in batches, door to the player, and undo restor
     game.network.connected = true;
 
     run(game);
-    assert.equal(sent.length, total);
+    // Every block, then what the house's four storage blocks hold, in one message.
+    assert.equal(sent.length, total + 1);
+    assert.equal(sent[total].type, 'constructionStock');
+    assert.equal(sent[total].payload.fills.length, 4);
     assert.ok(messages.some((text) => text.includes('finished')));
     assert.ok(messages.some((text) => /% \(/.test(text)), 'a progress line');
 
@@ -1347,4 +1354,21 @@ test('a build in water stands on the surface, its foundation down to the sea flo
     run(game);
     assert.equal(world.blockTypes[world.getBlockTypeAt(0, 4, 7)].shape, 'door');
     assert.equal(world.getBlockTypeAt(0, -1, 7), 'cobblestone');
+});
+
+test('the house, the hall and the showroom: every chest, barrel, wardrobe, fridge and freezer is stocked for its room', () => {
+    const { constructionStockCheck } = require('./support/construction_stock.js');
+    const house = constructionStockCheck(ctx.constructionPlan('house'), baseOf, stateOf);
+    assert.equal(house.storage, 4);
+    for (const type of ['cold_milk', 'bread', 'iron_axe', 'warm_coat']) assert.ok(house.totals.has(type), `the house holds no ${type}`);
+    const hall = constructionStockCheck(ctx.constructionPlan('hall'), baseOf, stateOf);
+    assert.equal(hall.storage, 16);
+    for (const type of ['meal_plate', 'jug', 'candle', 'flower_pot', 'mushroom_red', 'honey_bottle']) assert.ok(hall.totals.has(type), `the hall holds no ${type}`);
+    const showroom = constructionStockCheck(ctx.constructionPlan('showroom'), baseOf, stateOf);
+    assert.equal(showroom.storage, 9);
+    for (const type of ['planks', 'spruce_planks', 'purple_wool', 'rust_pigment', 'ice', 'inkwell']) assert.ok(showroom.totals.has(type), `the showroom holds no ${type}`);
+    // The feast chests of the hall are not all alike.
+    const plan = ctx.constructionPlan('hall');
+    const chests = plan.stocks.filter((stock) => baseOf(plan.cells.find((cell) => cell.x === stock.x && cell.y === stock.y && cell.z === stock.z).type) === 'chest');
+    assert.ok(new Set(chests.map((stock) => stock.items.map(([type]) => type).join())).size >= 4);
 });

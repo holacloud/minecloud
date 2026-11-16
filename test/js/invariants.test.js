@@ -1,6 +1,6 @@
 // Node tests for what nothing else checks about the game as a whole, each a mistake that makes no noise
 // when it is made: a method named like another, a script nobody loads, a wrap around a method that is no
-// longer there, a message the server does not know, a guide page in one language only.
+// longer there, a message the server does not know, a guide topic in one language only.
 // Run with: node --test test/js/invariants.test.js
 
 const test = require('node:test');
@@ -147,29 +147,29 @@ test('every message the game sends is one the server has a handler for', () => {
 
 // ---- The guide ----
 
-const guidePages = fs.readdirSync(GUIDE).filter((name) => /^[0-9A-Z]+_(ES|EN)_.+\.md$/.test(name));
+const guideTopics = fs.readdirSync(GUIDE).filter((name) => /^[0-9A-Z]+_(ES|EN)_.+\.md$/.test(name));
 const idOf = (name) => name.split('_')[0].replace(/^0+(?=\d)/, '');
 const langOf = (name) => name.split('_')[1];
 
-test('every guide page exists once in Spanish and once in English', () => {
-    assert.ok(guidePages.length > 400, `${guidePages.length} pages`);
-    const strays = fs.readdirSync(GUIDE).filter((name) => name.endsWith('.md') && name !== 'README.md' && !guidePages.includes(name));
+test('every guide topic exists once in Spanish and once in English', () => {
+    assert.ok(guideTopics.length > 400, `${guideTopics.length} topics`);
+    const strays = fs.readdirSync(GUIDE).filter((name) => name.endsWith('.md') && name !== 'README.md' && !guideTopics.includes(name));
     assert.deepEqual(strays, [], 'not named ID_XX_TITLE.md');
     for (const lang of ['ES', 'EN']) {
-        const ids = guidePages.filter((name) => langOf(name) === lang).map(idOf);
-        assert.deepEqual(ids.filter((id, i) => ids.indexOf(id) !== i), [], `two ${lang} pages with one id`);
+        const ids = guideTopics.filter((name) => langOf(name) === lang).map(idOf);
+        assert.deepEqual(ids.filter((id, i) => ids.indexOf(id) !== i), [], `two ${lang} topics with one id`);
     }
-    const es = new Set(guidePages.filter((name) => langOf(name) === 'ES').map(idOf));
-    const en = new Set(guidePages.filter((name) => langOf(name) === 'EN').map(idOf));
+    const es = new Set(guideTopics.filter((name) => langOf(name) === 'ES').map(idOf));
+    const en = new Set(guideTopics.filter((name) => langOf(name) === 'EN').map(idOf));
     assert.deepEqual([...es].filter((id) => !en.has(id)), [], 'only in Spanish');
     assert.deepEqual([...en].filter((id) => !es.has(id)), [], 'only in English');
 });
 
-test('every link from a guide page to another page leads to one, in its own language', () => {
+test('every link from a guide topic to another topic leads to one, in its own language', () => {
     const broken = [];
     for (const lang of ['ES', 'EN']) {
-        const ids = new Set(guidePages.filter((name) => langOf(name) === lang).map(idOf));
-        for (const name of guidePages.filter((page) => langOf(page) === lang)) {
+        const ids = new Set(guideTopics.filter((name) => langOf(name) === lang).map(idOf));
+        for (const name of guideTopics.filter((topic) => langOf(topic) === lang)) {
             const text = fs.readFileSync(path.join(GUIDE, name), 'utf8');
             for (const match of text.matchAll(/\]\(([0-9A-Z]{1,8})\)/g)) {
                 if (!ids.has(match[1].replace(/^0+(?=\d)/, ''))) broken.push(`${name} -> ${match[1]}`);
@@ -179,15 +179,15 @@ test('every link from a guide page to another page leads to one, in its own lang
     assert.deepEqual(broken, []);
 });
 
-test('every public page has its row in the catalogue of the README, and the catalogue lists no page that is not there', () => {
+test('every public topic has its row in the catalogue of the README, and the catalogue lists no topic that is not there', () => {
     // (Ids are never reused, so a few are free: the numbers need not be consecutive.)
-    const numbers = [...new Set(guidePages.map(idOf).filter((id) => /^\d+$/.test(id)).map(Number))].sort((a, b) => a - b);
+    const numbers = [...new Set(guideTopics.map(idOf).filter((id) => /^\d+$/.test(id)).map(Number))].sort((a, b) => a - b);
     const readme = fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8');
     const rows = [...readme.matchAll(/^\| (\d+) \|/gm)].map((match) => Number(match[1]));
-    // The curiosities (98 to 106) are listed by their own index, page 98, as the README says.
-    assert.match(readme, /Page 98 is the curiosities index; curiosity pages follow from 99\./);
+    // The curiosities (98 to 106) are listed by their own index, topic 98, as the README says.
+    assert.match(readme, /Topic 98 is the curiosities index; curiosity topics follow from 99\./);
     const curiosity = (id) => id >= 98 && id <= 106;
     assert.deepEqual(numbers.filter((id) => !rows.includes(id) && !curiosity(id)), [], 'not in the catalogue');
-    assert.deepEqual(rows.filter((id) => !numbers.includes(id)), [], 'in the catalogue, but there is no such page');
+    assert.deepEqual(rows.filter((id) => !numbers.includes(id)), [], 'in the catalogue, but there is no such topic');
     assert.deepEqual(rows.filter((id, i) => rows.indexOf(id) !== i), [], 'twice in the catalogue');
 });

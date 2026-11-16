@@ -17,7 +17,7 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `271_${lang}_${lang === 'ES' ? 'Lobo_terrible' : 'Dire_wolf'}.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `271_${lang}_${lang === 'ES' ? 'Lobo_terrible' : 'Dire_wolf'}.md`), 'utf8');
 const info = ctx.getMobSpecies('dire_wolf');
 // From how many blocks it comes; what the server holds a kept one to (pkg/network/animals.go: its circle of
 // 8 blocks, and a target let go at one and a half times that distance).
@@ -27,7 +27,7 @@ const LOOSE = 1.5;
 const comma = (value) => String(value).replace('.', ',');
 const away = (g, mob) => Math.hypot(mob.position.x - g.camera.position.x, mob.position.z - g.camera.position.z);
 
-test('what it is: a hunter nobody tames, and what its page says of it', () => {
+test('what it is: a hunter nobody tames, and what its topic says of it', () => {
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
     assert.equal(info.hiddenUntilDiscovered, true);
     assert.equal(info.ancestorOf, 'dog');
@@ -41,9 +41,9 @@ test('what it is: a hunter nobody tames, and what its page says of it', () => {
     // What the server is told of it (animalsChaseOf, js/game/animals.js).
     assert.deepEqual(JSON.parse(vm.runInContext("JSON.stringify(animalsChaseOf(getMobSpecies('dire_wolf')))", ctx)), { chase: REACH, chaseDay: 0, chaseSpeed: info.chaseSpeed });
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     const blows = Math.ceil(info.maxHealth / 4);
     assert.ok(es.includes(`**${info.maxHealth} de vida**: ${blows} golpes a mano`) && en.includes(`**${info.maxHealth} health**: ${blows} hits bare-handed`), 'its health and the blows it takes');
     assert.ok(es.includes(`menos de **${REACH} bloques**`) && en.includes(`within **${REACH} blocks**`), 'from how far it comes');
@@ -53,7 +53,7 @@ test('what it is: a hunter nobody tames, and what its page says of it', () => {
     assert.ok(es.includes(`son ${bites} `) && en.includes(`that is ${bites} `), 'how many of them a player stands');
     assert.ok(es.includes(`a más de ${LOOSE * REACH} bloques de él, o a más de ${HOME + LOOSE * REACH} bloques de su casa`), 'when it lets go, in Spanish');
     assert.ok(en.includes(`more than ${LOOSE * REACH} blocks from it, or more than ${HOME + LOOSE * REACH} blocks from its home`), 'when it lets go, in English');
-    assert.ok(info.chaseSpeed < 4.5, 'a player on foot always gets away, as the page says');
+    assert.ok(info.chaseSpeed < 4.5, 'a player on foot always gets away, as the topic says');
 });
 
 test('a wild one comes for the player from inside its reach, at its run, and bites', () => {

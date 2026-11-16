@@ -387,11 +387,11 @@ bajo el título **Animales extintos**, y solo si hay alguno en el juego:
   lleva a su tarjeta. Varias especies extintas pueden nombrar a la misma viva.
 - La hierba alta y las hojas no dan nunca el huevo de un animal extinto; `/mob` sí lo hace aparecer.
 
-La guía los reúne en la página 261, con una fila por especie; no salen en el índice de mobs (16).
+La guía los reúne en el tema 261, con una fila por especie; no salen en el índice de mobs (16).
 
 Los que hay en el juego (su fósil, de qué animal de hoy son antepasados y cómo se portan):
 
-| Animal | Página | Antepasado de | Fósil | Cómo es en el juego |
+| Animal | Tema | Antepasado de | Fósil | Cómo es en el juego |
 |---|---|---|---|---|
 | Dodo (`dodo`) | 265 | — | `fossil_dodo`, en `old_bones` | Pasea y picotea; confiado: va andando hasta el jugador más cercano que esté a menos de 6 bloques (y a menos de 8 de su casa) y se para a 1,7. 12 de vida, 1–2 `feather`. Se domestica con `wheat_seeds`, `wheat`, `mushroom_brown` o `flower_red` (1 de 2). Sin cebo; cabe en la jaula. |
 | Eohippus (`eohippus`) | 268 | caballo | `fossil_eohippus`, en `fossil_rock_rare` | Un caballito del tamaño de un perro que pasta. 8 de vida, 1 `leather`. Se domestica con lo que come el caballo (`tall_grass`, `wheat`, `flower_yellow`, `honeycomb`; 1 de 3) y no se puede montar. Sin cebo; cabe en la jaula. |
@@ -489,7 +489,7 @@ la hora, el sol sirve para orientarse.
 
 ## Microscopio y tardígrados
 
-Páginas 237 a 244 de la guía del juego.
+Temas 237 a 244 de la guía del juego.
 
 | Resultado | Ingredientes |
 |---|---|
@@ -542,7 +542,7 @@ Páginas 237 a 244 de la guía del juego.
 
 ### Tinciones, filtros y campo oscuro
 
-Páginas 246 y 247 de la guía del juego.
+Temas 246 y 247 de la guía del juego.
 
 | Resultado | Ingredientes |
 |---|---|
@@ -571,7 +571,7 @@ Páginas 246 y 247 de la guía del juego.
 
 ### Lo que no vive, al microscopio
 
-Páginas 258 y 259 de la guía del juego (`js/game/specimens.js`, `js/game/specimens_text.js`,
+Temas 258 y 259 de la guía del juego (`js/game/specimens.js`, `js/game/specimens_text.js`,
 `pkg/network/microscope_specimens.go`). Más de 170 objetos sin nada vivo van a un portaobjetos como cualquier muestra
 (gastan un `glass_slide` y uno del objeto; la `honey_bottle` devuelve el `glass`). No se secan, no hay nada que
 identificar ni capturar, y no tienen ficha en el bestiario. Bajo el campo, una línea dice qué es y qué enseña el aumento
@@ -600,7 +600,7 @@ actual, o qué hizo la tinción.
 
 ### Cultivos de microbios: incubadora, autoclave y filtro
 
-Páginas 253 a 255 de la guía del juego (`js/game/cultures.js`, `pkg/network/microbes.go`). Ningún microbio daña al
+Temas 253 a 255 de la guía del juego (`js/game/cultures.js`, `pkg/network/microbes.go`). Ningún microbio daña al
 jugador: los cultivos viven dentro de la incubadora, en el servidor, y en el inventario no cambia nada.
 
 | Resultado | Ingredientes |
@@ -640,7 +640,7 @@ jugador: los cultivos viven dentro de la incubadora, en el servidor, y en el inv
 
 ## Metales
 
-Páginas 248 y 249 de la guía del juego. Lo decide `pkg/terrain/ores.go`, y `js/terrainGen.js` hace lo mismo.
+Temas 248 y 249 de la guía del juego. Lo decide `pkg/terrain/ores.go`, y `js/terrainGen.js` hace lo mismo.
 
 El fondo del mundo es la roca madre, en y = −14 y en la mitad de las casillas de y = −13 (y = −5 y −4 en los chunks guardados antes de que el mundo se hiciera más hondo). Hay **vetas** dentro de la piedra (bloques unidos, que cruzan los bordes de los chunks) y **afloramientos** al aire libre: en la roca de las montañas y, muy de vez en cuando, en una cuesta de 45 grados o más de cualquier otro bioma. No sustituyen al agua, a la arena de playa, al musgo ni a la tierra donde crece algo.
 
@@ -669,7 +669,7 @@ Un mundo guardado conserva sus chunks: las vetas nuevas solo salen en los que a�
 
 ## Fósiles y ámbar
 
-Páginas 262 y 263 de la guía del juego. Los hace `pkg/terrain/fossils.go` con el terreno, y `js/terrainGen.js` hace lo mismo; los bloques, los objetos y qué animal hay dentro son de `js/game/fossils.js`.
+Temas 262 y 263 de la guía del juego. Los hace `pkg/terrain/fossils.go` con el terreno, y `js/terrainGen.js` hace lo mismo; los bloques, los objetos y qué animal hay dentro son de `js/game/fossils.js`.
 
 Lo que hay en la roca de un chunk se decide solo con sus coordenadas y cabe entero en él. Un fósil solo sustituye a piedra normal (los huesos recientes, a tierra o arena): nunca a un mineral ni a la roca madre, ni a nada por debajo de y = −11, ni al bloque de arriba de una columna.
 
@@ -701,7 +701,7 @@ Un mundo guardado conserva sus chunks: los fósiles solo salen en los que aún n
 
 ## Máquina de revivir
 
-Página 264 de la guía del juego. Todo lo decide el servidor (`pkg/network/revival.go`); `js/game/revival.js` tiene el bloque, la receta y el panel.
+Tema 264 de la guía del juego. Todo lo decide el servidor (`pkg/network/revival.go`); `js/game/revival.js` tiene el bloque, la receta y el panel.
 
 | Resultado | Ingredientes |
 |---|---|
@@ -723,7 +723,7 @@ La tabla del servidor es `revivalSpecies`: por especie, `Pieces` (1 o 3), `Water
 
 ## Puertas lógicas
 
-Placas finas con una flecha que señala la salida (página 209). Las simula el servidor 5 veces por segundo
+Placas finas con una flecha que señala la salida (tema 209). Las simula el servidor 5 veces por segundo
 (`pkg/network/logic.go`, dibujadas por `js/game/logic.js`): encendida, una puerta conduce por todas sus caras menos
 las de entrada; apagada, corta. Una entrada tiene señal si lo que la toca es un interruptor, sensor o puerta
 encendidos, o una red con electricidad.
@@ -740,12 +740,12 @@ encendidos, o una red con electricidad.
 |---|---|
 | 2 de cada una | 1 `element_si` + 2 `copper_wire` + 1 `cobblestone` |
 
-El retardo y el biestable están en la página 210. Una NAND recién puesta se dibuja apagada hasta el siguiente tick del
+El retardo y el biestable están en el tema 210. Una NAND recién puesta se dibuja apagada hasta el siguiente tick del
 servidor (0,2 s), que la enciende.
 
 ## Bloque luminoso
 
-Un cubo decorativo que brilla solo (página 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un
+Un cubo decorativo que brilla solo (tema 245). No es eléctrico, no ilumina lo que tiene alrededor y no sirve para un
 microscopio: la luz del juego tiene nivel pero no color.
 
 | Resultado | Ingredientes |
@@ -759,7 +759,7 @@ microscopio: la luz del juego tiene nivel pero no color.
 
 ## La mano izquierda
 
-Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/offhand.js`).
+Una casilla para llevar algo mientras la derecha trabaja (tema 251, `js/game/offhand.js`).
 
 - **X** con la izquierda vacía le pasa el objeto seleccionado. Con la izquierda ocupada nunca intercambia: solo la vacía, y lo que
   llevaba vuelve a la primera casilla de la barra rápida (`promoteTypeToHotbar`, las demás se corren un sitio) sin seleccionarse;
@@ -792,7 +792,7 @@ Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/
   última unidad se pica con la mano vacía. Los brazos golpean por turnos, en primera persona.
 - **Dos espadas:** daño = derecha + 50 % de la izquierda (`PLAYER_LEFT_SWORD_SHARE`), en medios puntos; sin cooldown. Sin espada en la derecha, 4.
   Cada golpe alterna el brazo.
-- **Escudo:** `shield`, 4 `planks` + 2 `iron_ore`, sin durabilidad, página 252. Es un modificador de daño: solo en la izquierda, solo tipo `mob` y solo
+- **Escudo:** `shield`, 4 `planks` + 2 `iron_ore`, sin durabilidad, tema 252. Es un modificador de daño: solo en la izquierda, solo tipo `mob` y solo
   si `applyDamage` recibe `source` (la posición del atacante) a ≤ 60° de donde mira el jugador, en el plano. Sin `source`: anguila, hormigas. No lo
   reducen veneno, caída, rayo del cielo ni vacío; sí la picadura previa al veneno y el rayo que lanza el golem. Corre tras la armadura. La vida
   puede quedar en medios puntos.
@@ -804,7 +804,7 @@ Una casilla para llevar algo mientras la derecha trabaja (página 251, `js/game/
 
 ## Cortinas
 
-Las cortinas (`<color>_curtain`, página 230, `js/game/decor.js`) se corren con clic derecho, por `joineryToggle` como puertas y verjas.
+Las cortinas (`<color>_curtain`, tema 230, `js/game/decor.js`) se corren con clic derecho, por `joineryToggle` como puertas y verjas.
 
 - **Tiras verticales:** el clic corre también las cortinas que cuelgan justo encima y debajo con la misma orientación (de cualquier
   color), las más cercanas primero, alternando arriba y abajo, hasta 10 en total con la pulsada (`CURTAIN_STRIP_LIMIT`). Un hueco, otro
@@ -826,7 +826,7 @@ Las cortinas (`<color>_curtain`, página 230, `js/game/decor.js`) se corren con 
 
 ## Parcelas
 
-Las parcelas (`claim_marker`, página 260, `js/game/claims.js`, `pkg/network/claims.go`) protegen un trozo del mundo para un
+Las parcelas (`claim_marker`, tema 260, `js/game/claims.js`, `pkg/network/claims.go`) protegen un trozo del mundo para un
 jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes por cortesía.
 
 - **Mojón:** receta `Make Claim Marker` (C), 2 `stone_bricks` + 1 `copper_ore`. Colocarlo (un `blockPlace` de `claim_marker`)
@@ -917,7 +917,7 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
   - **Paleta** (`builderPaletteOf`): lo que tiene una familia de `BUILDER_FAMILIES` (building, decoration, furniture, light,
     glass, wool, wood, stone) y ninguna de `BUILDER_NOT_FAMILIES` (science, electric, logic, mechanism, chemistry, element,
     microscope, sample, ore, food, drink, tool, weapon, armor, egg, bait, farming, plant, animal), menos `claim_marker` y
-    `oven`, y nada `itemOnly`: 243 objetos. Entran los almacenes sencillos (cofre, barril, armario) como muebles; su contenido
+    `oven`, y nada `itemOnly`: 294 objetos. Entran los almacenes sencillos (cofre, barril, armario) como muebles; su contenido
     nunca sale de la paleta. El servidor tiene la misma lista literal (`builderPalette`) y `test/js/builder.test.js` comprueba
     que coinciden: un cambio de etiquetas que meta o saque algo falla hasta actualizar las dos.
   - **Inventario:** la paleta no entra nunca en `inventory`/`inventoryCounts`. `builderSelected` es el objeto de la paleta en la
@@ -949,7 +949,7 @@ jugador. Las decide el servidor; el cliente solo dibuja, avisa y comprueba antes
 ## Red de portales
 
 Plazas fijas unidas por portales oficiales para llegar muy lejos sin caminar (`js/game/portals.js`, `pkg/network/portals.go`,
-página 306 de la guía).
+tema 306 de la guía).
 
 - **Direcciones:** de 0 a 4 letras entre N, S, E y O, sin N y S juntas ni E y O juntas. La primera letra mueve 1.000 bloques,
   la segunda 10.000, la tercera 100.000 y la cuarta 1.000.000; la plaza está en la suma. Norte es −z y este +x
@@ -983,7 +983,7 @@ página 306 de la guía).
   de alto, cristal de 3 × 3 que no choca, brilla y da luz 10, y encima del dintel la letra de su sentido.
 - **Clic derecho:** en la letra de encima de un portal, el chat dice adónde va («Este portal va al norte: 1.000 bloques,
   hasta la plaza N.»); en la rosa, la leyenda, una letra o la estrella de un poste, un panel explica la plaza (dónde estás, los
-  cristales y sus letras, los colores y sus saltos, el portal de vuelta, los postes, la rosa, la página 306). El cliente lo
+  cristales y sus letras, los colores y sus saltos, el portal de vuelta, los postes, la rosa, el tema 306). El cliente lo
   calcula de dónde está el bloque, sin nada en el servidor. Agachado se construye contra ellos.
 - **Cruzar:** con los pies o el torso en un cristal (`portalsUpdate`, cada fotograma), el jugador va al centro de la plaza a
   la que lleva el portal (`portalsExitAt`), mirando en el sentido en que lo cruzó; se baja de la montura o el asiento y espera
@@ -1015,3 +1015,78 @@ página 306 de la guía).
   quién es cada una, sobre qué plaza y dónde está su mojón, y que hay que quitarla antes (su dueño rompe el mojón, o
   `/plot remove`). La del propio administrador también cuenta. Una parcela solo cerca de una plaza no lo impide: la construcción
   no toca ninguna columna fuera de las huellas. Nadie puede reclamar sobre una plaza ni a menos de 5 bloques (ver Parcelas).
+
+## Arenisca, azulejos, estuco y otros bloques; tronos, estandartes, reloj de sol y astrolabio
+
+Bloques de `js/game/palace_decor.js`, que usan los palacios de `/build` y cualquiera que construya. Todos tienen receta de
+supervivencia y la guía los cuenta junto a sus parientes:
+
+- **Arenisca** (tema 51, Arena): `sandstone` (4 de arena → 2) y `cut_sandstone` (4 → 4). `sandstone_stairs` (3 → 4) está en
+  Escaleras (196) y `sandstone_slab` (1 → 2) en Losas (56).
+- **Nieve y hielo** (tema 52, Agua): `snow_block` (2 de hielo) y `packed_ice` (4 de hielo), que no se derriten.
+- **Azulejos vidriados** (tema 57, Ladrillos): `<color>_glazed_tile` con `blue`, `white`, `yellow`, `green`, `turquoise` y `red`:
+  2 de ladrillo, 1 de arena y el colorante (cobalto, estaño, plomo, cobre, cobre con bicarbonato, ocre rojo) → 4; cada uno con
+  `_stairs` (3 → 4, en el tema 196) y `_slab` (1 → 2, en el tema 56). Las losas son medias losas de `world.js` (`slabSource`,
+  altura 0,5); las escaleras, la forma `stairs` (`sandstone_stairs:e:top`).
+- **Roca de magma** (tema 59, Piedras nobles; y en Luz y oscuridad, 105): `magma_rock` (4 de basalto y 1 de polvo luminoso → 4)
+  da luz de nivel 10.
+- **Estuco de cal** (tema 183, Cal viva): `white_stucco` (cal viva, 2 de arena y un frasco de agua → 4) y `red_stucco` (4 de
+  blanco y 1 de ocre rojo → 4).
+- **Tronos** (tema 224, Sillas y sofás): `gilded_throne`, `lacquer_throne`, `jade_throne`, `obsidian_throne`, de dos bloques de
+  alto (nombre `gilded_throne:lower:s` / `:upper:s`), con asiento solo en la mitad de abajo.
+- **Adornos** (tema 231, Cuadros, reloj y adornos): `<color>_banner` en los 16 colores de la lana (2 de lana y 1 de pan de oro),
+  en la pared en que se hace clic y sin colisión; `statue` (Marble Bust, 3 de mármol); `globe` (2 tablas, lana azul, latón);
+  `fountain` (4 de mármol y un cubo de agua; un mueble: su agua no es agua).
+- **Cosas de encima de la mesa** (tema 231, `js/game/tabletop.js`): `open_book`, `book_stack`, `inkwell` (carta a medias),
+  `scroll` (mapa), `meal_plate`, `fruit_bowl`, `tea_set`, `jug`, `chessboard` (partida a medias) y `sewing_basket`, de medio
+  bloque de alto como mucho, para el bloque de encima de una mesa. Todos miran al jugador al colocarlos
+  (`chessboard:e`) menos el plato, el frutero y la jarra, que no giran. Recetas con cuero, trigo, ladrillo, pan, queso, latón...
+- **Celosía y biombo** (tema 198, Ventanas): `lattice_screen` (3 tablas de roble oscuro → 6) y `paper_screen` (1 tabla de abedul
+  y 3 de trigo → 4), que se unen como paneles.
+- **Reloj de sol y astrolabio** (tema 132, Astronomía): `sundial` (3 de piedra y un lingote de bronce), sin orientación: el
+  gnomon apunta siempre al norte (-z). Clic derecho: la hora por el sol, redondeada a cuartos (`palaceDecorSundialHours`, la del
+  reloj de pared), y nada si el sol no está arriba (`sunHeight` ≤ 0,05). `astrolabe` (2 de latón), mirando al jugador: clic
+  derecho dice la altura del sol en grados (`asin` de `sunDirection.y`), bajo el horizonte de noche.
+- **Etiquetas y paleta**: los estandartes son `#lana #decoración` y de su color; los tronos, `#mueble`; los instrumentos, `#mueble
+  #ciencia` (fuera de la paleta del modo constructor); los azulejos turquesa, `#cian`. El resto de materiales y muebles entra en la
+  paleta del constructor (`builderPalette`).
+
+
+## Edificios
+
+Grandes edificios del mundo, construidos por `js/game/constructions.js` y sus ficheros `construction_*.js` (temas 307 a 320
+de la guía, en la sección «Edificios» del índice, tema 0). Cada uno tiene cofres con lo que se usa en él, carteles que explican
+lo que se ve y un rincón de ciencia:
+
+- **Castillo** (307, `construction_castle.js`): murallas de unos 100 bloques por lado, foso, nueve torres con banderas, patio y
+  torre del homenaje, todo iluminado sin electricidad. Ciencia: por qué torres de muchos lados y escaleras de caracol, el agua
+  del foso que no se escapa, el mortero de cal (183).
+- **Instituto de investigación** (308, `construction_lab.js`): 56 × 52 bloques, tres plantas y cúpula de observatorio;
+  microscopios, mesas de laboratorio, hornos, fundiciones y ascensor de verdad. Ciencia: la electricidad en diez redes separadas
+  (tema 250).
+- **Gran biblioteca** (309, `construction_library.js`): 45 × 60, cuatro plantas de galerías alrededor de una sala de lectura y
+  una cúpula de vidrieras. Ciencia: por qué una cúpula, la clasificación de Dewey, por qué un mapa plano estira la Tierra.
+- **Bloque de pisos** (310, `construction_apartments.js`): 24 × 18, 11 plantas, 31 pisos, jardín en la azotea y un ascensor
+  con torno y su propio RTG. Ciencia: por qué para en la planta 11 (48 bloques de cuerda del torno), cuánto terreno ahorra, las
+  paradas son señales y no gastan.
+- **Casita** (311): una habitación de madera, 11 × 14 con su patio; la nevera (30 W) va con un RTG escondido (80 W). Ciencia:
+  el triángulo de la cocina, la cuenta de la energía, la luz de las claraboyas y de los faroles.
+- **Salón comunitario** (312): un mercado de ladrillo en una plaza de 32 × 30, con puertas a los cuatro lados y cristal en la
+  cumbrera. Ciencia: los tirantes que atan los muros, la luz desde arriba, las cuentas de un día de mercado.
+- **Catedral** (313): gótica, 29 × 54, agujas de unos 46 bloques y un rosetón con doce lámparas de neón y argón. Ciencia: el
+  vidrio coloreado por metales, las campanas de bronce, cómo se sostiene un arco, el eco.
+- **Sala de exposición de muebles** (314): una planta de 56 × 52 con una ruta de un solo sentido por todos los muebles,
+  adornos y espejos del juego, cada uno con su cartel. Experimentos: la sala de luz (niveles de cada fuente), cristal y color,
+  espejos, uniones, electricidad.
+- **Palacio andalusí** (315, `construction_palace_andalusi.js`), el Alcázar del Agua, en el desierto: patios de agua, azulejos
+  y luz. Ciencia: la Sala de las Teselas y los 17 grupos de simetría del plano.
+- **Palacio barroco** (316, `construction_palace_baroque.js`), en las llanuras, simétrico: la Galería de los Espejos y el
+  gabinete de óptica (la ley de la reflexión, dos espejos enfrentados, un prisma).
+- **Palacio oriental** (317, `construction_palace_oriental.js`), el Palacio de los Cerezos en Flor: tejados vidriados de aleros
+  curvos, el pabellón de las carpas koi y el invernadero, para criar peces y plantas eligiendo a los padres (genética, 130).
+- **Palacio de invierno** (318, `construction_palace_nordic.js`), el Palacio de Invierno de la Aurora, en la nieve: cúpulas de
+  cebolla, la sala del tiempo con sus instrumentos, la nieve que abriga, el hielo que flota, el observatorio y la aurora.
+- **Palacio maya** (319, `construction_palace_maya.js`), en la jungla: gran escalinata, pirámide escalonada y juego de pelota.
+  Ciencia: contar de 20 en 20, el cero, los dos calendarios, Venus y el Sol.
+- **Palacio volcánico** (320, `construction_palace_volcanic.js`), el Palacio del Volcán: basalto, obsidiana y roca de magma, y
+  la sala de los minerales (las tres familias de rocas, las columnas de basalto, menas y elementos).

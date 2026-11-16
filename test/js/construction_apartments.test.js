@@ -592,7 +592,11 @@ test('/build apartments: it ends as planned, by blockPlace, the signs with their
     game.constructionCommand('build', [NAME]);
     run(game);
     assert.ok(messages.some((text) => text.includes('finished')));
-    assert.ok(sent.every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks and nothing else');
+    // The blocks, then what the fridges and wardrobes hold, and nothing else.
+    const stockAt = sent.findIndex(({ type }) => type === 'constructionStock');
+    assert.ok(stockAt > 0 && sent.slice(0, stockAt).every(({ type }) => type === 'blockPlace' || type === 'blockBreak'), 'blocks first');
+    assert.ok(sent.slice(stockAt).every(({ type }) => type === 'constructionStock'), 'then the stock and nothing else');
+    assert.equal(sent.slice(stockAt).reduce((n, { payload }) => n + payload.fills.length, 0), PLAN.stocks.length);
     const layout = ctx.constructionLayout(PLAN, 0, { x: 0, z: 3 }, 0, world.blockTypes);
     for (const cell of layout.cells) {
         assert.equal(world.getBlockTypeAt(cell.x, cell.y, cell.z), cell.type);
@@ -604,4 +608,18 @@ test('/build apartments: it ends as planned, by blockPlace, the signs with their
     game.constructionCommand('build', ['undo']);
     run(game);
     assert.deepEqual(snapshot(world), before);
+});
+
+test('every fridge and wardrobe is stocked: food that keeps, clothes and a few tools, and no two homes alike', () => {
+    const { constructionStockCheck } = require('./support/construction_stock.js');
+    const { storage, totals } = constructionStockCheck(PLAN, baseOf, stateOf);
+    const flats = ctx.apartmentsFlats();
+    assert.ok(storage >= 2 * flats.length, `${storage} storage blocks for ${flats.length} homes`);
+    for (const type of ['cold_milk', 'cheese', 'ice', 'warm_coat', 'white_wool', 'iron_axe', 'sewing_basket']) assert.ok(totals.has(type), `no home holds ${type}`);
+    const cells = new Map(PLAN.cells.map((cell) => [`${cell.x},${cell.y},${cell.z}`, cell]));
+    const kindOf = (stock) => baseOf(cells.get(`${stock.x},${stock.y},${stock.z}`).type);
+    const fridges = PLAN.stocks.filter((stock) => kindOf(stock) === 'fridge');
+    assert.equal(fridges.length, flats.length);
+    assert.ok(new Set(fridges.map((stock) => stock.items.map(([type]) => type).join())).size >= flats.length / 3, 'the fridges are too alike');
+    for (const stock of fridges) assert.ok(stock.freezer.length > 0, 'a fridge with an empty freezer');
 });

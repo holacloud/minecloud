@@ -18,7 +18,7 @@ Los números están ajustados para jugar, porque un día de MineCloud dura solo 
 | **2** `battery_block` (de litio) | 2 `battery` + 2 `iron_ore` + 2 `copper_wire` |
 
 La primera receta solo necesita materiales corrientes. La [batería de litio](189) (`battery`) da el doble, pero hay
-que **descubrirla** en la [mesa de laboratorio](117): su página tiene la pista.
+que **descubrirla** en la [mesa de laboratorio](117): su tema tiene la pista.
 
 ## Cómo funciona
 

@@ -1,5 +1,5 @@
 // Node tests for the Pulmonoscorpius (js/game/pulmonoscorpius.js): what it is next to the scorpion of today,
-// what its page says of it, and that it comes for the player by day and stings with its tail and its poison.
+// what its topic says of it, and that it comes for the player by day and stings with its tail and its poison.
 // It has no code of its own: the real ground movement of mobs.js runs on a flat world
 // (support/flat_world.js); only drawing and sound are left out. What every extinct animal has to be is
 // asked of it by extinct_species.test.js.
@@ -16,12 +16,12 @@ const { STATIC } = require('./support/game.js');
 const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 
 const ctx = loadFlatGame();
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `289_${lang}_Pulmonoscorpius.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `289_${lang}_Pulmonoscorpius.md`), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 const server = fs.readFileSync(path.join(STATIC, '..', '..', 'network', 'animals.go'), 'utf8');
 const revival = fs.readFileSync(path.join(STATIC, '..', '..', 'network', 'revival.go'), 'utf8');
 
-test('what it is: the scorpion of today, bigger, tougher and awake by day, and what its page says of it', () => {
+test('what it is: the scorpion of today, bigger, tougher and awake by day, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('pulmonoscorpius');
     const scorpion = ctx.getMobSpecies('scorpion');
     assert.equal(info.movement, undefined, 'it walks as any ground mob, so the server walks a kept one');
@@ -46,13 +46,13 @@ test('what it is: the scorpion of today, bigger, tougher and awake by day, and w
     })()`, ctx);
     assert.deepEqual(JSON.parse(rig), { legs: 8, tail: 6, eyes: [[2, 2, 2.5], [2, 2, 2.5]], quarters: true });
 
-    // The numbers of its page are those of the code: its own, and the server's rule for letting go.
+    // The numbers of its topic are those of the code: its own, and the server's rule for letting go.
     const chase = JSON.parse(vm.runInContext('JSON.stringify(animalsChaseOf(getMobSpecies("pulmonoscorpius")))', ctx));
     assert.deepEqual(chase, { chase: info.chaseDistance, chaseDay: 0, chaseSpeed: info.chaseSpeed });
     const loose = Number(/animalsChaseLoose = ([\d.]+)/.exec(server)[1]);
     const radius = Number(/"pulmonoscorpius":\s*\{[^}]*Radius: ([\d.]+)/.exec(revival)[1]);
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`), 'from how far it comes');
     assert.ok(es.includes(`**Corre a ${comma(info.chaseSpeed)} bloques por segundo.**`) && en.includes(`**It runs at ${info.chaseSpeed} blocks a second.**`));
     assert.ok(es.includes(`**${info.attackDamage} de daño**`) && en.includes(`**${info.attackDamage} damage**`));

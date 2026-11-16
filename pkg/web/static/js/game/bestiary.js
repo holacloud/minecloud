@@ -10,7 +10,7 @@
 // they are not mobs: no proximity scan ever finds them, only microscopeIdentified does, and their
 // portrait is their own 2D drawing, animated on the sheet. A card says what applies to something that
 // has no temper and cannot be fought: its real size and the power it takes. They do not count for the
-// complete notebook of the mobs (page B31X): there is no reward for a tardigrade.
+// complete notebook of the mobs (topic B31X): there is no reward for a tardigrade.
 // The extinct animals (`hiddenUntilDiscovered`, js/mobSpecies.js) are mobs with a section of their own at the
 // end of the panel and their own count: nobody meets one unless it is brought back to life, so they count
 // neither for the counter at the top nor for the complete notebook. Until the player sees one, its card is a
@@ -282,7 +282,7 @@ Object.assign(Game.prototype, {
         return list;
     },
 
-    // The mobs alive today. The notebook is complete with these alone (page B31X).
+    // The mobs alive today. The notebook is complete with these alone (topic B31X).
     bestiaryMobList() {
         return this.bestiaryEveryMob().filter((id) => !mobSpeciesIsExtinct(id));
     },
@@ -514,7 +514,7 @@ Object.assign(Game.prototype, {
         // The counter is of what lives today, mobs and organisms: the extinct animals have their own, below.
         const counted = [...mobs, ...this.bestiaryOrganismList()];
         const progress = this.bestiaryPanel.querySelector('#bestiary-progress');
-        // A full notebook of living mobs reveals a code for the guide's secret pages.
+        // A full notebook of living mobs reveals a code for the guide's secret topics.
         const complete = mobs.every(known) ? bestiarySay('lastPage', 'B31X') : '';
         progress.innerHTML = `${bestiarySay('discovered', counted.filter(known).length, counted.length)}${complete}`;
 
@@ -670,7 +670,15 @@ Object.assign(Game.prototype, {
             console.warn('[bestiary] could not build model for', species, error);
             return false;
         }
-        const root = model.root;
+        this.bestiaryStageObject(model.root);
+        stage.species = species;
+        return true;
+    },
+
+    // Puts any model on the stage in place of what was there, framed to fill the view.
+    bestiaryStageObject(root) {
+        const stage = this.bestiaryStage();
+        this.bestiaryClearStage();
         const box = new THREE.Box3().setFromObject(root);
         const size = box.getSize(new THREE.Vector3());
         const centre = box.getCenter(new THREE.Vector3());
@@ -682,8 +690,21 @@ Object.assign(Game.prototype, {
         stage.camera.position.set(0, distance * 0.28, distance);
         stage.camera.lookAt(0, 0, 0);
         stage.model = root;
-        stage.species = species;
-        return true;
+        stage.species = null;
+    },
+
+    // A PNG data URL of any model, drawn like the portrait of a species, or null if it cannot be drawn:
+    // for what has a model and is not a species (the robot on a cover of the printed guide, js/guidePrint.js).
+    bestiaryRenderObject(root) {
+        const stage = this.bestiaryStage();
+        if (stage.failed || !root) return null;
+        this.bestiaryStageObject(root);
+        stage.renderer.render(stage.scene, stage.camera);
+        try {
+            return stage.renderer.domElement.toDataURL('image/png');
+        } catch (_error) {
+            return null;
+        }
     },
 
     bestiaryClearStage() {
@@ -993,7 +1014,7 @@ Object.assign(Game.prototype, {
             book.textContent = bestiarySay('inGuide');
             book.addEventListener('click', () => {
                 this.bestiaryClose();
-                this.guideShow(String(organism.page));
+                this.guideShow(String(organism.topic));
             });
             detail.appendChild(book);
         }

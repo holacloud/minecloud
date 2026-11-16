@@ -45,7 +45,7 @@ players are. That way everybody sees the same thing.
 ## Signal
 
 Besides cutting and joining, switches give a **signal** to [logic gates](209): a lever that is on and touches a
-gate's input already counts as "yes", **even without a battery**. The gates page explains it.
+gate's input already counts as "yes", **even without a battery**. The gates topic explains it.
 
 ## How the game works it out
 

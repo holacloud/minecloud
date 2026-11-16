@@ -1,5 +1,5 @@
 // Node tests for the Dunkleosteus (js/game/dunkleosteus.js): what it is, and that the 'cruise' movement of
-// every sea animal (js/game/sea_animals.js) carries it as its page says: it goes for a player who is in its
+// every sea animal (js/game/sea_animals.js) carries it as its topic says: it goes for a player who is in its
 // water and bites, and leaves alone one who is on the shore. The real mobs.js, sea_animals.js, camera.js and
 // world.js run on a flat world with a pool dug in it (support/flat_world.js); only drawing and sound are
 // left out. What every extinct animal has to be is asked of it by extinct_species.test.js, and how the
@@ -18,7 +18,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame();
 const SEA = JSON.parse(vm.runInContext('JSON.stringify(SEA)', ctx));
 const body = JSON.parse(vm.runInContext("(() => { const b = seaAnimalsBody('dunkleosteus'); return JSON.stringify({ front: b.front, back: b.back, half: b.half, height: b.height, length: b.length }); })()", ctx));
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `288_${lang}_Dunkleosteus.md`), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', `288_${lang}_Dunkleosteus.md`), 'utf8');
 const comma = (number) => String(number).replace('.', ',');
 
 // A pool 20 by 14 and 4 deep, its water from y = -4 to y = -1.
@@ -37,7 +37,7 @@ function pool() {
     return { ...g, wet, swim, ashore };
 }
 
-test('what it is: a hostile armoured fish that swims with its tail, three and a half blocks long, and what its page says of it', () => {
+test('what it is: a hostile armoured fish that swims with its tail, three and a half blocks long, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('dunkleosteus');
     assert.equal(info.movement, 'cruise');
     assert.equal(info.ancestorOf, 'fish');
@@ -51,9 +51,9 @@ test('what it is: a hostile armoured fish that swims with its tail, three and a 
     assert.ok(body.length > 3.2 && body.length < 3.8, `${body.length} blocks long`);
     assert.ok(Math.abs(body.front - body.back) < 0.4, 'its middle is the middle of it: that is what it turns about');
 
-    // The numbers of its page are those of the code.
-    const es = page('ES');
-    const en = page('EN');
+    // The numbers of its topic are those of the code.
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes('**3,5 bloques de largo**') && en.includes('**3.5 blocks long**'));
     assert.ok(es.includes(`a menos de **${info.chaseDistance} bloques**`) && en.includes(`within **${info.chaseDistance} blocks**`), 'from how far it comes');
     assert.ok(es.includes(`a\n  **${info.chaseSpeed} bloques por segundo**`) && en.includes(`at\n  **${info.chaseSpeed} blocks a second**`), 'how fast');
@@ -110,7 +110,7 @@ test('a player in its water is hunted and bitten, its jaw opening as it bites; o
     }
     assert.ok(gape > 0.3, `its jaw opens ${gape}`);
     // It goes on biting whoever paddles about in its water (a circle of 2 blocks, at 1 block a second), no
-    // faster than its page says.
+    // faster than its topic says.
     const centre = { x: g.camera.position.x - 2, z: g.camera.position.z };
     const times = [];
     for (let i = 0; i < 30 * 30; i++) {

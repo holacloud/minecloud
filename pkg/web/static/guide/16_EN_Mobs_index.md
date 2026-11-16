@@ -1,7 +1,7 @@
 # Mobs index
 
 Every species in the world, in the order they arrived in the game. Click a name to go to its
-page.
+topic.
 
 To find out where each one lives, see [Biomes](15). To keep track of the ones you have seen, see
 [Bestiary](5).

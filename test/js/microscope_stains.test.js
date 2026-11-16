@@ -55,7 +55,7 @@ function loadModules() {
     for (const file of ['bestiary_text.js', 'bestiary.js', 'furniture.js', 'storage.js', 'appliances.js', 'microbes.js', 'microscope_text.js', 'microscope.js']) {
         vm.runInContext(fs.readFileSync(path.join(JS, 'game', file), 'utf8'), context, { filename: file });
     }
-    vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_STAINS, MICRO_SCENERY_STAINS, MICRO_LENS, MicroLens, ITEM_TYPES, GAME_CONTENT_HOOKS, ITEM_USE_HANDLERS, MICROSCOPE_KIT, MICROSCOPE_STAIN_PAGE, MICROSCOPE_LENS_PAGE,
+    vm.runInContext(`Object.assign(this, { MICRO_SPECIES, MICRO_STAINS, MICRO_SCENERY_STAINS, MICRO_LENS, MicroLens, ITEM_TYPES, GAME_CONTENT_HOOKS, ITEM_USE_HANDLERS, MICROSCOPE_KIT, MICROSCOPE_STAIN_TOPIC, MICROSCOPE_LENS_TOPIC,
         microParseColor, microStainedColor, microDarkColor, microLens, microPopulate, microScenery, microStep, microUnfold, microDrawOrganism, microDrawPortrait, microDrawSceneryItem,
         microscopeSettle, microscopeRequestItems, microscopeLightFrom, microscopeFilterColor, microscopeFieldTint, microscopeDarkfieldGain, microscopeDarkfieldLine, microscopeDyeContrast, microscopeFilterLine,
         microscopeStainWarning, microscopeRefusalLine, microscopeSlideLine, microscopeDrawField, microscopeScale, Game });`, context);
@@ -863,9 +863,9 @@ test('the popovers: one at a time, above its icon, and Escape closes it before t
 
 const GUIDE = path.join(STATIC, 'guide');
 const guideNames = fs.readdirSync(GUIDE);
-const guidePage = (page, lang) => {
-    const name = guideNames.find((candidate) => candidate.startsWith(`${page}_${lang}_`));
-    assert.ok(name, `page ${page} ${lang}`);
+const guideTopic = (topic, lang) => {
+    const name = guideNames.find((candidate) => candidate.startsWith(`${topic}_${lang}_`));
+    assert.ok(name, `topic ${topic} ${lang}`);
     return fs.readFileSync(path.join(GUIDE, name), 'utf8');
 };
 
@@ -873,21 +873,21 @@ test('the guide: 246 and 247 in both languages, linked, and in the printed book'
     const titles = { 246: { ES: 'Tinciones', EN: 'Stains' }, 247: { ES: 'Filtros y campo oscuro', EN: 'Filters and dark-field' } };
     const print = require(path.join(JS, 'guidePrint.js'));
     const readme = fs.readFileSync(path.join(GUIDE, 'README.md'), 'utf8');
-    for (const page of [246, 247]) {
+    for (const topic of [246, 247]) {
         for (const lang of ['ES', 'EN']) {
-            const text = guidePage(page, lang);
-            assert.equal(text.split('\n')[0], `# ${titles[page][lang]}`);
-            for (const other of [0, 48, 238]) assert.match(guidePage(other, lang), new RegExp(`\\(${page}\\)`), `${other} ${lang} links to ${page}`);
-            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) assert.ok(guideNames.some((name) => name.startsWith(`${target}_${lang}_`)), `${page} ${lang} links to ${target}`);
+            const text = guideTopic(topic, lang);
+            assert.equal(text.split('\n')[0], `# ${titles[topic][lang]}`);
+            for (const other of [0, 48, 238]) assert.match(guideTopic(other, lang), new RegExp(`\\(${topic}\\)`), `${other} ${lang} links to ${topic}`);
+            for (const [, target] of text.matchAll(/\]\((\d+)\)/g)) assert.ok(guideNames.some((name) => name.startsWith(`${target}_${lang}_`)), `${topic} ${lang} links to ${target}`);
             for (const [, species] of text.matchAll(/\(mob:([a-z0-9_]+)\)/g)) assert.ok(ctx.MICRO_SPECIES[species], species);
             assert.match(text, lang === 'EN' ? /\*\*True:\*\*/ : /\*\*Es verdad:\*\*/);
             assert.match(text, lang === 'EN' ? /\*\*Simplified in the game:\*\*/ : /\*\*Lo simplifica el juego:\*\*/);
         }
-        assert.ok(print.SECTIONS.some(([from, to]) => page >= from && page <= to), `section for ${page}`);
-        assert.match(readme, new RegExp(`^\\| ${page} \\|`, 'm'));
+        assert.ok(print.sectionRows(require(path.join(STATIC, 'guide', 'volumes.json'))).some(([from, to]) => topic >= from && topic <= to), `section for ${topic}`);
+        assert.match(readme, new RegExp(`^\\| ${topic} \\|`, 'm'));
     }
-    assert.equal(ctx.MICROSCOPE_STAIN_PAGE, 246);
-    assert.equal(ctx.MICROSCOPE_LENS_PAGE, 247);
+    assert.equal(ctx.MICROSCOPE_STAIN_TOPIC, 246);
+    assert.equal(ctx.MICROSCOPE_LENS_TOPIC, 247);
     const guia = fs.readFileSync(path.join(ROOT, 'GUIA.md'), 'utf8');
     assert.match(guia, /^### Tinciones, filtros y campo oscuro$/m);
     assert.match(guia, /`methylene_blue` \| 1 `coal_ore` \+ 1 `element_s` \+ 1 `water_flask`/);
@@ -896,14 +896,14 @@ test('the guide: 246 and 247 in both languages, linked, and in the printed book'
 
 test('the guide says what the game does, and that a stain does not always kill', () => {
     for (const lang of ['ES', 'EN']) {
-        const stains = guidePage(246, lang);
-        // The table of page 246 has the organisms there were when it was written; the mould's own page says it.
-        for (const id of SPECIES) assert.ok(guidePage(ctx.MICRO_SPECIES[id].page > 247 ? ctx.MICRO_SPECIES[id].page : 246, lang).includes(`(mob:${id})`), `${id} in the table ${lang}`);
+        const stains = guideTopic(246, lang);
+        // The table of topic 246 has the organisms there were when it was written; the mould's own topic says it.
+        for (const id of SPECIES) assert.ok(guideTopic(ctx.MICRO_SPECIES[id].topic > 247 ? ctx.MICRO_SPECIES[id].topic : 246, lang).includes(`(mob:${id})`), `${id} in the table ${lang}`);
         assert.match(stains, /1 `coal_ore` \+ 1 `element_s` \+ 1 `water_flask`/);
         assert.match(stains, lang === 'EN' ? /vital stains/ : /tinciones vitales/);
         assert.match(stains, lang === 'EN' ? /one stain to a slide/ : /un tinte por portaobjetos/);
         assert.match(stains, lang === 'EN' ? /drop of water brings nothing back/i : /gota de agua no devuelve nada/i);
-        const light = guidePage(247, lang);
+        const light = guideTopic(247, lang);
         assert.match(light, /1 `glass_slide` \+ 1 `coal_ore`/);
         assert.match(light, /`cobalt_glass`/);
         // Words, not a formula, for what the recipe stands for: the only formula is the real one.

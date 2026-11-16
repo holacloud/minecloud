@@ -10,7 +10,7 @@ brought back to life.
 
 1. **Look for its bones.** They are not in the rock, but near the surface, in the block ![](item:old_bones)
    `old_bones`: under the sand of a beach and, now and then, under the grass of a plain. Take a [shovel](69).
-   The page on [fossils](262) says where to dig.
+   The topic on [fossils](262) says where to dig.
 2. **Break the block.** If a dodo was inside, you take ![](item:fossil_dodo) `fossil_dodo` with you: some dodo bones.
 3. **Bring it back to life** in the [revival machine](264). **One piece** is enough and it takes **45 seconds**. It is
    a land animal: it needs no water.

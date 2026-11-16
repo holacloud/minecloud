@@ -11,7 +11,7 @@ Anything starting with **/** is a command: other players do not see it, the game
 |---|---|
 | `/help` | shows the list of commands |
 | `/guide` | opens this guide where you left it |
-| `/guide 12` | opens the guide at page 12 (a secret code works too) |
+| `/guide 12` | opens the guide at topic 12 (a secret code works too) |
 | `/spawn` | takes you to your respawn point: your bed or, if you have none, the last safe spot |
 | `/mob horse` | spawns an animal in front of you (see below) |
 | `/time` | tells the world time, for example "21:30" |

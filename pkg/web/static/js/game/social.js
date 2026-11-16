@@ -222,7 +222,7 @@ Object.assign(Game.prototype, {
 
         switch (normalized) {
             case 'help':
-                this.receiveSystemMessage({ text: 'Commands: /help, /guide [page], /spawn, /home, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
+                this.receiveSystemMessage({ text: 'Commands: /help, /guide [topic], /spawn, /home, /mob <animal>, /sayhere, /ping, /react, /laugh, /cheer, /boo, /rtx, /time' });
                 break;
             case 'spawn':
                 this.cameraController.setPosition(this.respawnPoint || this.lastSafePosition || { x: 0, y: 20, z: 0, yaw: 0, pitch: 0 });

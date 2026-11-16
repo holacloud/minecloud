@@ -18,7 +18,7 @@ const { loadFlatGame, makeFlatWorld } = require('./support/flat_world.js');
 const ctx = loadFlatGame({ listenersOf: ['js/game/ancient_bee.js'], frameUpdates: ['ancientBeeUpdate'] });
 const B = JSON.parse(vm.runInContext('JSON.stringify(ANCIENT_BEE)', ctx));
 const MODE = vm.runInContext('ANIMALS_MODE', ctx);
-const page = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '294_ES_Abeja_antigua.md' : '294_EN_Ancient_bee.md'), 'utf8');
+const topic = (lang) => fs.readFileSync(path.join(STATIC, 'guide', lang === 'ES' ? '294_ES_Abeja_antigua.md' : '294_EN_Ancient_bee.md'), 'utf8');
 
 // A bee the server keeps, with no owner and nowhere to go: it stands where it is (js/game/animals.js).
 // The player is far away.
@@ -32,7 +32,7 @@ function kept(species = 'ancient_bee') {
 // How far over the floor (y = 0) its model is.
 const height = (mob) => mob.position.y + mob.userData.modelRoot.position.y;
 
-test('what it is: one peaceful bee that hovers, with no colony, and what its page says of it', () => {
+test('what it is: one peaceful bee that hovers, with no colony, and what its topic says of it', () => {
     const info = ctx.getMobSpecies('ancient_bee');
     assert.equal(info.movement, undefined, 'the ground movement, hovering: a body the server can keep and walk');
     assert.ok(ctx.mobMovementIs(info.movement, 'walksToGoal') && !ctx.mobMovementIs(info.movement, 'bodiless'));
@@ -51,8 +51,8 @@ test('what it is: one peaceful bee that hovers, with no colony, and what its pag
     })()`, ctx);
     assert.equal(quarters, '');
 
-    const es = page('ES');
-    const en = page('EN');
+    const es = topic('ES');
+    const en = topic('EN');
     assert.ok(es.includes(`a ${info.flyHeight} bloque del suelo`) && en.includes(`${info.flyHeight} block above the ground`), 'how high it flies');
     assert.ok(es.includes(`lleva ${B.land} segundos sin tener adónde ir`) && en.includes(`nowhere to go for ${B.land} seconds`), 'when it lands');
     const blows = (damage) => Math.ceil(info.maxHealth / damage);
