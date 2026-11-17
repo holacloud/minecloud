@@ -2,14 +2,14 @@
 
 ![Red portal](item:portal_red)
 
-The world of MineCloud is enormous, and everybody plays in the same one. To get far away without walking for days there is a **network of plazas joined by portals**. Nobody owns it, and nobody can break it.
+The world of MineCloud is enormous, and everybody plays in the same one. To get far away without walking for days there is a **network of plazas joined by portals**. Nobody owns it, and nobody can break it (except in creative mode).
 
 ## The plazas
 
 A **plaza** is a square of **31 × 31 blocks**. In the middle is the **core**, 17 × 17 of light stone, edged with a line of the plaza's **colour**; round it lies the **margin**, 7 blocks of darker paving on each side: room to build shops. Its floor is perfectly flat, at the height of the **highest ground** under it, so a plaza on a hill or a peak sits on top instead of being dug into it. Where the ground is lower it stands on a foundation of cobblestone; over the sea it is a deck on the water. Above it there is nothing at first: the sky is open.
 
 - The **central plaza** is at the very middle of the world, at 0, 0. **New players appear there.** Nobody builds on it.
-- The other plazas are **network plazas**: you can build on top of them, core and margin, as anywhere else, but no block of the plaza itself can be broken or changed.
+- The other plazas are **network plazas**: you can build on top of them, core and margin, as anywhere else, but no block of the plaza itself can be broken or changed, except in creative mode.
 - Nobody can claim a plaza, nor a [plot](260) closer than **5 blocks** to its edge: a plaza and its margin stay everybody's.
 
 ## What a plaza has

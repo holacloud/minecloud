@@ -23,7 +23,7 @@ Object.assign(Game.prototype, {
         }
 
         const name = this.getBlockDisplayName(type);
-        const breakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
+        const breakDuration = this.handBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
         const signText = isSignBlockType(type) ? this.world.getSignTextAt(worldPos.x, worldPos.y, worldPos.z) : '';
         const lines = [
             `<span class="label">Block:</span> ${name}`,
@@ -296,6 +296,18 @@ Object.assign(Game.prototype, {
         }
 
         return null;
+    },
+
+    // How long the player's own hand takes to break the block in a cell, or null when it cannot: asked by mining
+    // and the block inspector. Everything else that breaks blocks (robots, rams, mobs, constructions) asks the
+    // world, which never breaks an `unbreakable` block. A creative session's hand also breaks those that say
+    // `creativeBreakable` (the portal network, js/game/portals.js), never bedrock; builder mode does not count.
+    handBreakDurationAt(x, y, z) {
+        const world = this.world;
+        const type = world.getBlockTypeAt(x, y, z);
+        const def = type ? world.blockTypes[type] : null;
+        if (this.creativeMode && def && def.unbreakable && def.creativeBreakable) return def.breakDuration ?? 0.5;
+        return world.getBreakDurationForType(type);
     },
 
     finishBreakingBlock(position) {
@@ -650,7 +662,7 @@ Object.assign(Game.prototype, {
             return;
         }
 
-        const baseBreakDuration = this.world.getBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
+        const baseBreakDuration = this.handBreakDurationAt(worldPos.x, worldPos.y, worldPos.z);
         if (!baseBreakDuration || !Number.isFinite(baseBreakDuration)) {
             this.resetMiningTarget();
             this.resetMiningBlockVisual(false);

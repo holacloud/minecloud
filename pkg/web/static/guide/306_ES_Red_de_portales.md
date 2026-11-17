@@ -2,14 +2,14 @@
 
 ![Portal rojo](item:portal_red)
 
-El mundo de MineCloud es enorme, y todos juegan en el mismo. Para llegar lejos sin caminar durante días hay una **red de plazas unidas por portales**. No es de nadie, y nadie puede romperla.
+El mundo de MineCloud es enorme, y todos juegan en el mismo. Para llegar lejos sin caminar durante días hay una **red de plazas unidas por portales**. No es de nadie, y nadie puede romperla (salvo en modo creativo).
 
 ## Las plazas
 
 Una **plaza** es un cuadrado de **31 × 31 bloques**. En medio está el **núcleo**, de 17 × 17 de piedra clara, con un borde del **color** de la plaza; a su alrededor está el **margen**, 7 bloques de adoquín más oscuro por cada lado: sitio para construir tiendas. El suelo es totalmente llano, a la altura del **terreno más alto** que tiene debajo, así que una plaza en una colina o en un pico queda encima en vez de quedar hundida dentro. Donde el terreno es más bajo se apoya en unos cimientos de roca; sobre el mar es una plataforma encima del agua. Encima no hay nada al principio: el cielo queda abierto.
 
 - La **plaza central** está en el centro mismo del mundo, en 0, 0. **Los jugadores nuevos aparecen ahí.** Nadie construye en ella.
-- Las demás son **plazas de la red**: puedes construir encima, en el núcleo y en el margen, como en cualquier otro sitio, pero ningún bloque de la propia plaza se puede romper ni cambiar.
+- Las demás son **plazas de la red**: puedes construir encima, en el núcleo y en el margen, como en cualquier otro sitio, pero ningún bloque de la propia plaza se puede romper ni cambiar, salvo en modo creativo.
 - Nadie puede reclamar una plaza, ni una [parcela](260) a menos de **5 bloques** de su borde: una plaza y su margen son siempre de todos.
 
 ## Qué tiene una plaza

@@ -225,6 +225,10 @@ function registerFrameUpdate(updater) {
 //   cross                         drawn as crossed planes like tall grass (alpha cutout, sways)
 //   crossPlanes                   those planes: [{ width, height, rotationY, yOffset, zOffset }]
 //   dropType                      what breaking it drops (null: nothing) instead of itself
+//   unbreakable                   no hand or tool breaks it (world.getBreakDurationForType gives null),
+//                                 nor what asks the same: robots, builder mode, constructions
+//   creativeBreakable             with unbreakable: the player's own hand breaks it in a creative session
+//                                 alone (handBreakDurationAt, js/game/building.js; the portal network)
 //   dropAt(type, x, y, z)         what breaking the one in that cell drops, when it depends on where
 //                                 the block is (js/game/fossils.js); dropType still answers with no cell
 //   glow                          emissive strength: the block lights up its own texture

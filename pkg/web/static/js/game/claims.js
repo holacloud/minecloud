@@ -60,7 +60,7 @@ const CLAIM_TEXT = {
     refusedPlot: { ES: 'Parcela de {owner}: aquí no puedes cambiar nada.', EN: "{owner}'s plot: you can't change anything here." },
     refusedPlotNobody: { ES: 'Parcela de otro jugador: aquí no puedes cambiar nada.', EN: "Another player's plot: you can't change anything here." },
     refusedSpawn: { ES: 'Zona de inicio: aquí no se puede cambiar nada.', EN: "Spawn area: nothing can be changed here." },
-    refusedPlaza: { ES: 'Es un bloque de la red de portales: nadie puede romperlo ni cambiarlo.', EN: 'That block is part of the portal network: nobody can break or change it.' },
+    refusedPlaza: { ES: 'Es un bloque de la red de portales: solo se puede romper o cambiar en modo creativo.', EN: 'That block is part of the portal network: it can only be broken or changed in creative mode.' },
     overlap: { ES: 'No cabe: se solapa con la parcela de {owner}.', EN: "It doesn't fit: it overlaps {owner}'s plot." },
     overlapSpawn: { ES: 'Demasiado cerca de la zona de inicio: aléjate un poco más.', EN: 'Too close to the spawn area: move a bit further away.' },
     tooClose: { ES: 'Demasiado cerca de la parcela de {owner}: entre las dos quedarían {distance} bloques libres y hacen falta {gap}.', EN: "Too close to {owner}'s plot: there would be {distance} free blocks between them and {gap} are needed." },

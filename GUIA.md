@@ -997,7 +997,13 @@ tema 306 de la guía).
   (red sin construir). El chat dice «Plaza NE: 10.000 al este, 1.000 al norte», o «Plaza central».
 - **Protección** (`portalsGuard`, desde `claimBreakAllowed` y `claimPlaceBlock`): ningún bloque `portal_*` se rompe, se tapa ni
   se sustituye, y nadie coloca uno, salvo el administrador (sesión creativa); motivo `plaza` en `claimRefused`. Van en
-  `mechFixed`: los pistones no los mueven. En el cliente son `unbreakable` y no sueltan nada. Construir encima de una plaza de
+  `mechFixed`: los pistones no los mueven. En el cliente son `unbreakable` y no sueltan nada; llevan también
+  `creativeBreakable`, así que la mano del jugador en modo creativo sí los rompe (`handBreakDurationAt`, `js/game/building.js`),
+  y nada más los rompe (ni robots ni el modo constructor); el lecho de roca no se rompe ni en modo creativo.
+  Lo que pasa al quitar uno: el destino de un portal sale de la columna (`portalsExitAt`), no del bloque, así que sin un
+  cristal por esa celda ya no se cruza y por las demás sí; sin la rosa, quien llega a esa plaza baja con el asentamiento
+  normal de la cámara, y el siguiente `/build portals` la trata como una plaza nueva (vacía las columnas de su huella por
+  encima del suelo, también lo construido encima, y la rehace). Si falta otro, el siguiente `/build portals` solo repone ese. Construir encima de una plaza de
   la red, en el núcleo o en el margen, es colocar en el aire sobre ella y no se niega; la plaza central, entera, está dentro de
   la zona de inicio, donde nadie construye.
 - **Aparición:** los jugadores nuevos empiezan en (0, 20, 0) y bajan hasta lo que haya debajo: la plaza central.

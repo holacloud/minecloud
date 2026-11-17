@@ -312,6 +312,63 @@ test('the blocks: nobody breaks them or gets them, the panes are walked into, gl
     assert.ok(run("CLAIM_TEXT.refusedPlaza.ES") && run("CLAIM_TEXT.refusedPlaza.EN"));
 });
 
+// The hand of a creative session breaks the network's blocks, as the server lets it (portalsGuard), and nothing
+// else does: not a survival player, not builder mode in one's own plot; bedrock stays whole in creative too.
+// Mining runs as it does in the game (updateMining, js/game/building.js), with the aim and the drawing stubbed.
+test('a creative player breaks a block of the network by hand; survival and builder mode do not; bedrock never', () => {
+    const blocks = { '2,0,0': 'portal_plaza', '3,0,0': 'portal_red', '4,0,0': 'bedrock', '5,0,0': 'portal_compass' };
+    const g = makeFlatWorld(ctx, { blocks });
+    const game = g.game;
+    const sent = [];
+    game.network = { connected: true, send: (type, payload) => sent.push(`${type} ${payload.x},${payload.y},${payload.z}`) };
+    let aim = null;
+    game.cameraController.canInteract = () => true;
+    game.raycastBlock = () => (aim ? {} : null);
+    g.world.getBlockPositionFromIntersection = () => aim;
+    for (const name of ['bindMiningBlockVisual', 'performMiningStrike', 'updateMiningOverlay', 'resetMiningBlockVisual',
+        'disposeMiningBlockVisual', 'showHitIndicator', 'spawnPickup', 'spawnFallingBlockDrop']) game[name] = () => {};
+    game.getSelectedHeldItemType = () => null; // bare hands
+    game.isBreakInputActive = true;
+    // Holds the button on a cell for up to five seconds of frames; whether the block went.
+    const mine = (x, y, z) => {
+        aim = { x, y, z };
+        game.resetMiningTarget();
+        for (let frame = 0; frame < 150 && g.world.getBlockTypeAt(x, y, z); frame++) game.updateMining(1 / 30);
+        aim = null;
+        return !g.world.getBlockTypeAt(x, y, z);
+    };
+
+    game.creativeMode = false;
+    assert.equal(game.handBreakDurationAt(2, 0, 0), null);
+    assert.equal(mine(2, 0, 0), false, 'survival: the plaza stays');
+    assert.equal(mine(3, 0, 0), false, 'survival: the pane stays');
+    // Builder mode in one's own plot (it is never on in creative mode, builderShouldBeOn).
+    game.builderActive = true;
+    game.builderBreakWait = 0;
+    game.builderCellInPlot = () => true;
+    game.claimRefusalAt = () => null;
+    assert.equal(mine(2, 0, 0), false, 'builder mode: the plaza stays');
+    game.builderActive = false;
+    delete game.builderCellInPlot;
+    delete game.claimRefusalAt;
+    assert.equal(sent.length, 0, 'nothing told the server');
+
+    game.creativeMode = true;
+    assert.ok(game.handBreakDurationAt(2, 0, 0) > 0);
+    assert.equal(game.handBreakDurationAt(4, 0, 0), null, 'bedrock: not even in creative');
+    assert.equal(mine(4, 0, 0), false, 'bedrock stays');
+    assert.equal(mine(2, 0, 0), true, 'creative: the plaza goes');
+    assert.equal(mine(3, 0, 0), true, 'creative: the pane goes');
+    assert.equal(mine(5, 0, 0), true, 'creative: the rose goes');
+    assert.deepEqual(sent, ['blockBreak 2,0,0', 'blockBreak 3,0,0', 'blockBreak 5,0,0']);
+    // What else breaks blocks asks the world, which still says no: robots, constructions.
+    assert.equal(g.world.getBreakDurationForType('portal_plaza'), null);
+    assert.ok(Object.keys(blocks).every((cell) => {
+        const def = g.world.blockTypes[blocks[cell]];
+        return def.unbreakable && (def.creativeBreakable === true) === blocks[cell].startsWith('portal_');
+    }), 'every block of the network says creativeBreakable, and bedrock does not');
+});
+
 // The new blocks: official like the rest, solid, and drawn as they should be read.
 test('the rose, the letters, the star, the legend, the paving and the colours: nobody breaks them, and they read the right way', () => {
     const g = makeFlatWorld(ctx);

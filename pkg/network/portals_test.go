@@ -808,6 +808,60 @@ func TestPortalsNobodyBreaksAPlazaAndAnybodyBuildsOnOne(t *testing.T) {
 	}
 }
 
+// A creative session breaks any block of the network, in a network plaza and in the central one (inside the spawn
+// zone), and everybody hears it; building the plaza again puts back what it took (a plaza without its rose is
+// built as a new one).
+func TestPortalsACreativeSessionBreaksTheNetworkAndEverybodyHears(t *testing.T) {
+	admin := portalsWorld(t)
+	for _, address := range []string{"", "N"} {
+		blockEditMu.Lock()
+		_, err := portalsBuildPlaza(admin, address, portalsLevels)
+		blockEditMu.Unlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	beto := claimClient(t, "Beto", plrBeto, 0.5, 120, -999.5)
+	floorN := portalsFloorY(0, -1000)
+	floor0 := portalsFloorY(0, 0)
+	// The rose and a post of the portal of N, its ring, and a letter of a post of the central plaza.
+	cells := [][3]int{{0, floorN, -1000}, {2, floorN + 1, -1000 - portalsPlazaRadius}, {8, floorN, -1000}, {7, floor0 + 2, 7}}
+	was := make([]string, len(cells))
+	for i, cell := range cells {
+		was[i] = claimBlockAt(t, cell[0], cell[1], cell[2])
+		if !portalsOfficial(was[i]) {
+			t.Fatalf("%v holds %q, not a block of the network", cell, was[i])
+		}
+		claimHeard(admin)
+		claimHeard(beto)
+		claimSend(t, admin, "blockBreak", map[string]int{"x": cell[0], "y": cell[1], "z": cell[2]})
+		if refusal := claimRefusalOf(t, claimHeard(admin)); refusal != nil {
+			t.Errorf("the admin was refused %v: %+v", cell, refusal)
+		}
+		if got := claimBlockAt(t, cell[0], cell[1], cell[2]); got != "air" {
+			t.Errorf("%v still holds %q", cell, got)
+		}
+		heard := claimHeard(beto)["blockBreak"]
+		var told struct{ X, Y, Z int }
+		if len(heard) != 1 || json.Unmarshal(heard[0], &told) != nil || told != (struct{ X, Y, Z int }{cell[0], cell[1], cell[2]}) {
+			t.Errorf("breaking %v: the others heard %s", cell, heard)
+		}
+	}
+	for _, address := range []string{"", "N"} {
+		blockEditMu.Lock()
+		_, err := portalsBuildPlaza(admin, address, portalsLevels)
+		blockEditMu.Unlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i, cell := range cells {
+		if got := claimBlockAt(t, cell[0], cell[1], cell[2]); got != was[i] {
+			t.Errorf("built again, %v holds %q, want %q", cell, got, was[i])
+		}
+	}
+}
+
 // The fourth level is built, so every plaza of the four levels, with its footprint and the chunks a client
 // keeps round it (the view distance, js/world.js), must lie inside what a client may ask for (worldReach,
 // handleChunkMessage in chunks.go), and generating and saving a chunk must work out there.

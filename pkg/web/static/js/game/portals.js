@@ -337,7 +337,8 @@ function portalsLegendLines(address) {
 
 // ---------------------------------------------------------------------------------------
 // The blocks: a light stone floor in the core and a darker paving round it, a glowing pane per colour, a plain
-// block per colour of a plaza, the rose, the letters, the star and the legend. Nobody breaks or gets any.
+// block per colour of a plaza, the rose, the letters, the star and the legend. Nobody but a creative session
+// breaks any, and nobody gets any.
 
 registerTexturePattern('portal_plaza', (f, s, tint, seed) => {
     const stone = f.rgb(0xd8d2c4);
@@ -481,8 +482,9 @@ registerTexturePattern('portal_glyph_blank', (f, s) => {
     f.each(s, (x, y, u, v) => f.put(s, x, y, u < 1 / 32 || u > 31 / 32 || v < 1 / 32 || v > 31 / 32 ? edge : back, 0.5));
 }, { maxSize: 32 });
 
-// What every block of the network has: nobody breaks it and breaking gives nothing.
-const PORTALS_OFFICIAL = { category: 'stone', unbreakable: true, dropType: null };
+// What every block of the network has: nobody breaks it but the hand of a creative session, as the server lets
+// only that session (portalsGuard, pkg/network/portals.go), and breaking gives nothing.
+const PORTALS_OFFICIAL = { category: 'stone', unbreakable: true, creativeBreakable: true, dropType: null };
 
 registerBlockType(PORTALS_PLAZA_BLOCK, {
     ...PORTALS_OFFICIAL, color: 0xd8d2c4, name: 'Plaza Stone',
@@ -525,7 +527,7 @@ for (let level = 1; level <= PORTALS_MAX_LEVELS; level++) {
     const [colour, hex] = PORTALS_COLOURS[level];
     const face = { pattern: 'portal_pane', tint: hex };
     registerBlockType(`portal_${colour}`, {
-        color: hex, name: `${colour[0].toUpperCase()}${colour.slice(1)} Portal`, unbreakable: true, dropType: null,
+        color: hex, name: `${colour[0].toUpperCase()}${colour.slice(1)} Portal`, unbreakable: true, creativeBreakable: true, dropType: null,
         solid: false, transparent: true, opacity: 0.7, glow: 1.4, lightEmission: 10, portalLevel: level,
         faces: { top: face, side: face, bottom: face }
     });
