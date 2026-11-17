@@ -1,0 +1,140 @@
+{
+  "about": "Markdown in, HTML out: one case per construct of the guide's Markdown. Read by test/js/guideMarkdown.test.js (js/guideMarkdown.js) and pkg/web/guide_markdown_test.go (pkg/web/guide_markdown.go), each with its renderer's default options: the two must give this same HTML.",
+  "cases": [
+    {
+      "name": "heading levels",
+      "markdown": "# One\n## Two\n### Three\n#### Four\n###### Six\n#No space",
+      "html": "<h1>One</h1>\n<h2>Two</h2>\n<h3>Three</h3>\n<h3>Four</h3>\n<h3>Six</h3>\n<p>#No space</p>"
+    },
+    {
+      "name": "heading with inline",
+      "markdown": "# Title *one* and **two**",
+      "html": "<h1>Title <em>one</em> and <strong>two</strong></h1>"
+    },
+    {
+      "name": "paragraphs joined and split",
+      "markdown": "first line\n  second line  \n\nnew paragraph",
+      "html": "<p>first line second line</p>\n<p>new paragraph</p>"
+    },
+    {
+      "name": "paragraph stops at a block",
+      "markdown": "text\n- item\ntext again\n> quote",
+      "html": "<p>text</p>\n<ul><li>item</li></ul>\n<p>text again</p>\n<blockquote><p>quote</p></blockquote>"
+    },
+    {
+      "name": "crlf line ends",
+      "markdown": "one\r\ntwo\r\rthree",
+      "html": "<p>one two</p>\n<p>three</p>"
+    },
+    {
+      "name": "bold and italic",
+      "markdown": "a **bold** b *italic* c **x*y** d ***both***",
+      "html": "<p>a <strong>bold</strong> b <em>italic</em> c **x<em>y<strong> d </strong></em>both***</p>"
+    },
+    {
+      "name": "underscore italic",
+      "markdown": "_start_ mid _word_, snake_case_name and (_paren_) _a_b_ x _end_",
+      "html": "<p><em>start</em> mid <em>word</em>, snake_case_name and (<em>paren</em>) _a_b_ x <em>end</em></p>"
+    },
+    {
+      "name": "underscore italic chain",
+      "markdown": "_a_ _b_._c_ é_d_é",
+      "html": "<p><em>a</em> <em>b</em>.<em>c</em> é<em>d</em>é</p>"
+    },
+    {
+      "name": "code",
+      "markdown": "use `co*de*` and `<b>` and `a_b_c` here",
+      "html": "<p>use <code>co*de*</code> and <code>&lt;b&gt;</code> and <code>a_b_c</code> here</p>"
+    },
+    {
+      "name": "escaping",
+      "markdown": "end <tag> & \"q\" > it",
+      "html": "<p>end &lt;tag&gt; &amp; &quot;q&quot; &gt; it</p>"
+    },
+    {
+      "name": "topic links",
+      "markdown": "[Horse](34), [zeros](007), [code](27a2), [old](page:12), [hash](#5)",
+      "html": "<p><a data-topic=\"34\">Horse</a>, <a data-topic=\"7\">zeros</a>, <a data-topic=\"27A2\">code</a>, <a data-topic=\"12\">old</a>, <a data-topic=\"5\">hash</a></p>"
+    },
+    {
+      "name": "web and other links",
+      "markdown": "[web](https://x.y/a?b=1&c=2), [http](http://x.y), [file](other.html) and [too long](123456789)",
+      "html": "<p><a href=\"https://x.y/a?b=1&amp;c=2\" target=\"_blank\" rel=\"noopener\">web</a>, <a href=\"http://x.y\" target=\"_blank\" rel=\"noopener\">http</a>, file and too long</p>"
+    },
+    {
+      "name": "inline images",
+      "markdown": "A ![t](item:torch) and ![b](img/book.png) and ![w](https://x.y/i.png)",
+      "html": "<p>A <img src=\"item:torch\" alt=\"t\"> and <img src=\"guide/img/book.png\" alt=\"b\"> and <img src=\"https://x.y/i.png\" alt=\"w\"></p>"
+    },
+    {
+      "name": "image on its own line",
+      "markdown": "![A sheep](mob:sheep)\n![Book](img/book.png \"Caption *here*\")\n  ![](img/a.png)  \n![Odd](mob:Bad)",
+      "html": "<figure><img src=\"mob:sheep\" alt=\"A sheep\"><figcaption>A sheep</figcaption></figure>\n<figure><img src=\"guide/img/book.png\" alt=\"Book\"><figcaption>Caption <em>here</em></figcaption></figure>\n<figure><img src=\"guide/img/a.png\" alt=\"\"></figure>\n<figure><img src=\"guide/mob:Bad\" alt=\"Odd\"><figcaption>Odd</figcaption></figure>"
+    },
+    {
+      "name": "image paths",
+      "markdown": "![a](./img/a.png)\n![b](/abs/b.png)\n![c](//cdn/c.png)",
+      "html": "<figure><img src=\"guide/img/a.png\" alt=\"a\"><figcaption>a</figcaption></figure>\n<figure><img src=\"/abs/b.png\" alt=\"b\"><figcaption>b</figcaption></figure>\n<figure><img src=\"//cdn/c.png\" alt=\"c\"><figcaption>c</figcaption></figure>"
+    },
+    {
+      "name": "unordered list",
+      "markdown": "- one\n* two\n+ three",
+      "html": "<ul><li>one</li><li>two</li><li>three</li></ul>"
+    },
+    {
+      "name": "ordered list",
+      "markdown": "1. first\n2) second\n10. tenth",
+      "html": "<ol><li>first</li><li>second</li><li>tenth</li></ol>"
+    },
+    {
+      "name": "nested list and continuation",
+      "markdown": "- one\n  - nested ![x](item:no_such)\n    - deeper\n  continued\n- two\n  1. inner ordered\nafter",
+      "html": "<ul><li>one continued<ul><li>nested <img src=\"item:no_such\" alt=\"x\"><ul><li>deeper</li></ul></li></ul></li><li>two<ol><li>inner ordered</li></ol></li></ul>\n<p>after</p>"
+    },
+    {
+      "name": "list with blank line",
+      "markdown": "- a\n\n- b",
+      "html": "<ul><li>a</li></ul>\n<ul><li>b</li></ul>"
+    },
+    {
+      "name": "table with header",
+      "markdown": "| A | B |\n|---|:---:|\n| ![s](mob:sheep) | [p](007) |\n| **x** | `y` |",
+      "html": "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><img src=\"mob:sheep\" alt=\"s\"></td><td><a data-topic=\"7\">p</a></td></tr><tr><td><strong>x</strong></td><td><code>y</code></td></tr></tbody></table>"
+    },
+    {
+      "name": "table without header",
+      "markdown": "| a | b |\n| c | d |",
+      "html": "<table><tbody><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></tbody></table>"
+    },
+    {
+      "name": "table ragged and indented",
+      "markdown": "  | A | B | C |\n  |--|--|--|\n  | 1 |\n  | 1 | 2 | 3 | 4 |",
+      "html": "<table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody><tr><td>1</td></tr><tr><td>1</td><td>2</td><td>3</td><td>4</td></tr></tbody></table>"
+    },
+    {
+      "name": "table with an empty header cell",
+      "markdown": "| | Mob |\n|---|---|\n| ![](mob:sheep) | [Sheep](17) |",
+      "html": "<table><thead><tr><th></th><th>Mob</th></tr></thead><tbody><tr><td><img src=\"mob:sheep\" alt=\"\"></td><td><a data-topic=\"17\">Sheep</a></td></tr></tbody></table>"
+    },
+    {
+      "name": "quote",
+      "markdown": "> quote line\n> - in list\n>\n> # heading in quote",
+      "html": "<blockquote><p>quote line</p>\n<ul><li>in list</li></ul>\n<h1>heading in quote</h1></blockquote>"
+    },
+    {
+      "name": "nested quote",
+      "markdown": "> outer\n>> inner",
+      "html": "<blockquote><p>outer</p>\n<blockquote><p>inner</p></blockquote></blockquote>"
+    },
+    {
+      "name": "rules",
+      "markdown": "---\n***\n___\n  ---  \n----",
+      "html": "<hr>\n<hr>\n<hr>\n<hr>\n<p>----</p>"
+    },
+    {
+      "name": "mixed document",
+      "markdown": "# Title\n\nIntro with [link](1).\n\n## Section\n\n- a\n- b\n\n| X |\n|---|\n| y |\n\n> note\n\n---\nend",
+      "html": "<h1>Title</h1>\n<p>Intro with <a data-topic=\"1\">link</a>.</p>\n<h2>Section</h2>\n<ul><li>a</li><li>b</li></ul>\n<table><thead><tr><th>X</th></tr></thead><tbody><tr><td>y</td></tr></tbody></table>\n<blockquote><p>note</p></blockquote>\n<hr>\n<p>end</p>"
+    }
+  ]
+}

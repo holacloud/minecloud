@@ -1,6 +1,6 @@
 # Oriental palace
 
-![Red Lacquer Throne](item:lacquer_throne)
+![The Oriental palace seen from above](img/build_palace_oriental.png)
 
 In a forest of cherry trees rises a long red wall with a gate tower and a watch pavilion on each corner. Over the wall you can see roofs of **yellow and green glazed tiles** whose eaves **curl up** at the corners. A sign at the entrance gives its name: the **Cherry Blossom Palace**.
 

@@ -1,6 +1,6 @@
 # Palacio andalusí
 
-![Azulejo azul](item:blue_glazed_tile)
+![Vista del palacio andalusí desde arriba](img/build_palace_andalusi.png)
 
 En el desierto puedes encontrarte una muralla larga y baja de arenisca con manchas rojas, torres cuadradas almenadas y una puerta bajo un arco de herradura. Por fuera parece sencilla, casi una fortaleza. Un cartel junto al camino dice su nombre: **Alcázar del Agua**. Entra: toda su belleza está dentro, en patios llenos de agua, azulejos y luz.
 

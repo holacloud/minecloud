@@ -1,6 +1,6 @@
 # Palacio volcánico
 
-![Roca de magma](item:magma_rock)
+![Vista del palacio volcánico desde arriba](img/build_palace_volcanic.png)
 
 En una tierra de roca negra, ceniza y troncos carbonizados, una grieta del suelo brilla anaranjada en el fondo. Un puente la cruza hasta una puerta fortificada, y más allá una muralla de seis lados erizada de **columnas de basalto** rodea una ciudadela oscura que trepa por un peñasco, coronada por una torre con pináculos. Un cartel junto al puente dice su nombre: el **Palacio del Volcán**: basalto, obsidiana y roca de magma, y dentro, la **sala de los minerales**.
 

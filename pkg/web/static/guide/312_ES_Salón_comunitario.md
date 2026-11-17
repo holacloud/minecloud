@@ -1,6 +1,6 @@
 # Salón comunitario
 
-![Banco](item:bench)
+![Vista del salón comunitario desde arriba](img/build_hall.png)
 
 En medio de una plaza empedrada de **32 por 30 bloques** se alza una nave alargada de ![](item:brick) ladrillo, con puertas anchas en los cuatro lados y un tejado alto con cristal a lo largo de la cumbrera: un **salón comunitario**. Casi todos los días es un mercado cubierto, y los demás, un sitio donde los vecinos se reúnen, comen juntos y celebran fiestas.
 

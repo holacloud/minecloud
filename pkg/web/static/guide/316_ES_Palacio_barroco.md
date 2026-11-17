@@ -1,6 +1,6 @@
 # Palacio barroco
 
-![Espejo de plata](item:mirror)
+![Vista del palacio barroco desde arriba](img/build_palace_baroque.png)
 
 En la llanura, al final de una avenida flanqueada de árboles, una verja dorada se abre a un patio enorme y a un palacio de mármol y piedra clara, con tejados grises, filas de ventanales y una cúpula. Detrás, un jardín se extiende hasta un canal en forma de cruz. Es el **Palacio barroco**, y en él todo es **simétrico**: la mitad izquierda es el reflejo de la derecha.
 

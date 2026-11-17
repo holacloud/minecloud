@@ -1,6 +1,6 @@
 # Castillo
 
-![Ladrillos de piedra](item:stone_bricks)
+![Vista del castillo desde arriba](img/build_castle.png)
 
 En campo abierto puedes toparte con un **castillo**: un cuadrado de altas murallas de piedra de unos **100 bloques** de lado, con un foso de agua alrededor, nueve torres con banderas, un patio lleno de vida y, en el centro, una torre clara más alta que todo lo demás: la **torre del homenaje**. Está inspirado en los castillos de la Edad Media europea, pero no es una copia de ninguno.
 

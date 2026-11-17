@@ -12,10 +12,50 @@ Each topic is a Markdown file named `ID_XX_TITLE.md`:
 
 The server lists the topics at `/guide/index.json` (`pkg/web/guide.go`); the book is `js/game/guide.js`.
 
-The printable guide is `/guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET&volume=ALL|N` (`js/guidePrint.js`):
+The printable guide is `/guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET&volume=ALL|N&part=book|cover` (`js/guidePrint.js`):
 every public topic as a paper book, whole or by volumes (see "Volumes"), paginated in JS into pages numbered
 from the cover; never the secret ones. Both share the Markdown renderer of `js/guideMarkdown.js`, so a topic
 reads the same in the book and on paper.
+
+## On the web
+
+The guide is also public web pages, for search engines and for links: `/book` in English and `/libro` in Spanish
+(`pkg/web/book.go`, plain HTML rendered by the server, no script).
+
+- `/book` and `/libro` are the contents (topic 0); a topic is `/book/<id>-<slug>` (`/book/34-horse`,
+  `/libro/307-castillo`), the slug made from its title. The id is what counts: a bare id, an old slug or a trailing
+  slash answer 301 to that address, so a title may change without breaking a link.
+- Every public topic is published, in both languages, and appears there by itself when its file is added; it is
+  listed in `/sitemap.xml` (with its other language) and `/robots.txt` points to it. Secret topics never are:
+  404, never in the sitemap, and a link to one is printed as plain words, as is a link to a topic not written.
+- Pictures that are files (`img/...`) are shown. `mob:` and `item:` ones, which the game draws with its engine,
+  are shown from files of their own made once by the game's own code: `pic/mob_<id>.png` (the bestiary's
+  portrait, 200 pixels) and `pic/item_<id>.png` (the inventory icon, 64), served at `/guide/pic/` like
+  `/guide/img/`. A picture alone on a line is 220px wide with no frame; one in a line of text, a list or a table
+  cell is as tall as the text, as in the game's book. `node tools/guidePictures.js` makes them (it needs Google
+  Chrome, headless, and Three.js from the network; its header says how it judges each picture): run it with
+  `--missing` after adding a topic that shows a mob or item not drawn yet, and whole after changing a model or
+  an icon; it also removes the files no public topic shows any more, and never draws what only a secret topic
+  shows. `test/js/guide_pictures.test.js` fails while a picture has no file. One with no file is left out of
+  the page (a table column of nothing but those goes too), so a topic should still read without them.
+- Two renderers of this Markdown exist: `js/guideMarkdown.js` (the book and paper) and `pkg/web/guide_markdown.go`
+  (the web). They are held together by `test/js/support/guide_markdown_cases.json`, one case per construct, which
+  both `test/js/guideMarkdown.test.js` and `go test ./pkg/web/` render: a change to the dialect is made in both,
+  with a case there.
+- They look like the game's book opened with H (the CSS of `js/game/guide.js`, carried over rule by rule into
+  `bookCSS`): the leather cover, the paper, a head bar with the topic's number, the two languages and Play, the
+  topic in VT323 and a foot bar with the previous topic, the contents and the next. The book is at most 980px
+  wide and as tall as its topic; the page scrolls as a whole.
+- The fonts are served by this server, never asked of another site: `static/fonts/` keeps the latin and
+  latin-ext woff2 files of VT323, Pixelify Sans and Atkinson Hyperlegible as Google Fonts cuts them, with each
+  family's licence (SIL Open Font License, `OFL-*.txt`), at `/fonts/`, outside the session as `/guide/img/` is.
+  The pages declare VT323 and Pixelify Sans inline (`bookCSS`); the game's book and the printable guide link
+  `fonts/fonts.css`, which declares every font kept there (`pkg/web/fonts_test.go` holds the two together).
+- Behind the book is `img/landscape.png`, a still landscape of the game's world already blurred and darkened as
+  the title screen is, so that no filter runs on a phone. It is made once by `node tools/guideLandscape.js`
+  (its header says how it chooses where to stand; `--ascii` prints the view as letters) from the generator
+  (`js/terrainGen.js`) and the block colours of `pkg/web/viewer_block_palette.json`: run it after changing the
+  terrain or those colours. `test/js/guide_landscape.test.js` fails while the committed picture is out of date.
 
 ## Words: topic, page, sheet
 
@@ -43,6 +83,10 @@ Supported:
   - `![caption](item:torch)`: the inventory icon of an item.
 
   The same images inside a sentence or a table cell are drawn as small inline icons.
+- The buildings of `/build` (topics 307 to 320) open with `![caption](img/build_<design>.png)`: an isometric
+  picture of the whole design, as wide as the text, made by `node tools/guideBuildPictures.js` (its header says how,
+  and from which corner each design is seen). After changing a design, run it again and commit the pictures:
+  `test/js/guide_build_pictures.test.js` fails while one is out of date.
 
 ## Rules
 
@@ -66,7 +110,8 @@ changing the earlier ones.
   `indexTopics` (topics that list others, and so change with every new topic) and `volumes`. Each volume has its
   `volume` number (1, 2, 3...), `from` and `to` (the last one has `"to": null` and takes every topic from its
   `from` on; `from` is the previous `to` + 1), `closed` (a date like `"2026-11-20"` once it is frozen, `null`
-  before; the closed ones are the first ones, never the last), `title` and `blurb` in ES and EN, `colour`
+  before; the closed ones are the first ones, never the last), `title` and `blurb` in ES and EN, `synopsis` in ES and
+  EN (the back of its cover, see below), `colour`
   (`#rrggbb`), `cover` (a `hero`: `mob:<species>`, `item:<type>`, or `model:<name>` for what the game builds with `<name>PortraitModel()`, today the robot; and five `icons` items) and `sections`, one a line: `[from, to, "ES", "EN"]`,
   the titles of its contents, in order, inside its range. A topic beyond the last section of the open volume is
   printed under "More topics"; a closed volume's sections cover every one of its topics.
@@ -87,6 +132,24 @@ changing the earlier ones.
   foot, start again in each volume and only say where a page goes. Each volume has its cover, "How to use this
   book" (with a table of the volumes up to it, never a later one), its contents, its recap, its topics, its news
   and an alphabetical index of the topics of the volumes up to it.
+- **The cover** of a volume, printed on cardboard and wrapped round the book, is the print page's second output:
+  **Cover** in the toolbar, or `guide-print.html?volume=2&part=cover`. It is one sheet: left to right the **back**
+  (the volume's colour, "MineCloud", its number and title, its `synopsis`, "In this volume" with the titles of its
+  sections, in two columns from nine on, and at the foot the guide on the web, `mine.holacloud.app/libro` in
+  Spanish and `mine.holacloud.app/book` in English), the **spine** (from the top: the cube and the name, the number
+  in its colour chip, the title, read from top to bottom, and the cover's `hero` small at the foot; under 5 mm only
+  the number) and the **front** (the same design as the cover page inside the book). With every volume chosen it is
+  one sheet for each. Three fields: **paper thickness, mm per sheet** (0.10 by default, ordinary 80 g paper);
+  **spine, mm**, worked out as the volume's pages (all of them, as the page lays them out to print it: front
+  matter, topics and back matter; an odd count rounded up, booklets in folios of four pages) divided by two times
+  the thickness, which can be written over by hand (**Automatic** goes back); and **bleed, mm** (3 by default, 0
+  allowed), added all round. The sheet is twice the width of a page plus the spine, by the page's height, plus
+  the bleed (A5 pages for A5 and the booklets, A4 for A4), and the print style gives the page exactly that size:
+  choose the same paper as the book, then **Print**, "Save as PDF", margins "None" and scale 100%. Save one
+  volume at a time for a print shop (each sheet has its own size). The arithmetic is `spineFor` and
+  `coverSheetSize`. The **synopsis** is 50 to 90 words for a child of about ten, in the second person: what the reader
+  will find and be able to do with this volume, every fact as its topics say it, saying "volumen"/"volume" and
+  "tema"/"topic" (`checkManifest` in `tools/guideVolumes.js` allows 40 to 100 words).
 - **Topics of closed volumes that change.** `volumes.lock.json` is written when a volume is closed, never by hand:
   the range of each closed volume and a hash of every topic of theirs in ES and EN. A topic of a closed volume whose
   text is no longer what the lock holds must be **told** in the open volume's news, as a list item that starts
@@ -104,6 +167,9 @@ To close a volume:
 3. Add the next volume after it, starting at `to` + 1, with `"to": null`, its words, colour, cover and sections.
 4. `node tools/guideVolumes.js lock` (it refuses while a change is untold, or when nothing new was closed).
 5. Print the volume in ES and EN, A5 and A4, and keep the PDFs.
+   Then its cover, now that its pages are known: **Cover** (`&part=cover`) in each language and paper, with the
+   thickness of the paper it will really be printed on (ask the print shop for its spine width, and write it in
+   **Spine, mm** if it differs), and keep those PDFs too.
 6. Commit, and tag the commit (`guide-volume-<n>`).
 
 Until a closed volume has really been printed, its lock may be written anew, as was done when "page" became

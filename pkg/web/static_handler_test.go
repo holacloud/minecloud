@@ -123,3 +123,19 @@ func TestNothingIsCached(t *testing.T) {
 		}
 	}
 }
+
+// The fonts of the guide's web pages (pkg/web/book.go) are served as fonts: a browser refuses a font of
+// another type. They are kept like any other file here (TestNothingIsCached).
+func TestTheFontsAreServedAsFonts(t *testing.T) {
+	for _, name := range []string{"vt323-latin", "vt323-latin-ext", "pixelify-sans-latin", "pixelify-sans-latin-ext"} {
+		for _, headers := range []map[string]string{nil, {"Accept-Encoding": "gzip"}} {
+			answer := staticGet(t, StaticHandler(), http.MethodGet, "/fonts/"+name+".woff2", headers)
+			if answer.Code != http.StatusOK || answer.Header().Get("Content-Type") != "font/woff2" {
+				t.Errorf("%s: %d %s", name, answer.Code, answer.Header().Get("Content-Type"))
+			}
+			if !strings.HasPrefix(answer.Body.String(), "wOF2") || answer.Header().Get("Content-Encoding") != "" {
+				t.Errorf("%s: not the woff2 file itself", name)
+			}
+		}
+	}
+}

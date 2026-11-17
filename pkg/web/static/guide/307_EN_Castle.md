@@ -1,6 +1,6 @@
 # Castle
 
-![Stone bricks](item:stone_bricks)
+![The castle seen from above](img/build_castle.png)
 
 On open ground you may come across a **castle**: a square of high stone walls about **100 blocks** on each side, with a moat of water all round, nine towers flying flags, a courtyard full of life and, in the middle, a pale tower taller than everything else: the **keep**. It is inspired by the castles of the Middle Ages in Europe, but it is not a copy of any of them.
 

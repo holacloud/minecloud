@@ -39,7 +39,8 @@ function canvasStub() {
     return { width: 16, height: 16, getContext: () => ctx, toDataURL: () => 'data:image/png;base64,' };
 }
 
-function loadWorld() {
+// The VM context with every script of index.html run in it (tools/guideBuildPictures.js uses it too).
+function loadContext() {
     const THREE = new Proxy({}, { get: (known, key) => (key in known ? known[key] : anyStub()) });
     const context = vm.createContext({
         console: { ...console, warn() {} }, performance: { now: () => 0 }, THREE, navigator: {},
@@ -56,6 +57,10 @@ function loadWorld() {
     for (const src of scripts) {
         vm.runInContext(fs.readFileSync(path.join(STATIC, src), 'utf8'), context, { filename: src });
     }
+    return context;
+}
+
+function loadWorld(context = loadContext()) {
     return vm.runInContext('new WorldRenderer({ add() {}, remove() {} })', context);
 }
 
@@ -103,7 +108,7 @@ function formatPalette(blocks) {
     return `{\n${lines.join(',\n')}\n}\n`;
 }
 
-module.exports = { buildPalette, formatPalette, OUTPUT, FLAG_SEE_THROUGH, FLAG_FLUID };
+module.exports = { buildPalette, formatPalette, loadContext, loadWorld, faceColor, OUTPUT, FLAG_SEE_THROUGH, FLAG_FLUID };
 
 if (require.main === module) {
     const { names, blocks } = buildPalette();

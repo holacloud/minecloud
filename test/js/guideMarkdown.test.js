@@ -77,3 +77,13 @@ test('topic ids: numbers lose their zeros, codes are capitals', () => {
     assert.equal(shared.guideTopicIdOf(' c0m3t '), 'C0M3T');
     assert.equal(shared.guideTopicIdOf('no!'), null);
 });
+
+// The guide's web pages render the same Markdown in Go (pkg/web/guide_markdown.go): both renderers, each with
+// its plain default options, must give the HTML of every case of this file (pkg/web/guide_markdown_test.go
+// reads it too). A change to the dialect is made on both sides, with a case here.
+test('the shared cases give the HTML the Go renderer of the web pages gives', () => {
+    const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'support', 'guide_markdown_cases.json'), 'utf8'));
+    assert.ok(fixture.cases.length >= 20);
+    const md = shared.createGuideMarkdown();
+    for (const c of fixture.cases) assert.equal(md.markdown(c.markdown), c.html, c.name);
+});

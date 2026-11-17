@@ -10,6 +10,10 @@
         "ES": "Lo básico para empezar, todos los animales y criaturas del mundo, y sus bloques, herramientas y objetos.",
         "EN": "The basics to get started, every animal and creature of the world, and its blocks, tools and items."
       },
+      "synopsis": {
+        "ES": "En este volumen empiezas desde cero. Sus primeros temas te enseñan a minar, construir y fabricar, a comer bien, a pasar la noche sin peligro y a jugar con tus amigos. Después conocerás uno por uno a los animales y criaturas del mundo: qué comen, dónde viven y cómo domesticarlos o montarlos. Al final encontrarás los bloques, las herramientas y los objetos que puedes hacer, desde un pico hasta una red para bichos o una trampa con su cebo.",
+        "EN": "In this volume you start from nothing. Its first topics teach you to mine, build and craft, to eat well, to get through the night safely and to play with your friends. Then you meet the animals and creatures of the world one by one: what they eat, where they live and how to tame or ride them. At the end you find the blocks, tools and items you can make, from a pickaxe to a bug net or a cage trap with its bait."
+      },
       "colour": "#3d7a35",
       "cover": { "hero": "mob:sheep", "icons": ["item:iron_pickaxe", "item:torch", "item:bed", "item:fishing_rod", "item:bug_net"] },
       "sections": [
@@ -24,6 +28,10 @@
       "blurb": {
         "ES": "Curiosidades, cultivos, el tiempo, la química y sus 36 elementos, genética, astronomía, planos y robots.",
         "EN": "Curiosities, farming, the weather, chemistry and its 36 elements, genetics, astronomy, blueprints and robots."
+      },
+      "synopsis": {
+        "ES": "Este volumen es tu laboratorio. Sus temas te cuentan cómo nace el mundo y quién se come a quién, cómo cultivar trigo y hacer pan, y cómo medir el tiempo con una estación meteorológica. En la mesa de laboratorio mezclarás sustancias y conocerás uno a uno los 36 elementos químicos. También criarás animales para ver cómo se heredan los colores, mirarás las estrellas con el telescopio, y programarás un robot que cava túneles y levanta muros por ti.",
+        "EN": "This volume is your laboratory. Its topics tell you how the world is born and who eats whom, how to grow wheat and make bread, and how to measure the weather with a weather station. At the lab bench you will mix substances and meet the 36 chemical elements one by one. You will also breed animals to see how colours are inherited, watch the stars through the telescope, and program a robot that digs tunnels and builds walls for you."
       },
       "colour": "#2a6496",
       "cover": { "hero": "model:robot", "icons": ["item:lab_bench", "item:element_au", "item:telescope", "item:weather_station", "item:breeding_notebook"] },
@@ -46,6 +54,10 @@
       "blurb": {
         "ES": "Puertas y escaleras, electricidad, lógica y máquinas, muebles, el taller, el microscopio y los microbios, y las parcelas.",
         "EN": "Doors and stairs, electricity, logic and machines, furniture, the workshop, the microscope and microbes, and plots."
+      },
+      "synopsis": {
+        "ES": "Con este volumen construyes de verdad. Sus temas te enseñan a poner escaleras, puertas y ventanas, a llevar la electricidad por cables hasta tus lámparas, y a montar puertas lógicas, sensores y máquinas que empujan bloques o suben como ascensores. Amueblarás tu casa, fundirás metales en el taller y mirarás por el microscopio los tardígrados, las células y las bacterias de una gota de agua. Al final sabrás reclamar una parcela donde solo construyes tú y quien tú invites.",
+        "EN": "With this volume you build for real. Its topics teach you to set stairs, doors and windows, to carry electricity along wires to your lamps, and to put together logic gates, sensors and machines that push blocks or rise like lifts. You will furnish your home, smelt metals in the workshop and look through the microscope at the tardigrades, cells and bacteria of a drop of water. At the end you will know how to claim a plot where only you and whoever you invite can build."
       },
       "colour": "#b3660f",
       "cover": { "hero": "item:microscope", "icons": ["item:light_bulb", "item:wind_turbine", "item:and_gate", "item:oven", "item:foundry"] },
@@ -76,6 +88,10 @@
       "blurb": {
         "ES": "Los fósiles, la máquina de revivir, los animales extintos uno por uno, la red de portales para viajar por todo el mundo, y los grandes edificios.",
         "EN": "Fossils, the revival machine, the extinct animals one by one, the portal network to travel the whole world, and the big buildings."
+      },
+      "synopsis": {
+        "ES": "Este volumen te lleva al pasado y muy lejos. Sus primeros temas te enseñan a buscar fósiles en la roca y en el ámbar, y a devolver la vida a sus animales con la máquina de revivir. Después conocerás uno por uno a los animales extintos, como el dodo, el mamut, el tiranosaurio o el megalodón: dónde y cuándo vivieron y qué hacen en el juego. Por último viajarás por todo el mundo con la red de portales y descubrirás los grandes edificios, del castillo a los palacios.",
+        "EN": "This volume takes you into the past and far away. Its first topics teach you to look for fossils in rock and in amber, and to bring their animals back to life with the revival machine. Then you meet the extinct animals one by one, such as the dodo, the mammoth, the Tyrannosaurus or the megalodon: where and when they lived and what they do in the game. Last of all you travel the world through the portal network and discover the big buildings, from the castle to the palaces."
       },
       "colour": "#6b3f8c",
       "cover": { "hero": "mob:ammonite", "icons": ["item:fossil_rock", "item:old_bones", "item:amber", "item:revival_machine", "item:portal_compass"] },

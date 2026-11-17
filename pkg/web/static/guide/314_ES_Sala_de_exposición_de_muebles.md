@@ -1,6 +1,6 @@
 # Sala de exposición de muebles
 
-![Sofá](item:green_sofa)
+![Vista de la sala de exposición de muebles desde arriba](img/build_showroom.png)
 
 Un edificio bajo y ancho, de una sola planta y **56 por 52 bloques**, con una línea amarilla pintada en los pasillos: una **sala de exposición de muebles**. Es como una gran tienda de muebles, donde un camino de sentido único te lleva de una habitación amueblada a otra. Aquí **todos los muebles, adornos y espejos** del juego están colocados en alguna escena, y junto a cada uno un cartel explica cómo se usa. Es el mejor sitio para descubrir qué puedes poner en tu propia casa.
 

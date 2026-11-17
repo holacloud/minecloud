@@ -31,6 +31,7 @@ type Config struct {
 	PlayersRange      float64 `usage:"Distance in blocks (|dx|+|dy|+|dz|) within which a player is told about another at all"`
 	PlayersFarSeconds float64 `usage:"Seconds between what a player is told about those in range beyond the nearest"`
 	PlayersMoveMs     int     `usage:"Milliseconds between two rounds of telling each player who moved around it (20 at least)"`
+	PublicURL         string  `usage:"Public address of the site (https://mine.holacloud.app), for the absolute links of the guide's web pages and sitemap; empty takes it from each request"`
 }
 
 func main() {
@@ -83,6 +84,16 @@ func main() {
 	})
 	http.Handle("/", network.SessionMiddleware(web.StaticHandler()))
 	http.HandleFunc("/guide/index.json", web.HandleGuideIndex)
+	// The guide as public web pages (pkg/web/book.go): outside the session, so that a reader or a search
+	// engine gets no cookie, and so do the guide's pictures and the fonts those pages show.
+	book := web.BookHandler(config.PublicURL)
+	for _, pattern := range []string{"/book", "/book/", "/libro", "/libro/", "/sitemap.xml", "/robots.txt"} {
+		http.Handle(pattern, book)
+	}
+	bookFiles := web.BookFilesHandler()
+	http.Handle("/guide/img/", bookFiles)
+	http.Handle("/guide/pic/", bookFiles)
+	http.Handle("/fonts/", bookFiles)
 	http.HandleFunc("/ice-servers", network.HandleICEServers)
 	http.HandleFunc("/ws", network.HandleWebSocket)
 	http.Handle("/viewer-api/", network.ViewerAPI())

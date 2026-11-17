@@ -1,6 +1,6 @@
 # Andalusian palace
 
-![Blue glazed tile](item:blue_glazed_tile)
+![The Andalusian palace seen from above](img/build_palace_andalusi.png)
 
 In the desert you may come across a long, low wall of sandstone with patches of red, square towers with battlements and a gate under a horseshoe arch. From outside it looks plain, almost like a fort. A sign by the road gives its name: **Alcázar del Agua**, the Palace of Water. Go in: all its beauty is inside, in courtyards full of water, tiles and light.
 

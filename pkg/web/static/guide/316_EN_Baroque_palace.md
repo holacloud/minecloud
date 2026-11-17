@@ -1,6 +1,6 @@
 # Baroque palace
 
-![Silver mirror](item:mirror)
+![The Baroque palace seen from above](img/build_palace_baroque.png)
 
 On the plains, at the end of an avenue lined with trees, a golden railing opens onto a huge court and a palace of marble and pale stone, with grey roofs, rows of tall windows and a dome. Behind it, a garden stretches out as far as a canal in the shape of a cross. It is the **Baroque palace**, and everything in it is **symmetric**: the left half is the mirror of the right one.
 

@@ -1,6 +1,6 @@
 # Furniture showroom
 
-![Sofa](item:green_sofa)
+![The furniture showroom seen from above](img/build_showroom.png)
 
 A low, wide building of one floor, **56 by 52 blocks**, with a yellow line painted on its corridors: a **furniture showroom**. It is like a big furniture store, where a one-way path takes you past room after room, each one furnished. Here **every piece of furniture, decoration and mirror** of the game stands in a scene, and next to each a sign tells you how to use it. It is the best place to discover what you can put in your own home.
 

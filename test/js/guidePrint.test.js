@@ -352,3 +352,121 @@ test('booklet imposition: folded folios read in order, the last booklet only as 
     assert.deepEqual(print.bookletImposition(0, 6), []);
     assert.deepEqual(print.bookletImposition(1, 6)[0].sides[0], { folio: 0, back: false, left: null, right: 0 });
 });
+
+// ---- The cardboard cover (&part=cover): back, spine and front on one sheet
+
+test('the cover\'s spine: the pages on paper halved, times the paper\'s thickness, to a tenth of a mm, or what was written by hand', () => {
+    // An odd count ends on a blank page; booklets are folios of four pages.
+    assert.deepEqual([[283, 'A5'], [284, 'A5'], [1, 'A4'], [0, 'A5'], [283, 'BOOKLET'], [281, 'BOOKLET'], [284, 'BOOKLET']]
+        .map(([pages, paper]) => print.printedPages(pages, paper)), [284, 284, 2, 0, 284, 284, 284]);
+    assert.equal(print.THICKNESS_DEFAULT, 0.1, 'ordinary 80 g paper');
+    const auto = print.spineFor({ pages: 283, paper: 'A5' });
+    assert.deepEqual([auto.sheets, auto.auto, auto.width, auto.manual, auto.text], [142, 14.2, 14.2, false, true]);
+    assert.equal(print.spineFor({ pages: 300, paper: 'A4', thickness: 0.08 }).width, 12);
+    assert.equal(print.spineFor({ pages: 299, paper: 'A5', thickness: 0.13 }).width, 19.5, '150 sheets x 0.13');
+    assert.equal(print.spineFor({ pages: 300, paper: 'A5', thickness: 0 }).width, 15, 'a thickness that is not one is the default');
+    const byHand = print.spineFor({ pages: 283, paper: 'A5', manual: 12.34 });
+    assert.deepEqual([byHand.auto, byHand.width, byHand.manual], [14.2, 12.3, true], 'the automatic value is still known, to go back to it');
+    assert.equal(print.spineFor({ pages: 283, paper: 'A5', manual: null }).manual, false);
+    assert.equal(print.spineFor({ pages: 283, paper: 'A5', manual: 0 }).width, 0, '0 by hand is a choice too');
+    // Too thin for words under 5 mm: the number only.
+    assert.equal(print.SPINE_TEXT_MIN, 5);
+    assert.deepEqual([98, 99, 100].map((pages) => print.spineFor({ pages, paper: 'A5' }).text), [false, true, true], '4.9 mm, 5 mm, 5 mm');
+    assert.equal(print.spineFor({ pages: 300, paper: 'A5', manual: 4 }).text, false);
+});
+
+test('the cover\'s sheet: twice the page plus the spine, by the page\'s height, plus the bleed all round, and its @page says exactly that', () => {
+    const a5 = print.coverSheetSize('A5', 14.2, 3);
+    assert.deepEqual([a5.width, a5.height, a5.pageW, a5.pageH, a5.spineLeft, a5.frontLeft], [316.2, 216, 148, 210, 151, 165.2]);
+    assert.deepEqual([print.coverSheetSize('A5', 14.2, 0).width, print.coverSheetSize('A5', 14.2, 0).height], [310.2, 210]);
+    const a4 = print.coverSheetSize('A4', 14.2, 3);
+    assert.deepEqual([a4.width, a4.height, a4.spineLeft, a4.frontLeft], [440.2, 303, 213, 227.2]);
+    assert.deepEqual([print.coverSheetSize('A4', 14.2, 0).width, print.coverSheetSize('A4', 14.2, 0).height], [434.2, 297]);
+    assert.equal(print.coverSheetSize('BOOKLET', 10, 3).width, 2 * 148 + 10 + 6, 'the booklets are A5 pages');
+    assert.equal(print.coverSheetSize('A5', 0, 3).width, 302);
+    assert.equal(print.coverPageStyle(a5), '@page { size: 316.2mm 216mm; margin: 0; }');
+    assert.equal(print.coverPageStyle(a4, 'gp-sheet-3'), '@page gp-sheet-3 { size: 440.2mm 303mm; margin: 0; }');
+    assert.deepEqual(print.PAPER_MM, { A5: { w: 148, h: 210 }, A4: { w: 210, h: 297 } });
+    assert.equal(print.BLEED_DEFAULT, 3);
+});
+
+test('the cover\'s fields read mm with a point or a comma, and their numbers are written as each language writes them', () => {
+    assert.equal(print.parseMm('0,12', 0.03, 0.5, 0.1), 0.12);
+    assert.equal(print.parseMm(' 0.08 ', 0.03, 0.5, 0.1), 0.08);
+    assert.equal(print.parseMm('', 0, 10, 3), 3, 'empty: the fallback');
+    assert.equal(print.parseMm('abc', 0, 10, 3), 3);
+    assert.equal(print.parseMm('-1', 0, 10, 3), 3, 'out of range: the fallback');
+    assert.equal(print.parseMm('11', 0, 10, 3), 3);
+    assert.equal(print.parseMm('0', 0, 10, 3), 0, 'no bleed is allowed');
+    assert.equal(print.parseMm(null, 0, 10, null), null);
+    assert.deepEqual([print.formatMm(14.25, 'ES'), print.formatMm(14.25, 'EN'), print.formatMm(316, 'ES'), print.formatMm(1234.5, 'EN')], ['14,3', '14.3', '316', '1234.5']);
+});
+
+test('the spine: every size from its width, none wider than the spine, and the number alone when it is thin', () => {
+    assert.ok(['down', 'up'].includes(print.SPINE_READS), 'one constant says which way the spine reads');
+    for (let tenth = 0; tenth <= 400; tenth++) {
+        const width = tenth / 10;
+        const size = print.spineSizes(width);
+        assert.equal(size.text, width >= 5, `${width} mm`);
+        assert.ok(size.chip <= width + 1e-9 && size.numeral <= size.chip, `${width} mm: the chip fits across`);
+        if (size.text) {
+            for (const key of ['logo', 'brand', 'title', 'hero']) assert.ok(size[key] <= width + 1e-9, `${width} mm: ${key} ${size[key]}`);
+        }
+        assert.ok(size.pad >= 3 && size.gap >= 1, 'room at the ends and between the parts');
+    }
+    assert.equal(print.spineSizes(7.9).hero, 0, 'no picture under 8 mm');
+    assert.ok(print.spineSizes(15).hero > 0);
+    assert.equal(print.spineSizes(15).chip, 10.5);
+    assert.equal(print.spineSizes(200).chip, 14, 'sizes stop growing');
+});
+
+test('the back: the volume, its synopsis, its sections in one or two columns and the address of the guide on the web', () => {
+    const one = print.backModel(MANIFEST, MANIFEST.volumes[0], 'ES');
+    assert.equal(one.synopsis, MANIFEST.volumes[0].synopsis.ES);
+    assert.equal(one.title, MANIFEST.volumes[0].title.ES);
+    assert.deepEqual([one.numeral, one.label, one.colour, one.heading], ['1', 'Volumen', MANIFEST.volumes[0].colour, 'En este volumen']);
+    assert.equal(one.sections[0].range, '1–15', 'topic 0 is never printed, so the first section starts at 1');
+    assert.equal(one.sections[0].title, 'Lo básico');
+    assert.deepEqual([one.columns, one.rows], [1, MANIFEST.volumes[0].sections.length]);
+    assert.equal(one.web, 'mine.holacloud.app/libro');
+    const many = MANIFEST.volumes.reduce((best, volume) => (volume.sections.length > best.sections.length ? volume : best));
+    const back = print.backModel(MANIFEST, many, 'EN');
+    assert.ok(many.sections.length >= 9, 'the longest list goes in two columns');
+    assert.deepEqual([back.columns, back.rows, back.sections.length], [2, Math.ceil(many.sections.length / 2), many.sections.length]);
+    assert.equal(back.web, 'mine.holacloud.app/book');
+    assert.equal(back.synopsis, many.synopsis.EN);
+    assert.deepEqual(print.backSections({ sections: [[222, 222, 'Uno', 'One'], [0, 0, 'Cero', 'Zero'], [0, 3, 'A', 'B']] }, 'EN', new Set(['0'])).map((s) => [s.range, s.title]),
+        [['222', 'One'], ['0', 'Zero'], ['1–3', 'B']], 'a single topic, and a section of only a skipped topic keeps it');
+    assert.equal(print.backModel(MANIFEST, { ...MANIFEST.volumes[0], colour: 'red;}' }, 'ES').colour, '#6b4528', 'only a colour #rrggbb reaches the CSS');
+});
+
+test('the cover output speaks both languages: the toolbar, the back and the status line', () => {
+    const keys = ['partBook', 'partCover', 'thickness', 'spine', 'spineAuto', 'spineEach', 'bleed', 'inThisVolume', 'readOnline', 'webAddress',
+        'coverCounting', 'coverLabel', 'coverReady', 'coverReadyAll', 'coverNoVolumes'];
+    for (const lang of ['ES', 'EN']) {
+        for (const key of keys) {
+            const value = print.TEXT[lang][key];
+            const said = typeof value === 'function' ? value(2, 284, '14,2', '316,2', '216', true) : value;
+            assert.ok(typeof said === 'string' && said.trim(), `${lang}.${key}`);
+            assert.ok(!/undefined|NaN/.test(said), `${lang}.${key}: ${said}`);
+        }
+    }
+    assert.equal(print.TEXT.ES.thickness, 'Grosor del papel, mm por hoja');
+    assert.equal(print.TEXT.EN.thickness, 'Paper thickness, mm per sheet');
+    assert.equal(print.TEXT.EN.spine, 'Spine, mm');
+    assert.equal(print.TEXT.EN.bleed, 'Bleed, mm');
+    assert.equal(print.TEXT.EN.partCover, 'Cover');
+    assert.equal(print.TEXT.ES.partCover, 'Tapas');
+    assert.match(print.TEXT.ES.coverReady('316,2', '216'), /316,2 × 216 mm/);
+    assert.match(print.TEXT.EN.coverLabel(3, 284, '14.2', '316.2', '216', false), /^Volume 3 · 284 pages · spine 14\.2 mm · sheet 316\.2 × 216 mm$/);
+});
+
+test('the print page has the cover\'s controls, and every sheet prints on its own page of its own size', () => {
+    const html = fs.readFileSync(path.join(STATIC, 'guide-print.html'), 'utf8');
+    for (const id of ['gp-cover-options', 'gp-thickness', 'gp-thickness-label', 'gp-spine', 'gp-spine-label', 'gp-spine-auto', 'gp-bleed', 'gp-bleed-label']) {
+        assert.ok(html.includes(`id="${id}"`), id);
+    }
+    assert.ok(html.includes('data-part="BOOK"') && html.includes('data-part="COVER"'));
+    assert.match(html, /@media print \{[\s\S]*\.gp-sheet \{[^}]*break-after: page/);
+    assert.match(html, /\.gp-sheet-label, \.gp-sheet-guide \{ display: none !important; \}/, 'the label and the guides never reach the paper');
+});

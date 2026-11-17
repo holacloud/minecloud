@@ -16,6 +16,19 @@ test('the manifest: numbered volumes whose ranges follow on, with words, a colou
     assert.deepEqual(tool.checkManifest(guide.manifest, guide.publicIds), []);
 });
 
+test('every volume has the synopsis of its back cover in ES and EN, 50 to 90 words, saying "volume" and "topic"', () => {
+    for (const volume of guide.manifest.volumes) {
+        for (const [lang, volumeWord, topicWord] of [['ES', /\bvolumen\b/i, /\btemas?\b/i], ['EN', /\bvolume\b/i, /\btopics?\b/i]]) {
+            const synopsis = volume.synopsis[lang];
+            const words = tool.chapterWords(synopsis);
+            assert.ok(words >= 50 && words <= 90, `volume ${volume.volume}, ${lang}: ${words} words`);
+            assert.match(synopsis, volumeWord, `volume ${volume.volume}, ${lang}`);
+            assert.match(synopsis, topicWord, `volume ${volume.volume}, ${lang}`);
+            assert.ok(!/p[aá]gina|\bpages?\b/i.test(synopsis), `volume ${volume.volume}, ${lang}: a topic is never a page`);
+        }
+    }
+});
+
 test('the lock agrees with the manifest, and every volumes/ file comes in both languages', () => {
     assert.deepEqual(tool.checkLock(guide.manifest, guide.lock, guide.publicIds), []);
     assert.deepEqual(tool.checkVolumeFiles(guide.manifest, guide.volumeFiles), []);
@@ -35,9 +48,13 @@ test('a topic of a closed volume that changed is told in the open volume\'s news
 
 // ---- the rules, on data made here
 
+// A synopsis of `count` words, for the back of a cover.
+const wordsOf = (count, word = 'word') => Array.from({ length: count }, (_, i) => `${word}${i}`).join(' ');
+
 function manifestOf(closed = [null, null, null]) {
     const volume = (n, from, to, sections) => ({
         volume: n, from, to, closed: closed[n - 1], title: { ES: `Tomo ${n}`, EN: `Book ${n}` }, blurb: { ES: 'Algo.', EN: 'Something.' },
+        synopsis: { ES: wordsOf(60, 'palabra'), EN: wordsOf(60) },
         colour: '#336699', cover: { hero: 'mob:sheep', icons: ['item:a', 'item:b', 'item:c', 'item:d', 'item:e'] }, sections
     });
     return {
@@ -64,6 +81,11 @@ test('the manifest rules bite', () => {
     assert.match(problems((m) => { m.volumes[0].closed = '2026-01-01'; m.volumes[1].closed = '2026-02-01'; m.volumes[2].closed = '2026-03-01'; }), /cannot be closed/);
     assert.match(problems((m) => { delete m.volumes[0].blurb.EN; }), /no blurb in EN/);
     assert.match(problems((m) => { m.volumes[0].title.ES = ' '; }), /no title in ES/);
+    assert.match(problems((m) => { delete m.volumes[1].synopsis; }), /volume 2 has no synopsis in ES/);
+    assert.match(problems((m) => { m.volumes[0].synopsis.EN = ''; }), /volume 1 has no synopsis in EN/);
+    assert.match(problems((m) => { m.volumes[0].synopsis.ES = wordsOf(39); }), /synopsis in ES has 39 words: a synopsis has 40 to 100/);
+    assert.match(problems((m) => { m.volumes[2].synopsis.EN = wordsOf(101); }), /volume 3: its synopsis in EN has 101 words/);
+    assert.deepEqual(problems((m) => { m.volumes[0].synopsis = { ES: wordsOf(40), EN: wordsOf(100) }; }), '', '40 and 100 words are allowed');
     assert.match(problems((m) => { m.volumes[0].colour = 'green'; }), /colour/);
     assert.match(problems((m) => { m.volumes[0].cover.hero = 'torch'; }), /cover.hero/);
     assert.match(problems((m) => { m.volumes[0].cover.icons.pop(); }), /five items/);

@@ -1,6 +1,6 @@
 # Casita
 
-![Cama](item:bed)
+![Vista de la casita desde arriba](img/build_house.png)
 
 Una **casita** de madera con base de piedra y un tejado oscuro muy inclinado, en un patio con valla y flores: la vivienda más pequeña que puedes encontrar en el mundo, de **11 por 14 bloques** con su patio. Tiene una sola habitación, pero dentro está todo lo que una persona necesita para vivir.
 

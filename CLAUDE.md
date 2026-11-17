@@ -31,7 +31,8 @@ before calling it done. There is no CI: nothing else will catch a red test.
 | `pkg/web/static/js/game/*.js` | One file per feature (a species, a machine, a panel). New things go here. |
 | `pkg/web/static/js/game.js`, `world.js`, `chunkMesher.js`, `camera.js`, `models.js` | The core. A feature should not need to edit them. |
 | `pkg/web/static/index.html` | Core CSS and markup, and the `<script>` list. **Order is load order.** |
-| `pkg/web/static/guide/` | The in-game guide: one Markdown file per topic, in ES and EN. Its `README.md` has the rules. |
+| `pkg/web/static/guide/` | The in-game guide: one Markdown file per topic, in ES and EN. Its `README.md` has the rules. The pictures of the `/build` buildings (`img/build_*.png`) are made by `node tools/guideBuildPictures.js`: run it after changing a design. |
+| `pkg/web/book.go`, `guide_markdown.go` | The guide as public web pages (`/book`, `/libro`, `/sitemap.xml`): the Go twin of `js/guideMarkdown.js`, held to it by `test/js/support/guide_markdown_cases.json`. They look like the game's book, in the fonts kept in `static/fonts/`, over `guide/img/landscape.png`, made by `node tools/guideLandscape.js`. |
 | `pkg/network/` | The server: `registry.go` is how a mechanic plugs in, `websocket.go` the hub; each mechanic has its own file (`glow_block.go`, `power.go`, `animals.go`...). |
 | `pkg/world/`, `pkg/terrain/` | Chunk storage and terrain generation. A rule of the generator is written twice: there and in `js/terrainGen.js`, its mirror for the viewer; fingerprints in `ores_test.go` and `fossils_test.go` hold the two together. |
 | `test/js/` | Node tests: they run the real scripts of `index.html` in a VM with stand-ins for the browser. `support/game.js` has the script list, `anyStub` and loaders to start a new test from. |
@@ -297,6 +298,9 @@ Rules and catalogue: `pkg/web/static/guide/README.md`. For each new topic:
 2. A row in the README's catalogue and in the contents topics that list it (0, and 16, 48, 98, 223 or 261), in
    both languages.
 3. Its section in `GUIA.md`.
+4. A `mob:` or `item:` picture that no topic showed before needs its file for the web pages:
+   `node tools/guidePictures.js --missing` (it needs Google Chrome). `node --test test/js/guide_pictures.test.js`
+   names what is missing.
 
 On paper (the printable guide's volumes, `guide/volumes.json`) a new topic falls into the open volume by itself;
 give it a row in that volume's `sections` if it starts a subject. Changing a topic of a closed volume asks for a line

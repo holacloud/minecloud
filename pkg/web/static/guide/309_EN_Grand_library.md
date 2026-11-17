@@ -1,6 +1,6 @@
 # Grand library
 
-![Bookshelf](item:bookshelf)
+![The grand library seen from above](img/build_library.png)
 
 Behind a portico of columns and a wide flight of steps stands the **grand library**: a stone building of **45 by 60 blocks**, with four storeys of galleries lined with books round a square reading room, and over it a **dome of stained glass** that glows with every colour against the sky. It is inspired by the great domed reading rooms of the 19th century, but it is a design of its own.
 

@@ -1,6 +1,6 @@
 # Winter palace
 
-![Snow block](item:snow_block)
+![The winter palace seen from above](img/build_palace_nordic.png)
 
 Among snowy spruce trees, beyond a frozen pond and a garden of ice, stands a palace of **red brick** trimmed in white, with steep dark roofs and a cluster of **striped onion domes** round a golden one. Inside, there is a fire in nearly every room. A sign at the gate gives its name: the **Winter Palace of the Aurora**.
 

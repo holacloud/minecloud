@@ -1,6 +1,6 @@
 # Apartment block
 
-![Lift stop](item:lift_stop)
+![The apartment block seen from above](img/build_apartments.png)
 
 A tall modern building, **24 blocks wide and 18 deep**, with balconies on both sides and a garden on the roof: an **apartment block**. Over the lobby there are **11 floors of homes**, 31 homes in all, joined by stairs and by a **lift that really works**.
 

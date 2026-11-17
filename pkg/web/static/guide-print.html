@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Guía de MineCloud</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%2367a83f' d='M8 1l7 3.5-7 3.5-7-3.5z'/%3E%3Cpath fill='%237a5233' d='M1 4.5l7 3.5v7l-7-3.5z'/%3E%3Cpath fill='%235e3f27' d='M15 4.5l-7 3.5v7l7-3.5z'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=VT323&display=swap">
+    <link rel="stylesheet" href="fonts/fonts.css">
     <!-- The printable guide, paginated by js/guidePrint.js: every .gp-page is one printed page. -->
     <style id="gp-page-style">@page { size: A5 portrait; margin: 0; }</style>
     <style>
@@ -51,7 +51,8 @@
         #gp-toolbar .gp-status-row { flex-basis: 100%; display: flex; align-items: center; gap: 10px; font-size: 14px; color: #e8d6aa; }
         #gp-progress { width: 180px; height: 10px; }
         #gp-folios { width: 3.4em; font: inherit; }
-        #gp-booklet-options[hidden], #gp-volumes[hidden], #gp-report[hidden] { display: none; }
+        #gp-booklet-options[hidden], #gp-volumes[hidden], #gp-report[hidden], #gp-cover-options[hidden] { display: none; }
+        #gp-thickness, #gp-spine, #gp-bleed { width: 4.6em; font: inherit; }
         #gp-report { flex-basis: 100%; font-size: 14px; color: #e8d6aa; }
         #gp-report summary { cursor: pointer; }
         #gp-report-body { max-height: 45vh; overflow: auto; margin: 6px 0; padding: 6px 10px; background: #2c1a0e; }
@@ -95,11 +96,11 @@
            and are also asked to print exactly. */
         .gp-page.gp-cover { display: block; padding: 0; background: #ffffff; --paper: #ffffff; --tint: #f1ead9; --rule: #b9a27a; }
         .gp-cover, .gp-cover * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .gp-cover-art { position: absolute; left: 0; top: 0; width: 148mm; height: 210mm; overflow: hidden; transform-origin: 0 0;
+        .gp-cover-art, .gp-back-art { position: absolute; left: 0; top: 0; width: 148mm; height: 210mm; overflow: hidden; transform-origin: 0 0;
             font-family: 'Atkinson Hyperlegible', 'Segoe UI', Verdana, sans-serif; font-size: 10pt; line-height: 1.25; color: #2b1d10;
             text-align: center; }
-        html.gp-a4 .gp-cover-art { transform: scale(1.414); }
-        .gp-cover-art p { margin: 0; }
+        html.gp-a4 .gp-cover-art, html.gp-a4 .gp-back-art { transform: scale(1.414); }
+        .gp-cover-art p, .gp-back-art p { margin: 0; }
         .gp-cover-fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
         .gp-cover-frame { position: absolute; left: 7mm; top: 7mm; width: 134mm; height: 196mm; border: 1mm solid var(--volume); }
         .gp-cover-frame::after { content: ''; position: absolute; left: 1mm; top: 1mm; right: 1mm; bottom: 1mm; border: 0.25mm solid var(--rule); }
@@ -120,7 +121,7 @@
         .gp-cover-volume { display: flex; align-items: center; gap: 5mm; height: 30mm; margin-bottom: 4mm; text-align: left; }
         .gp-cover-numeral { position: relative; width: 30mm; height: 30mm; flex: none; display: flex; align-items: center; justify-content: center; }
         /* A white numeral with an outline of the colour: still readable if a printer drops the fill. */
-        .gp-cover-numeral span, .gp-cover-tab span { position: relative; font-family: var(--head-font); font-weight: 400;
+        .gp-cover-numeral span, .gp-cover-tab span, .gp-back-numeral span, .gp-spine-chip span { position: relative; font-family: var(--head-font); font-weight: 400;
             line-height: 1; color: #ffffff; -webkit-text-stroke: 0.45mm var(--volume); paint-order: stroke fill; white-space: nowrap; }
         .gp-cover-numeral span { font-size: calc(60pt * var(--head-scale)); }
         .gp-cover-volume-words { flex: 1 1 auto; min-width: 0; }
@@ -142,6 +143,62 @@
         /* The tab on the edge: lower in each volume (top set by coverModel), a staircase on the shelf. */
         .gp-cover-tab { position: absolute; right: 0; width: 10mm; height: 22mm; display: flex; align-items: center; justify-content: center; z-index: 2; }
         .gp-cover-tab span { font-size: calc(15pt * var(--head-scale)); -webkit-text-stroke-width: 0.3mm; }
+
+        /* ---- the cover's sheet (js/guidePrint.js, coverSheet): back, spine and front side by side,
+           the bleed all round, every part placed in mm by the script. The back and the front are the
+           box of the covers above (A4 scales them); the spine is sized from its width (spineSizes),
+           and every text that may be long has a clamp, so nothing can spill out of its part. ---- */
+        html.gp-covers #gp-book { overflow-x: auto; }
+        .gp-sheet { position: relative; margin: 0 auto 24px; background: #ffffff; overflow: hidden; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+            --tint: #f1ead9; --rule: #b9a27a; }
+        .gp-sheet, .gp-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .gp-sheet-label { width: fit-content; margin: 0 auto 6px; color: #f1e3c0; font: 13px 'Segoe UI', Verdana, sans-serif; }
+        .gp-sheet-panel { position: absolute; overflow: hidden; }
+        /* The trim and the two folds, on the screen only. */
+        .gp-sheet-guide { position: absolute; z-index: 3; border: 0.25mm dashed #9c8f78; pointer-events: none; }
+        .gp-sheet-guide.gp-sheet-fold { border-top: 0; border-bottom: 0; }
+        /* The back: masthead, the volume, its synopsis, its sections (two columns from nine on), the web. */
+        .gp-back-column { padding-bottom: 1mm; }
+        .gp-back-volume { display: flex; align-items: center; gap: 4mm; height: 20mm; margin: 4mm 0 3mm; text-align: left; }
+        .gp-back-numeral { position: relative; width: 18mm; height: 18mm; flex: none; display: flex; align-items: center; justify-content: center; }
+        .gp-back-numeral span { font-size: calc(36pt * var(--head-scale)); -webkit-text-stroke-width: 0.35mm; }
+        .gp-back-title { font-family: var(--head-font); font-weight: 400; font-size: calc(17pt * var(--head-scale)); line-height: 1; color: #5b3a22;
+            max-height: calc(2 * 17pt * var(--head-scale)); overflow: hidden; overflow-wrap: break-word;
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .gp-back-art .gp-back-synopsis { font-size: 10pt; line-height: 1.35; text-align: left; padding-top: 3mm; margin-bottom: 4mm;
+            border-top: 0.25mm solid var(--rule); max-height: calc(3mm + 12 * 1.35 * 10pt); overflow: hidden;
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 12; }
+        .gp-back-heading { font-family: var(--head-font); font-weight: 400; font-size: calc(13pt * var(--head-scale)); line-height: 1; color: var(--volume);
+            text-align: left; padding-bottom: 1mm; margin-bottom: 2mm; border-bottom: 0.25mm solid var(--rule); white-space: nowrap; overflow: hidden; }
+        .gp-back-column > .gp-back-sections { flex: 1 1 0; min-height: 0; overflow: hidden; margin: 0; padding: 0; list-style: none;
+            display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--back-rows), auto); grid-template-columns: 1fr; column-gap: 5mm; row-gap: 1.2mm; align-content: start; }
+        .gp-back-sections.gp-back-columns-2 { grid-template-columns: 1fr 1fr; }
+        .gp-back-sections.gp-back-columns-1 { width: 96mm; margin: 0 auto; }
+        .gp-back-sections li { display: flex; align-items: baseline; gap: 2mm; min-width: 0; text-align: left; font-size: 9pt; line-height: 1.25; }
+        .gp-back-range { flex: none; min-width: 14mm; font-family: var(--head-font); font-weight: 400; font-size: calc(9pt * var(--head-scale));
+            line-height: calc(1.25 / var(--head-scale)); color: var(--volume); white-space: nowrap; }
+        .gp-back-section { min-width: 0; max-height: calc(2 * 1.25 * 9pt); overflow: hidden; overflow-wrap: break-word;
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .gp-back-art .gp-back-foot { padding-top: 2.5mm; margin-top: 2mm; border-top: 0.25mm solid var(--rule); font-size: 9pt; line-height: 1.2; color: #6b4f30; }
+        .gp-back-foot strong { display: block; margin-top: 1mm; font-family: var(--head-font); font-weight: 400; font-size: calc(14pt * var(--head-scale));
+            line-height: 1; color: var(--volume); white-space: nowrap; }
+        /* The spine: one column centred across it, every size a variable the script works out from
+           its width. Its words are set sideways (SPINE_READS: 'down' reads from the top). */
+        .gp-spine-column { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
+            gap: var(--spine-gap); padding: var(--spine-pad) 0; overflow: hidden; color: #5b3a22; }
+        .gp-spine-column > * { flex: none; }
+        .gp-spine-column.gp-spine-thin { justify-content: center; }
+        .gp-spine-logo { width: var(--spine-logo); height: var(--spine-logo); }
+        .gp-spine-logo .gp-cover-cube { width: 100%; height: 100%; }
+        .gp-spine-words { writing-mode: vertical-rl; font-family: var(--head-font); font-weight: 400; line-height: 1; white-space: nowrap; }
+        .gp-spine-reads-up .gp-spine-words { transform: rotate(180deg); }
+        .gp-spine-brand { font-size: var(--spine-brand); }
+        .gp-spine-column > .gp-spine-title { flex: 0 1 auto; min-height: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--spine-title); }
+        .gp-spine-chip { position: relative; width: var(--spine-chip); height: var(--spine-chip); display: flex; align-items: center; justify-content: center; }
+        .gp-spine-chip span { font-size: var(--spine-numeral); -webkit-text-stroke-width: 0.2mm; }
+        .gp-spine-column > .gp-spine-hero { margin-top: auto; position: relative; width: var(--spine-hero); height: var(--spine-hero); }
+        .gp-spine-hero-img { display: block; width: 100%; height: 100%; object-fit: contain; }
+        .gp-spine-hero-img.gp-item, .gp-spine-hero-img.gp-missing { image-rendering: pixelated; }
 
         .gp-page-body h1, .gp-page-body h2, .gp-page-body h3 { font-family: var(--head-font); font-weight: 400; font-synthesis: none; color: #5b3a22; line-height: calc(1.15 / var(--head-em)); }
         .gp-page-body h1 { font-size: calc(1.7em * var(--head-em)); text-align: center; margin: 0 0 3mm; }
@@ -167,6 +224,10 @@
         .gp-page-body figure img { max-width: 100%; max-height: var(--fig-max); image-rendering: pixelated; }
         .gp-page-body figure.gp-figure-mob img { width: var(--mob); height: var(--mob); object-fit: contain; image-rendering: auto; }
         .gp-page-body figure.gp-figure-item img, .gp-page-body figure img.gp-missing { width: var(--icon); height: var(--icon); }
+        /* The picture of a whole building (tools/guideBuildPictures.js): the width of the body, scaled smoothly; a tall
+           one (the apartment block) stops at one and a half times the usual figure, so the topic's title fits above it. */
+        .gp-page-body figure img[src*="img/build_"]:not(.gp-missing) { width: 100%; height: auto; max-height: calc(var(--fig-max) * 1.5);
+            object-fit: contain; image-rendering: auto; }
         .gp-page-body figcaption { font-size: 0.88em; color: var(--ink-soft); margin-top: 1mm; }
         .gp-page-body p img, .gp-page-body li img, .gp-page-body td img, .gp-page-body th img { height: 1.3em; width: auto;
             vertical-align: -0.3em; image-rendering: pixelated; }
@@ -214,6 +275,10 @@
             .gp-spread:last-child { break-after: auto; page-break-after: auto; }
             .gp-spread > .gp-page { height: calc(var(--paper-h) - 0.5mm); break-after: auto; page-break-after: auto; }
             .gp-spread > .gp-page + .gp-page { border-left: 0; }
+            /* The cover's sheets: the @page of each is its size (js/guidePrint.js, buildCovers). */
+            .gp-sheet-label, .gp-sheet-guide { display: none !important; }
+            .gp-sheet { margin: 0; box-shadow: none; max-height: calc(var(--sheet-h) - 0.5mm); break-after: page; page-break-after: always; }
+            .gp-sheet:last-child { break-after: auto; page-break-after: auto; }
         }
     </style>
 </head>
@@ -227,6 +292,10 @@
         <label><input id="gp-ink" type="checkbox" checked> <span id="gp-ink-label">Ahorrar tinta</span></label>
         <span class="gp-group"><button class="gp-font" type="button" data-pixel="0">Fuente clara</button><button class="gp-font" type="button" data-pixel="1">Fuente pixel</button></span>
         <span id="gp-volumes" class="gp-group" hidden><span id="gp-volume-label">Volumen</span> </span>
+        <span class="gp-group"><button class="gp-part" type="button" data-part="BOOK">Libro</button><button class="gp-part" type="button" data-part="COVER">Tapas</button></span>
+        <span id="gp-cover-options" class="gp-group" hidden><label><span id="gp-thickness-label">Grosor del papel, mm por hoja</span> <input id="gp-thickness" type="number" min="0.03" max="0.5" step="0.01" value="0.1"></label>
+            <label><span id="gp-spine-label">Lomo, mm</span> <input id="gp-spine" type="number" min="0" max="100" step="0.1"></label><button id="gp-spine-auto" type="button" disabled>Automático</button>
+            <label><span id="gp-bleed-label">Sangrado, mm</span> <input id="gp-bleed" type="number" min="0" max="10" step="0.5" value="3"></label></span>
         <button id="gp-print" type="button" disabled>🖨 Imprimir</button>
         <div class="gp-status-row">
             <progress id="gp-progress" max="1" value="0"></progress>
@@ -245,6 +314,7 @@
         // run, only a class for them to hang on (the portraits use the bestiary's methods).
         class Game {}
     </script>
+    <script src="js/guideEngine.js"></script>
     <script src="js/guidePrint.js"></script>
 </body>
 </html>

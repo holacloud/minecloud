@@ -1,6 +1,6 @@
 # Volcanic palace
 
-![Magma Rock](item:magma_rock)
+![The volcanic palace seen from above](img/build_palace_volcanic.png)
 
 On a land of black rock, ash and charred trunks, a crack in the ground glows orange at the bottom. A bridge crosses it to a gatehouse, and beyond, a wall of six sides bristling with **columns of basalt** surrounds a dark citadel that climbs a crag of rock, crowned by a tower with pinnacles. A sign by the bridge gives its name: the **Palace of the Volcano**: basalt, obsidian and magma rock, and inside, the **hall of minerals**.
 

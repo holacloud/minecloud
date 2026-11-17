@@ -1,6 +1,6 @@
 # Community hall
 
-![Bench](item:bench)
+![The community hall seen from above](img/build_hall.png)
 
 In the middle of a paved square, **32 by 30 blocks**, stands a long hall of ![](item:brick) brick with wide doors on all four sides and a tall roof with glass along its ridge: a **community hall**. It is a covered market on most days, and a place where neighbours meet, eat together and celebrate on the others.
 

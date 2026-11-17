@@ -1,6 +1,6 @@
 # Catedral
 
-![Vidriera roja](item:red_stained_glass)
+![Vista de la catedral desde arriba](img/build_cathedral.png)
 
 Dos torres con agujas de pizarra, un gran ventanal redondo de cristales de colores entre ellas y, detrás, un edificio largo y alto de piedra clara lleno de luz: una **catedral** de estilo **gótico**. Mide **29 bloques de ancho y 54 de largo**, y sus agujas se alzan unos 46 bloques sobre el suelo. Está inspirada en las grandes catedrales góticas de Europa, pero es un diseño propio. Aquí la miramos como una obra de **arquitectura e ingeniería**: cómo se consiguió que la piedra se sostuviera tan alto y dejara entrar tanta luz.
 

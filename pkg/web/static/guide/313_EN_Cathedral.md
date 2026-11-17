@@ -1,6 +1,6 @@
 # Cathedral
 
-![Red stained glass](item:red_stained_glass)
+![The cathedral seen from above](img/build_cathedral.png)
 
 Two towers with slate spires, a great round window of coloured glass between them and, behind, a long, tall building of pale stone full of light: a **cathedral** in the **Gothic** style. It is **29 blocks wide and 54 long**, and its spires rise about 46 blocks over the ground. It is inspired by the great Gothic cathedrals of Europe, but it is a design of its own. Here we look at it as a work of **architecture and engineering**: how stone was made to stand so high and let in so much light.
 

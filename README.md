@@ -21,6 +21,7 @@ A browser-based multiplayer Minecraft-like game, with voxel rendering in `Three.
 - A bucket to scoop up water and pour it elsewhere (water stays static).
 - A bestiary (`B`) that records the species you meet, with portraits and field notes.
 - An in-game guide book (`H`) with topics for every mob, item and mechanic, in English and Spanish.
+- The same guide as public web pages: `/book` (English) and `/libro` (Spanish), with `/sitemap.xml`.
 - First-person movement with auto-step over 1-block ledges.
 - Third-person camera views (from behind and from the front).
 - Sneak/crouch movement for careful building and edge safety.

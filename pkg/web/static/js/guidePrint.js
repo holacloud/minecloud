@@ -1,4 +1,4 @@
-// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET&volume=ALL|N): every
+// The printable guide (guide-print.html?lang=ES|EN&paper=A5|A4|BOOKLET&volume=ALL|N&part=book|cover): every
 // public topic of the in-game book as a paper book, whole or in volumes, with a cover, a "how to
 // use this book" page, a table of contents and an alphabetical index. Secret topics (non-numeric
 // ids) are never shown, listed or linked.
@@ -26,10 +26,18 @@
 // in half. The number of folios per booklet is a setting; the last booklet only takes the
 // folios it needs, with blank pages at its end.
 //
-// Mob portraits and item icons are drawn by the game's own code, run here without a game: the
-// page loads the scripts index.html loads (except game.js, the network and the book) over a
-// stub `class Game {}`, builds a WorldRenderer for the item icons and uses the bestiary's
-// portrait stage for the mobs. What cannot be drawn becomes a neat placeholder.
+// The page has a second output, the cardboard cover of a volume (&part=cover; &part=book, or nothing,
+// is the book): one sheet, left to right the back (the synopsis of volumes.json and the titles of
+// its sections), the spine and the front (the design of the cover page, coverArtHtml), bleed all
+// round, and an @page of exactly that size, so that "Save as PDF" gives what a print shop asks for.
+// The spine is as wide as the book is thick: its pages (laid out here first, as for printing it)
+// halved and times the paper's thickness (spineFor, coverSheetSize). With every volume chosen
+// it is one sheet for each.
+//
+// Mob portraits and item icons are drawn by the game's own code, run here without a game
+// (js/guideEngine.js, shared with tools/guidePictures.js): the page loads the scripts index.html
+// loads (except game.js, the network and the book) over a stub `class Game {}`, builds a
+// WorldRenderer for the item icons and uses the bestiary's portrait stage for the mobs. What cannot be drawn becomes a neat placeholder.
 // In this file's code a `topic` is an entry of the guide and a `page` one side of paper; the piece of
 // paper, a sheet or folio, is only in the booklets' imposition and in the words a reader sees.
 // Wrapped in a function so its names cannot clash with the game scripts it loads.
@@ -41,6 +49,24 @@
     const PAPERS = ['A5', 'A4', 'BOOKLET'];
     const FOLIOS_DEFAULT = 6;
     const FOLIOS_MAX = 15;
+    // ---- the cover (&part=cover): its sheet is back, spine and front (coverSheet).
+    const PARTS = ['BOOK', 'COVER'];
+    // The trimmed page of each paper, in mm (the booklets are A5 pages).
+    const PAPER_MM = { A5: { w: 148, h: 210 }, A4: { w: 210, h: 297 } };
+    // mm a sheet of paper adds to the spine: 0.10 is ordinary 80 g paper.
+    const THICKNESS_DEFAULT = 0.1;
+    const THICKNESS_RANGE = { min: 0.03, max: 0.5 };
+    // What the print shop trims off all round, in mm.
+    const BLEED_DEFAULT = 3;
+    const BLEED_MAX = 10;
+    const SPINE_MAX = 100;
+    // Under this width (mm) the spine has no room for words: only the volume's number.
+    const SPINE_TEXT_MIN = 5;
+    // How the words of the spine read: 'down' from top to bottom (the book lying face up reads
+    // right, as in English and most shops), 'up' from bottom to top.
+    const SPINE_READS = 'down';
+    // The back lists its sections in two columns from this many on (volume 3 has 18).
+    const BACK_TWO_COLUMNS = 9;
     const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     // Page-number placeholder of the contents while measuring: as wide as the widest real number.
     const NUMBER_PLACEHOLDER = '000';
@@ -48,11 +74,10 @@
     const WHOLE_BOOK_COLOUR = '#6b4528';
     // Topics never printed when the manifest cannot be read: topic 0 is the game's own contents.
     const DEFAULT_SKIP = [0];
-    // Scripts of index.html that the printable guide must not run.
-    const SKIP_SCRIPTS = /(^|\/)(game|websocket|voice|guideMarkdown|guidePrint)\.js$|(^|\/)game\/guide\.js$/;
-    // If index.html cannot be read: what the icons and portraits need at the very least.
-    const FALLBACK_SCRIPTS = ['js/extensions.js', 'js/camera.js', 'js/chunkStore.js', 'js/blockShapes.js', 'js/chunkMesher.js',
-        'js/models.js', 'js/mobSpecies.js', 'js/blockTextures.js', 'js/world.js', 'js/game/resources.js', 'js/game/bestiary.js', 'js/game/microbes.js'];
+    // Scripts of index.html that the printable guide must not run (js/guideEngine.js, the picture painter,
+    // which this page loads before this file; Node, the tests, reads it from there).
+    const SKIP_SCRIPTS = typeof module !== 'undefined' && module.exports ? require('./guideEngine.js').GUIDE_ENGINE_SKIP_SCRIPTS
+        : typeof GUIDE_ENGINE_SKIP_SCRIPTS !== 'undefined' ? GUIDE_ENGINE_SKIP_SCRIPTS : null;
 
     // The intro's table of volumes: those of `options.volumes` (up to the one printed, never a later one).
     const volumesTable = (heads, rows) => `<table><thead><tr>${heads.map((head) => `<th>${head}</th>`).join('')}</tr></thead><tbody>${
@@ -121,6 +146,16 @@
             reportVolume: (n, title, range) => `Volumen ${n} · ${title} · temas ${range}`,
             reportSum: (pages, measured, topics) => `${pages} páginas de temas` + (measured < topics ? ` (medidos ${measured} de ${topics} temas: maqueta el libro entero para tenerlos todos)` : ''),
             reportShown: (pages, front, guide, back) => `Lo que se ve: ${pages} páginas = ${front} delante (portada, cómo usar, índice, antes de empezar) + ${guide} de temas + ${back} detrás (lo nuevo, índice alfabético).`,
+            // The cover (&part=cover): the toolbar, the back and the status line.
+            partBook: 'Libro', partCover: 'Tapas', thickness: 'Grosor del papel, mm por hoja', spine: 'Lomo, mm', spineAuto: 'Automático',
+            spineEach: 'uno por volumen', bleed: 'Sangrado, mm', inThisVolume: 'En este volumen', readOnline: 'Lee la guía en la web:',
+            webAddress: 'mine.holacloud.app/libro',
+            coverCounting: (n) => `Contando las páginas del volumen ${n}…`,
+            coverLabel: (n, pages, spine, width, height, manual) => `Volumen ${n} · ${pages} páginas · lomo ${spine} mm${manual ? ' (a mano)' : ''} · hoja ${width} × ${height} mm`,
+            coverReady: (width, height) => `Listo: una hoja de ${width} × ${height} mm (contraportada, lomo y portada, con el sangrado). ` +
+                'Pulsa Imprimir y elige «Guardar como PDF», márgenes «Ninguno» y escala 100 %: el PDF sale de ese tamaño, el que pide la imprenta.',
+            coverReadyAll: (count) => `Listo: ${count} hojas, una por volumen, cada una de su tamaño. Para la imprenta, guarda cada volumen por separado.`,
+            coverNoVolumes: 'No hay volúmenes (guide/volumes.json): las tapas son de un volumen.',
             over: 'demasiadas'
         },
         EN: {
@@ -184,6 +219,16 @@
             reportVolume: (n, title, range) => `Volume ${n} · ${title} · topics ${range}`,
             reportSum: (pages, measured, topics) => `${pages} pages of topics` + (measured < topics ? ` (${measured} of ${topics} topics measured: lay out the whole book to have them all)` : ''),
             reportShown: (pages, front, guide, back) => `What is shown: ${pages} pages = ${front} at the front (cover, how to use, contents, before you start) + ${guide} of topics + ${back} at the back (what is new, alphabetical index).`,
+            // The cover (&part=cover): the toolbar, the back and the status line.
+            partBook: 'Book', partCover: 'Cover', thickness: 'Paper thickness, mm per sheet', spine: 'Spine, mm', spineAuto: 'Automatic',
+            spineEach: 'one per volume', bleed: 'Bleed, mm', inThisVolume: 'In this volume', readOnline: 'Read the guide on the web:',
+            webAddress: 'mine.holacloud.app/book',
+            coverCounting: (n) => `Counting the pages of volume ${n}…`,
+            coverLabel: (n, pages, spine, width, height, manual) => `Volume ${n} · ${pages} pages · spine ${spine} mm${manual ? ' (by hand)' : ''} · sheet ${width} × ${height} mm`,
+            coverReady: (width, height) => `Ready: one sheet of ${width} × ${height} mm (back, spine and front, with the bleed). ` +
+                'Press Print and choose "Save as PDF", margins "None" and scale 100%: the PDF comes out that size, the one a print shop asks for.',
+            coverReadyAll: (count) => `Ready: ${count} sheets, one per volume, each of its own size. For the print shop, save each volume on its own.`,
+            coverNoVolumes: 'There are no volumes (guide/volumes.json): a cover is a volume\'s.',
             over: 'too many'
         }
     };
@@ -492,6 +537,102 @@
         return booklets;
     }
 
+    // ---- the cover's geometry (&part=cover), all in mm
+
+    // To a tenth of a mm, as the fields, the labels and the @page say it.
+    const roundMm = (mm) => Math.round(mm * 10) / 10;
+
+    // A field's value in mm (a comma is a decimal point too), or `fallback` when it is empty or
+    // not a number from `min` to `max`.
+    function parseMm(value, min, max, fallback) {
+        const text = String(value === null || value === undefined ? '' : value).trim().replace(',', '.');
+        const mm = text ? Number(text) : NaN;
+        return Number.isFinite(mm) && mm >= min && mm <= max ? mm : fallback;
+    }
+
+    // A width in mm as a reader reads it: "14,2" in Spanish, "14.2" in English.
+    function formatMm(mm, lang) {
+        return roundMm(mm).toLocaleString(lang === 'ES' ? 'es-ES' : 'en-GB', { maximumFractionDigits: 1, useGrouping: false });
+    }
+
+    // The pages a laid-out book really has on paper: an odd count ends on a blank page, and the
+    // booklets are folios of four pages, the last one filled with blanks (bookletImposition).
+    function printedPages(pages, paper) {
+        const count = Math.max(0, Math.ceil(Number(pages) || 0));
+        return paper === 'BOOKLET' ? Math.ceil(count / 4) * 4 : count + (count % 2);
+    }
+
+    // The spine: the sheets of paper (two pages each) times the thickness of one, to a tenth of a
+    // mm. `manual` is what the user wrote instead (a number), or null for the automatic width.
+    // `text`: whether it is wide enough for words (SPINE_TEXT_MIN).
+    function spineFor({ pages, paper, thickness = THICKNESS_DEFAULT, manual = null }) {
+        const perSheet = Number.isFinite(thickness) && thickness > 0 ? thickness : THICKNESS_DEFAULT;
+        const sheets = printedPages(pages, paper) / 2;
+        const auto = roundMm(sheets * perSheet);
+        const byHand = typeof manual === 'number' && Number.isFinite(manual) && manual >= 0;
+        const width = byHand ? roundMm(manual) : auto;
+        return { sheets, auto, width, manual: byHand, text: width >= SPINE_TEXT_MIN };
+    }
+
+    // The sheet of a cover: back, spine and front side by side (the trimmed pages of `paper`, the
+    // booklets' being A5), and the bleed all round; where each part starts from the left.
+    function coverSheetSize(paper, spine, bleed) {
+        const page = PAPER_MM[paper === 'A4' ? 'A4' : 'A5'];
+        const s = Math.max(0, Number(spine) || 0);
+        const b = Math.max(0, Number(bleed) || 0);
+        return {
+            pageW: page.w, pageH: page.h, spine: s, bleed: b, width: roundMm(2 * page.w + s + 2 * b), height: roundMm(page.h + 2 * b),
+            spineLeft: roundMm(b + page.w), frontLeft: roundMm(b + page.w + s)
+        };
+    }
+
+    // The print style of a cover's sheet: exactly its size, no margin; with a `name`, the named
+    // page of one sheet among several (each sheet says `page: <name>`).
+    function coverPageStyle(size, name = '') {
+        const named = name ? `${name} ` : '';
+        return `@page ${named}{ size: ${size.width}mm ${size.height}mm; margin: 0; }`;
+    }
+
+    // What the spine holds and how big, in mm, all from its width (everything is centred across
+    // it): the number's chip and its digits, the logo, the name, the title, the picture at the
+    // foot (0: none, under 8 mm), the gaps and the room left at the top and the foot. `text`
+    // is false under SPINE_TEXT_MIN: then only the number.
+    function spineSizes(width) {
+        const w = Math.max(0, Number(width) || 0);
+        const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+        const chip = Math.min(w * 0.9, clamp(w * 0.7, 3, 14));
+        return {
+            text: w >= SPINE_TEXT_MIN, chip: roundMm(chip), numeral: roundMm(chip * 0.8), logo: roundMm(clamp(w * 0.5, 2.5, 9)),
+            brand: roundMm(clamp(w * 0.5, 2, 7.5)), title: roundMm(clamp(w * 0.5, 2, 8)), hero: w >= 8 ? roundMm(Math.min(w * 0.8, 16)) : 0,
+            gap: roundMm(clamp(w * 0.3, 1, 4)), pad: roundMm(clamp(w * 0.4, 3, 8))
+        };
+    }
+
+    // The sections of a volume as its back lists them ("In this volume"): the topics each spans
+    // (a topic never printed, such as 0, left out of the start) and its title.
+    function backSections(volume, lang, skip = new Set()) {
+        const rows = volume && Array.isArray(volume.sections) ? volume.sections : [];
+        return rows.filter((row) => Array.isArray(row) && Number.isInteger(row[0]) && Number.isInteger(row[1])).map(([from, to, es, en]) => {
+            let first = from;
+            while (first < to && skip.has(String(first))) first++;
+            return { range: first === to ? String(first) : `${first}–${to}`, title: (lang === 'ES' ? es : en) || es || en || '' };
+        });
+    }
+
+    // Everything the back of a volume's cover says (coverBackHtml draws it): its sections fill
+    // one column, or two from BACK_TWO_COLUMNS on, top to bottom (`rows` in each).
+    function backModel(manifest, volume, lang) {
+        const text = TEXT[lang];
+        const pick = (pair) => (pair && (pair[lang] || pair.ES || pair.EN)) || '';
+        const sections = backSections(volume, lang, skipOf(manifest));
+        const columns = sections.length >= BACK_TWO_COLUMNS ? 2 : 1;
+        return {
+            colour: safeColour(volume.colour), numeral: String(volume.volume), label: text.volumeWord, title: pick(volume.title),
+            synopsis: pick(volume.synopsis), heading: text.inThisVolume, sections, columns, rows: Math.max(1, Math.ceil(sections.length / columns)),
+            readOnline: text.readOnline, web: text.webAddress
+        };
+    }
+
     function escapeHtml(text) {
         return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -505,7 +646,9 @@
     const api = {
         publicTopics, sectionsFor, paginateChapter, paginate, bookletImposition, TEXT, SKIP_SCRIPTS,
         findVolume, volumeOfTopic, skipOf, volumeTopics, sectionRows, linkLabel, indexEntries, indexLetter, formatDate, editionLine,
-        tabTop, wholeBookIcons, coverModel, volumePages, pagesReportText
+        tabTop, wholeBookIcons, coverModel, volumePages, pagesReportText,
+        PAPER_MM, THICKNESS_DEFAULT, BLEED_DEFAULT, SPINE_TEXT_MIN, SPINE_READS, parseMm, formatMm, printedPages, spineFor, coverSheetSize,
+        coverPageStyle, spineSizes, backSections, backModel
     };
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
@@ -551,79 +694,24 @@
             || valid(loadSetting('minecloud-guide-print-volume') || '') || 'ALL';
     }
 
+    // The book or its cover: the address says it (&part=book|cover), or the last choice.
+    function initialPart() {
+        return initialChoice('part', 'minecloud-guide-print-part', PARTS, 'BOOK');
+    }
+
+    // A cover's field in mm that the browser remembers (the paper's thickness, the bleed).
+    function initialMm(storageKey, min, max, fallback) {
+        return parseMm(loadSetting(storageKey), min, max, fallback);
+    }
+
     const nextFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
 
     // ---------------------------------------------------------------- the picture painter
 
-    // Loads the game's scripts (as index.html lists them) one after the other. A script that
-    // fails is skipped: only its pictures will be missing.
-    async function loadEngine() {
-        if (typeof THREE === 'undefined') return null;
-        let sources = null;
-        try {
-            const response = await fetch('index.html', { cache: 'no-cache' });
-            if (response.ok) {
-                const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
-                sources = [...doc.querySelectorAll('script[src]')].map((script) => script.getAttribute('src'));
-            }
-        } catch (_error) {
-            sources = null;
-        }
-        sources = (sources || []).filter((src) => !/^(https?:)?\/\//.test(src) && !SKIP_SCRIPTS.test(src));
-        if (!sources.length) sources = FALLBACK_SCRIPTS;
-        for (const src of sources) {
-            await new Promise((resolve) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = () => { console.warn('[guide-print] could not load', src); resolve(); };
-                document.head.appendChild(script);
-            });
-        }
-
-        const engine = { world: null, portraits: null };
-        try {
-            if (typeof WorldRenderer === 'function') {
-                engine.world = new WorldRenderer(new THREE.Scene());
-                // No terrain here: the chunk decoder worker is not needed.
-                if (engine.world.chunkDecoder) engine.world.chunkDecoder.terminate();
-            }
-        } catch (error) {
-            console.warn('[guide-print] no item icons:', error);
-            engine.world = null;
-        }
-        try {
-            if (typeof Game === 'function' && typeof Game.prototype.bestiaryRenderPortrait === 'function') {
-                engine.portraits = Object.create(Game.prototype);
-                engine.portraits.bestiaryTextureCache = new Map();
-            }
-        } catch (error) {
-            console.warn('[guide-print] no mob portraits:', error);
-        }
-        return engine;
-    }
-
-    // The data URL of `mob:species` / `item:type`, or null when it cannot be drawn.
-    function drawAsset(engine, kind, name) {
-        if (!engine) return null;
-        try {
-            if (kind === 'item') {
-                return engine.world && engine.world.blockTypes[name] ? engine.world.getInventoryIconUrl(name) : null;
-            }
-            if (kind === 'model') {
-                // What has a model and is not a species (the robot): the game builds it, `<name>PortraitModel`
-                // (robotPortraitModel in js/game/robot.js), and the bestiary's stage draws it like a portrait.
-                const portraits = engine.portraits;
-                const build = portraits && portraits[`${name}PortraitModel`];
-                return typeof build === 'function' && typeof portraits.bestiaryRenderObject === 'function'
-                    ? portraits.bestiaryRenderObject(build.call(portraits)) : null;
-            }
-            return engine.portraits ? engine.portraits.bestiaryRenderPortrait(name) : null;
-        } catch (error) {
-            console.warn(`[guide-print] could not draw ${kind}:${name}`, error);
-            return null;
-        }
-    }
+    // The game's own painter (js/guideEngine.js): the game's scripts loaded once, and a picture drawn. Without
+    // that script there is no painter, and every picture is the placeholder.
+    const loadEngine = async () => (typeof guideEngineLoad === 'function' ? guideEngineLoad() : null);
+    const drawAsset = (engine, kind, name) => (typeof guideEngineDraw === 'function' ? guideEngineDraw(engine, kind, name) : null);
 
     // ---------------------------------------------------------------- the book
 
@@ -633,6 +721,13 @@
         folios: initialFolios(),
         longEdge: loadSetting('minecloud-guide-print-long-edge') === '1',
         volume: initialVolume(),
+        // The cover (&part=cover): its fields, the spines written by hand (volume -> mm, for this
+        // visit only) and the pages of each volume laid out so far (layoutKey|volume -> pages).
+        part: initialPart(),
+        thickness: initialMm('minecloud-guide-print-thickness', THICKNESS_RANGE.min, THICKNESS_RANGE.max, THICKNESS_DEFAULT),
+        bleed: initialMm('minecloud-guide-print-bleed', 0, BLEED_MAX, BLEED_DEFAULT),
+        spineManual: new Map(),
+        volumeTotals: new Map(),
         build: 0,
         engine: undefined,
         enginePromise: null,
@@ -663,9 +758,25 @@
         root.classList.toggle('gp-a4', state.paper === 'A4');
         root.classList.toggle('gp-a5', state.paper !== 'A4');
         root.classList.toggle('gp-booklet', booklet);
-        document.getElementById('gp-page-style').textContent = booklet
-            ? '@page { size: A4 landscape; margin: 0; }'
-            : `@page { size: ${state.paper} portrait; margin: 0; }`;
+        // The cover's sheet says its own size once it is known (buildCovers).
+        const cover = state.part === 'COVER';
+        root.classList.toggle('gp-covers', cover);
+        if (!cover) {
+            document.getElementById('gp-page-style').textContent = booklet
+                ? '@page { size: A4 landscape; margin: 0; }'
+                : `@page { size: ${state.paper} portrait; margin: 0; }`;
+        }
+        elements.parts.forEach((button) => {
+            button.textContent = button.dataset.part === 'COVER' ? text.partCover : text.partBook;
+            button.classList.toggle('active', button.dataset.part === state.part);
+        });
+        elements.coverOptions.hidden = !cover;
+        elements.thicknessLabel.textContent = text.thickness;
+        elements.spineLabel.textContent = text.spine;
+        elements.spineAuto.textContent = text.spineAuto;
+        elements.bleedLabel.textContent = text.bleed;
+        elements.thickness.value = String(state.thickness);
+        elements.bleed.value = String(state.bleed);
         document.title = text.book;
         elements.print.textContent = `🖨 ${text.print}`;
         elements.inkLabel.textContent = text.inkSaver;
@@ -910,18 +1021,30 @@
     // The cover (coverModel), laid out in a box of 148 x 210 mm that A4 scales (guide-print.html,
     // "covers"). Its pictures are drawn like any other (gp-pending).
     function coverPage(manifest, volume, topics) {
-        const model = coverModel(manifest, volume, topics, state.lang, todayIso());
+        const page = document.createElement('div');
+        page.className = 'gp-page gp-cover';
+        page.innerHTML = coverArtHtml(coverModel(manifest, volume, topics, state.lang, todayIso()));
+        return page;
+    }
+
+    // A picture of the covers (`mob:sheep`, `item:torch`, `model:robot`), drawn later like any
+    // other (gp-pending), or the placeholder.
+    function coverAsset(ref, extra) {
+        return /^(mob|item|model):[a-z0-9_]+$/.test(String(ref))
+            ? `<img class="gp-pending gp-${ref.split(':')[0]} ${extra}" data-asset="${escapeHtml(ref)}" src="${BLANK}" alt="">`
+            : `<img class="gp-missing ${extra}" src="${state.placeholder}" alt="">`;
+    }
+
+    // The design of a cover (coverModel), the box of 148 x 210 mm: the cover page inside the book
+    // and the front of the cardboard cover (coverSheet) are this same HTML.
+    function coverArtHtml(model) {
         const text = TEXT[state.lang];
         const colour = escapeHtml(model.colour);
-        const asset = (ref, extra) => (/^(mob|item|model):[a-z0-9_]+$/.test(String(ref))
-            ? `<img class="gp-pending gp-${ref.split(':')[0]} ${extra}" data-asset="${escapeHtml(ref)}" src="${BLANK}" alt="">`
-            : `<img class="gp-missing ${extra}" src="${state.placeholder}" alt="">`);
+        const asset = coverAsset;
         const hero = model.hero ? asset(model.hero, 'gp-cover-hero-img') : '<img class="gp-cover-hero-img gp-cover-book" src="guide/img/book.png" alt="">';
         const numeral = model.numeral === null ? '' : `<div class="gp-cover-numeral">${coverFill(colour)}<span>${escapeHtml(model.numeral)}</span></div>`;
         const tab = model.tabTop === null ? '' : `<div class="gp-cover-tab" style="top: ${model.tabTop}mm">${coverFill(colour)}<span>${escapeHtml(model.numeral)}</span></div>`;
-        const page = document.createElement('div');
-        page.className = 'gp-page gp-cover';
-        page.innerHTML = `<div class="gp-cover-art" style="--volume: ${colour}">
+        return `<div class="gp-cover-art" style="--volume: ${colour}">
                 <div class="gp-cover-frame"><div class="gp-cover-column">
                     <div class="gp-cover-mast">${COVER_CUBE}<div class="gp-cover-mast-words"><div class="gp-cover-brand">MineCloud</div>
                         <div class="gp-cover-strap">${escapeHtml(text.strap)}</div></div></div>
@@ -935,7 +1058,72 @@
                 </div></div>
                 ${tab}
             </div>`;
-        return page;
+    }
+
+    // ---- the cardboard cover (&part=cover): back, spine and front on one sheet
+
+    // The spine (spineSizes gives every size from its width; guide-print.html, "the cover's
+    // sheet", centres it all across): from the top the logo and the name, the number in its chip,
+    // the title and the hero small at the foot. Too thin for words: the number only.
+    function coverSpineHtml(model, width) {
+        const size = spineSizes(width);
+        const colour = escapeHtml(model.colour);
+        const chip = `<div class="gp-spine-chip">${coverFill(colour)}<span>${escapeHtml(model.numeral)}</span></div>`;
+        const vars = `--volume: ${colour}; --spine-chip: ${size.chip}mm; --spine-numeral: ${size.numeral}mm; --spine-logo: ${size.logo}mm; ` +
+            `--spine-brand: ${size.brand}mm; --spine-title: ${size.title}mm; --spine-hero: ${size.hero}mm; --spine-gap: ${size.gap}mm; --spine-pad: ${size.pad}mm`;
+        if (!size.text) return `<div class="gp-spine-column gp-spine-thin" style="${vars}">${chip}</div>`;
+        const hero = size.hero && model.hero ? `<div class="gp-spine-hero">${coverAsset(model.hero, 'gp-spine-hero-img')}</div>` : '';
+        return `<div class="gp-spine-column gp-spine-reads-${SPINE_READS}" style="${vars}">
+                <div class="gp-spine-logo">${COVER_CUBE}</div><div class="gp-spine-words gp-spine-brand">MineCloud</div>
+                ${chip}<div class="gp-spine-words gp-spine-title">${escapeHtml(model.title)}</div>${hero}
+            </div>`;
+    }
+
+    // The back (backModel), in the same box of 148 x 210 mm as the front, with its frame and its
+    // masthead: the volume, its synopsis, its sections and the address of the guide on the web.
+    function coverBackHtml(back) {
+        const text = TEXT[state.lang];
+        const colour = escapeHtml(back.colour);
+        const sections = back.sections.map((section) => `<li><span class="gp-back-range">${escapeHtml(section.range)}</span>` +
+            `<span class="gp-back-section">${escapeHtml(section.title)}</span></li>`).join('');
+        return `<div class="gp-back-art" style="--volume: ${colour}">
+                <div class="gp-cover-frame"><div class="gp-cover-column gp-back-column">
+                    <div class="gp-cover-mast">${COVER_CUBE}<div class="gp-cover-mast-words"><div class="gp-cover-brand">MineCloud</div>
+                        <div class="gp-cover-strap">${escapeHtml(text.strap)}</div></div></div>
+                    <div class="gp-back-volume"><div class="gp-back-numeral">${coverFill(colour)}<span>${escapeHtml(back.numeral)}</span></div>
+                        <div class="gp-cover-volume-words"><div class="gp-cover-label">${escapeHtml(back.label)}</div>
+                        <div class="gp-back-title">${escapeHtml(back.title)}</div></div></div>
+                    <p class="gp-back-synopsis">${escapeHtml(back.synopsis)}</p>
+                    <div class="gp-back-heading">${escapeHtml(back.heading)}</div>
+                    <ul class="gp-back-sections gp-back-columns-${back.columns}" style="--back-rows: ${back.rows}">${sections}</ul>
+                    <p class="gp-back-foot">${escapeHtml(back.readOnline)} <strong>${escapeHtml(back.web)}</strong></p>
+                </div></div>
+            </div>`;
+    }
+
+    // The sheet of volume `volume`'s cover, whose book has `pages` pages: its label (screen only),
+    // the sheet itself and its size (coverSheetSize). Dashed lines show the trim and the folds on
+    // the screen, never on paper.
+    function coverSheet(manifest, volume, topics, pages) {
+        const text = TEXT[state.lang];
+        const manual = state.spineManual.has(volume.volume) ? state.spineManual.get(volume.volume) : null;
+        const spine = spineFor({ pages, paper: state.paper, thickness: state.thickness, manual });
+        const size = coverSheetSize(state.paper, spine.width, state.bleed);
+        const model = coverModel(manifest, volume, topics, state.lang, todayIso());
+        const box = (left, width) => `left: ${left}mm; top: ${size.bleed}mm; width: ${width}mm; height: ${size.pageH}mm`;
+        const sheet = document.createElement('div');
+        sheet.className = 'gp-sheet';
+        sheet.style.cssText = `width: ${size.width}mm; height: ${size.height}mm; --sheet-h: ${size.height}mm; page: gp-sheet-${volume.volume}`;
+        sheet.innerHTML = `<div class="gp-sheet-panel" style="${box(size.bleed, size.pageW)}">${coverBackHtml(backModel(manifest, volume, state.lang))}</div>
+            <div class="gp-sheet-panel" style="${box(size.spineLeft, size.spine)}">${coverSpineHtml(model, spine.width)}</div>
+            <div class="gp-sheet-panel" style="${box(size.frontLeft, size.pageW)}">${coverArtHtml(model)}</div>
+            <div class="gp-sheet-guide" style="${box(size.bleed, roundMm(size.width - 2 * size.bleed))}"></div>
+            <div class="gp-sheet-guide gp-sheet-fold" style="${box(size.spineLeft, size.spine)}"></div>`;
+        const label = document.createElement('div');
+        label.className = 'gp-sheet-label';
+        label.textContent = text.coverLabel(volume.volume, printedPages(pages, state.paper), formatMm(spine.width, state.lang),
+            formatMm(size.width, state.lang), formatMm(size.height, state.lang), spine.manual);
+        return { label, sheet, size, spine };
     }
 
     // A page with its header (the title, and the chip of the guide number at the outer corner:
@@ -1045,8 +1233,25 @@
         return copy;
     }
 
-    async function build() {
-        const buildId = ++state.build;
+    // The picture painter, loaded once (loadEngine); null when there is none.
+    async function readyEngine() {
+        if (state.engine !== undefined) return state.engine;
+        setStatus(TEXT[state.lang].loadingEngine, null);
+        if (!state.enginePromise) {
+            state.enginePromise = loadEngine().catch((error) => {
+                console.warn('[guide-print] engine failed', error);
+                return null;
+            });
+        }
+        state.engine = await state.enginePromise;
+        return state.engine;
+    }
+
+    // The book of the chosen volume, shown. With `only` ({ volume, buildId }, from buildCovers)
+    // that volume is laid out out of sight instead, to count its pages: it returns them.
+    async function build(only = null) {
+        if (!only && state.part === 'COVER') return buildCovers();
+        const buildId = only ? only.buildId : ++state.build;
         const text = TEXT[state.lang];
         elements.print.disabled = true;
         applySettings();
@@ -1060,7 +1265,7 @@
         }
         const manifest = await loadManifest();
         if (buildId !== state.build) return;
-        const volume = currentVolume(manifest);
+        const volume = only ? only.volume : currentVolume(manifest);
         const printing = volume ? volume.volume : null;
         applyVolume(manifest, volume);
         const all = publicTopics(index, state.lang);
@@ -1094,14 +1299,7 @@
         const cover = coverPage(manifest, volume, topics);
 
         if (state.engine === undefined) {
-            setStatus(text.loadingEngine, null);
-            if (!state.enginePromise) {
-                state.enginePromise = loadEngine().catch((error) => {
-                    console.warn('[guide-print] engine failed', error);
-                    return null;
-                });
-            }
-            state.engine = await state.enginePromise;
+            await readyEngine();
             if (buildId !== state.build) return;
         }
         const flows = [cover, ...chapters.map((chapter) => chapter.flow)];
@@ -1154,6 +1352,9 @@
             }
         }
         host.replaceChildren();
+        // The cover's spine is as wide as these pages make the book (buildCovers).
+        if (printing !== null) state.volumeTotals.set(`${layoutKey()}|${printing}`, pageNumber);
+        if (only) return pageNumber;
 
         // The contents gives the page where each chapter starts.
         book.querySelectorAll('.gp-toc-num').forEach((num) => { num.textContent = String(starts.get(num.dataset.anchor) || '?'); });
@@ -1172,6 +1373,85 @@
         const warning = renderReport(manifest, all, counts, { volume: printing, pages: pageNumber, ...parts });
         if (warning) notes.push(warning);
         setStatus(notes.join(' '), null);
+    }
+
+    // The cover output (&part=cover): the sheet of the chosen volume, or one for each with all of
+    // them. A volume's pages come from laying it out as for printing (build with `only`), once
+    // per layout (layoutKey); then the sheets, which take no measuring, and their print style:
+    // one @page of each sheet's size, by name, and the largest for a browser that cannot.
+    async function buildCovers() {
+        const buildId = ++state.build;
+        const text = TEXT[state.lang];
+        elements.print.disabled = true;
+        applySettings();
+        elements.report.hidden = true;
+        let index;
+        try {
+            index = await loadIndex();
+        } catch (_error) {
+            setStatus(text.offline, null);
+            return;
+        }
+        const manifest = await loadManifest();
+        if (buildId !== state.build) return;
+        const chosen = currentVolume(manifest);
+        const list = chosen ? [chosen] : manifestVolumes(manifest);
+        applyVolume(manifest, chosen);
+        applySpineField(chosen, undefined);
+        if (!list.length) {
+            elements.book.replaceChildren();
+            setStatus(text.coverNoVolumes, null);
+            return;
+        }
+        const all = publicTopics(index, state.lang);
+        const totals = new Map();
+        for (const entry of list) {
+            const key = `${layoutKey()}|${entry.volume}`;
+            if (!state.volumeTotals.has(key)) {
+                setStatus(text.coverCounting(entry.volume), null);
+                const pages = await build({ volume: entry, buildId });
+                if (buildId !== state.build || typeof pages !== 'number') return;
+            }
+            totals.set(entry.volume, state.volumeTotals.get(key));
+        }
+        // Counting showed each volume in turn: back to the one chosen.
+        applyVolume(manifest, chosen);
+        document.title = `${document.title} · ${text.partCover}`; // the name a saved PDF gets
+        applySpineField(chosen, chosen ? totals.get(chosen.volume) : undefined);
+        await readyEngine();
+        if (buildId !== state.build) return;
+
+        const sheets = list.map((entry) => coverSheet(manifest, entry, volumeTopics(all, manifest, entry.volume), totals.get(entry.volume)));
+        const missing = await drawPictures(sheets.flatMap(({ sheet }) => [...sheet.querySelectorAll('img.gp-pending')]), buildId);
+        if (missing === null) return;
+        setStatus(text.waiting, null);
+        await waitForImagesAndFonts(sheets.flatMap(({ sheet }) => [...sheet.querySelectorAll('img')]));
+        if (buildId !== state.build) return;
+
+        const largest = { width: Math.max(...sheets.map(({ size }) => size.width)), height: Math.max(...sheets.map(({ size }) => size.height)) };
+        document.getElementById('gp-page-style').textContent = [coverPageStyle(largest),
+            ...sheets.map(({ size }, k) => coverPageStyle(size, `gp-sheet-${list[k].volume}`))].join('\n');
+        elements.book.replaceChildren(...sheets.flatMap(({ label, sheet }) => [label, sheet]));
+        elements.print.disabled = false;
+        const notes = [list.length === 1 ? text.coverReady(formatMm(largest.width, state.lang), formatMm(largest.height, state.lang)) : text.coverReadyAll(list.length)];
+        if (!state.engine) notes.push(text.noEngine);
+        else if (missing) notes.push(text.partial(missing));
+        setStatus(notes.join(' '), null);
+    }
+
+    // The "Spine, mm" field: the chosen volume's width, written by hand or automatic (`pages`
+    // laid out; undefined while they are counted), which "Automatic" brings back. With every
+    // volume each has its own, and the field rests.
+    function applySpineField(volume, pages) {
+        const text = TEXT[state.lang];
+        const manual = volume && state.spineManual.has(volume.volume) ? state.spineManual.get(volume.volume) : null;
+        elements.spine.disabled = !volume;
+        elements.spine.placeholder = volume ? '' : text.spineEach;
+        elements.spineAuto.disabled = manual === null;
+        if (!volume) elements.spine.value = '';
+        else if (pages !== undefined || manual !== null) {
+            elements.spine.value = String(spineFor({ pages: pages || 0, paper: state.paper, thickness: state.thickness, manual }).width);
+        }
     }
 
     // The toolbar's "Pages per volume" (screen only): what has been measured in this layout, per
@@ -1284,6 +1564,48 @@
         build();
     }
 
+    function setPart(part) {
+        if (!PARTS.includes(part) || part === state.part) return;
+        state.part = part;
+        saveSetting('minecloud-guide-print-part', part);
+        setUrlParam('part', part.toLowerCase());
+        build();
+    }
+
+    // The cover's fields: a value out of range puts back the one there was.
+    function setThickness(value) {
+        const mm = parseMm(value, THICKNESS_RANGE.min, THICKNESS_RANGE.max, state.thickness);
+        elements.thickness.value = String(mm);
+        if (mm === state.thickness) return;
+        state.thickness = mm;
+        saveSetting('minecloud-guide-print-thickness', mm);
+        build();
+    }
+
+    function setBleed(value) {
+        const mm = parseMm(value, 0, BLEED_MAX, state.bleed);
+        elements.bleed.value = String(mm);
+        if (mm === state.bleed) return;
+        state.bleed = mm;
+        saveSetting('minecloud-guide-print-bleed', mm);
+        build();
+    }
+
+    // The spine of the chosen volume by hand (an empty field is the automatic width again).
+    function setSpine(value) {
+        if (state.volume === 'ALL') return;
+        const volume = Number(state.volume);
+        const mm = parseMm(value, 0, SPINE_MAX, null);
+        if (mm !== null) state.spineManual.set(volume, roundMm(mm));
+        else if (!String(value).trim()) state.spineManual.delete(volume);
+        build();
+    }
+
+    function setSpineAuto() {
+        if (state.volume !== 'ALL') state.spineManual.delete(Number(state.volume));
+        build();
+    }
+
     function setFolios(value) {
         const folios = Math.max(1, Math.min(FOLIOS_MAX, Math.round(Number(value)) || FOLIOS_DEFAULT));
         if (folios === state.folios) {
@@ -1336,6 +1658,20 @@
         elements.reportCopy = document.getElementById('gp-report-copy');
         elements.reportCopied = document.getElementById('gp-report-copied');
         elements.reportCopy.addEventListener('click', copyReport);
+        elements.parts = [...document.querySelectorAll('.gp-part')];
+        elements.coverOptions = document.getElementById('gp-cover-options');
+        elements.thickness = document.getElementById('gp-thickness');
+        elements.thicknessLabel = document.getElementById('gp-thickness-label');
+        elements.spine = document.getElementById('gp-spine');
+        elements.spineLabel = document.getElementById('gp-spine-label');
+        elements.spineAuto = document.getElementById('gp-spine-auto');
+        elements.bleed = document.getElementById('gp-bleed');
+        elements.bleedLabel = document.getElementById('gp-bleed-label');
+        elements.parts.forEach((button) => button.addEventListener('click', () => setPart(button.dataset.part)));
+        elements.thickness.addEventListener('change', () => setThickness(elements.thickness.value));
+        elements.spine.addEventListener('change', () => setSpine(elements.spine.value));
+        elements.spineAuto.addEventListener('click', setSpineAuto);
+        elements.bleed.addEventListener('change', () => setBleed(elements.bleed.value));
 
         const ink = loadSetting('minecloud-guide-print-ink') !== '0';
         elements.ink.checked = ink;

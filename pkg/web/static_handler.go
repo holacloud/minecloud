@@ -16,6 +16,12 @@ import (
 // their size, which is most of what a child on a slow connection waits for. Each file is compressed once,
 // the first time somebody asks for it, and kept: they are embedded and never change while the server runs.
 
+// The fonts of the guide's web pages (static/fonts, pkg/web/book.go): not every system's table of types knows
+// woff2, and a font served as anything else is refused by some browsers.
+func init() {
+	mime.AddExtensionType(".woff2", "font/woff2")
+}
+
 // What is worth compressing. Everything else (and anything unusual: a range, a directory) is served as ever.
 var staticCompressed = map[string]bool{
 	".js": true, ".css": true, ".html": true, ".json": true, ".md": true, ".svg": true, ".txt": true,

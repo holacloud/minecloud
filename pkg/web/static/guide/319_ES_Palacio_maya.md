@@ -1,6 +1,6 @@
 # Palacio maya
 
-![Estuco rojo de cal](item:red_stucco)
+![Vista del palacio maya desde arriba](img/build_palace_maya.png)
 
 En plena jungla, una plaza empedrada con dos piedras talladas lleva a una **gran escalinata** de 21 bloques de ancho que sube a una plataforma roja y blanca. Encima hay edificios largos pintados de rojo, con tejados escalonados, frisos de grecas en zigzag y crestas caladas en lo alto. Cerca se alzan una **pirámide escalonada**, un **juego de pelota** y un pozo redondo de agua. Es el **Palacio maya**, y su ciencia es el cielo de los mayas y sus números.
 

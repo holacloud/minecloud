@@ -75,6 +75,10 @@ const GUIDE_CSS = `
 #guide-book .guide-topic figure { margin: 0.8em 0; text-align: center; }
 #guide-book .guide-topic figure img { max-width: 100%; image-rendering: pixelated; box-shadow: 0 0 0 4px #c9b07a; }
 #guide-book .guide-topic figure img[src^="data:"] { box-shadow: none; width: 220px; }
+/* The picture of a whole building (tools/guideBuildPictures.js): the width of the text, no frame, scaled down
+   smoothly; a tall one (the apartment block) is kept within the screen. */
+#guide-book .guide-topic figure img[src*="img/build_"] { box-shadow: none; width: 100%; height: auto; max-height: 75vh;
+    object-fit: contain; image-rendering: auto; }
 #guide-book .guide-topic p img, #guide-book .guide-topic li img, #guide-book .guide-topic td img { height: 1.15em;
     vertical-align: -0.22em; image-rendering: pixelated; }
 #guide-book .guide-topic figcaption { font-size: 22px; color: #7a5a35; }
@@ -118,9 +122,11 @@ Object.assign(Game.prototype, {
         // would lose the place where they left the book.
         this.guideTopic = this.guideTopicId(this.guideLoadSetting('minecloud-guide-page')) || GUIDE_CONTENTS_TOPIC;
 
+        // The book's fonts are kept and served by this server (static/fonts/fonts.css), so the game asks
+        // nothing of another site; a face is fetched only when the book first draws text in it.
         const fonts = document.createElement('link');
         fonts.rel = 'stylesheet';
-        fonts.href = 'https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=VT323&display=swap';
+        fonts.href = 'fonts/fonts.css';
         document.head.appendChild(fonts);
         const style = document.createElement('style');
         style.textContent = GUIDE_CSS;

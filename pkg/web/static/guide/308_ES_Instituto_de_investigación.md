@@ -1,6 +1,6 @@
 # Instituto de investigación
 
-![Mesa de laboratorio](item:lab_bench)
+![Vista del instituto de investigación desde arriba](img/build_lab.png)
 
 Un edificio moderno y ancho de hormigón, ladrillo claro y cristal, de **56 por 52 bloques**, con una franja de color en cada planta, tres plantas de alto y una **cúpula de observatorio** en la azotea: es un **instituto de investigación**, un lugar donde se trabaja para descubrir lo que todavía no sabe nadie. Casi todo lo que hay dentro funciona de verdad: los microscopios, las mesas de laboratorio, los hornos, las fundiciones, el ascensor y, sobre todo, la **electricidad**, que sigue las mismas reglas que tus propias [redes](200).
 

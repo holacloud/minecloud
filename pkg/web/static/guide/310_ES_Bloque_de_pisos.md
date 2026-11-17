@@ -1,6 +1,6 @@
 # Bloque de pisos
 
-![Parada de ascensor](item:lift_stop)
+![Vista del bloque de pisos desde arriba](img/build_apartments.png)
 
 Un edificio alto y moderno, de **24 bloques de ancho y 18 de fondo**, con balcones por los dos lados y un jardín en la azotea: un **bloque de pisos**. Sobre el portal hay **11 plantas de viviendas**, 31 pisos en total, unidas por una escalera y por un **ascensor que funciona de verdad**.
 

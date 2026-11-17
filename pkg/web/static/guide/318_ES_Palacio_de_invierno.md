@@ -1,6 +1,6 @@
 # Palacio de invierno
 
-![Bloque de nieve](item:snow_block)
+![Vista del palacio de invierno desde arriba](img/build_palace_nordic.png)
 
 Entre abetos nevados, más allá de un estanque helado y de un jardín de hielo, se alza un palacio de **ladrillo rojo** con molduras blancas, tejados oscuros muy empinados y un racimo de **cúpulas de cebolla a rayas** alrededor de una dorada. Dentro hay un fuego en casi cada sala. Un cartel en la verja dice su nombre: el **Palacio de Invierno de la Aurora**.
 

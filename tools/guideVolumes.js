@@ -28,6 +28,8 @@ const TOPIC_FILE = /^(\d{1,8})_(ES|EN)_.+\.md$/;
 const VOLUME_FILE = /^(\d+)_(recap|news)_(ES|EN)\.md$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EMPTY_LOCK = { closedThrough: 0, volumes: [], topics: {}, minor: {} };
+// The words of a volume's synopsis, printed on the back of its cover (README.md, "Volumes").
+const SYNOPSIS_WORDS = { min: 40, max: 100 };
 
 // sha1 of a file's bytes, 12 hex characters: enough to tell one text from another.
 function hashText(bytes) {
@@ -80,6 +82,18 @@ function checkManifest(manifest, publicIds) {
         for (const field of ['title', 'blurb']) {
             for (const lang of LANGS) {
                 if (!(volume[field] && typeof volume[field][lang] === 'string' && volume[field][lang].trim())) problems.push(`${name} has no ${field} in ${lang}`);
+            }
+        }
+        // The synopsis of the back cover (js/guidePrint.js, coverBackHtml): 50 to 90 words is the aim.
+        for (const lang of LANGS) {
+            const synopsis = volume.synopsis && volume.synopsis[lang];
+            if (!(typeof synopsis === 'string' && synopsis.trim())) {
+                problems.push(`${name} has no synopsis in ${lang}`);
+                continue;
+            }
+            const words = chapterWords(synopsis);
+            if (words < SYNOPSIS_WORDS.min || words > SYNOPSIS_WORDS.max) {
+                problems.push(`${name}: its synopsis in ${lang} has ${words} words: a synopsis has ${SYNOPSIS_WORDS.min} to ${SYNOPSIS_WORDS.max} (aim at 50 to 90)`);
             }
         }
         if (!/^#[0-9a-fA-F]{6}$/.test(String(volume.colour))) problems.push(`${name}: "colour" is #rrggbb`);
@@ -378,7 +392,7 @@ function main(args, dir = GUIDE, out = console.log) {
 }
 
 module.exports = {
-    GUIDE, EMPTY_LOCK, RECAP_WORDS, hashText, closedVolumes, checkManifest, checkLock, checkVolumeFiles, chapterWords, chapterLinks, checkRecaps,
+    GUIDE, EMPTY_LOCK, RECAP_WORDS, SYNOPSIS_WORDS, hashText, closedVolumes, checkManifest, checkLock, checkVolumeFiles, chapterWords, chapterLinks, checkRecaps,
     buildLock, toldIds, reviewChanges, waive, untoldMessage, readGuide, main
 };
 

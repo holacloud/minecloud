@@ -1,6 +1,6 @@
 # Palacio oriental
 
-![Trono de laca roja](item:lacquer_throne)
+![Vista del palacio oriental desde arriba](img/build_palace_oriental.png)
 
 En un bosque de cerezos se alza una larga muralla roja con una torre de entrada y un pabellón de vigía en cada esquina. Por encima del muro asoman tejados de **teja vidriada amarilla y verde** cuyos aleros **se curvan hacia arriba** en las esquinas. Un cartel a la entrada dice su nombre: el **Palacio del Cerezo**.
 

@@ -1,6 +1,6 @@
 # Small house
 
-![Bed](item:bed)
+![The small house seen from above](img/build_house.png)
 
 A **cottage** of timber with a stone base and a steep dark roof, in a yard with a fence and flowers: the smallest home you can find in the world, **11 by 14 blocks** with its yard. It has just one room, but everything a person needs to live is in it.
 

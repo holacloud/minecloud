@@ -1,6 +1,6 @@
 # Research institute
 
-![Lab bench](item:lab_bench)
+![The research institute seen from above](img/build_lab.png)
 
 A wide modern building of concrete, pale brick and glass, with a stripe of colour at each floor, **56 by 52 blocks**, three floors high, with an **observatory dome** on the roof: it is a **research institute**, a place where people work at finding out what nobody knows yet. Almost everything in it really works: the microscopes, the lab benches, the ovens, the furnaces, the lift and above all the **electricity**, which runs on the same rules as your own [networks](200).
 

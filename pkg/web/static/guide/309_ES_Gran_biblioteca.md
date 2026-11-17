@@ -1,6 +1,6 @@
 # Gran biblioteca
 
-![Estantería](item:bookshelf)
+![Vista de la gran biblioteca desde arriba](img/build_library.png)
 
 Tras un pórtico de columnas y una ancha escalinata se alza la **gran biblioteca**: un edificio de piedra de **45 por 60 bloques**, con cuatro pisos de galerías llenas de libros alrededor de una sala de lectura cuadrada y, encima, una **cúpula de vidrieras** que brilla con todos los colores contra el cielo. Está inspirada en las grandes salas de lectura con cúpula del siglo XIX, pero es un diseño propio.
 

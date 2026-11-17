@@ -1,6 +1,6 @@
 # Maya palace
 
-![Red Lime Stucco](item:red_stucco)
+![The Maya palace seen from above](img/build_palace_maya.png)
 
 Deep in the jungle, a paved plaza with two carved stones leads to a **great stair**, 21 blocks wide, that climbs a platform of red and white. On top stand long buildings painted red, with stepped roofs, friezes of zigzag patterns and pierced crests along their tops. Nearby rise a **stepped pyramid**, a **ball court** and a round well of water. It is the **Maya palace**, and its science is the Maya sky and their numbers.
 
