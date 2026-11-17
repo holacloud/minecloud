@@ -6,15 +6,20 @@ import (
 	"html"
 	"image"
 	"image/color"
+	"image/draw"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"io/fs"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 	"unicode/utf8"
 )
 
@@ -116,7 +121,7 @@ func TestBookContentsInBothLanguages(t *testing.T) {
 		bookWant(t, body, "<title>"+html.EscapeString(c.title)+"</title>")
 		bookWant(t, body, `<link rel="canonical" href="`+bookTestBase+c.path+`">`)
 		bookWant(t, body, `<link rel="alternate" hreflang="x-default" href="`+bookTestBase+`/book">`)
-		bookWant(t, body, `<meta property="og:image" content="`+bookTestBase+`/guide/img/book.png">`)
+		bookWant(t, body, `<meta property="og:image" content="`+bookTestBase+`/book/card/0.jpg">`)
 		// The contents link to the topics.
 		if strings.Count(body, `<a href="`+c.path+`/`) < 50 {
 			t.Errorf("%s links to few topics", c.path)
@@ -377,7 +382,7 @@ func TestBookPagesAskNothingOfAnotherSite(t *testing.T) {
 		}
 		// What only says where the page itself is may be absolute.
 		own := bookLinkTag.ReplaceAllStringFunc(page, func(tag string) string {
-			for _, kind := range []string{`rel="canonical"`, `rel="alternate"`, `property="og:`} {
+			for _, kind := range []string{`rel="canonical"`, `rel="alternate"`, `property="og:`, `name="twitter:`} {
 				if strings.Contains(tag, kind) {
 					return ""
 				}
@@ -434,14 +439,14 @@ func TestBookShowsThePicturesOfMobsAndItems(t *testing.T) {
 	en := "/book/34-" + BookSlug(bookTitleOf(t, "34", "EN"))
 	page := bookGet(t, bookTestHandler, en).Body.String()
 	bookWant(t, page, `<figure><img src="/guide/pic/mob_horse.png" alt="Horse" width="200" height="200" loading="lazy"><figcaption>Horse</figcaption></figure>`)
-	bookWant(t, page, `<meta property="og:image" content="`+bookTestBase+`/guide/pic/mob_horse.png">`)
+	bookWant(t, page, `<meta property="og:image" content="`+bookTestBase+`/book/card/34.jpg">`)
 	bookWant(t, page, `<td>1 <img src="/guide/pic/item_fur.png" alt="fur" width="64" height="64" loading="lazy"> <code>fur</code>`)
-	// The items' index is lists of icons, and has no picture wide enough for a link's card.
+	// The items' index is lists of icons; its card shows the first.
 	items := bookGet(t, bookTestHandler, "/book/48-"+BookSlug(bookTitleOf(t, "48", "EN"))).Body.String()
 	if icons := strings.Count(items, `<li><img src="/guide/pic/item_`); icons < 100 {
 		t.Errorf("topic 48 has %d items with an icon", icons)
 	}
-	bookWant(t, items, `<meta property="og:image" content="`+bookTestBase+`/guide/img/book.png">`)
+	bookWant(t, items, `<meta property="og:image" content="`+bookTestBase+`/book/card/48.jpg">`)
 	// The extinct animals: a table whose first column is their portraits.
 	extinct := bookGet(t, bookTestHandler, "/libro/261-"+BookSlug(bookTitleOf(t, "261", "ES"))).Body.String()
 	if cells := strings.Count(extinct, `<td><img src="/guide/pic/mob_`); cells < 20 {
@@ -494,8 +499,9 @@ func bookTestPNG(t *testing.T, width, height int) []byte {
 	return buffer.Bytes()
 }
 
-// og:image is a topic's first picture at least 200 pixels wide (an item's icon is not: 64), else the book's;
-// a mob or item with no file yet is left out of the page as before.
+// A topic's card shows its first picture with a file, of any kind and size (an item's icon too), else the book;
+// the contents show the book whatever their pictures. A mob or item with no file yet is left out of the page and
+// of the card. With no landscape among the files the card is still made, on the page's background colour.
 func TestBookPicturesOfAGuideMadeUp(t *testing.T) {
 	static := fstest.MapFS{
 		"guide/0_EN_Contents.md":   {Data: []byte("# Contents\n\n![Torch](item:torch)\n\nNothing else.\n")},
@@ -508,21 +514,380 @@ func TestBookPicturesOfAGuideMadeUp(t *testing.T) {
 		"guide/img/book.png":       {Data: bookTestPNG(t, 256, 256)},
 	}
 	handler := newBookHandler(static, bookTestBase)
-	for _, c := range []struct{ path, image string }{
-		{"/book", "/guide/img/book.png"},
-		{"/book/1-animals", "/guide/pic/mob_sheep.png"},
-		{"/book/2-small", "/guide/img/big.png"},
+	for _, c := range []struct{ id, path, picture string }{
+		{"0", "/book", "guide/img/book.png"},
+		{"1", "/book/1-animals", "guide/pic/item_torch.png"},
+		{"2", "/book/2-small", "guide/img/map.png"},
 	} {
 		response := bookGet(t, handler, c.path)
 		if response.Code != http.StatusOK {
 			t.Fatalf("%s: %d", c.path, response.Code)
 		}
-		bookWant(t, response.Body.String(), `<meta property="og:image" content="`+bookTestBase+c.image+`">`)
+		bookWant(t, response.Body.String(), `<meta property="og:image" content="`+bookTestBase+`/book/card/`+c.id+`.jpg">`)
+		if got := handler.site.cards[c.id]; got != c.picture {
+			t.Errorf("the card of %s shows %q, want %q", c.id, got, c.picture)
+		}
+		card := bookGet(t, handler, "/book/card/"+c.id+".jpg")
+		if decoded, err := jpeg.Decode(card.Body); card.Code != http.StatusOK || err != nil || decoded.Bounds().Dx() != 1200 {
+			t.Errorf("the card of %s: %d %v", c.id, card.Code, err)
+		}
 	}
 	page := bookGet(t, handler, "/book/1-animals").Body.String()
 	bookWant(t, page, `<p>A torch <img src="/guide/pic/item_torch.png" alt="torch" width="64" height="64" loading="lazy"> and a ghost .</p>`)
 	bookWant(t, page, `<figure><img src="/guide/pic/mob_sheep.png" alt="Sheep" width="200" height="200" loading="lazy"><figcaption>Sheep</figcaption></figure>`)
 	if strings.Contains(page, "ghost.png") || strings.Contains(page, "mob:") {
 		t.Error("a mob with no file is shown")
+	}
+}
+
+// bookNear says whether a colour of a decoded JPEG is within a tolerance of another, channel by channel.
+func bookNear(got color.Color, want color.RGBA, tolerance int) bool {
+	r, g, b, _ := got.RGBA()
+	for _, pair := range [][2]int{{int(r >> 8), int(want.R)}, {int(g >> 8), int(want.G)}, {int(b >> 8), int(want.B)}} {
+		if d := pair[0] - pair[1]; d > tolerance || d < -tolerance {
+			return false
+		}
+	}
+	return true
+}
+
+// bookMiddle is the mean colour of the 100 by 100 pixels in the middle of a card.
+func bookMiddle(card image.Image) [3]float64 {
+	var sum [3]float64
+	for y := 265; y < 365; y++ {
+		for x := 550; x < 650; x++ {
+			r, g, b, _ := card.At(x, y).RGBA()
+			sum[0] += float64(r >> 8)
+			sum[1] += float64(g >> 8)
+			sum[2] += float64(b >> 8)
+		}
+	}
+	for i := range sum {
+		sum[i] /= 10000
+	}
+	return sum
+}
+
+// The cards of a portrait (34), of an icon (48, the items' index), of a building (307) and of the contents:
+// 1200 by 630 JPEGs kept like the pages, the same bytes every time, the landscape in a corner, the paper at the
+// plate's edge, and in the middle each its own picture.
+func TestBookCards(t *testing.T) {
+	landscape := bookCardCover(bookCardDecode(MustStaticFS(), "guide/img/landscape.png"), 1200, 630)
+	handler := newBookHandler(MustStaticFS(), bookTestBase)
+	middles := map[string][3]float64{}
+	for _, id := range []string{"34", "48", "307", "0"} {
+		address := "/book/card/" + id + ".jpg"
+		started := time.Now()
+		response := bookGet(t, handler, address)
+		made := time.Since(started)
+		if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "image/jpeg" {
+			t.Fatalf("%s: %d %s", address, response.Code, response.Header().Get("Content-Type"))
+		}
+		if response.Header().Get("Cache-Control") != "public, max-age=3600" || response.Header().Get("Set-Cookie") != "" {
+			t.Errorf("%s: headers %v", address, response.Header())
+		}
+		if response.Header().Get("Content-Length") != strconv.Itoa(response.Body.Len()) {
+			t.Errorf("%s: Content-Length %s for %d bytes", address, response.Header().Get("Content-Length"), response.Body.Len())
+		}
+		body := response.Body.Bytes()
+		t.Logf("%s (%s): made in %v, %d bytes", address, handler.site.cards[id], made, len(body))
+		if again := bookGet(t, handler, address).Body.Bytes(); !bytes.Equal(again, body) {
+			t.Errorf("%s is not the same the second time", address)
+		}
+		card, err := jpeg.Decode(bytes.NewReader(body))
+		if err != nil {
+			t.Fatalf("%s: %v", address, err)
+		}
+		if card.Bounds() != image.Rect(0, 0, 1200, 630) {
+			t.Fatalf("%s is %v", address, card.Bounds())
+		}
+		for _, corner := range []image.Point{{8, 8}, {1191, 8}, {8, 621}, {1191, 621}} {
+			want := landscape.RGBAAt(corner.X, corner.Y)
+			if got := card.At(corner.X, corner.Y); !bookNear(got, want, 12) {
+				t.Errorf("%s at %v: %v, want the landscape's %v", address, corner, got, want)
+			}
+			if bookNear(card.At(corner.X, corner.Y), bookCardPaperTone, 60) {
+				t.Errorf("%s at %v is as light as the paper", address, corner)
+			}
+		}
+		for _, edge := range []image.Point{{120, 70}, {1079, 70}, {120, 140}, {1079, 140}, {600, 140}, {120, 565}, {1079, 565}, {600, 565}} {
+			if got := card.At(edge.X, edge.Y); !bookNear(got, bookCardPaperTone, 8) {
+				t.Errorf("%s at %v: %v, want the paper", address, edge, got)
+			}
+		}
+		// The name in the head band: the middle of the left stem of the "M" (column 0, row 3) is ink, the gap
+		// between the "l" and the "o" (column 31, row 1) is paper, and the head line under the band is its colour.
+		for _, spot := range []struct {
+			at        image.Point
+			want      color.RGBA
+			tolerance int
+			what      string
+		}{
+			{image.Pt(456, 88), bookCardBrown, bookCardInkTolerance, "the stem of the M"},
+			{image.Pt(642, 76), bookCardPaperTone, bookCardInkTolerance, "the gap between the l and the o"},
+			{image.Pt(300, 128), bookCardHeadLine, 10, "the head line"},
+			{image.Pt(900, 128), bookCardHeadLine, 10, "the head line"},
+		} {
+			if got := card.At(spot.at.X, spot.at.Y); !bookNear(got, spot.want, spot.tolerance) {
+				t.Errorf("%s: %s at %v is %v, want %v", address, spot.what, spot.at, got, spot.want)
+			}
+		}
+		if got := card.At(91, 315); !bookNear(got, bookCardBrown, 12) {
+			t.Errorf("%s: the cover is %v", address, got)
+		}
+		middles[id] = bookMiddle(card)
+	}
+	for _, pair := range [][2]string{{"34", "307"}, {"34", "48"}, {"48", "307"}, {"0", "34"}} {
+		a, b := middles[pair[0]], middles[pair[1]]
+		if d := math.Abs(a[0]-b[0]) + math.Abs(a[1]-b[1]) + math.Abs(a[2]-b[2]); d < 15 {
+			t.Errorf("the middles of the cards of %s and %s are alike: %v and %v", pair[0], pair[1], a, b)
+		}
+	}
+	// Two topics with the same first picture share one card; each picture is the worst case of the cache.
+	distinct := map[string]bool{}
+	for _, picture := range handler.site.cards {
+		distinct[picture] = true
+	}
+	t.Logf("%d topics, %d different cards at most", len(handler.site.cards), len(distinct))
+}
+
+// How far from its colour a pixel in the middle of a stroke of the name may come out in a JPEG of quality 85:
+// measured on the four cards of TestBookCards, the stem of the "M" comes out 3 off in a channel and the gap 0
+// (the head line 6; the worst middle of any square of ink in the name, a lone one, 19).
+const bookCardInkTolerance = 8
+
+// The name on the backdrop, before the JPEG: its ink and shadow lie wholly inside the middle square of the
+// card (x 285 to 915) and inside the band above the head line.
+func TestBookCardNameInTheMiddle(t *testing.T) {
+	backdrop := bookCardBackdrop(nil)
+	inside := image.Rect(285, bookCardPaper.Min.Y+4, 915, bookCardRule.Min.Y)
+	var found image.Rectangle
+	ink := 0
+	for y := bookCardPaper.Min.Y + 4; y < bookCardRule.Min.Y; y++ {
+		for x := bookCardPaper.Min.X + 4; x < bookCardPaper.Max.X-4; x++ {
+			got := backdrop.RGBAAt(x, y)
+			if got == bookCardPaperTone {
+				continue
+			}
+			if got == bookCardBrown {
+				ink++
+			}
+			found = found.Union(image.Rect(x, y, x+1, y+1))
+		}
+	}
+	if !found.In(inside) {
+		t.Errorf("the name covers %v, outside %v", found, inside)
+	}
+	if found != image.Rect(453, 67, 753, 115) {
+		t.Errorf("the name and its shadow cover %v, want 453,67 to 753,115", found)
+	}
+	if ink == 0 || ink%36 != 0 {
+		t.Errorf("%d pixels of ink, want squares of 6 by 6", ink)
+	}
+}
+
+// The letters of the name: 9 of 7 rows, 49 columns with their gaps, and drawn at scale 1 they paint exactly
+// their '#' cells and nothing outside their box.
+func TestBookCardNameGlyphs(t *testing.T) {
+	if len(bookCardNameGlyphs) != 9 {
+		t.Fatalf("%d letters, want 9", len(bookCardNameGlyphs))
+	}
+	columns, cells := 0, map[image.Point]bool{}
+	for i, glyph := range bookCardNameGlyphs {
+		for row, line := range glyph {
+			if len(line) != len(glyph[0]) {
+				t.Errorf("letter %d row %d is %d wide, its first %d", i, row, len(line), len(glyph[0]))
+			}
+			for column, cell := range line {
+				if cell == '#' {
+					cells[image.Pt(columns+column, row)] = true
+				} else if cell != '.' {
+					t.Errorf("letter %d row %d has %q", i, row, cell)
+				}
+			}
+		}
+		columns += len(glyph[0]) + 1
+	}
+	if columns-1 != 49 {
+		t.Errorf("%d columns, want 49", columns-1)
+	}
+	picture := image.NewRGBA(image.Rect(0, 0, 55, 11))
+	ink := color.RGBA{1, 2, 3, 255}
+	at := image.Pt(3, 2)
+	bookCardDrawName(picture, at, 1, ink)
+	painted := 0
+	for y := 0; y < 11; y++ {
+		for x := 0; x < 55; x++ {
+			got := picture.RGBAAt(x, y)
+			want := cells[image.Pt(x-at.X, y-at.Y)]
+			if got == ink {
+				painted++
+			}
+			if (got == ink) != want || (got != ink && got != (color.RGBA{})) {
+				t.Errorf("at %d,%d: %v, want ink %v", x, y, got, want)
+			}
+		}
+	}
+	if painted != len(cells) || painted != 116 {
+		t.Errorf("%d pixels painted, %d cells of ink, want 116", painted, len(cells))
+	}
+}
+
+// The scaling of a card's picture, on pictures of a few pixels.
+func TestBookCardScaling(t *testing.T) {
+	for _, c := range []struct{ w, h, want int }{
+		{200, 200, 2}, {64, 64, 6}, {192, 120, 3}, {256, 16, 3}, {300, 150, 1}, {1418, 953, 0}, {1555, 2496, 0}, {1000, 10, 0},
+	} {
+		if got := bookCardWhole(c.w, c.h, 900, 400); got != c.want {
+			t.Errorf("%d by %d in 900 by 400: %d, want %d", c.w, c.h, got, c.want)
+		}
+	}
+	colours := []color.RGBA{{255, 0, 0, 255}, {0, 255, 0, 255}, {0, 0, 255, 255}, {10, 20, 30, 255}}
+	small := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	for i, colour := range colours {
+		small.SetRGBA(i%2, i/2, colour)
+	}
+	// Enlarged three times, each pixel is a square of three by three of its colour.
+	big := bookCardEnlarge(small, 3)
+	if big.Bounds() != image.Rect(0, 0, 6, 6) {
+		t.Fatalf("enlarged to %v", big.Bounds())
+	}
+	for y := 0; y < 6; y++ {
+		for x := 0; x < 6; x++ {
+			if got := big.RGBAAt(x, y); got != colours[(y/3)*2+x/3] {
+				t.Errorf("enlarged at %d,%d: %v", x, y, got)
+			}
+		}
+	}
+	// Reduced, each pixel is the average of those it covers.
+	wide := image.NewRGBA(image.Rect(0, 0, 4, 2))
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 4; x++ {
+			wide.SetRGBA(x, y, color.RGBA{uint8(40 * x), uint8(100 * y), 60, 255})
+		}
+	}
+	reduced := bookCardReduce(wide, 2, 1)
+	if got := reduced.RGBAAt(0, 0); got != (color.RGBA{20, 50, 60, 255}) {
+		t.Errorf("reduced left: %v", got)
+	}
+	if got := reduced.RGBAAt(1, 0); got != (color.RGBA{100, 50, 60, 255}) {
+		t.Errorf("reduced right: %v", got)
+	}
+	// Laid on the paper, a transparent pixel leaves the paper and an opaque one covers it.
+	plate := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	draw.Draw(plate, plate.Bounds(), image.NewUniform(bookCardPaperTone), image.Point{}, draw.Src)
+	sprite := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	sprite.SetRGBA(0, 0, color.RGBA{0, 0, 0, 255})
+	sprite.SetRGBA(1, 0, color.RGBA{50, 0, 0, 128}) // half transparent red, premultiplied
+	bookCardPlace(plate, sprite, plate.Bounds())    // enlarged four times
+	if got := plate.RGBAAt(1, 1); got != (color.RGBA{0, 0, 0, 255}) {
+		t.Errorf("the opaque pixel: %v", got)
+	}
+	if got := plate.RGBAAt(1, 6); got != bookCardPaperTone {
+		t.Errorf("the transparent pixel: %v, want the paper", got)
+	}
+	if got := plate.RGBAAt(6, 1); got.A != 255 || got.R <= 50 || got.R >= bookCardPaperTone.R || got.G >= bookCardPaperTone.G {
+		t.Errorf("the half transparent pixel: %v", got)
+	}
+}
+
+// Only the card of a public topic that exists: anything else under /book/card/ is 404.
+func TestBookCardsOfNothing(t *testing.T) {
+	_, secret := bookPublicTopics(t)
+	paths := []string{"/book/card/99999.jpg", "/book/card/34.png", "/book/card/", "/book/card/034.jpg", "/book/card/34",
+		"/book/card/34.jpg/x", "/book/card/.jpg", "/book/card/-1.jpg"}
+	for _, topic := range secret {
+		paths = append(paths, "/book/card/"+topic.Topic+".jpg", "/book/card/"+strings.ToLower(topic.Topic)+".jpg")
+	}
+	for _, path := range paths {
+		if response := bookGet(t, bookTestHandler, path); response.Code != http.StatusNotFound {
+			t.Errorf("%s: %d, want 404", path, response.Code)
+		}
+	}
+}
+
+// Some sites ask with HEAD first: a page and a card answer 200 with the headers of GET and no body.
+func TestBookHead(t *testing.T) {
+	for _, path := range []string{"/book", "/libro/34-" + BookSlug(bookTitleOf(t, "34", "ES")), "/book/card/34.jpg"} {
+		get := bookGet(t, bookTestHandler, path)
+		request := httptest.NewRequest(http.MethodHead, path, nil)
+		head := httptest.NewRecorder()
+		bookTestHandler.ServeHTTP(head, request)
+		if head.Code != http.StatusOK || head.Body.Len() != 0 {
+			t.Errorf("HEAD %s: %d with %d bytes", path, head.Code, head.Body.Len())
+		}
+		for _, name := range []string{"Content-Type", "Content-Length", "Cache-Control"} {
+			if head.Header().Get(name) != get.Header().Get(name) || get.Header().Get(name) == "" {
+				t.Errorf("HEAD %s: %s %q, GET %q", path, name, head.Header().Get(name), get.Header().Get(name))
+			}
+		}
+	}
+}
+
+var bookMetaTag = regexp.MustCompile(`<meta (?:property|name)="((?:og|twitter):[a-z:_]+)" content="([^"]*)">`)
+
+// Every public page in both languages has the tags of a link's card, each once, and names a card that answers;
+// the titles of topic 34 and of the contents are as the page's <title> says them.
+func TestBookEveryPageHasItsCard(t *testing.T) {
+	public, _ := bookPublicTopics(t)
+	answered := map[string]bool{}
+	other := map[string]bool{}
+	for _, topic := range public {
+		other[topic.Topic+" "+topic.Lang] = true
+	}
+	for _, topic := range public {
+		language := bookLanguages[map[string]int{"EN": 0, "ES": 1}[topic.Lang]]
+		path := bookTopicPath(language, topic.Topic, topic.Title)
+		page := bookGet(t, bookTestHandler, path).Body.String()
+		tags := map[string][]string{}
+		for _, match := range bookMetaTag.FindAllStringSubmatch(page, -1) {
+			tags[match[1]] = append(tags[match[1]], html.UnescapeString(match[2]))
+		}
+		otherLang := map[string]string{"EN": "ES", "ES": "EN"}[topic.Lang]
+		want := map[string]string{
+			"og:image:width": "1200", "og:image:height": "630", "og:image:type": "image/jpeg", "og:image:alt": topic.Title,
+			"og:locale": map[string]string{"EN": "en_US", "ES": "es_ES"}[topic.Lang], "twitter:card": "summary_large_image",
+			"og:image": bookTestBase + "/book/card/" + topic.Topic + ".jpg", "twitter:image:alt": topic.Title,
+			"og:title": "", "og:description": "", "twitter:title": "", "twitter:description": "", "twitter:image": "",
+		}
+		if other[topic.Topic+" "+otherLang] {
+			want["og:locale:alternate"] = map[string]string{"EN": "en_US", "ES": "es_ES"}[otherLang]
+		}
+		for name, value := range want {
+			if len(tags[name]) != 1 {
+				t.Errorf("%s has %d %s", path, len(tags[name]), name)
+				continue
+			}
+			if value != "" && tags[name][0] != value {
+				t.Errorf("%s: %s is %q, want %q", path, name, tags[name][0], value)
+			}
+		}
+		if len(tags["twitter:site"]) != 0 {
+			t.Errorf("%s names a twitter:site", path)
+		}
+		if len(tags["twitter:image"]) != 1 || len(tags["og:image"]) != 1 || tags["twitter:image"][0] != tags["og:image"][0] {
+			t.Errorf("%s: twitter:image is not og:image", path)
+			continue
+		}
+		if tags["twitter:title"][0] != tags["og:title"][0] || tags["twitter:description"][0] != tags["og:description"][0] {
+			t.Errorf("%s: the twitter tags do not say what the og ones say", path)
+		}
+		card := strings.TrimPrefix(tags["og:image"][0], bookTestBase)
+		if !answered[card] {
+			if response := bookGet(t, bookTestHandler, card); response.Code != http.StatusOK || response.Body.Len() < 1000 {
+				t.Errorf("%s names %s, which answers %d", path, card, response.Code)
+			}
+			answered[card] = true
+		}
+	}
+	for _, c := range []struct{ path, title string }{
+		{"/book", "MineCloud guide"},
+		{"/libro", "Guía de MineCloud"},
+		{"/book/34-" + BookSlug(bookTitleOf(t, "34", "EN")), bookTitleOf(t, "34", "EN") + " · MineCloud guide"},
+		{"/libro/34-" + BookSlug(bookTitleOf(t, "34", "ES")), bookTitleOf(t, "34", "ES") + " · Guía de MineCloud"},
+	} {
+		page := bookGet(t, bookTestHandler, c.path).Body.String()
+		bookWant(t, page, `<meta property="og:title" content="`+html.EscapeString(c.title)+`">`)
+		bookWant(t, page, `<meta name="twitter:title" content="`+html.EscapeString(c.title)+`">`)
 	}
 }

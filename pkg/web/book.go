@@ -25,6 +25,7 @@ import (
 //
 //   /book, /libro                       the contents (topic 0)
 //   /book/34-horse, /libro/34-caballo   a topic: its id, then a slug of its title
+//   /book/card/34.jpg                   the picture a site shows with a link to a topic (book_card.go)
 //   /sitemap.xml, /robots.txt           every public topic in both languages, for the search engines
 //
 // The id is what never changes: a bare id, an old or wrong slug, leading zeros or a trailing slash answer 301
@@ -41,9 +42,8 @@ import (
 const (
 	bookCacheControl = "public, max-age=3600"
 	bookKeptHosts    = 4
-	bookDefaultImage = "img/book.png"
-	// A picture of a topic narrower than this is no picture for a link's card (og:image): an item's icon is 64.
-	bookImageMinWidth = 200
+	// The picture of the card (book_card.go) of the contents and of a topic with none.
+	bookDefaultImage = "guide/img/book.png"
 )
 
 // BookFilesHandler serves what the pages show besides their text: the guide's pictures and the fonts
@@ -69,6 +69,7 @@ type bookLanguage struct {
 	Lang        string // html's: en, es
 	Root        string // /book, /libro
 	Guide       string // the guide's name in a title
+	Locale      string // Open Graph's: en_US, es_ES
 	Contents    string
 	Play        string
 	Name        string // the language's name, written in it, for its button
@@ -85,13 +86,13 @@ type bookLanguage struct {
 // and /guide 34 in the chat opens that topic (js/game/guide.js).
 var bookLanguages = []*bookLanguage{
 	{
-		Code: "EN", Lang: "en", Root: "/book", Guide: "MineCloud guide", Contents: "Contents", Play: "Play",
+		Code: "EN", Lang: "en", Locale: "en_US", Root: "/book", Guide: "MineCloud guide", Contents: "Contents", Play: "Play",
 		Name: "English", Topic: "Topic", Previous: "Previous", Next: "Next",
 		HowTo:   "In the game, press H and type %s in Go to, or type /guide %s in the chat.",
 		Missing: "Topic not found", MissingText: "There is no topic at this address.", MissingLink: "Go to the contents",
 	},
 	{
-		Code: "ES", Lang: "es", Root: "/libro", Guide: "Guía de MineCloud", Contents: "Índice", Play: "Jugar",
+		Code: "ES", Lang: "es", Locale: "es_ES", Root: "/libro", Guide: "Guía de MineCloud", Contents: "Índice", Play: "Jugar",
 		Name: "Español", Topic: "Tema", Previous: "Anterior", Next: "Siguiente",
 		HowTo:   "En el juego, pulsa H y escribe %s en Ir a, o escribe /guide %s en el chat.",
 		Missing: "Tema no encontrado", MissingText: "No hay ningún tema en esta dirección.", MissingLink: "Ir al índice",
@@ -106,7 +107,6 @@ type bookTopic struct {
 	Path        string // its address on the site: /book/34-horse, /book for topic 0
 	Body        template.HTML
 	Description string
-	Image       string // the address of its first picture at least bookImageMinWidth wide, or the default one
 	Previous    *bookTopic
 	Next        *bookTopic
 	Other       *bookTopic // the same topic in the other language, nil if it is not written
@@ -117,6 +117,7 @@ type bookTopic struct {
 type bookSite struct {
 	topics map[string]map[string]*bookTopic // language code -> id -> topic
 	order  map[string][]*bookTopic          // language code -> topics by number
+	cards  map[string]string                // id -> the embedded file its card shows (book_card.go)
 }
 
 // bookResponse is one answer, kept: the plain bytes and the gzipped ones.
@@ -136,11 +137,16 @@ type bookHandler struct {
 	err   error
 	sizes map[string]bookImageSize // image file -> its size
 
-	mu   sync.Mutex
-	kept map[string]map[string]*bookResponse // base address -> path -> response
+	mu    sync.Mutex
+	kept  map[string]map[string]*bookResponse // base address -> path -> response
+	cards map[string]*bookCardEntry           // picture file -> its card (book_card.go)
+
+	backdropOnce sync.Once
+	backdrop     *image.RGBA // what every card has under its picture (book_card.go)
 }
 
-// BookHandler serves /book, /libro, their topics, /sitemap.xml and /robots.txt (see the top of this file).
+// BookHandler serves /book, /libro, their topics, the cards of their links (/book/card/, book_card.go),
+// /sitemap.xml and /robots.txt (see the top of this file).
 // publicURL is the site's public address (https://mine.holacloud.app), or "" to take it from each request.
 func BookHandler(publicURL string) http.Handler {
 	return newBookHandler(MustStaticFS(), publicURL)
@@ -194,10 +200,9 @@ func bookDescription(body string) string {
 	return strings.TrimRight(cut, " ,;:.") + "…"
 }
 
-// bookImageSize is what is known of a picture's file: its width and height attributes, and its width.
+// bookImageSize is what is known of a picture's file: its width and height attributes.
 type bookImageSize struct {
 	attributes string
-	width      int
 }
 
 // bookPictureFile is the file tools/guidePictures.js makes of a picture the game draws (mob:sheep is
@@ -230,7 +235,7 @@ func (h *bookHandler) imageFile(src string) string {
 	defer reader.Close()
 	size := bookImageSize{}
 	if config, _, err := image.DecodeConfig(reader); err == nil {
-		size = bookImageSize{attributes: fmt.Sprintf(` width="%d" height="%d"`, config.Width, config.Height), width: config.Width}
+		size = bookImageSize{attributes: fmt.Sprintf(` width="%d" height="%d"`, config.Width, config.Height)}
 	}
 	h.sizes[file] = size
 	return file
@@ -243,7 +248,7 @@ func (h *bookHandler) build() (*bookSite, error) {
 	if err != nil {
 		return nil, err
 	}
-	site := &bookSite{topics: map[string]map[string]*bookTopic{}, order: map[string][]*bookTopic{}}
+	site := &bookSite{topics: map[string]map[string]*bookTopic{}, order: map[string][]*bookTopic{}, cards: map[string]string{}}
 	byCode := map[string]*bookLanguage{}
 	for _, language := range bookLanguages {
 		byCode[language.Code] = language
@@ -293,12 +298,20 @@ func (h *bookHandler) build() (*bookSite, error) {
 			body := renderer.Markdown(source)
 			topic.Body = template.HTML(body)
 			topic.Description = bookDescription(body)
-			topic.Image = "/guide/" + bookDefaultImage
-			for _, match := range bookImageSrc.FindAllStringSubmatch(source, -1) {
-				if file := h.imageFile(match[1]); file != "" && h.sizes[file].width >= bookImageMinWidth {
-					topic.Image = "/" + file
-					break
+			// Its card shows its first picture with a file, of any kind and size; the contents and a topic with
+			// none show the book. The card is one for both languages: the English topic's picture, as English
+			// comes first in bookLanguages, else the Spanish one's.
+			if _, done := site.cards[topic.ID]; !done {
+				picture := bookDefaultImage
+				if topic.ID != "0" {
+					for _, match := range bookImageSrc.FindAllStringSubmatch(source, -1) {
+						if file := h.imageFile(match[1]); file != "" {
+							picture = file
+							break
+						}
+					}
 				}
+				site.cards[topic.ID] = picture
 			}
 			if i > 0 {
 				topic.Previous = order[i-1]
@@ -328,6 +341,10 @@ func (h *bookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requested := r.URL.Path
+	if strings.HasPrefix(requested, bookCardPrefix) {
+		h.serveCard(w, r)
+		return
+	}
 	if target := h.redirect(requested); target != "" {
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
 		return
@@ -492,21 +509,28 @@ func (h *bookHandler) pageData(base string, topic *bookTopic) map[string]any {
 		}
 		return other.Root
 	})
-	ogType := "article"
+	// What a link's card says: the title as the page's <title> says it, the guide's name alone for the contents.
+	ogType, title := "article", topic.Title+" · "+language.Guide
 	if topic.ID == "0" {
-		ogType = "website"
+		ogType, title = "website", language.Guide
+	}
+	otherLocale := ""
+	if topic.Other != nil {
+		otherLocale = topic.Other.Language.Locale
 	}
 	return map[string]any{
-		"L":          language,
-		"T":          topic,
-		"CSS":        bookCSS,
-		"Canonical":  base + topic.Path,
-		"Image":      base + topic.Image,
-		"OGType":     ogType,
-		"Alternates": alternates,
-		"Langs":      langs,
-		"HowTo":      fmt.Sprintf(language.HowTo, topic.ID, topic.ID),
-		"IsContents": topic.ID == "0",
+		"L":           language,
+		"T":           topic,
+		"CSS":         bookCSS,
+		"Canonical":   base + topic.Path,
+		"Image":       base + bookCardPrefix + topic.ID + ".jpg",
+		"OGTitle":     title,
+		"OGType":      ogType,
+		"OtherLocale": otherLocale,
+		"Alternates":  alternates,
+		"Langs":       langs,
+		"HowTo":       fmt.Sprintf(language.HowTo, topic.ID, topic.ID),
+		"IsContents":  topic.ID == "0",
 	}
 }
 
@@ -656,12 +680,23 @@ var bookPageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
 <meta name="description" content="{{.T.Description}}">
 <link rel="canonical" href="{{.Canonical}}">
 {{range .Alternates}}<link rel="alternate" hreflang="{{.Lang}}" href="{{.URL}}">
-{{end}}<meta property="og:title" content="{{.T.Title}}">
+{{end}}<meta property="og:title" content="{{.OGTitle}}">
 <meta property="og:description" content="{{.T.Description}}">
 <meta property="og:url" content="{{.Canonical}}">
 <meta property="og:type" content="{{.OGType}}">
 <meta property="og:image" content="{{.Image}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:alt" content="{{.T.Title}}">
 <meta property="og:site_name" content="{{.L.Guide}}">
+<meta property="og:locale" content="{{.L.Locale}}">
+{{with .OtherLocale}}<meta property="og:locale:alternate" content="{{.}}">
+{{end}}<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{.OGTitle}}">
+<meta name="twitter:description" content="{{.T.Description}}">
+<meta name="twitter:image" content="{{.Image}}">
+<meta name="twitter:image:alt" content="{{.T.Title}}">
 ` + bookHeadEnd + `
 <body>
 <div class="cover"><div class="paper">

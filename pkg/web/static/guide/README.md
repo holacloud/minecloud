@@ -38,6 +38,12 @@ The guide is also public web pages, for search engines and for links: `/book` in
   an icon; it also removes the files no public topic shows any more, and never draws what only a secret topic
   shows. `test/js/guide_pictures.test.js` fails while a picture has no file. One with no file is left out of
   the page (a table column of nothing but those goes too), so a topic should still read without them.
+- A link to a topic shows a card wherever it is shared (Open Graph and Twitter tags, `og:image`): a picture of
+  1200 by 630 that the server makes the first time it is asked for, `/book/card/<id>.jpg` (`pkg/web/book_card.go`),
+  the same in both languages. It is the blurred landscape with the open book on it, the name "MineCloud" in pixel
+  letters in a head bar at the top of its paper, and under it the topic's first picture with a file (a portrait, an icon, a building, a file of `img/`; the contents and a topic with none
+  show `img/book.png`): a small one enlarged by a whole number so that its pixels stay sharp, a large one reduced
+  to fit. A new topic gets its card by itself, and changes it by changing its first picture.
 - Two renderers of this Markdown exist: `js/guideMarkdown.js` (the book and paper) and `pkg/web/guide_markdown.go`
   (the web). They are held together by `test/js/support/guide_markdown_cases.json`, one case per construct, which
   both `test/js/guideMarkdown.test.js` and `go test ./pkg/web/` render: a change to the dialect is made in both,
